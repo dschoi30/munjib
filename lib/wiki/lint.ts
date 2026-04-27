@@ -81,7 +81,7 @@ async function validateIndexCoverage(rootDir: string, manifest: WikiManifest, wa
 async function validateWikiLinks(rootDir: string, files: string[], titleByFile: Map<string, string>, warnings: string[]) {
   const knownTitles = new Set([...titleByFile.values()]);
   for (const file of files) {
-    const markdown = await readWorkspaceFile(rootDir, file).catch(() => "");
+    const markdown = stripFencedCodeBlocks(await readWorkspaceFile(rootDir, file).catch(() => ""));
     for (const match of markdown.matchAll(/\[\[([^\]]+)\]\]/g)) {
       const target = (match[1] ?? "").split("|")[0]?.trim() ?? "";
       if (target && !knownTitles.has(target)) {
@@ -89,4 +89,8 @@ async function validateWikiLinks(rootDir: string, files: string[], titleByFile: 
       }
     }
   }
+}
+
+function stripFencedCodeBlocks(markdown: string): string {
+  return markdown.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]+`/g, "");
 }
