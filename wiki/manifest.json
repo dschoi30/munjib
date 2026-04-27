@@ -1,0 +1,201 @@
+{
+  "version": 1,
+  "updated": "2026-04-27",
+  "pages": [
+    {
+      "id": "concept-llm-wiki",
+      "path": "wiki/concepts/llm-wiki.md",
+      "title": "LLM Wiki",
+      "type": "concept",
+      "status": "active",
+      "summary": "Persistent LLM-maintained markdown wiki pattern.",
+      "tags": [
+        "llm-wiki",
+        "knowledge-management"
+      ],
+      "links": [
+        "[[LLM Wiki Source]]",
+        "[[Persistent Wiki]]",
+        "[[Wiki-First Lookup]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    },
+    {
+      "id": "concept-persistent-wiki",
+      "path": "wiki/concepts/persistent-wiki.md",
+      "title": "Persistent Wiki",
+      "type": "concept",
+      "status": "active",
+      "summary": "A compounding markdown artifact that preserves synthesized knowledge across sessions.",
+      "tags": [
+        "llm-wiki",
+        "persistence"
+      ],
+      "links": [
+        "[[LLM Wiki]]",
+        "[[Wiki-First Lookup]]",
+        "[[Wiki Log]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    },
+    {
+      "id": "decision-hybrid-markdown-first",
+      "path": "wiki/decisions/hybrid-markdown-first.md",
+      "title": "Hybrid Markdown-First Wiki",
+      "type": "decision",
+      "status": "active",
+      "summary": "Markdown wiki files are the source of truth now, with manifest metadata for later app import.",
+      "tags": [
+        "decision",
+        "architecture"
+      ],
+      "links": [
+        "[[LLM Wiki]]",
+        "[[Wiki Schema]]",
+        "[[Wiki-First Lookup]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 40
+    },
+    {
+      "id": "index-main",
+      "path": "wiki/index.md",
+      "title": "Wiki Index",
+      "type": "index",
+      "status": "active",
+      "summary": "Navigation index for the repository wiki.",
+      "tags": [
+        "index",
+        "llm-wiki"
+      ],
+      "links": [
+        "[[LLM Wiki Source]]",
+        "[[LLM Wiki]]",
+        "[[Persistent Wiki]]",
+        "[[Wiki-First Lookup]]",
+        "[[Source Ingest]]",
+        "[[Wiki Lint]]",
+        "[[Hybrid Markdown-First Wiki]]",
+        "[[Wiki Schema]]",
+        "[[Wiki Log]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 5
+    },
+    {
+      "id": "log-main",
+      "path": "wiki/log.md",
+      "title": "Wiki Log",
+      "type": "log",
+      "status": "active",
+      "summary": "Append-only maintenance timeline for ingest, query, lint, and wiki updates.",
+      "tags": [
+        "log",
+        "llm-wiki"
+      ],
+      "links": [
+        "[[LLM Wiki Source]]",
+        "[[Wiki Index]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 1
+    },
+    {
+      "id": "schema-main",
+      "path": "wiki/schema.md",
+      "title": "Wiki Schema",
+      "type": "concept",
+      "status": "active",
+      "summary": "Required page metadata, link conventions, and maintenance rules for the markdown wiki.",
+      "tags": [
+        "schema",
+        "llm-wiki"
+      ],
+      "links": [
+        "[[LLM Wiki]]",
+        "[[Wiki Lint]]",
+        "[[Hybrid Markdown-First Wiki]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    },
+    {
+      "id": "source-llm-wiki",
+      "path": "wiki/sources/llm-wiki.md",
+      "title": "LLM Wiki Source",
+      "type": "source",
+      "status": "active",
+      "summary": "Source note describing the LLM-maintained persistent markdown wiki pattern.",
+      "tags": [
+        "llm-wiki",
+        "source"
+      ],
+      "links": [
+        "[[LLM Wiki]]",
+        "[[Persistent Wiki]]",
+        "[[Source Ingest]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 30
+    },
+    {
+      "id": "workflow-source-ingest",
+      "path": "wiki/workflows/source-ingest.md",
+      "title": "Source Ingest",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Workflow for turning immutable raw sources into maintained wiki pages.",
+      "tags": [
+        "workflow",
+        "ingest"
+      ],
+      "links": [
+        "[[LLM Wiki Source]]",
+        "[[LLM Wiki]]",
+        "[[Wiki Log]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-wiki-first-lookup",
+      "path": "wiki/workflows/wiki-first-lookup.md",
+      "title": "Wiki-First Lookup",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Agent workflow requiring wiki lookup before broad repository grep.",
+      "tags": [
+        "workflow",
+        "lookup"
+      ],
+      "links": [
+        "[[Wiki Index]]",
+        "[[LLM Wiki]]",
+        "[[Wiki Schema]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-wiki-lint",
+      "path": "wiki/workflows/wiki-lint.md",
+      "title": "Wiki Lint",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Maintenance workflow for checking wiki structure and unresolved links.",
+      "tags": [
+        "workflow",
+        "lint"
+      ],
+      "links": [
+        "[[Wiki Schema]]",
+        "[[Wiki Index]]",
+        "[[Wiki Log]]"
+      ],
+      "source_count": 1,
+      "searchPriority": 50
+    }
+  ]
+}
