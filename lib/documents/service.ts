@@ -63,36 +63,57 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
   return latest ? latest.versionNumber + 1 : 1;
 }
 
+async function createDocumentWithInitialVersion(
+  tx: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    title: string;
+    contentMarkdown: string;
+    changeSummary: string;
+  },
+) {
+  const slug = slugifyTitle(input.title);
+  const contentText = markdownToPlainText(input.contentMarkdown);
+
+  const document = await tx.document.create({
+    data: {
+      workspaceId: input.workspaceId,
+      title: input.title,
+      slug,
+      path: `/${slug}`,
+      contentMarkdown: input.contentMarkdown,
+      contentText,
+      createdById: input.actorId,
+      updatedById: input.actorId,
+    },
+  });
+
+  await tx.documentVersion.create({
+    data: {
+      documentId: document.id,
+      versionNumber: 1,
+      title: document.title,
+      contentMarkdown: document.contentMarkdown,
+      createdById: input.actorId,
+      changeSummary: input.changeSummary,
+    },
+  });
+
+  return document;
+}
+
 export async function createDocument(input: CreateDocumentInput) {
   const { workspace, role } = await getWorkspaceMembership(input.workspaceSlug, input.actorId);
   assertCanWriteWorkspace(role);
 
-  const slug = slugifyTitle(input.title);
-  const contentText = markdownToPlainText(input.contentMarkdown);
-
   return prisma.$transaction(async (tx) => {
-    const document = await tx.document.create({
-      data: {
-        workspaceId: workspace.id,
-        title: input.title,
-        slug,
-        path: `/${slug}`,
-        contentMarkdown: input.contentMarkdown,
-        contentText,
-        createdById: input.actorId,
-        updatedById: input.actorId,
-      },
-    });
-
-    await tx.documentVersion.create({
-      data: {
-        documentId: document.id,
-        versionNumber: 1,
-        title: document.title,
-        contentMarkdown: document.contentMarkdown,
-        createdById: input.actorId,
-        changeSummary: "Initial version",
-      },
+    const document = await createDocumentWithInitialVersion(tx, {
+      workspaceId: workspace.id,
+      actorId: input.actorId,
+      title: input.title,
+      contentMarkdown: input.contentMarkdown,
+      changeSummary: "Initial version",
     });
 
     await reconcileDocumentLinks(tx, {
@@ -215,33 +236,15 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
 
-  const slug = slugifyTitle(link.targetTitleRaw);
   const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
-  const contentText = markdownToPlainText(contentMarkdown);
 
   return prisma.$transaction(async (tx) => {
-    const document = await tx.document.create({
-      data: {
-        workspaceId: link.workspaceId,
-        title: link.targetTitleRaw,
-        slug,
-        path: `/${slug}`,
-        contentMarkdown,
-        contentText,
-        createdById: input.actorId,
-        updatedById: input.actorId,
-      },
-    });
-
-    await tx.documentVersion.create({
-      data: {
-        documentId: document.id,
-        versionNumber: 1,
-        title: document.title,
-        contentMarkdown: document.contentMarkdown,
-        createdById: input.actorId,
-        changeSummary: "Created from broken wiki link",
-      },
+    const document = await createDocumentWithInitialVersion(tx, {
+      workspaceId: link.workspaceId,
+      actorId: input.actorId,
+      title: link.targetTitleRaw,
+      contentMarkdown,
+      changeSummary: "Created from broken wiki link",
     });
 
     await repairBrokenLinksForTarget(tx, {
