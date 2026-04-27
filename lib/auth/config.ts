@@ -3,7 +3,19 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db/client";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET ?? "obsidian-clone-development-secret",
   session: { strategy: "jwt" },
+  cookies: {
+    sessionToken: {
+      name: "obsidian-clone.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   pages: { signIn: "/login" },
   providers: [
     CredentialsProvider({
