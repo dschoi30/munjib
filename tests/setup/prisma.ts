@@ -1,21 +1,21 @@
 import { WorkspaceRole } from "@prisma/client";
+import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 
 export async function resetTestData() {
-  await prisma.auditLog.deleteMany();
-  await prisma.documentVersion.deleteMany();
-  await prisma.document.deleteMany();
-  await prisma.workspaceMember.deleteMany();
-  await prisma.organizationMember.deleteMany();
-  await prisma.workspace.deleteMany();
-  await prisma.organization.deleteMany();
-  await prisma.user.deleteMany();
+  await prisma.organization.deleteMany({
+    where: { slug: { startsWith: "test-org-" } },
+  });
+  await prisma.user.deleteMany({
+    where: { email: { startsWith: "test-" } },
+  });
 }
 
 export async function seedWorkspaceFixture(role: WorkspaceRole) {
+  const id = randomUUID();
   const user = await prisma.user.create({
     data: {
-      email: `${role.toLowerCase()}-${Date.now()}@example.com`,
+      email: `test-${role.toLowerCase()}-${id}@example.com`,
       name: `${role} User`,
     },
   });
@@ -23,7 +23,7 @@ export async function seedWorkspaceFixture(role: WorkspaceRole) {
   const organization = await prisma.organization.create({
     data: {
       name: "Test Org",
-      slug: `test-org-${Date.now()}`,
+      slug: `test-org-${id}`,
     },
   });
 
@@ -31,7 +31,7 @@ export async function seedWorkspaceFixture(role: WorkspaceRole) {
     data: {
       organizationId: organization.id,
       name: "Test Workspace",
-      slug: `test-workspace-${Date.now()}`,
+      slug: `test-workspace-${id}`,
     },
   });
 
