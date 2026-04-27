@@ -11,3 +11,4 @@ test-results
 *.swp
 .DS_Store
 .superpowers/
+.worktrees/
