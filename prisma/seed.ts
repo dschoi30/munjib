@@ -1,4 +1,5 @@
 import { PrismaClient, WorkspaceRole } from "@prisma/client";
+import { reconcileDocumentLinks } from "../lib/wiki-links/reconcile";
 
 const prisma = new PrismaClient();
 
@@ -55,19 +56,57 @@ async function main() {
     });
   }
 
-  await prisma.document.upsert({
+  const welcome = await prisma.document.upsert({
     where: { workspaceId_slug: { workspaceId: workspace.id, slug: "welcome" } },
-    update: {},
+    update: {
+      contentMarkdown:
+        "# Welcome\n\nThis is the first company handbook document.\n\nRead [[Engineering Runbook]] and [[Missing Policy]].",
+      contentText:
+        "Welcome This is the first company handbook document. Read Engineering Runbook and Missing Policy.",
+    },
     create: {
       workspaceId: workspace.id,
       title: "Welcome",
       slug: "welcome",
       path: "/welcome",
-      contentMarkdown: "# Welcome\n\nThis is the first company handbook document.",
-      contentText: "Welcome This is the first company handbook document.",
+      contentMarkdown:
+        "# Welcome\n\nThis is the first company handbook document.\n\nRead [[Engineering Runbook]] and [[Missing Policy]].",
+      contentText:
+        "Welcome This is the first company handbook document. Read Engineering Runbook and Missing Policy.",
       createdById: owner.id,
       updatedById: owner.id,
     },
+  });
+
+  const engineeringRunbook = await prisma.document.upsert({
+    where: { workspaceId_slug: { workspaceId: workspace.id, slug: "engineering-runbook" } },
+    update: {
+      contentMarkdown: "# Engineering Runbook\n\nBacklinked from [[Welcome]].",
+      contentText: "Engineering Runbook Backlinked from Welcome.",
+    },
+    create: {
+      workspaceId: workspace.id,
+      title: "Engineering Runbook",
+      slug: "engineering-runbook",
+      path: "/engineering-runbook",
+      contentMarkdown: "# Engineering Runbook\n\nBacklinked from [[Welcome]].",
+      contentText: "Engineering Runbook Backlinked from Welcome.",
+      createdById: owner.id,
+      updatedById: owner.id,
+    },
+  });
+
+  await prisma.$transaction(async (tx) => {
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: welcome.id,
+      contentMarkdown: welcome.contentMarkdown,
+    });
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: engineeringRunbook.id,
+      contentMarkdown: engineeringRunbook.contentMarkdown,
+    });
   });
 }
 
