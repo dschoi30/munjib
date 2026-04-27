@@ -15,27 +15,32 @@ export async function reconcileDocumentLinks(
   });
 
   const parsedLinks = parseWikiLinks(input.contentMarkdown);
-  for (const parsedLink of parsedLinks) {
-    const target = await tx.document.findFirst({
-      where: {
-        workspaceId: input.workspaceId,
-        slug: slugifyTitle(parsedLink.targetTitleRaw),
-        status: "ACTIVE",
-      },
-      select: { id: true },
-    });
+  if (parsedLinks.length === 0) return;
 
-    await tx.documentLink.create({
-      data: {
+  const targetSlugs = parsedLinks.map((link) => slugifyTitle(link.targetTitleRaw));
+  const targets = await tx.document.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      slug: { in: targetSlugs },
+      status: "ACTIVE",
+    },
+    select: { id: true, slug: true },
+  });
+  const targetIdBySlug = new Map(targets.map((target) => [target.slug, target.id]));
+
+  await tx.documentLink.createMany({
+    data: parsedLinks.map((link) => {
+      const targetId = targetIdBySlug.get(slugifyTitle(link.targetTitleRaw));
+      return {
         workspaceId: input.workspaceId,
         sourceDocumentId: input.sourceDocumentId,
-        targetDocumentId: target?.id ?? null,
-        targetTitleRaw: parsedLink.targetTitleRaw,
-        alias: parsedLink.alias,
-        isBroken: !target,
-      },
-    });
-  }
+        targetDocumentId: targetId ?? null,
+        targetTitleRaw: link.targetTitleRaw,
+        alias: link.alias,
+        isBroken: !targetId,
+      };
+    }),
+  });
 }
 
 export async function repairBrokenLinksForTarget(
