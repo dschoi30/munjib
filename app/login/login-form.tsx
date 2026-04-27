@@ -6,14 +6,25 @@ import { useState } from "react";
 export function LoginForm() {
   const [email, setEmail] = useState("owner@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError(null);
     setIsSubmitting(true);
-    await signIn("credentials", {
+    const result = await signIn("credentials", {
       email,
+      redirect: false,
       callbackUrl: "/workspaces/company-handbook",
     });
+
+    if (result?.url) {
+      window.location.assign(result.url);
+      return;
+    }
+
+    setError("No matching development user was found.");
+    setIsSubmitting(false);
   }
 
   return (
@@ -43,6 +54,7 @@ export function LoginForm() {
       >
         {isSubmitting ? "Signing in..." : "Sign in"}
       </button>
+      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
     </form>
   );
 }
