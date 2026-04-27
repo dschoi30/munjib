@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+enum DocumentStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum PermissionResourceType {
+  WORKSPACE
+  DOCUMENT
+}
+
+enum PermissionSubjectType {
+  USER
+  ORGANIZATION_MEMBER
+  WORKSPACE_MEMBER
+}
+
+enum PermissionLevel {
+  READ
+  WRITE
+  MANAGE
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  avatarUrl           String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  organizationMembers OrganizationMember[]
+  workspaceMembers    WorkspaceMember[]
+  documentsCreated    Document[]           @relation("DocumentCreatedBy")
+  documentsUpdated    Document[]           @relation("DocumentUpdatedBy")
+  documentVersions    DocumentVersion[]
+  auditLogs           AuditLog[]
+}
+
+model Organization {
+  id         String               @id @default(cuid())
+  name       String
+  slug       String               @unique
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+  members    OrganizationMember[]
+  workspaces Workspace[]
+  auditLogs  AuditLog[]
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole @default(MEMBER)
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+}
+
+model Workspace {
+  id             String            @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  visibility     String            @default("private")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        WorkspaceMember[]
+  documents      Document[]
+
+  @@unique([organizationId, slug])
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(VIEWER)
+  createdAt   DateTime      @default(now())
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+}
+
+model Document {
+  id              String            @id @default(cuid())
+  workspaceId     String
+  parentId        String?
+  title           String
+  slug            String
+  path            String
+  contentMarkdown String            @default("")
+  contentText     String            @default("")
+  status          DocumentStatus    @default(ACTIVE)
+  createdById     String
+  updatedById     String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  archivedAt      DateTime?
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parent          Document?         @relation("DocumentTree", fields: [parentId], references: [id])
+  children        Document[]        @relation("DocumentTree")
+  createdBy       User              @relation("DocumentCreatedBy", fields: [createdById], references: [id])
+  updatedBy       User              @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
+  versions        DocumentVersion[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+}
+
+model DocumentVersion {
+  id              String   @id @default(cuid())
+  documentId      String
+  versionNumber   Int
+  title           String
+  contentMarkdown String
+  createdById     String
+  changeSummary   String?
+  createdAt       DateTime @default(now())
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy       User     @relation(fields: [createdById], references: [id])
+
+  @@unique([documentId, versionNumber])
+}
+
+model Permission {
+  id              String                 @id @default(cuid())
+  resourceType    PermissionResourceType
+  resourceId      String
+  subjectType     PermissionSubjectType
+  subjectId       String
+  permission      PermissionLevel
+  inheritedFromId String?
+  createdAt       DateTime               @default(now())
+
+  @@index([resourceType, resourceId])
+  @@index([subjectType, subjectId])
+}
+
+model AuditLog {
+  id             String       @id @default(cuid())
+  organizationId String
+  actorId        String
+  action         String
+  resourceType   String
+  resourceId     String
+  metadataJson   Json
+  createdAt      DateTime     @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  actor          User         @relation(fields: [actorId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([resourceType, resourceId])
+}

@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: obsidian-clone-postgres
+    environment:
+      POSTGRES_USER: obsidian
+      POSTGRES_PASSWORD: obsidian
+      POSTGRES_DB: obsidian_clone
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U obsidian -d obsidian_clone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
