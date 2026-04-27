@@ -9,6 +9,7 @@ import type {
   CreateDocumentInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
+import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -93,6 +94,12 @@ export async function createDocument(input: CreateDocumentInput) {
       },
     });
 
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: document.id,
+      contentMarkdown: document.contentMarkdown,
+    });
+
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
       actorId: input.actorId,
@@ -138,6 +145,12 @@ export async function updateDocument(input: UpdateDocumentInput) {
         createdById: input.actorId,
         changeSummary: "Updated document",
       },
+    });
+
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: updated.id,
+      contentMarkdown: updated.contentMarkdown,
     });
 
     await writeAuditLog(tx, {
