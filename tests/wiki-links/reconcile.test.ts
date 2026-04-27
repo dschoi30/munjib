@@ -1,6 +1,6 @@
 import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDocument, updateDocument } from "@/lib/documents/service";
+import { createDocument, createDocumentFromBrokenLink, updateDocument } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
@@ -88,5 +88,54 @@ describe("wiki link reconciliation", () => {
     });
 
     await expect(prisma.documentLink.findMany({ where: { sourceDocumentId: source.id } })).resolves.toEqual([]);
+  });
+
+  it("creates a missing target document from a broken link and repairs the link", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: "Read [[Missing Runbook]].",
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Missing Runbook" },
+    });
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Missing Runbook");
+    const repaired = await prisma.documentLink.findUniqueOrThrow({ where: { id: broken.id } });
+    expect(repaired.isBroken).toBe(false);
+    expect(repaired.targetDocumentId).toBe(created.id);
+  });
+
+  it("prevents viewers from creating a missing target document", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.VIEWER);
+    const editor = await prisma.user.create({
+      data: { email: `test-editor-${fixture.workspace.id}@example.com`, name: "Editor User" },
+    });
+    await prisma.workspaceMember.create({
+      data: { workspaceId: fixture.workspace.id, userId: editor.id, role: WorkspaceRole.EDITOR },
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: editor.id,
+      title: "Incident Guide",
+      contentMarkdown: "Read [[Missing Runbook]].",
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Missing Runbook" },
+    });
+
+    await expect(
+      createDocumentFromBrokenLink({
+        linkId: broken.id,
+        actorId: fixture.user.id,
+      }),
+    ).rejects.toThrow("WORKSPACE_WRITE_FORBIDDEN");
   });
 });

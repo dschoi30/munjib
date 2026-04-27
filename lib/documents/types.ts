@@ -16,3 +16,8 @@ export type ArchiveDocumentInput = {
   documentId: string;
   actorId: string;
 };
+
+export type CreateDocumentFromBrokenLinkInput = {
+  linkId: string;
+  actorId: string;
+};

@@ -6,10 +6,11 @@ import { markdownToPlainText } from "@/lib/text/plain-text";
 import { slugifyTitle } from "@/lib/text/slug";
 import type {
   ArchiveDocumentInput,
+  CreateDocumentFromBrokenLinkInput,
   CreateDocumentInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
-import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
+import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -193,5 +194,71 @@ export async function archiveDocument(input: ArchiveDocumentInput) {
     });
 
     return archived;
+  });
+}
+
+export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrokenLinkInput) {
+  const link = await prisma.documentLink.findUnique({
+    where: { id: input.linkId },
+    include: {
+      workspace: {
+        include: {
+          organization: true,
+          members: { where: { userId: input.actorId }, take: 1 },
+        },
+      },
+    },
+  });
+
+  if (!link) throw new Error("DOCUMENT_LINK_NOT_FOUND");
+  const role = link.workspace.members[0]?.role;
+  assertCanReadWorkspace(role);
+  assertCanWriteWorkspace(role);
+
+  const slug = slugifyTitle(link.targetTitleRaw);
+  const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
+  const contentText = markdownToPlainText(contentMarkdown);
+
+  return prisma.$transaction(async (tx) => {
+    const document = await tx.document.create({
+      data: {
+        workspaceId: link.workspaceId,
+        title: link.targetTitleRaw,
+        slug,
+        path: `/${slug}`,
+        contentMarkdown,
+        contentText,
+        createdById: input.actorId,
+        updatedById: input.actorId,
+      },
+    });
+
+    await tx.documentVersion.create({
+      data: {
+        documentId: document.id,
+        versionNumber: 1,
+        title: document.title,
+        contentMarkdown: document.contentMarkdown,
+        createdById: input.actorId,
+        changeSummary: "Created from broken wiki link",
+      },
+    });
+
+    await repairBrokenLinksForTarget(tx, {
+      workspaceId: link.workspaceId,
+      targetDocumentId: document.id,
+      targetTitle: link.targetTitleRaw,
+    });
+
+    await writeAuditLog(tx, {
+      organizationId: link.workspace.organizationId,
+      actorId: input.actorId,
+      action: "document.created_from_broken_link",
+      resourceType: "document",
+      resourceId: document.id,
+      metadata: { title: document.title, repairedLinkId: link.id },
+    });
+
+    return document;
   });
 }

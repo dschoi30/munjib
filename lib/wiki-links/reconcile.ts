@@ -37,3 +37,24 @@ export async function reconcileDocumentLinks(
     });
   }
 }
+
+export async function repairBrokenLinksForTarget(
+  tx: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    targetDocumentId: string;
+    targetTitle: string;
+  },
+) {
+  await tx.documentLink.updateMany({
+    where: {
+      workspaceId: input.workspaceId,
+      targetTitleRaw: input.targetTitle,
+      isBroken: true,
+    },
+    data: {
+      targetDocumentId: input.targetDocumentId,
+      isBroken: false,
+    },
+  });
+}
