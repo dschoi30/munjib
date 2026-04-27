@@ -91,6 +91,7 @@ model Workspace {
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        WorkspaceMember[]
   documents      Document[]
+  documentLinks  DocumentLink[]
 
   @@unique([organizationId, slug])
 }
@@ -128,6 +129,8 @@ model Document {
   createdBy       User              @relation("DocumentCreatedBy", fields: [createdById], references: [id])
   updatedBy       User              @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
   versions        DocumentVersion[]
+  outgoingLinks   DocumentLink[]     @relation("DocumentOutgoingLinks")
+  incomingLinks   DocumentLink[]     @relation("DocumentIncomingLinks")
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -146,6 +149,26 @@ model DocumentVersion {
   createdBy       User     @relation(fields: [createdById], references: [id])
 
   @@unique([documentId, versionNumber])
+}
+
+model DocumentLink {
+  id               String    @id @default(cuid())
+  workspaceId      String
+  sourceDocumentId String
+  targetDocumentId String?
+  targetTitleRaw   String
+  alias            String?
+  linkType         String    @default("wiki")
+  isBroken         Boolean   @default(false)
+  createdAt        DateTime  @default(now())
+  workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  sourceDocument   Document  @relation("DocumentOutgoingLinks", fields: [sourceDocumentId], references: [id], onDelete: Cascade)
+  targetDocument   Document? @relation("DocumentIncomingLinks", fields: [targetDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId])
+  @@index([sourceDocumentId])
+  @@index([targetDocumentId])
+  @@index([workspaceId, targetTitleRaw])
 }
 
 model Permission {

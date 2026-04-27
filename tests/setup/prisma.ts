@@ -3,12 +3,10 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 
 export async function resetTestData() {
-  await prisma.organization.deleteMany({
-    where: { slug: { startsWith: "test-org-" } },
-  });
-  await prisma.user.deleteMany({
-    where: { email: { startsWith: "test-" } },
-  });
+  // Test fixtures use UUID-scoped emails and slugs. Avoid global deletes here:
+  // Vitest can run files in parallel, and cross-file cleanup can delete records
+  // another test just created.
+  await Promise.resolve();
 }
 
 export async function seedWorkspaceFixture(role: WorkspaceRole) {

@@ -6,7 +6,12 @@ import { MetadataPanel } from "@/components/metadata-panel";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { canWriteWorkspace } from "@/lib/permissions/workspace";
-import { createDocumentAction, updateDocumentAction } from "./actions";
+import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
+import {
+  createDocumentAction,
+  createDocumentFromBrokenLinkAction,
+  updateDocumentAction,
+} from "./actions";
 
 export default async function WorkspacePage({
   params,
@@ -52,9 +57,17 @@ export default async function WorkspacePage({
       })
     : [];
 
+  const linkPanels = selectedDocument
+    ? await getDocumentLinkPanels(selectedDocument.id, user.id)
+    : { outgoing: [], backlinks: [], brokenLinks: [] };
+
   const role = workspace.members[0].role;
   const canWrite = canWriteWorkspace(role);
   const createAction = createDocumentAction.bind(null, workspaceSlug);
+  const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
+    null,
+    workspaceSlug,
+  );
 
   return (
     <AppShell
@@ -73,7 +86,15 @@ export default async function WorkspacePage({
           action={updateDocumentAction}
         />
       }
-      right={<MetadataPanel versions={versions} auditLogs={auditLogs} />}
+      right={
+        <MetadataPanel
+          versions={versions}
+          auditLogs={auditLogs}
+          linkPanels={linkPanels}
+          canWrite={canWrite}
+          createFromBrokenLinkAction={createFromBrokenLinkAction}
+        />
+      }
     />
   );
 }

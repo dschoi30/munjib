@@ -6,9 +6,11 @@ import { markdownToPlainText } from "@/lib/text/plain-text";
 import { slugifyTitle } from "@/lib/text/slug";
 import type {
   ArchiveDocumentInput,
+  CreateDocumentFromBrokenLinkInput,
   CreateDocumentInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
+import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -61,36 +63,63 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
   return latest ? latest.versionNumber + 1 : 1;
 }
 
+async function createDocumentWithInitialVersion(
+  tx: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    actorId: string;
+    title: string;
+    contentMarkdown: string;
+    changeSummary: string;
+  },
+) {
+  const slug = slugifyTitle(input.title);
+  const contentText = markdownToPlainText(input.contentMarkdown);
+
+  const document = await tx.document.create({
+    data: {
+      workspaceId: input.workspaceId,
+      title: input.title,
+      slug,
+      path: `/${slug}`,
+      contentMarkdown: input.contentMarkdown,
+      contentText,
+      createdById: input.actorId,
+      updatedById: input.actorId,
+    },
+  });
+
+  await tx.documentVersion.create({
+    data: {
+      documentId: document.id,
+      versionNumber: 1,
+      title: document.title,
+      contentMarkdown: document.contentMarkdown,
+      createdById: input.actorId,
+      changeSummary: input.changeSummary,
+    },
+  });
+
+  return document;
+}
+
 export async function createDocument(input: CreateDocumentInput) {
   const { workspace, role } = await getWorkspaceMembership(input.workspaceSlug, input.actorId);
   assertCanWriteWorkspace(role);
 
-  const slug = slugifyTitle(input.title);
-  const contentText = markdownToPlainText(input.contentMarkdown);
-
   return prisma.$transaction(async (tx) => {
-    const document = await tx.document.create({
-      data: {
-        workspaceId: workspace.id,
-        title: input.title,
-        slug,
-        path: `/${slug}`,
-        contentMarkdown: input.contentMarkdown,
-        contentText,
-        createdById: input.actorId,
-        updatedById: input.actorId,
-      },
+    const document = await createDocumentWithInitialVersion(tx, {
+      workspaceId: workspace.id,
+      actorId: input.actorId,
+      title: input.title,
+      contentMarkdown: input.contentMarkdown,
+      changeSummary: "Initial version",
     });
 
-    await tx.documentVersion.create({
-      data: {
-        documentId: document.id,
-        versionNumber: 1,
-        title: document.title,
-        contentMarkdown: document.contentMarkdown,
-        createdById: input.actorId,
-        changeSummary: "Initial version",
-      },
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: document.id,
+      contentMarkdown: document.contentMarkdown,
     });
 
     await writeAuditLog(tx, {
@@ -140,6 +169,12 @@ export async function updateDocument(input: UpdateDocumentInput) {
       },
     });
 
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: updated.id,
+      contentMarkdown: updated.contentMarkdown,
+    });
+
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
       actorId: input.actorId,
@@ -180,5 +215,53 @@ export async function archiveDocument(input: ArchiveDocumentInput) {
     });
 
     return archived;
+  });
+}
+
+export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrokenLinkInput) {
+  const link = await prisma.documentLink.findUnique({
+    where: { id: input.linkId },
+    include: {
+      workspace: {
+        include: {
+          organization: true,
+          members: { where: { userId: input.actorId }, take: 1 },
+        },
+      },
+    },
+  });
+
+  if (!link) throw new Error("DOCUMENT_LINK_NOT_FOUND");
+  const role = link.workspace.members[0]?.role;
+  assertCanReadWorkspace(role);
+  assertCanWriteWorkspace(role);
+
+  const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
+
+  return prisma.$transaction(async (tx) => {
+    const document = await createDocumentWithInitialVersion(tx, {
+      workspaceId: link.workspaceId,
+      actorId: input.actorId,
+      title: link.targetTitleRaw,
+      contentMarkdown,
+      changeSummary: "Created from broken wiki link",
+    });
+
+    await repairBrokenLinksForTarget(tx, {
+      workspaceId: link.workspaceId,
+      targetDocumentId: document.id,
+      targetTitle: link.targetTitleRaw,
+    });
+
+    await writeAuditLog(tx, {
+      organizationId: link.workspace.organizationId,
+      actorId: input.actorId,
+      action: "document.created_from_broken_link",
+      resourceType: "document",
+      resourceId: document.id,
+      metadata: { title: document.title, repairedLinkId: link.id },
+    });
+
+    return document;
   });
 }
