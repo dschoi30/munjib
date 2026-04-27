@@ -154,4 +154,71 @@ describe("wiki lint", () => {
 
     expect(result.warnings).toContain("wiki/concepts/llm-wiki.md: unresolved wiki link [[Missing Page]]");
   });
+
+  it("ignores wiki link examples inside fenced code blocks", async () => {
+    const tempRoot = await createRoot();
+    await writeValidWiki(tempRoot);
+    await writeFile(
+      path.join(tempRoot, "wiki", "concepts", "llm-wiki.md"),
+      [
+        "---",
+        "id: concept-llm-wiki",
+        "title: LLM Wiki",
+        "type: concept",
+        "status: active",
+        "summary: Persistent LLM-maintained markdown wiki pattern.",
+        "created: 2026-04-27",
+        "updated: 2026-04-27",
+        "source_count: 1",
+        "tags:",
+        "  - llm-wiki",
+        "links:",
+        "  - \"[[Wiki Index]]\"",
+        "---",
+        "",
+        "# LLM Wiki",
+        "",
+        "```yaml",
+        "links:",
+        "  - \"[[Example Page]]\"",
+        "```",
+      ].join("\n"),
+    );
+
+    const result = await lintWiki(tempRoot);
+
+    expect(result.warnings).not.toContain("wiki/concepts/llm-wiki.md: unresolved wiki link [[Example Page]]");
+  });
+
+  it("ignores wiki link examples inside inline code", async () => {
+    const tempRoot = await createRoot();
+    await writeValidWiki(tempRoot);
+    await writeFile(
+      path.join(tempRoot, "wiki", "concepts", "llm-wiki.md"),
+      [
+        "---",
+        "id: concept-llm-wiki",
+        "title: LLM Wiki",
+        "type: concept",
+        "status: active",
+        "summary: Persistent LLM-maintained markdown wiki pattern.",
+        "created: 2026-04-27",
+        "updated: 2026-04-27",
+        "source_count: 1",
+        "tags:",
+        "  - llm-wiki",
+        "links:",
+        "  - \"[[Wiki Index]]\"",
+        "---",
+        "",
+        "# LLM Wiki",
+        "",
+        "Use `[[Example Page]]` for examples.",
+      ].join("\n"),
+    );
+
+    const result = await lintWiki(tempRoot);
+
+    expect(result.warnings).not.toContain("wiki/concepts/llm-wiki.md: unresolved wiki link [[Example Page]]");
+  });
 });
