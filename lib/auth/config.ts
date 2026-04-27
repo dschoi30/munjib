@@ -2,8 +2,14 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/db/client";
 
+export function resolveAuthSecret() {
+  if (process.env.NEXTAUTH_SECRET) return process.env.NEXTAUTH_SECRET;
+  if (process.env.NODE_ENV === "production") return undefined;
+  return "obsidian-clone-development-secret";
+}
+
 export const authOptions: NextAuthOptions = {
-  secret: process.env.NEXTAUTH_SECRET ?? "obsidian-clone-development-secret",
+  secret: resolveAuthSecret(),
   session: { strategy: "jwt" },
   cookies: {
     sessionToken: {
