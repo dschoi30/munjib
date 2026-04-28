@@ -2,7 +2,7 @@
 
 import { markdown } from "@codemirror/lang-markdown";
 import dynamic from "next/dynamic";
-import { Columns2, Eye, Pencil, Save } from "lucide-react";
+import { Columns2, Eye, Paperclip, Pencil, Save, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -30,11 +30,13 @@ export function DocumentEditor({
   document,
   canWrite,
   action,
+  uploadAttachmentAction,
   linkCandidates,
 }: {
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;
+  uploadAttachmentAction: (formData: FormData) => Promise<void>;
   linkCandidates: LinkCandidate[];
 }) {
   const [mode, setMode] = useState<EditorMode>("split");
@@ -81,11 +83,14 @@ export function DocumentEditor({
   }
 
   return (
-    <form key={document.id} action={action} className="mx-auto max-w-4xl space-y-4">
-      <input type="hidden" name="documentId" value={document.id} />
-      <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
+    <div key={document.id} className="mx-auto max-w-4xl space-y-4">
+      <form id={`document-save-${document.id}`} action={action}>
+        <input type="hidden" name="documentId" value={document.id} />
+        <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
+      </form>
       <div className="flex flex-wrap items-center gap-3">
         <Input
+          form={`document-save-${document.id}`}
           name="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -107,6 +112,28 @@ export function DocumentEditor({
           </ModeButton>
         </div>
       </div>
+      <form
+        action={uploadAttachmentAction}
+        className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-white px-3 py-2"
+      >
+        <input type="hidden" name="documentId" value={document.id} />
+        <Paperclip className="h-4 w-4 text-slate-500" aria-hidden="true" />
+        <label className="sr-only" htmlFor={`attachment-${document.id}`}>
+          Upload attachment
+        </label>
+        <input
+          id={`attachment-${document.id}`}
+          name="attachment"
+          type="file"
+          disabled={!canWrite}
+          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown"
+          className="min-w-0 flex-1 text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink"
+        />
+        <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
+          <Upload className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          Upload
+        </Button>
+      </form>
       <div
         className={
           mode === "split"
@@ -158,12 +185,12 @@ export function DocumentEditor({
         <p className="text-sm text-slate-500">
           {canWrite ? "Markdown changes are saved when you press Save." : "Viewer access is read-only."}
         </p>
-        <Button type="submit" disabled={!canWrite}>
+        <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite}>
           <Save className="mr-2 h-4 w-4" aria-hidden="true" />
           Save
         </Button>
       </div>
-    </form>
+    </div>
   );
 }
 

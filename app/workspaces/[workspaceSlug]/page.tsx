@@ -17,6 +17,7 @@ import {
   createDocumentFromBrokenLinkAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
+  uploadDocumentAttachmentAction,
 } from "./actions";
 
 export default async function WorkspacePage({
@@ -127,6 +128,12 @@ export default async function WorkspacePage({
         orderBy: { key: "asc" },
       })
     : [];
+  const attachments = selectedDocument
+    ? await prisma.attachment.findMany({
+        where: { documentId: selectedDocument.id },
+        orderBy: { createdAt: "desc" },
+      })
+    : [];
 
   const linkPanels = selectedDocument
     ? await getDocumentLinkPanels(selectedDocument.id, user.id)
@@ -147,6 +154,7 @@ export default async function WorkspacePage({
     workspaceSlug,
   );
   const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
+  const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
 
   return (
     <AppShell
@@ -176,6 +184,7 @@ export default async function WorkspacePage({
           }
           canWrite={canWriteSelectedDocument}
           action={updateAction}
+          uploadAttachmentAction={uploadAttachmentAction}
           linkCandidates={readableDocuments.map((document) => ({
             id: document.id,
             title: document.title,
@@ -191,6 +200,7 @@ export default async function WorkspacePage({
           auditLogs={auditLogs}
           tags={documentTags.map((documentTag) => documentTag.tag)}
           properties={documentProperties}
+          attachments={attachments}
           linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
           createFromBrokenLinkAction={createFromBrokenLinkAction}

@@ -54,6 +54,7 @@ model User {
   documentsCreated    Document[]           @relation("DocumentCreatedBy")
   documentsUpdated    Document[]           @relation("DocumentUpdatedBy")
   documentVersions    DocumentVersion[]
+  attachmentsUploaded Attachment[]
   auditLogs           AuditLog[]
 }
 
@@ -134,6 +135,7 @@ model Document {
   incomingLinks   DocumentLink[]     @relation("DocumentIncomingLinks")
   tags            DocumentTag[]
   properties      DocumentProperty[]
+  attachments     Attachment[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -207,6 +209,22 @@ model DocumentProperty {
   document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, key])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  documentId  String
+  fileName    String
+  mimeType    String
+  size        Int
+  storageKey  String
+  uploadedById String
+  createdAt   DateTime @default(now())
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+
+  @@index([documentId])
+  @@index([uploadedById])
 }
 
 model Permission {
