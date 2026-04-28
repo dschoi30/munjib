@@ -19,6 +19,13 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const documentList = page.getByRole("navigation");
   await expect(documentList.getByRole("link", { name: "Welcome" })).toBeVisible();
 
+  await page.getByLabel("Search documents").fill("Backlinked");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/q=Backlinked/);
+  await expect(page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ })).toBeVisible();
+  await expect(page.getByText("Search results")).toBeVisible();
+  await page.goto("/workspaces/company-handbook");
+
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await page.locator("[name='title']").fill("Draft title that was not saved");
   await documentList.getByRole("link", { name: "Welcome" }).click();

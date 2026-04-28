@@ -23,11 +23,12 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string }>;
+  searchParams: Promise<{ document?: string; q?: string }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
-  const { document: selectedDocumentId } = await searchParams;
+  const { document: selectedDocumentId, q } = await searchParams;
+  const searchQuery = q?.trim() ?? "";
 
   const workspace = await prisma.workspace.findFirst({
     where: { slug: workspaceSlug },
@@ -83,8 +84,18 @@ export default async function WorkspacePage({
       userPermission: userPermissionByDocumentId.get(document.id),
     }),
   );
+  const visibleDocuments = searchQuery
+    ? readableDocuments.filter((document) => {
+        const normalizedQuery = searchQuery.toLowerCase();
+        return (
+          document.title.toLowerCase().includes(normalizedQuery) ||
+          document.contentText.toLowerCase().includes(normalizedQuery)
+        );
+      })
+    : readableDocuments;
   const selectedDocument =
     readableDocuments.find((document) => document.id === selectedDocumentId) ??
+    visibleDocuments[0] ??
     readableDocuments[0] ??
     null;
 
@@ -127,9 +138,10 @@ export default async function WorkspacePage({
       left={
         <DocumentList
           workspaceSlug={workspaceSlug}
-          documents={readableDocuments}
+          documents={visibleDocuments}
           canWrite={canWrite}
           createAction={createAction}
+          searchQuery={searchQuery}
         />
       }
       center={
