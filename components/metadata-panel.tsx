@@ -10,10 +10,12 @@ export function MetadataPanel({
   tags,
   properties,
   attachments,
+  comments,
   linkPanels,
   canWrite,
   createFromBrokenLinkAction,
   restoreVersionAction,
+  createCommentAction,
 }: {
   currentDocument: { id: string; title: string } | null;
   versions: DocumentVersion[];
@@ -21,10 +23,17 @@ export function MetadataPanel({
   tags: Tag[];
   properties: DocumentProperty[];
   attachments: Attachment[];
+  comments: Array<{
+    id: string;
+    body: string;
+    createdAt: Date;
+    user: { name: string; email: string };
+  }>;
   linkPanels: DocumentLinkPanels;
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   restoreVersionAction: (formData: FormData) => Promise<void>;
+  createCommentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div className="space-y-6">
@@ -134,6 +143,36 @@ export function MetadataPanel({
               <p className="mt-1 text-xs text-slate-500">
                 {attachment.mimeType} · {formatBytes(attachment.size)}
               </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section>
+        <h2 className="text-sm font-semibold">Comments</h2>
+        {currentDocument ? (
+          <form action={createCommentAction} className="mt-2 space-y-2">
+            <input type="hidden" name="documentId" value={currentDocument.id} />
+            <label className="sr-only" htmlFor="comment-body">
+              Add comment
+            </label>
+            <textarea
+              id="comment-body"
+              name="body"
+              disabled={!canWrite}
+              placeholder="Add a comment"
+              className="min-h-20 w-full resize-none rounded-md border border-border px-2 py-2 text-sm outline-none focus:border-ink"
+            />
+            <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
+              Comment
+            </Button>
+          </form>
+        ) : null}
+        <ul className="mt-3 space-y-2 text-sm text-slate-600">
+          {comments.length === 0 ? <li>No comments</li> : null}
+          {comments.map((comment) => (
+            <li key={comment.id} className="rounded border border-border px-2 py-2">
+              <p className="font-medium text-slate-700">{comment.user.name}</p>
+              <p className="mt-1 whitespace-pre-wrap">{comment.body}</p>
             </li>
           ))}
         </ul>

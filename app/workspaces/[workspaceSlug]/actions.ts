@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { createComment } from "@/lib/comments/service";
 import {
   archiveDocument,
   createDocument,
@@ -25,13 +26,29 @@ export async function updateDocumentAction(workspaceSlug: string, formData: Form
   redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
 }
 
-export async function createDocumentAction(workspaceSlug: string) {
+const documentTemplates: Record<string, { title: string; contentMarkdown: string }> = {
+  blank: { title: "Untitled", contentMarkdown: "" },
+  runbook: {
+    title: "Untitled Runbook",
+    contentMarkdown:
+      "---\ntype: runbook\nstatus: draft\nreview_due_at: 2026-06-01\n---\n\n# Untitled Runbook\n\n## Context\n\n## Steps\n\n## Rollback\n",
+  },
+  policy: {
+    title: "Untitled Policy",
+    contentMarkdown:
+      "---\ntype: policy\nstatus: draft\nowner: Team\nreview_due_at: 2026-06-01\n---\n\n# Untitled Policy\n\n## Scope\n\n## Policy\n\n## Review\n",
+  },
+};
+
+export async function createDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
+  const templateKey = String(formData.get("template") ?? "blank");
+  const template = documentTemplates[templateKey] ?? documentTemplates.blank;
   const document = await createDocument({
     workspaceSlug,
     actorId: user.id,
-    title: "Untitled",
-    contentMarkdown: "",
+    title: template.title,
+    contentMarkdown: template.contentMarkdown,
   });
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
@@ -92,4 +109,16 @@ export async function uploadDocumentAttachmentAction(
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${attachment.documentId}`);
+}
+
+export async function createCommentAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const documentId = String(formData.get("documentId"));
+  await createComment({
+    documentId,
+    actorId: user.id,
+    body: String(formData.get("body") ?? ""),
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
 }

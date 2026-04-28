@@ -55,6 +55,7 @@ model User {
   documentsUpdated    Document[]           @relation("DocumentUpdatedBy")
   documentVersions    DocumentVersion[]
   attachmentsUploaded Attachment[]
+  comments            Comment[]
   auditLogs           AuditLog[]
 }
 
@@ -136,6 +137,7 @@ model Document {
   tags            DocumentTag[]
   properties      DocumentProperty[]
   attachments     Attachment[]
+  comments        Comment[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -225,6 +227,20 @@ model Attachment {
 
   @@index([documentId])
   @@index([uploadedById])
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  documentId String
+  userId     String
+  body       String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([documentId, createdAt])
+  @@index([userId])
 }
 
 model Permission {
