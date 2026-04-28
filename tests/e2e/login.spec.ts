@@ -27,6 +27,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.goto("/workspaces/company-handbook");
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
+  await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
   await page.locator("[name='title']").fill("Draft title that was not saved");
   await documentList.getByRole("link", { name: "Welcome" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
