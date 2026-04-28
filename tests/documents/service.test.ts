@@ -37,6 +37,27 @@ describe("document service", () => {
     expect(auditLogs).toHaveLength(1);
   });
 
+  it("creates a unique slug when a title already exists in the workspace", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+
+    const first = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Untitled",
+      contentMarkdown: "",
+    });
+    const second = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Untitled",
+      contentMarkdown: "",
+    });
+
+    expect(first.slug).toBe("untitled");
+    expect(second.slug).toBe("untitled-2");
+    expect(second.path).toBe("/untitled-2");
+  });
+
   it("updates a document with a new version and audit log", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const document = await createDocument({
@@ -65,6 +86,32 @@ describe("document service", () => {
       where: { resourceId: document.id, action: "document.updated" },
     });
     expect(auditLogs).toHaveLength(1);
+  });
+
+  it("creates a unique slug when updating to an existing title", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Policy",
+      contentMarkdown: "# Policy",
+    });
+
+    const updated = await updateDocument({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook copy",
+    });
+
+    expect(updated.slug).toBe("runbook-2");
+    expect(updated.path).toBe("/runbook-2");
   });
 
   it("prevents viewer users from writing", async () => {

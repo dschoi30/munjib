@@ -64,6 +64,7 @@ export default async function WorkspacePage({
   const role = workspace.members[0].role;
   const canWrite = canWriteWorkspace(role);
   const createAction = createDocumentAction.bind(null, workspaceSlug);
+  const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
     null,
     workspaceSlug,
@@ -83,7 +84,7 @@ export default async function WorkspacePage({
         <DocumentEditor
           document={selectedDocument}
           canWrite={canWrite}
-          action={updateDocumentAction}
+          action={updateAction}
         />
       }
       right={

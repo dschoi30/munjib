@@ -21,7 +21,7 @@ export function DocumentEditor({
   }
 
   return (
-    <form action={action} className="mx-auto max-w-4xl space-y-4">
+    <form key={document.id} action={action} className="mx-auto max-w-4xl space-y-4">
       <input type="hidden" name="documentId" value={document.id} />
       <Input name="title" defaultValue={document.title} disabled={!canWrite} />
       <Textarea name="contentMarkdown" defaultValue={document.contentMarkdown} disabled={!canWrite} />
