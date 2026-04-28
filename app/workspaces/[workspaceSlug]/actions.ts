@@ -10,7 +10,7 @@ import {
   updateDocument,
 } from "@/lib/documents/service";
 
-export async function updateDocumentAction(formData: FormData) {
+export async function updateDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
   const documentId = String(formData.get("documentId"));
   await updateDocument({
@@ -19,6 +19,8 @@ export async function updateDocumentAction(formData: FormData) {
     title: String(formData.get("title") ?? ""),
     contentMarkdown: String(formData.get("contentMarkdown") ?? ""),
   });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
 }
 
 export async function createDocumentAction(workspaceSlug: string) {

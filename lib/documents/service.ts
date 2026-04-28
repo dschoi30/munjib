@@ -1,4 +1,4 @@
-import { DocumentStatus, type Prisma } from "@prisma/client";
+import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/client";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
@@ -63,6 +63,59 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
   return latest ? latest.versionNumber + 1 : 1;
 }
 
+async function nextAvailableDocumentSlug(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  title: string,
+  excludeDocumentId?: string,
+) {
+  const baseSlug = slugifyTitle(title);
+  const existingDocuments = await tx.document.findMany({
+    where: {
+      workspaceId,
+      slug: { startsWith: baseSlug },
+      ...(excludeDocumentId ? { id: { not: excludeDocumentId } } : {}),
+    },
+    select: { slug: true },
+  });
+  const existingSlugs = new Set(existingDocuments.map((document) => document.slug));
+
+  if (!existingSlugs.has(baseSlug)) return baseSlug;
+
+  let suffix = 2;
+  while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${suffix}`;
+}
+
+function isDocumentSlugUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    Array.isArray(error.meta?.target) &&
+    error.meta.target.includes("workspaceId") &&
+    error.meta.target.includes("slug")
+  );
+}
+
+async function runWithDocumentSlugRetry<T>(operation: () => Promise<T>) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isDocumentSlugUniqueConstraintError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("DOCUMENT_SLUG_RETRY_EXHAUSTED");
+}
+
 async function createDocumentWithInitialVersion(
   tx: Prisma.TransactionClient,
   input: {
@@ -73,7 +126,7 @@ async function createDocumentWithInitialVersion(
     changeSummary: string;
   },
 ) {
-  const slug = slugifyTitle(input.title);
+  const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, input.title);
   const contentText = markdownToPlainText(input.contentMarkdown);
 
   const document = await tx.document.create({
@@ -107,7 +160,7 @@ export async function createDocument(input: CreateDocumentInput) {
   const { workspace, role } = await getWorkspaceMembership(input.workspaceSlug, input.actorId);
   assertCanWriteWorkspace(role);
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: workspace.id,
       actorId: input.actorId,
@@ -132,7 +185,7 @@ export async function createDocument(input: CreateDocumentInput) {
     });
 
     return document;
-  });
+  }));
 }
 
 export async function updateDocument(input: UpdateDocumentInput) {
@@ -142,10 +195,10 @@ export async function updateDocument(input: UpdateDocumentInput) {
   );
   assertCanWriteWorkspace(role);
 
-  const slug = slugifyTitle(input.title);
   const contentText = markdownToPlainText(input.contentMarkdown);
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const slug = await nextAvailableDocumentSlug(tx, workspace.id, input.title, document.id);
     const updated = await tx.document.update({
       where: { id: document.id },
       data: {
@@ -185,7 +238,7 @@ export async function updateDocument(input: UpdateDocumentInput) {
     });
 
     return updated;
-  });
+  }));
 }
 
 export async function archiveDocument(input: ArchiveDocumentInput) {
@@ -238,7 +291,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
 
   const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: link.workspaceId,
       actorId: input.actorId,
@@ -263,5 +316,5 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
     });
 
     return document;
-  });
+  }));
 }
