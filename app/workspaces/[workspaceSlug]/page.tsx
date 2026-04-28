@@ -82,7 +82,15 @@ export default async function WorkspacePage({
       }
       center={
         <DocumentEditor
-          document={selectedDocument}
+          document={
+            selectedDocument
+              ? {
+                  id: selectedDocument.id,
+                  title: selectedDocument.title,
+                  contentMarkdown: selectedDocument.contentMarkdown,
+                }
+              : null
+          }
           canWrite={canWrite}
           action={updateAction}
         />
