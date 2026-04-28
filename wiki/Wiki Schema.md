@@ -11,10 +11,10 @@ tags:
   - schema
   - munjib
 links:
-  - "[[Wiki Index]]"
+  - "[[index|Wiki Index]]"
   - "[[Munjib]]"
   - "[[Local Development Workflow]]"
-  - "[[Wiki Log]]"
+  - "[[log|Wiki Log]]"
 ---
 
 # Wiki Schema
@@ -36,7 +36,7 @@ source_count: 1
 tags:
   - munjib
 links:
-  - "[[Wiki Index]]"
+  - "[[index|Wiki Index]]"
 ---
 ```
 
@@ -56,7 +56,14 @@ active | stale | draft | superseded
 
 Wiki page 사이의 링크는 Obsidian-style `[[Wiki Link]]`를 사용한다. Code path, root source note, 외부 URL은 일반 markdown link 또는 inline code path를 사용한다.
 
-링크 target은 page의 `title`과 정확히 맞아야 한다. 예를 들어 `title: Document Editing Workflow`인 page는 `[[Document Editing Workflow]]`로 연결한다.
+Obsidian에서 바로 열리도록 일반 page 파일명은 link target과 맞춘다. 예를 들어 `title: Document Editing Workflow`인 page는 `wiki/Document Editing Workflow.md`에 두고 `[[Document Editing Workflow]]`로 연결한다.
+
+운영 호환성 때문에 파일명을 유지해야 하는 `wiki/index.md`, `wiki/log.md`는 alias 링크를 쓴다.
+
+```markdown
+[[index|Wiki Index]]
+[[log|Wiki Log]]
+```
 
 ## 유지보수 규칙
 
@@ -67,6 +74,6 @@ pnpm wiki:manifest
 pnpm wiki:lint
 ```
 
-새로 발견한 durable knowledge는 관련 page, [[Wiki Index]], [[Wiki Log]], `wiki/manifest.json`을 함께 갱신한다.
+새로 발견한 durable knowledge는 관련 page, [[index|Wiki Index]], [[log|Wiki Log]], `wiki/manifest.json`을 함께 갱신한다.
 
 `raw/sources/` 아래 파일은 source evidence로 취급하고 wiki maintenance 중 수정하지 않는다.

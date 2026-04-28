@@ -20,7 +20,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
-  - "[[Wiki Log]]"
+  - "[[log|Wiki Log]]"
 ---
 
 # Wiki Index
@@ -50,4 +50,4 @@ links:
 
 ## 로그
 
-- [[Wiki Log]] - wiki maintenance timeline.
+- [[log|Wiki Log]] - wiki maintenance timeline.
