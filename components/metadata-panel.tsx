@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 
 export function MetadataPanel({
+  currentDocument,
   versions,
   auditLogs,
   tags,
@@ -13,6 +14,7 @@ export function MetadataPanel({
   createFromBrokenLinkAction,
   restoreVersionAction,
 }: {
+  currentDocument: { id: string; title: string } | null;
   versions: DocumentVersion[];
   auditLogs: AuditLog[];
   tags: Tag[];
@@ -24,6 +26,10 @@ export function MetadataPanel({
 }) {
   return (
     <div className="space-y-6">
+      <section>
+        <h2 className="text-sm font-semibold">Local graph</h2>
+        <LocalGraph currentDocument={currentDocument} linkPanels={linkPanels} />
+      </section>
       <section>
         <h2 className="text-sm font-semibold">Links</h2>
         <div className="mt-2 space-y-3 text-sm">
@@ -145,5 +151,91 @@ export function MetadataPanel({
         </ul>
       </section>
     </div>
+  );
+}
+
+function LocalGraph({
+  currentDocument,
+  linkPanels,
+}: {
+  currentDocument: { id: string; title: string } | null;
+  linkPanels: DocumentLinkPanels;
+}) {
+  if (!currentDocument) {
+    return <p className="mt-2 text-sm text-slate-500">No document selected.</p>;
+  }
+
+  const outgoingNodes = linkPanels.outgoing.slice(0, 4);
+  const backlinkNodes = linkPanels.backlinks.slice(0, 4);
+  const brokenNodes = linkPanels.brokenLinks.slice(0, 3);
+
+  return (
+    <div className="mt-2 rounded-md border border-border bg-white p-2">
+      <svg viewBox="0 0 260 180" role="img" aria-label={`Local graph for ${currentDocument.title}`} className="h-44 w-full">
+        <line x1="130" y1="90" x2="54" y2="44" stroke="#94a3b8" />
+        <line x1="130" y1="90" x2="54" y2="90" stroke="#94a3b8" />
+        <line x1="130" y1="90" x2="54" y2="136" stroke="#94a3b8" />
+        <line x1="130" y1="90" x2="206" y2="44" stroke="#94a3b8" />
+        <line x1="130" y1="90" x2="206" y2="90" stroke="#94a3b8" />
+        <line x1="130" y1="90" x2="206" y2="136" stroke="#94a3b8" />
+        {backlinkNodes.slice(0, 3).map((link, index) => (
+          <GraphNode
+            key={link.id}
+            x={54}
+            y={[44, 90, 136][index] ?? 44}
+            label={link.sourceDocument.title}
+            tone="incoming"
+          />
+        ))}
+        {outgoingNodes.slice(0, 3).map((link, index) => (
+          <GraphNode
+            key={link.id}
+            x={206}
+            y={[44, 90, 136][index] ?? 44}
+            label={link.targetTitleRaw}
+            tone={link.isBroken ? "broken" : "outgoing"}
+          />
+        ))}
+        {brokenNodes.length > outgoingNodes.filter((link) => link.isBroken).length ? (
+          <GraphNode x={206} y={136} label="Broken" tone="broken" />
+        ) : null}
+        <GraphNode x={130} y={90} label={currentDocument.title} tone="current" />
+      </svg>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs text-slate-500">
+        <span>{backlinkNodes.length} backlinks</span>
+        <span>{outgoingNodes.length} outgoing</span>
+        <span>{brokenNodes.length} broken</span>
+      </div>
+    </div>
+  );
+}
+
+function GraphNode({
+  x,
+  y,
+  label,
+  tone,
+}: {
+  x: number;
+  y: number;
+  label: string;
+  tone: "current" | "incoming" | "outgoing" | "broken";
+}) {
+  const fill = {
+    current: "#1c2230",
+    incoming: "#dbeafe",
+    outgoing: "#dcfce7",
+    broken: "#fee2e2",
+  }[tone];
+  const stroke = tone === "current" ? "#1c2230" : "#94a3b8";
+  const textColor = tone === "current" ? "#ffffff" : "#334155";
+
+  return (
+    <g>
+      <circle cx={x} cy={y} r="20" fill={fill} stroke={stroke} />
+      <text x={x} y={y + 34} textAnchor="middle" fill={textColor === "#ffffff" ? "#334155" : textColor} fontSize="9">
+        {label.length > 16 ? `${label.slice(0, 15)}...` : label}
+      </text>
+    </g>
   );
 }
