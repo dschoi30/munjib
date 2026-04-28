@@ -7,6 +7,7 @@ import {
   archiveDocument,
   createDocument,
   createDocumentFromBrokenLink,
+  restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
 
@@ -50,6 +51,19 @@ export async function createDocumentFromBrokenLinkAction(
   const document = await createDocumentFromBrokenLink({
     actorId: user.id,
     linkId: String(formData.get("linkId")),
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+}
+
+export async function restoreDocumentVersionAction(
+  workspaceSlug: string,
+  formData: FormData,
+) {
+  const user = await requireCurrentUser();
+  const document = await restoreDocumentVersion({
+    actorId: user.id,
+    versionId: String(formData.get("versionId")),
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);

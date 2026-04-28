@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   archiveDocument,
   createDocument,
+  restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
@@ -212,5 +213,48 @@ Track #review work.`,
 
     expect(archived.status).toBe("ARCHIVED");
     expect(archived.archivedAt).toBeInstanceOf(Date);
+  });
+
+  it("restores a previous document version and records a new version", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Restore Target",
+      contentMarkdown: "# Version 1\n\n#old",
+    });
+    await updateDocument({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      title: "Restore Target Updated",
+      contentMarkdown: "# Version 2\n\n#new",
+    });
+    const firstVersion = await prisma.documentVersion.findFirstOrThrow({
+      where: { documentId: document.id, versionNumber: 1 },
+    });
+
+    const restored = await restoreDocumentVersion({
+      versionId: firstVersion.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(restored.title).toBe("Restore Target");
+    expect(restored.contentMarkdown).toBe("# Version 1\n\n#old");
+    await expect(
+      prisma.documentVersion.findMany({
+        where: { documentId: document.id },
+        orderBy: { versionNumber: "asc" },
+      }),
+    ).resolves.toHaveLength(3);
+    await expect(
+      prisma.auditLog.findMany({
+        where: { resourceId: document.id, action: "document.version_restored" },
+      }),
+    ).resolves.toHaveLength(1);
+    const tags = await prisma.documentTag.findMany({
+      where: { documentId: document.id },
+      include: { tag: true },
+    });
+    expect(tags.map((documentTag) => documentTag.tag.normalizedName)).toEqual(["old"]);
   });
 });
