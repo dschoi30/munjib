@@ -153,7 +153,11 @@ export default async function WorkspacePage({
       left={
         <DocumentList
           workspaceSlug={workspaceSlug}
-          documents={visibleDocuments}
+          documents={visibleDocuments.map((document) => ({
+            id: document.id,
+            title: document.title,
+            contentText: document.contentText,
+          }))}
           canWrite={canWrite}
           createAction={createAction}
           searchQuery={searchQuery}

@@ -1,6 +1,11 @@
-import type { Document } from "@prisma/client";
-import Link from "next/link";
+import { DocumentNavigation } from "@/components/document-navigation";
 import { Button } from "@/components/ui/button";
+
+export type DocumentListItem = {
+  id: string;
+  title: string;
+  contentText: string;
+};
 
 export function DocumentList({
   workspaceSlug,
@@ -10,7 +15,7 @@ export function DocumentList({
   searchQuery,
 }: {
   workspaceSlug: string;
-  documents: Document[];
+  documents: DocumentListItem[];
   canWrite: boolean;
   createAction: () => Promise<void>;
   searchQuery: string;
@@ -44,29 +49,11 @@ export function DocumentList({
           Search results
         </p>
       ) : null}
-      <nav className="space-y-1">
-        {documents.length === 0 ? (
-          <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
-            No documents found.
-          </p>
-        ) : null}
-        {documents.map((document) => (
-          <Link
-            key={document.id}
-            href={`/workspaces/${workspaceSlug}?document=${document.id}${
-              searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
-            }`}
-            className="block rounded-md px-2 py-2 text-sm hover:bg-muted"
-          >
-            {document.title}
-            {searchQuery ? (
-              <span className="mt-1 block truncate text-xs text-slate-500">
-                {document.contentText || "Title match"}
-              </span>
-            ) : null}
-          </Link>
-        ))}
-      </nav>
+      <DocumentNavigation
+        workspaceSlug={workspaceSlug}
+        documents={documents}
+        searchQuery={searchQuery}
+      />
     </div>
   );
 }
