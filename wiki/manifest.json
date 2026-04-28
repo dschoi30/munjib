@@ -1,62 +1,90 @@
 {
   "version": 1,
-  "updated": "2026-04-27",
+  "updated": "2026-04-28",
   "pages": [
     {
-      "id": "concept-llm-wiki",
-      "path": "wiki/concepts/llm-wiki.md",
-      "title": "LLM Wiki",
+      "id": "concept-document-knowledge-model",
+      "path": "wiki/concepts/document-knowledge-model.md",
+      "title": "Document Knowledge Model",
       "type": "concept",
       "status": "active",
-      "summary": "Persistent LLM-maintained markdown wiki pattern.",
+      "summary": "Munjib의 조직, workspace, 문서, 버전, 링크, 권한, 감사 로그 데이터 모델.",
       "tags": [
-        "llm-wiki",
-        "knowledge-management"
+        "munjib",
+        "data-model",
+        "prisma"
       ],
       "links": [
-        "[[LLM Wiki Source]]",
-        "[[Persistent Wiki]]",
-        "[[Wiki-First Lookup]]"
+        "[[Munjib]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
+        "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 1,
+      "source_count": 2,
       "searchPriority": 50
     },
     {
-      "id": "concept-persistent-wiki",
-      "path": "wiki/concepts/persistent-wiki.md",
-      "title": "Persistent Wiki",
+      "id": "concept-munjib",
+      "path": "wiki/concepts/munjib.md",
+      "title": "Munjib",
       "type": "concept",
       "status": "active",
-      "summary": "A compounding markdown artifact that preserves synthesized knowledge across sessions.",
+      "summary": "Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.",
       "tags": [
-        "llm-wiki",
-        "persistence"
+        "munjib",
+        "product",
+        "enterprise-wiki"
       ],
       "links": [
-        "[[LLM Wiki]]",
-        "[[Wiki-First Lookup]]",
-        "[[Wiki Log]]"
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 1,
+      "source_count": 5,
       "searchPriority": 50
     },
     {
-      "id": "decision-hybrid-markdown-first",
-      "path": "wiki/decisions/hybrid-markdown-first.md",
-      "title": "Hybrid Markdown-First Wiki",
+      "id": "concept-wiki-links-and-backlinks",
+      "path": "wiki/concepts/wiki-links-and-backlinks.md",
+      "title": "Wiki Links And Backlinks",
+      "type": "concept",
+      "status": "active",
+      "summary": "Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.",
+      "tags": [
+        "munjib",
+        "wiki-links",
+        "backlinks"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Document Editing Workflow]]"
+      ],
+      "source_count": 4,
+      "searchPriority": 50
+    },
+    {
+      "id": "decision-nextjs-prisma-monolith",
+      "path": "wiki/decisions/nextjs-prisma-monolith.md",
+      "title": "Next.js Prisma Monolith",
       "type": "decision",
       "status": "active",
-      "summary": "Markdown wiki files are the source of truth now, with manifest metadata for later app import.",
+      "summary": "Munjib MVP는 Next.js App Router, server actions, Prisma, PostgreSQL을 한 repository 안에서 운영한다.",
       "tags": [
-        "decision",
-        "architecture"
+        "munjib",
+        "architecture",
+        "decision"
       ],
       "links": [
-        "[[LLM Wiki]]",
-        "[[Wiki Schema]]",
-        "[[Wiki-First Lookup]]"
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Local Development Workflow]]"
       ],
-      "source_count": 1,
+      "source_count": 4,
       "searchPriority": 40
     },
     {
@@ -65,23 +93,24 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Navigation index for the repository wiki.",
+      "summary": "Munjib repository wiki의 탐색 인덱스.",
       "tags": [
         "index",
-        "llm-wiki"
+        "munjib"
       ],
       "links": [
-        "[[LLM Wiki Source]]",
-        "[[LLM Wiki]]",
-        "[[Persistent Wiki]]",
-        "[[Wiki-First Lookup]]",
-        "[[Source Ingest]]",
-        "[[Wiki Lint]]",
-        "[[Hybrid Markdown-First Wiki]]",
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Local Development Workflow]]",
+        "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
         "[[Wiki Log]]"
       ],
-      "source_count": 1,
+      "source_count": 8,
       "searchPriority": 5
     },
     {
@@ -90,14 +119,15 @@
       "title": "Wiki Log",
       "type": "log",
       "status": "active",
-      "summary": "Append-only maintenance timeline for ingest, query, lint, and wiki updates.",
+      "summary": "Munjib wiki 유지보수 timeline.",
       "tags": [
         "log",
-        "llm-wiki"
+        "munjib"
       ],
       "links": [
-        "[[LLM Wiki Source]]",
-        "[[Wiki Index]]"
+        "[[Wiki Index]]",
+        "[[Munjib]]",
+        "[[Project PRD]]"
       ],
       "source_count": 1,
       "searchPriority": 1
@@ -108,93 +138,104 @@
       "title": "Wiki Schema",
       "type": "concept",
       "status": "active",
-      "summary": "Required page metadata, link conventions, and maintenance rules for the markdown wiki.",
+      "summary": "Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.",
       "tags": [
         "schema",
-        "llm-wiki"
+        "munjib"
       ],
       "links": [
-        "[[LLM Wiki]]",
-        "[[Wiki Lint]]",
-        "[[Hybrid Markdown-First Wiki]]"
+        "[[Wiki Index]]",
+        "[[Munjib]]",
+        "[[Local Development Workflow]]",
+        "[[Wiki Log]]"
       ],
       "source_count": 1,
       "searchPriority": 50
     },
     {
-      "id": "source-llm-wiki",
-      "path": "wiki/sources/llm-wiki.md",
-      "title": "LLM Wiki Source",
+      "id": "source-project-prd",
+      "path": "wiki/sources/project-prd.md",
+      "title": "Project PRD",
       "type": "source",
       "status": "active",
-      "summary": "Source note describing the LLM-maintained persistent markdown wiki pattern.",
+      "summary": "Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.",
       "tags": [
-        "llm-wiki",
-        "source"
+        "munjib",
+        "source",
+        "prd"
       ],
       "links": [
-        "[[LLM Wiki]]",
-        "[[Persistent Wiki]]",
-        "[[Source Ingest]]"
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 1,
+      "source_count": 7,
       "searchPriority": 30
     },
     {
-      "id": "workflow-source-ingest",
-      "path": "wiki/workflows/source-ingest.md",
-      "title": "Source Ingest",
+      "id": "workflow-auth-and-permissions",
+      "path": "wiki/workflows/auth-and-permissions.md",
+      "title": "Auth And Permissions Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Workflow for turning immutable raw sources into maintained wiki pages.",
+      "summary": "Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.",
       "tags": [
-        "workflow",
-        "ingest"
+        "munjib",
+        "auth",
+        "permissions"
       ],
       "links": [
-        "[[LLM Wiki Source]]",
-        "[[LLM Wiki]]",
-        "[[Wiki Log]]"
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Document Editing Workflow]]",
+        "[[Local Development Workflow]]"
       ],
-      "source_count": 1,
+      "source_count": 5,
       "searchPriority": 50
     },
     {
-      "id": "workflow-wiki-first-lookup",
-      "path": "wiki/workflows/wiki-first-lookup.md",
-      "title": "Wiki-First Lookup",
+      "id": "workflow-document-editing",
+      "path": "wiki/workflows/document-editing.md",
+      "title": "Document Editing Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Agent workflow requiring wiki lookup before broad repository grep.",
+      "summary": "Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.",
       "tags": [
+        "munjib",
         "workflow",
-        "lookup"
+        "documents",
+        "문서",
+        "편집"
       ],
       "links": [
-        "[[Wiki Index]]",
-        "[[LLM Wiki]]",
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Auth And Permissions Workflow]]"
+      ],
+      "source_count": 4,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-local-development",
+      "path": "wiki/workflows/local-development.md",
+      "title": "Local Development Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "development"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Document Editing Workflow]]",
         "[[Wiki Schema]]"
       ],
-      "source_count": 1,
-      "searchPriority": 50
-    },
-    {
-      "id": "workflow-wiki-lint",
-      "path": "wiki/workflows/wiki-lint.md",
-      "title": "Wiki Lint",
-      "type": "workflow",
-      "status": "active",
-      "summary": "Maintenance workflow for checking wiki structure and unresolved links.",
-      "tags": [
-        "workflow",
-        "lint"
-      ],
-      "links": [
-        "[[Wiki Schema]]",
-        "[[Wiki Index]]",
-        "[[Wiki Log]]"
-      ],
-      "source_count": 1,
+      "source_count": 3,
       "searchPriority": 50
     }
   ]
