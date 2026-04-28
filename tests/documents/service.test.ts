@@ -127,6 +127,40 @@ describe("document service", () => {
     ).rejects.toThrow("WORKSPACE_WRITE_FORBIDDEN");
   });
 
+  it("prevents editors without explicit document permission from updating restricted documents", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const restricted = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Restricted Plan",
+      contentMarkdown: "# Restricted Plan",
+    });
+    const otherEditor = await prisma.user.create({
+      data: { email: `other-editor-${restricted.id}@example.com`, name: "Other Editor" },
+    });
+    await prisma.workspaceMember.create({
+      data: { workspaceId: fixture.workspace.id, userId: otherEditor.id, role: WorkspaceRole.EDITOR },
+    });
+    await prisma.permission.create({
+      data: {
+        resourceType: "DOCUMENT",
+        resourceId: restricted.id,
+        subjectType: "USER",
+        subjectId: fixture.user.id,
+        permission: "MANAGE",
+      },
+    });
+
+    await expect(
+      updateDocument({
+        documentId: restricted.id,
+        actorId: otherEditor.id,
+        title: "Restricted Plan",
+        contentMarkdown: "Denied",
+      }),
+    ).rejects.toThrow("DOCUMENT_READ_FORBIDDEN");
+  });
+
   it("archives a document without hard deleting it", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const document = await createDocument({

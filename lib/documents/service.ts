@@ -1,6 +1,11 @@
 import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/client";
+import {
+  assertCanReadDocument,
+  assertCanWriteDocument,
+  highestPermissionLevel,
+} from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { slugifyTitle } from "@/lib/text/slug";
@@ -50,8 +55,38 @@ async function getDocumentMembership(documentId: string, actorId: string) {
   if (!document) throw new Error("DOCUMENT_NOT_FOUND");
   const role = document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
+  const access = await getUserDocumentAccess(document.id, actorId);
+  assertCanReadDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
-  return { document, workspace: document.workspace, role };
+  return { document, workspace: document.workspace, role, access };
+}
+
+async function getUserDocumentAccess(documentId: string, actorId: string) {
+  const [explicitPermissionCount, userPermissions] = await Promise.all([
+    prisma.permission.count({
+      where: { resourceType: "DOCUMENT", resourceId: documentId },
+    }),
+    prisma.permission.findMany({
+      where: {
+        resourceType: "DOCUMENT",
+        resourceId: documentId,
+        subjectType: "USER",
+        subjectId: actorId,
+      },
+      select: { permission: true },
+    }),
+  ]);
+
+  return {
+    explicitPermissionCount,
+    userPermission: highestPermissionLevel(
+      userPermissions.map((permission) => permission.permission),
+    ),
+  };
 }
 
 async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: string) {
@@ -189,11 +224,16 @@ export async function createDocument(input: CreateDocumentInput) {
 }
 
 export async function updateDocument(input: UpdateDocumentInput) {
-  const { document, workspace, role } = await getDocumentMembership(
+  const { document, workspace, role, access } = await getDocumentMembership(
     input.documentId,
     input.actorId,
   );
   assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
   const contentText = markdownToPlainText(input.contentMarkdown);
 
@@ -242,11 +282,16 @@ export async function updateDocument(input: UpdateDocumentInput) {
 }
 
 export async function archiveDocument(input: ArchiveDocumentInput) {
-  const { document, workspace, role } = await getDocumentMembership(
+  const { document, workspace, role, access } = await getDocumentMembership(
     input.documentId,
     input.actorId,
   );
   assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
   return prisma.$transaction(async (tx) => {
     const archived = await tx.document.update({

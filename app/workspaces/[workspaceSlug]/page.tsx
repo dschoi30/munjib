@@ -5,6 +5,11 @@ import { DocumentList } from "@/components/document-list";
 import { MetadataPanel } from "@/components/metadata-panel";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import {
+  canReadDocument,
+  canWriteDocument,
+  highestPermissionLevel,
+} from "@/lib/permissions/document";
 import { canWriteWorkspace } from "@/lib/permissions/workspace";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
@@ -37,9 +42,50 @@ export default async function WorkspacePage({
 
   if (!workspace || !workspace.members[0]) notFound();
 
+  const role = workspace.members[0].role;
+  const documentIds = workspace.documents.map((document) => document.id);
+  const [documentsWithExplicitPermissions, userDocumentPermissions] =
+    documentIds.length > 0
+      ? await Promise.all([
+          prisma.permission.findMany({
+            where: { resourceType: "DOCUMENT", resourceId: { in: documentIds } },
+            distinct: ["resourceId"],
+            select: { resourceId: true },
+          }),
+          prisma.permission.findMany({
+            where: {
+              resourceType: "DOCUMENT",
+              resourceId: { in: documentIds },
+              subjectType: "USER",
+              subjectId: user.id,
+            },
+            select: { resourceId: true, permission: true },
+          }),
+        ])
+      : [[], []];
+  const explicitDocumentIds = new Set(
+    documentsWithExplicitPermissions.map((permission) => permission.resourceId),
+  );
+  const userPermissionByDocumentId = new Map(
+    documentIds.map((documentId) => [
+      documentId,
+      highestPermissionLevel(
+        userDocumentPermissions
+          .filter((permission) => permission.resourceId === documentId)
+          .map((permission) => permission.permission),
+      ),
+    ]),
+  );
+  const readableDocuments = workspace.documents.filter((document) =>
+    canReadDocument({
+      workspaceRole: role,
+      explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
+      userPermission: userPermissionByDocumentId.get(document.id),
+    }),
+  );
   const selectedDocument =
-    workspace.documents.find((document) => document.id === selectedDocumentId) ??
-    workspace.documents[0] ??
+    readableDocuments.find((document) => document.id === selectedDocumentId) ??
+    readableDocuments[0] ??
     null;
 
   const versions = selectedDocument
@@ -61,8 +107,14 @@ export default async function WorkspacePage({
     ? await getDocumentLinkPanels(selectedDocument.id, user.id)
     : { outgoing: [], backlinks: [], brokenLinks: [] };
 
-  const role = workspace.members[0].role;
   const canWrite = canWriteWorkspace(role);
+  const canWriteSelectedDocument = selectedDocument
+    ? canWriteDocument({
+        workspaceRole: role,
+        explicitPermissionCount: explicitDocumentIds.has(selectedDocument.id) ? 1 : 0,
+        userPermission: userPermissionByDocumentId.get(selectedDocument.id),
+      })
+    : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
   const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
@@ -75,7 +127,7 @@ export default async function WorkspacePage({
       left={
         <DocumentList
           workspaceSlug={workspaceSlug}
-          documents={workspace.documents}
+          documents={readableDocuments}
           canWrite={canWrite}
           createAction={createAction}
         />
@@ -91,9 +143,9 @@ export default async function WorkspacePage({
                 }
               : null
           }
-          canWrite={canWrite}
+          canWrite={canWriteSelectedDocument}
           action={updateAction}
-          linkCandidates={workspace.documents.map((document) => ({
+          linkCandidates={readableDocuments.map((document) => ({
             id: document.id,
             title: document.title,
           }))}
@@ -104,7 +156,7 @@ export default async function WorkspacePage({
           versions={versions}
           auditLogs={auditLogs}
           linkPanels={linkPanels}
-          canWrite={canWrite}
+          canWrite={canWriteSelectedDocument}
           createFromBrokenLinkAction={createFromBrokenLinkAction}
         />
       }
