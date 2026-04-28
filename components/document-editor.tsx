@@ -8,6 +8,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  getActiveWikiLinkCompletion,
+  type ActiveWikiLinkCompletion,
+} from "@/lib/wiki-links/autocomplete";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -17,25 +21,56 @@ type EditableDocument = {
   title: string;
   contentMarkdown: string;
 };
+type LinkCandidate = {
+  id: string;
+  title: string;
+};
 
 export function DocumentEditor({
   document,
   canWrite,
   action,
+  linkCandidates,
 }: {
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;
+  linkCandidates: LinkCandidate[];
 }) {
   const [mode, setMode] = useState<EditorMode>("split");
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
+  const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
   const extensions = useMemo(() => [markdown()], []);
+  const suggestions = useMemo(() => {
+    if (!activeCompletion) return [];
+    const query = activeCompletion.query.toLowerCase();
+    return linkCandidates
+      .filter((candidate) => candidate.id !== document?.id)
+      .filter((candidate) => candidate.title.toLowerCase().includes(query))
+      .slice(0, 6);
+  }, [activeCompletion, document?.id, linkCandidates]);
 
   useEffect(() => {
     setTitle(document?.title ?? "");
     setContentMarkdown(document?.contentMarkdown ?? "");
+    setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);
+
+  function updateMarkdown(value: string, cursorPosition?: number) {
+    setContentMarkdown(value);
+    setActiveCompletion(
+      typeof cursorPosition === "number" ? getActiveWikiLinkCompletion(value, cursorPosition) : null,
+    );
+  }
+
+  function insertWikiLink(candidate: LinkCandidate) {
+    if (!activeCompletion) return;
+    const nextMarkdown = `${contentMarkdown.slice(0, activeCompletion.from)}[[${candidate.title}]]${contentMarkdown.slice(
+      activeCompletion.to,
+    )}`;
+    updateMarkdown(nextMarkdown);
+  }
 
   if (!document) {
     return (
@@ -80,7 +115,7 @@ export function DocumentEditor({
         }
       >
         {mode !== "preview" ? (
-          <div className="min-w-0 border-r border-border">
+          <div className="relative min-w-0 border-r border-border">
             <CodeMirror
               value={contentMarkdown}
               height="520px"
@@ -91,9 +126,28 @@ export function DocumentEditor({
               }}
               editable={canWrite}
               extensions={extensions}
-              onChange={(value) => setContentMarkdown(value)}
+              onChange={(value, viewUpdate) =>
+                updateMarkdown(value, viewUpdate.state.selection.main.head)
+              }
               aria-label="Markdown editor"
             />
+            {canWrite && suggestions.length > 0 ? (
+              <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
+                <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+                  Wiki links
+                </div>
+                {suggestions.map((candidate) => (
+                  <button
+                    key={candidate.id}
+                    type="button"
+                    onClick={() => insertWikiLink(candidate)}
+                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
+                  >
+                    {candidate.title}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
         {mode !== "edit" ? (

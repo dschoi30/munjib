@@ -90,6 +90,41 @@ describe("wiki link reconciliation", () => {
     await expect(prisma.documentLink.findMany({ where: { sourceDocumentId: source.id } })).resolves.toEqual([]);
   });
 
+  it("keeps existing backlinks connected when a target document is renamed", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: "Read [[Runbook]].",
+    });
+
+    const renamed = await updateDocument({
+      documentId: target.id,
+      actorId: fixture.user.id,
+      title: "Production Runbook",
+      contentMarkdown: "# Production Runbook",
+    });
+
+    const targetPanels = await getDocumentLinkPanels(renamed.id, fixture.user.id);
+    expect(targetPanels.backlinks).toEqual([
+      {
+        id: expect.any(String),
+        sourceDocument: {
+          id: expect.any(String),
+          title: "Incident Guide",
+          slug: "incident-guide",
+        },
+      },
+    ]);
+  });
+
   it("creates a missing target document from a broken link and repairs the link", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const source = await createDocument({

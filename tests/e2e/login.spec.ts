@@ -25,12 +25,15 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
 
   const editor = page.locator(".cm-content").first();
-  await editor.fill("# Welcome\n\nSaved content from e2e.");
+  await editor.fill("# Welcome\n\nSee [[Eng");
+  await page.getByRole("button", { name: "Engineering Runbook" }).click();
+  await expect(page.locator("[name='contentMarkdown']")).toHaveValue(
+    "# Welcome\n\nSee [[Engineering Runbook]]",
+  );
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.locator("[name='contentMarkdown']")).toHaveValue("# Welcome\n\nSaved content from e2e.");
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
-  await expect(page.getByText("Saved content from e2e.")).toBeVisible();
+  await expect(page.getByText("See [[Engineering Runbook]]")).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 });

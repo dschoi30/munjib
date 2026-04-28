@@ -93,6 +93,10 @@ export default async function WorkspacePage({
           }
           canWrite={canWrite}
           action={updateAction}
+          linkCandidates={workspace.documents.map((document) => ({
+            id: document.id,
+            title: document.title,
+          }))}
         />
       }
       right={
