@@ -1,4 +1,4 @@
-import type { AuditLog, DocumentProperty, DocumentVersion, Tag } from "@prisma/client";
+import type { Attachment, AuditLog, DocumentProperty, DocumentVersion, Tag } from "@prisma/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
@@ -9,6 +9,7 @@ export function MetadataPanel({
   auditLogs,
   tags,
   properties,
+  attachments,
   linkPanels,
   canWrite,
   createFromBrokenLinkAction,
@@ -19,6 +20,7 @@ export function MetadataPanel({
   auditLogs: AuditLog[];
   tags: Tag[];
   properties: DocumentProperty[];
+  attachments: Attachment[];
   linkPanels: DocumentLinkPanels;
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
@@ -121,6 +123,22 @@ export function MetadataPanel({
         </div>
       </section>
       <section>
+        <h2 className="text-sm font-semibold">Attachments</h2>
+        <ul className="mt-2 space-y-2 text-sm text-slate-600">
+          {attachments.length === 0 ? <li>No attachments</li> : null}
+          {attachments.map((attachment) => (
+            <li key={attachment.id} className="rounded border border-border px-2 py-2">
+              <Link className="font-medium underline" href={`/api/attachments/${attachment.id}`}>
+                {attachment.fileName}
+              </Link>
+              <p className="mt-1 text-xs text-slate-500">
+                {attachment.mimeType} · {formatBytes(attachment.size)}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section>
         <h2 className="text-sm font-semibold">Versions</h2>
         <ul className="mt-2 space-y-2 text-sm text-slate-600">
           {versions.map((version) => (
@@ -152,6 +170,12 @@ export function MetadataPanel({
       </section>
     </div>
   );
+}
+
+function formatBytes(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function LocalGraph({

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import {
   archiveDocument,
@@ -67,4 +68,28 @@ export async function restoreDocumentVersionAction(
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+}
+
+export async function uploadDocumentAttachmentAction(
+  workspaceSlug: string,
+  formData: FormData,
+) {
+  const user = await requireCurrentUser();
+  const file = formData.get("attachment");
+  const documentId = String(formData.get("documentId"));
+
+  if (!(file instanceof File)) {
+    throw new Error("ATTACHMENT_FILE_REQUIRED");
+  }
+
+  const attachment = await uploadDocumentAttachment({
+    documentId,
+    actorId: user.id,
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    bytes: new Uint8Array(await file.arrayBuffer()),
+  });
+
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?document=${attachment.documentId}`);
 }
