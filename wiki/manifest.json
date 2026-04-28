@@ -24,6 +24,26 @@
       "searchPriority": 50
     },
     {
+      "id": "designs-index",
+      "path": "wiki/designs/index.md",
+      "title": "UI Design Excalidraw Index",
+      "type": "index",
+      "status": "active",
+      "summary": "GitHub UI 이슈별 Excalidraw 와이어프레임 모음.",
+      "tags": [
+        "ui",
+        "design",
+        "excalidraw",
+        "munjib"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Project PRD]]"
+      ],
+      "source_count": 12,
+      "searchPriority": 30
+    },
+    {
       "id": "workflow-document-editing",
       "path": "wiki/Document Editing Workflow.md",
       "title": "Document Editing Workflow",
@@ -88,9 +108,10 @@
         "[[Local Development Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
+        "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 8,
+      "source_count": 9,
       "searchPriority": 5
     },
     {

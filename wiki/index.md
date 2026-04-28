@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스.
 created: 2026-04-29
 updated: 2026-04-29
-source_count: 8
+source_count: 9
 tags:
   - index
   - munjib
@@ -20,6 +20,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
+  - "[[designs/index|UI Design Excalidraw Index]]"
   - "[[log|Wiki Log]]"
 ---
 
@@ -47,6 +48,10 @@ links:
 ## 결정
 
 - [[Next.js Prisma Monolith]] - MVP를 Next.js App Router, server actions, Prisma, PostgreSQL monolith로 운영하는 결정.
+
+## 디자인
+
+- [[designs/index|UI Design Excalidraw Index]] - UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임.
 
 ## 로그
 
