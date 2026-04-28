@@ -20,6 +20,7 @@ export async function lintWiki(rootDir = process.cwd()): Promise<WikiLintResult>
       const parsed = parseWikiMarkdown(await readWorkspaceFile(rootDir, file), file);
       titleByFile.set(file, parsed.frontmatter.title);
       titleByFile.set(`${file}#basename`, basenameWithoutExtension(file));
+      titleByFile.set(`${file}#wikiPath`, wikiPathWithoutExtension(file));
       if (parsed.frontmatter.status === "stale") {
         warnings.push(`${file}: status is stale`);
       }
@@ -98,4 +99,8 @@ function stripFencedCodeBlocks(markdown: string): string {
 
 function basenameWithoutExtension(file: string): string {
   return file.split("/").pop()?.replace(/\.md$/, "") ?? file;
+}
+
+function wikiPathWithoutExtension(file: string): string {
+  return file.replace(/^wiki\//, "").replace(/\.md$/, "");
 }
