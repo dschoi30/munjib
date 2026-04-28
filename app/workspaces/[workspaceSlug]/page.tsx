@@ -15,6 +15,7 @@ import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createDocumentAction,
   createDocumentFromBrokenLinkAction,
+  restoreDocumentVersionAction,
   updateDocumentAction,
 } from "./actions";
 
@@ -145,6 +146,7 @@ export default async function WorkspacePage({
     null,
     workspaceSlug,
   );
+  const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
 
   return (
     <AppShell
@@ -185,6 +187,7 @@ export default async function WorkspacePage({
           linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
           createFromBrokenLinkAction={createFromBrokenLinkAction}
+          restoreVersionAction={restoreVersionAction}
         />
       }
     />

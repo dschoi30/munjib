@@ -11,6 +11,7 @@ export function MetadataPanel({
   linkPanels,
   canWrite,
   createFromBrokenLinkAction,
+  restoreVersionAction,
 }: {
   versions: DocumentVersion[];
   auditLogs: AuditLog[];
@@ -19,6 +20,7 @@ export function MetadataPanel({
   linkPanels: DocumentLinkPanels;
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
+  restoreVersionAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div className="space-y-6">
@@ -116,8 +118,20 @@ export function MetadataPanel({
         <h2 className="text-sm font-semibold">Versions</h2>
         <ul className="mt-2 space-y-2 text-sm text-slate-600">
           {versions.map((version) => (
-            <li key={version.id}>
-              v{version.versionNumber}: {version.changeSummary}
+            <li key={version.id} className="rounded border border-border px-2 py-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-medium text-slate-700">v{version.versionNumber}</p>
+                  <p>{version.changeSummary}</p>
+                  <p className="mt-1 text-xs text-slate-500">{version.title}</p>
+                </div>
+                <form action={restoreVersionAction}>
+                  <input type="hidden" name="versionId" value={version.id} />
+                  <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
+                    Restore
+                  </Button>
+                </form>
+              </div>
             </li>
           ))}
         </ul>

@@ -14,6 +14,7 @@ import type {
   ArchiveDocumentInput,
   CreateDocumentFromBrokenLinkInput,
   CreateDocumentInput,
+  RestoreDocumentVersionInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
@@ -325,6 +326,95 @@ export async function archiveDocument(input: ArchiveDocumentInput) {
 
     return archived;
   });
+}
+
+export async function restoreDocumentVersion(input: RestoreDocumentVersionInput) {
+  const version = await prisma.documentVersion.findUnique({
+    where: { id: input.versionId },
+    include: {
+      document: {
+        include: {
+          workspace: {
+            include: {
+              organization: true,
+              members: { where: { userId: input.actorId }, take: 1 },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!version) throw new Error("DOCUMENT_VERSION_NOT_FOUND");
+
+  const role = version.document.workspace.members[0]?.role;
+  assertCanReadWorkspace(role);
+  const access = await getUserDocumentAccess(version.document.id, input.actorId);
+  assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
+
+  const contentText = markdownToPlainText(version.contentMarkdown);
+
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const slug = await nextAvailableDocumentSlug(
+      tx,
+      version.document.workspaceId,
+      version.title,
+      version.document.id,
+    );
+    const restored = await tx.document.update({
+      where: { id: version.document.id },
+      data: {
+        title: version.title,
+        slug,
+        path: `/${slug}`,
+        contentMarkdown: version.contentMarkdown,
+        contentText,
+        updatedById: input.actorId,
+      },
+    });
+
+    await tx.documentVersion.create({
+      data: {
+        documentId: restored.id,
+        versionNumber: await nextVersionNumber(tx, restored.id),
+        title: restored.title,
+        contentMarkdown: restored.contentMarkdown,
+        createdById: input.actorId,
+        changeSummary: `Restored version ${version.versionNumber}`,
+      },
+    });
+
+    await reconcileDocumentLinks(tx, {
+      workspaceId: version.document.workspaceId,
+      sourceDocumentId: restored.id,
+      contentMarkdown: restored.contentMarkdown,
+    });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: version.document.workspaceId,
+      documentId: restored.id,
+      contentMarkdown: restored.contentMarkdown,
+    });
+
+    await writeAuditLog(tx, {
+      organizationId: version.document.workspace.organizationId,
+      actorId: input.actorId,
+      action: "document.version_restored",
+      resourceType: "document",
+      resourceId: restored.id,
+      metadata: {
+        title: restored.title,
+        restoredVersionNumber: version.versionNumber,
+        restoredVersionId: version.id,
+      },
+    });
+
+    return restored;
+  }));
 }
 
 export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrokenLinkInput) {
