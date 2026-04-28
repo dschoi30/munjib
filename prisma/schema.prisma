@@ -92,6 +92,7 @@ model Workspace {
   members        WorkspaceMember[]
   documents      Document[]
   documentLinks  DocumentLink[]
+  tags           Tag[]
 
   @@unique([organizationId, slug])
 }
@@ -131,6 +132,8 @@ model Document {
   versions        DocumentVersion[]
   outgoingLinks   DocumentLink[]     @relation("DocumentOutgoingLinks")
   incomingLinks   DocumentLink[]     @relation("DocumentIncomingLinks")
+  tags            DocumentTag[]
+  properties      DocumentProperty[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -169,6 +172,41 @@ model DocumentLink {
   @@index([sourceDocumentId])
   @@index([targetDocumentId])
   @@index([workspaceId, targetTitleRaw])
+}
+
+model Tag {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  name           String
+  normalizedName String
+  createdAt      DateTime      @default(now())
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents      DocumentTag[]
+
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId])
+}
+
+model DocumentTag {
+  id         String   @id @default(cuid())
+  documentId String
+  tagId      String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tagId])
+  @@index([tagId])
+}
+
+model DocumentProperty {
+  id        String   @id @default(cuid())
+  documentId String
+  key       String
+  valueJson Json
+  valueType String
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, key])
 }
 
 model Permission {

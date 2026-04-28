@@ -1,5 +1,6 @@
 import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
+import { reconcileDocumentMetadata } from "@/lib/document-metadata/reconcile";
 import { prisma } from "@/lib/db/client";
 import {
   assertCanReadDocument,
@@ -209,6 +210,11 @@ export async function createDocument(input: CreateDocumentInput) {
       sourceDocumentId: document.id,
       contentMarkdown: document.contentMarkdown,
     });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: workspace.id,
+      documentId: document.id,
+      contentMarkdown: document.contentMarkdown,
+    });
 
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
@@ -265,6 +271,11 @@ export async function updateDocument(input: UpdateDocumentInput) {
     await reconcileDocumentLinks(tx, {
       workspaceId: workspace.id,
       sourceDocumentId: updated.id,
+      contentMarkdown: updated.contentMarkdown,
+    });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: workspace.id,
+      documentId: updated.id,
       contentMarkdown: updated.contentMarkdown,
     });
 
@@ -349,6 +360,11 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
       workspaceId: link.workspaceId,
       targetDocumentId: document.id,
       targetTitle: link.targetTitleRaw,
+    });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: link.workspaceId,
+      documentId: document.id,
+      contentMarkdown: document.contentMarkdown,
     });
 
     await writeAuditLog(tx, {

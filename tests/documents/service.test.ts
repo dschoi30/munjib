@@ -37,6 +37,41 @@ describe("document service", () => {
     expect(auditLogs).toHaveLength(1);
   });
 
+  it("extracts tags and frontmatter properties when creating a document", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Review Plan",
+      contentMarkdown: `---
+owner: Platform
+status: draft
+review_due_at: 2026-05-01
+---
+
+# Review Plan
+
+Track #review work.`,
+    });
+
+    const tags = await prisma.documentTag.findMany({
+      where: { documentId: document.id },
+      include: { tag: true },
+    });
+    const properties = await prisma.documentProperty.findMany({
+      where: { documentId: document.id },
+      orderBy: { key: "asc" },
+    });
+
+    expect(tags.map((documentTag) => documentTag.tag.normalizedName)).toEqual(["review"]);
+    expect(properties.map((property) => [property.key, property.valueJson])).toEqual([
+      ["owner", "Platform"],
+      ["review_due_at", "2026-05-01"],
+      ["status", "draft"],
+    ]);
+  });
+
   it("creates a unique slug when a title already exists in the workspace", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
 
