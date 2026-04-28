@@ -113,6 +113,19 @@ export default async function WorkspacePage({
         take: 10,
       })
     : [];
+  const documentTags = selectedDocument
+    ? await prisma.documentTag.findMany({
+        where: { documentId: selectedDocument.id },
+        include: { tag: true },
+        orderBy: { tag: { name: "asc" } },
+      })
+    : [];
+  const documentProperties = selectedDocument
+    ? await prisma.documentProperty.findMany({
+        where: { documentId: selectedDocument.id },
+        orderBy: { key: "asc" },
+      })
+    : [];
 
   const linkPanels = selectedDocument
     ? await getDocumentLinkPanels(selectedDocument.id, user.id)
@@ -167,6 +180,8 @@ export default async function WorkspacePage({
         <MetadataPanel
           versions={versions}
           auditLogs={auditLogs}
+          tags={documentTags.map((documentTag) => documentTag.tag)}
+          properties={documentProperties}
           linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
           createFromBrokenLinkAction={createFromBrokenLinkAction}

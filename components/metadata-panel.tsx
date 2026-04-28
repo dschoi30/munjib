@@ -1,4 +1,4 @@
-import type { AuditLog, DocumentVersion } from "@prisma/client";
+import type { AuditLog, DocumentProperty, DocumentVersion, Tag } from "@prisma/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
@@ -6,12 +6,16 @@ import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 export function MetadataPanel({
   versions,
   auditLogs,
+  tags,
+  properties,
   linkPanels,
   canWrite,
   createFromBrokenLinkAction,
 }: {
   versions: DocumentVersion[];
   auditLogs: AuditLog[];
+  tags: Tag[];
+  properties: DocumentProperty[];
   linkPanels: DocumentLinkPanels;
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
@@ -73,9 +77,40 @@ export function MetadataPanel({
       </section>
       <section>
         <h2 className="text-sm font-semibold">Properties</h2>
-        <p className="mt-2 text-sm text-slate-500">
-          Owner, status, and review fields will appear here.
-        </p>
+        <div className="mt-2 space-y-3 text-sm">
+          <div>
+            <p className="font-medium text-slate-700">Tags</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {tags.length === 0 ? <span className="text-slate-500">No tags</span> : null}
+              {tags.map((tag) => (
+                <span
+                  key={tag.id}
+                  className="rounded bg-muted px-2 py-1 text-xs font-medium text-slate-700"
+                >
+                  #{tag.name}
+                </span>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="font-medium text-slate-700">Frontmatter</p>
+            <dl className="mt-2 space-y-2">
+              {properties.length === 0 ? (
+                <div className="text-slate-500">No properties</div>
+              ) : null}
+              {properties.map((property) => (
+                <div key={property.id} className="rounded border border-border px-2 py-1.5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                    {property.key}
+                  </dt>
+                  <dd className="mt-0.5 break-words text-slate-700">
+                    {String(property.valueJson)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
       </section>
       <section>
         <h2 className="text-sm font-semibold">Versions</h2>
