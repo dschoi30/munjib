@@ -3,8 +3,52 @@
   "updated": "2026-04-28",
   "pages": [
     {
+      "id": "workflow-auth-and-permissions",
+      "path": "wiki/Auth And Permissions Workflow.md",
+      "title": "Auth And Permissions Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.",
+      "tags": [
+        "munjib",
+        "auth",
+        "permissions"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Document Editing Workflow]]",
+        "[[Local Development Workflow]]"
+      ],
+      "source_count": 5,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-document-editing",
+      "path": "wiki/Document Editing Workflow.md",
+      "title": "Document Editing Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "documents",
+        "문서",
+        "편집"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Auth And Permissions Workflow]]"
+      ],
+      "source_count": 4,
+      "searchPriority": 50
+    },
+    {
       "id": "concept-document-knowledge-model",
-      "path": "wiki/concepts/document-knowledge-model.md",
+      "path": "wiki/Document Knowledge Model.md",
       "title": "Document Knowledge Model",
       "type": "concept",
       "status": "active",
@@ -22,70 +66,6 @@
       ],
       "source_count": 2,
       "searchPriority": 50
-    },
-    {
-      "id": "concept-munjib",
-      "path": "wiki/concepts/munjib.md",
-      "title": "Munjib",
-      "type": "concept",
-      "status": "active",
-      "summary": "Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.",
-      "tags": [
-        "munjib",
-        "product",
-        "enterprise-wiki"
-      ],
-      "links": [
-        "[[Project PRD]]",
-        "[[Document Knowledge Model]]",
-        "[[Wiki Links And Backlinks]]",
-        "[[Document Editing Workflow]]",
-        "[[Auth And Permissions Workflow]]",
-        "[[Next.js Prisma Monolith]]"
-      ],
-      "source_count": 5,
-      "searchPriority": 50
-    },
-    {
-      "id": "concept-wiki-links-and-backlinks",
-      "path": "wiki/concepts/wiki-links-and-backlinks.md",
-      "title": "Wiki Links And Backlinks",
-      "type": "concept",
-      "status": "active",
-      "summary": "Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.",
-      "tags": [
-        "munjib",
-        "wiki-links",
-        "backlinks"
-      ],
-      "links": [
-        "[[Munjib]]",
-        "[[Document Knowledge Model]]",
-        "[[Document Editing Workflow]]"
-      ],
-      "source_count": 4,
-      "searchPriority": 50
-    },
-    {
-      "id": "decision-nextjs-prisma-monolith",
-      "path": "wiki/decisions/nextjs-prisma-monolith.md",
-      "title": "Next.js Prisma Monolith",
-      "type": "decision",
-      "status": "active",
-      "summary": "Munjib MVP는 Next.js App Router, server actions, Prisma, PostgreSQL을 한 repository 안에서 운영한다.",
-      "tags": [
-        "munjib",
-        "architecture",
-        "decision"
-      ],
-      "links": [
-        "[[Munjib]]",
-        "[[Project PRD]]",
-        "[[Document Knowledge Model]]",
-        "[[Local Development Workflow]]"
-      ],
-      "source_count": 4,
-      "searchPriority": 40
     },
     {
       "id": "index-main",
@@ -108,10 +88,31 @@
         "[[Local Development Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
-        "[[Wiki Log]]"
+        "[[log|Wiki Log]]"
       ],
       "source_count": 8,
       "searchPriority": 5
+    },
+    {
+      "id": "workflow-local-development",
+      "path": "wiki/Local Development Workflow.md",
+      "title": "Local Development Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "development"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Document Editing Workflow]]",
+        "[[Wiki Schema]]"
+      ],
+      "source_count": 3,
+      "searchPriority": 50
     },
     {
       "id": "log-main",
@@ -125,7 +126,7 @@
         "munjib"
       ],
       "links": [
-        "[[Wiki Index]]",
+        "[[index|Wiki Index]]",
         "[[Munjib]]",
         "[[Project PRD]]"
       ],
@@ -133,28 +134,52 @@
       "searchPriority": 1
     },
     {
-      "id": "schema-main",
-      "path": "wiki/schema.md",
-      "title": "Wiki Schema",
+      "id": "concept-munjib",
+      "path": "wiki/Munjib.md",
+      "title": "Munjib",
       "type": "concept",
       "status": "active",
-      "summary": "Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.",
+      "summary": "Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.",
       "tags": [
-        "schema",
-        "munjib"
+        "munjib",
+        "product",
+        "enterprise-wiki"
       ],
       "links": [
-        "[[Wiki Index]]",
-        "[[Munjib]]",
-        "[[Local Development Workflow]]",
-        "[[Wiki Log]]"
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 1,
+      "source_count": 5,
       "searchPriority": 50
     },
     {
+      "id": "decision-nextjs-prisma-monolith",
+      "path": "wiki/Next.js Prisma Monolith.md",
+      "title": "Next.js Prisma Monolith",
+      "type": "decision",
+      "status": "active",
+      "summary": "Munjib MVP는 Next.js App Router, server actions, Prisma, PostgreSQL을 한 repository 안에서 운영한다.",
+      "tags": [
+        "munjib",
+        "architecture",
+        "decision"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Local Development Workflow]]"
+      ],
+      "source_count": 4,
+      "searchPriority": 40
+    },
+    {
       "id": "source-project-prd",
-      "path": "wiki/sources/project-prd.md",
+      "path": "wiki/Project PRD.md",
       "title": "Project PRD",
       "type": "source",
       "status": "active",
@@ -174,68 +199,43 @@
       "searchPriority": 30
     },
     {
-      "id": "workflow-auth-and-permissions",
-      "path": "wiki/workflows/auth-and-permissions.md",
-      "title": "Auth And Permissions Workflow",
-      "type": "workflow",
+      "id": "concept-wiki-links-and-backlinks",
+      "path": "wiki/Wiki Links And Backlinks.md",
+      "title": "Wiki Links And Backlinks",
+      "type": "concept",
       "status": "active",
-      "summary": "Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.",
+      "summary": "Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.",
       "tags": [
         "munjib",
-        "auth",
-        "permissions"
+        "wiki-links",
+        "backlinks"
       ],
       "links": [
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
-        "[[Document Editing Workflow]]",
-        "[[Local Development Workflow]]"
-      ],
-      "source_count": 5,
-      "searchPriority": 50
-    },
-    {
-      "id": "workflow-document-editing",
-      "path": "wiki/workflows/document-editing.md",
-      "title": "Document Editing Workflow",
-      "type": "workflow",
-      "status": "active",
-      "summary": "Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.",
-      "tags": [
-        "munjib",
-        "workflow",
-        "documents",
-        "문서",
-        "편집"
-      ],
-      "links": [
-        "[[Munjib]]",
-        "[[Document Knowledge Model]]",
-        "[[Wiki Links And Backlinks]]",
-        "[[Auth And Permissions Workflow]]"
+        "[[Document Editing Workflow]]"
       ],
       "source_count": 4,
       "searchPriority": 50
     },
     {
-      "id": "workflow-local-development",
-      "path": "wiki/workflows/local-development.md",
-      "title": "Local Development Workflow",
-      "type": "workflow",
+      "id": "schema-main",
+      "path": "wiki/Wiki Schema.md",
+      "title": "Wiki Schema",
+      "type": "concept",
       "status": "active",
-      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.",
+      "summary": "Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.",
       "tags": [
-        "munjib",
-        "workflow",
-        "development"
+        "schema",
+        "munjib"
       ],
       "links": [
+        "[[index|Wiki Index]]",
         "[[Munjib]]",
-        "[[Auth And Permissions Workflow]]",
-        "[[Document Editing Workflow]]",
-        "[[Wiki Schema]]"
+        "[[Local Development Workflow]]",
+        "[[log|Wiki Log]]"
       ],
-      "source_count": 3,
+      "source_count": 1,
       "searchPriority": 50
     }
   ]
