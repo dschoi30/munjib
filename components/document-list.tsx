@@ -7,11 +7,13 @@ export function DocumentList({
   documents,
   canWrite,
   createAction,
+  searchQuery,
 }: {
   workspaceSlug: string;
   documents: Document[];
   canWrite: boolean;
   createAction: () => Promise<void>;
+  searchQuery: string;
 }) {
   return (
     <div>
@@ -24,14 +26,44 @@ export function DocumentList({
           New document
         </Button>
       </form>
+      <form action={`/workspaces/${workspaceSlug}`} className="mb-4">
+        <label className="sr-only" htmlFor="document-search">
+          Search documents
+        </label>
+        <input
+          id="document-search"
+          name="q"
+          type="search"
+          defaultValue={searchQuery}
+          placeholder="Search title or body"
+          className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-ink"
+        />
+      </form>
+      {searchQuery ? (
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+          Search results
+        </p>
+      ) : null}
       <nav className="space-y-1">
+        {documents.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
+            No documents found.
+          </p>
+        ) : null}
         {documents.map((document) => (
           <Link
             key={document.id}
-            href={`/workspaces/${workspaceSlug}?document=${document.id}`}
+            href={`/workspaces/${workspaceSlug}?document=${document.id}${
+              searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
+            }`}
             className="block rounded-md px-2 py-2 text-sm hover:bg-muted"
           >
             {document.title}
+            {searchQuery ? (
+              <span className="mt-1 block truncate text-xs text-slate-500">
+                {document.contentText || "Title match"}
+              </span>
+            ) : null}
           </Link>
         ))}
       </nav>
