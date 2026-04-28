@@ -57,6 +57,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Upload", exact: true }).click();
   await expect(metadataPanel.getByRole("link", { name: "notes.txt" })).toBeVisible();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue(/notes\.txt/);
+  await page.getByLabel("Add comment").fill("Please review this document.");
+  await page.getByRole("button", { name: "Comment" }).click();
+  await expect(metadataPanel.getByText("Please review this document.")).toBeVisible();
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
   await expect(page.getByText("See [[Engineering Runbook]] #review")).toBeVisible();

@@ -14,6 +14,7 @@ import { canWriteWorkspace } from "@/lib/permissions/workspace";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createDocumentAction,
+  createCommentAction,
   createDocumentFromBrokenLinkAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
@@ -134,6 +135,13 @@ export default async function WorkspacePage({
         orderBy: { createdAt: "desc" },
       })
     : [];
+  const comments = selectedDocument
+    ? await prisma.comment.findMany({
+        where: { documentId: selectedDocument.id },
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { name: true, email: true } } },
+      })
+    : [];
 
   const linkPanels = selectedDocument
     ? await getDocumentLinkPanels(selectedDocument.id, user.id)
@@ -155,6 +163,7 @@ export default async function WorkspacePage({
   );
   const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
+  const commentAction = createCommentAction.bind(null, workspaceSlug);
 
   return (
     <AppShell
@@ -201,10 +210,12 @@ export default async function WorkspacePage({
           tags={documentTags.map((documentTag) => documentTag.tag)}
           properties={documentProperties}
           attachments={attachments}
+          comments={comments}
           linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
           createFromBrokenLinkAction={createFromBrokenLinkAction}
           restoreVersionAction={restoreVersionAction}
+          createCommentAction={commentAction}
         />
       }
     />
