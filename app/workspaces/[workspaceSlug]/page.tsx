@@ -138,7 +138,7 @@ export default async function WorkspacePage({
   const comments = selectedDocument
     ? await prisma.comment.findMany({
         where: { documentId: selectedDocument.id },
-        orderBy: { createdAt: "desc" },
+        orderBy: { createdAt: "asc" },
         include: { user: { select: { name: true, email: true } } },
       })
     : [];

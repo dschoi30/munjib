@@ -348,20 +348,20 @@ function DocumentProperties({
           </PropertyRow>
         ) : null}
         <PropertyRow label="comments">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-col items-stretch gap-2">
             {comments.length === 0 ? <span className="text-slate-400">none</span> : null}
             {comments.map((comment) => (
               <span
                 key={comment.id}
-                className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600"
+                className="inline-flex max-w-full items-start gap-1 rounded-md bg-slate-100 px-2.5 py-1.5 text-slate-600"
               >
-                <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">
+                <MessageSquare className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="min-w-0 break-words">
                   {comment.user.name}: {comment.body}
                 </span>
               </span>
             ))}
-            <form action={createCommentAction} className="flex min-w-[220px] flex-1 items-center gap-2">
+            <form action={createCommentAction} className="flex min-w-[220px] items-center gap-2">
               <input type="hidden" name="documentId" value={document.id} />
               <label className="sr-only" htmlFor={`comment-body-${document.id}`}>
                 Add comment
