@@ -435,7 +435,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
 
-  const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
+  const contentMarkdown = "";
 
   return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {

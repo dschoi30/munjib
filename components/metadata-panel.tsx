@@ -1,4 +1,4 @@
-import type { Attachment, AuditLog, DocumentProperty, DocumentVersion, Tag } from "@prisma/client";
+import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
@@ -7,129 +7,24 @@ export function MetadataPanel({
   currentDocument,
   versions,
   auditLogs,
-  tags,
-  properties,
   attachments,
-  comments,
   linkPanels,
   canWrite,
-  createFromBrokenLinkAction,
   restoreVersionAction,
-  createCommentAction,
 }: {
   currentDocument: { id: string; title: string } | null;
   versions: DocumentVersion[];
   auditLogs: AuditLog[];
-  tags: Tag[];
-  properties: DocumentProperty[];
   attachments: Attachment[];
-  comments: Array<{
-    id: string;
-    body: string;
-    createdAt: Date;
-    user: { name: string; email: string };
-  }>;
   linkPanels: DocumentLinkPanels;
   canWrite: boolean;
-  createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   restoreVersionAction: (formData: FormData) => Promise<void>;
-  createCommentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <div className="space-y-6">
       <section>
         <h2 className="text-sm font-semibold">Local graph</h2>
         <LocalGraph currentDocument={currentDocument} linkPanels={linkPanels} />
-      </section>
-      <section>
-        <h2 className="text-sm font-semibold">Links</h2>
-        <div className="mt-2 space-y-3 text-sm">
-          <div>
-            <p className="font-medium text-slate-700">Outgoing</p>
-            <ul className="mt-1 space-y-1 text-slate-600">
-              {linkPanels.outgoing.length === 0 ? <li>No outgoing links</li> : null}
-              {linkPanels.outgoing.map((link) => (
-                <li key={link.id}>
-                  {link.targetDocument ? (
-                    <Link className="underline" href={`?document=${link.targetDocument.id}`}>
-                      {link.targetTitleRaw}
-                    </Link>
-                  ) : (
-                    <span>{link.targetTitleRaw}</span>
-                  )}
-                  {link.isBroken ? <span className="ml-1 text-red-600">broken</span> : null}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="font-medium text-slate-700">Backlinks</p>
-            <ul className="mt-1 space-y-1 text-slate-600">
-              {linkPanels.backlinks.length === 0 ? <li>No backlinks</li> : null}
-              {linkPanels.backlinks.map((backlink) => (
-                <li key={backlink.id}>
-                  <Link className="underline" href={`?document=${backlink.sourceDocument.id}`}>
-                    {backlink.sourceDocument.title}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="font-medium text-slate-700">Broken links</p>
-            <ul className="mt-1 space-y-2 text-slate-600">
-              {linkPanels.brokenLinks.length === 0 ? <li>No broken links</li> : null}
-              {linkPanels.brokenLinks.map((link) => (
-                <li key={link.id} className="flex items-center justify-between gap-2">
-                  <span>{link.targetTitleRaw}</span>
-                  <form action={createFromBrokenLinkAction}>
-                    <input type="hidden" name="linkId" value={link.id} />
-                    <Button type="submit" disabled={!canWrite} className="px-2 py-1 text-xs">
-                      Create
-                    </Button>
-                  </form>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </section>
-      <section>
-        <h2 className="text-sm font-semibold">Properties</h2>
-        <div className="mt-2 space-y-3 text-sm">
-          <div>
-            <p className="font-medium text-slate-700">Tags</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {tags.length === 0 ? <span className="text-slate-500">No tags</span> : null}
-              {tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="rounded bg-muted px-2 py-1 text-xs font-medium text-slate-700"
-                >
-                  #{tag.name}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div>
-            <p className="font-medium text-slate-700">Frontmatter</p>
-            <dl className="mt-2 space-y-2">
-              {properties.length === 0 ? (
-                <div className="text-slate-500">No properties</div>
-              ) : null}
-              {properties.map((property) => (
-                <div key={property.id} className="rounded border border-border px-2 py-1.5">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">
-                    {property.key}
-                  </dt>
-                  <dd className="mt-0.5 break-words text-slate-700">
-                    {String(property.valueJson)}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
-        </div>
       </section>
       <section>
         <h2 className="text-sm font-semibold">Attachments</h2>
@@ -143,36 +38,6 @@ export function MetadataPanel({
               <p className="mt-1 text-xs text-slate-500">
                 {attachment.mimeType} · {formatBytes(attachment.size)}
               </p>
-            </li>
-          ))}
-        </ul>
-      </section>
-      <section>
-        <h2 className="text-sm font-semibold">Comments</h2>
-        {currentDocument ? (
-          <form action={createCommentAction} className="mt-2 space-y-2">
-            <input type="hidden" name="documentId" value={currentDocument.id} />
-            <label className="sr-only" htmlFor="comment-body">
-              Add comment
-            </label>
-            <textarea
-              id="comment-body"
-              name="body"
-              disabled={!canWrite}
-              placeholder="Add a comment"
-              className="min-h-20 w-full resize-none rounded-md border border-border px-2 py-2 text-sm outline-none focus:border-ink"
-            />
-            <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
-              Comment
-            </Button>
-          </form>
-        ) : null}
-        <ul className="mt-3 space-y-2 text-sm text-slate-600">
-          {comments.length === 0 ? <li>No comments</li> : null}
-          {comments.map((comment) => (
-            <li key={comment.id} className="rounded border border-border px-2 py-2">
-              <p className="font-medium text-slate-700">{comment.user.name}</p>
-              <p className="mt-1 whitespace-pre-wrap">{comment.body}</p>
             </li>
           ))}
         </ul>

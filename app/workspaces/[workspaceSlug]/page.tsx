@@ -198,6 +198,16 @@ export default async function WorkspacePage({
             id: document.id,
             title: document.title,
           }))}
+          tags={documentTags.map((documentTag) => documentTag.tag)}
+          properties={documentProperties}
+          comments={comments.map((comment) => ({
+            id: comment.id,
+            body: comment.body,
+            user: comment.user,
+          }))}
+          linkPanels={linkPanels}
+          createFromBrokenLinkAction={createFromBrokenLinkAction}
+          createCommentAction={commentAction}
         />
       }
       right={
@@ -207,15 +217,10 @@ export default async function WorkspacePage({
           }
           versions={versions}
           auditLogs={auditLogs}
-          tags={documentTags.map((documentTag) => documentTag.tag)}
-          properties={documentProperties}
           attachments={attachments}
-          comments={comments}
           linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
-          createFromBrokenLinkAction={createFromBrokenLinkAction}
           restoreVersionAction={restoreVersionAction}
-          createCommentAction={commentAction}
         />
       }
     />
