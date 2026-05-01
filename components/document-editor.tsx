@@ -1,13 +1,16 @@
 "use client";
 
 import { markdown } from "@codemirror/lang-markdown";
+import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
-import { Columns2, Eye, Paperclip, Pencil, Save, Upload } from "lucide-react";
+import Link from "next/link";
+import { Columns2, Eye, MessageSquare, Paperclip, Pencil, Save, Upload } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 import {
   getActiveWikiLinkCompletion,
   type ActiveWikiLinkCompletion,
@@ -32,12 +35,28 @@ export function DocumentEditor({
   action,
   uploadAttachmentAction,
   linkCandidates,
+  tags,
+  properties,
+  comments,
+  linkPanels,
+  createFromBrokenLinkAction,
+  createCommentAction,
 }: {
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;
   uploadAttachmentAction: (formData: FormData) => Promise<void>;
   linkCandidates: LinkCandidate[];
+  tags: Pick<Tag, "id" | "name">[];
+  properties: Pick<DocumentProperty, "id" | "key" | "valueJson">[];
+  comments: Array<{
+    id: string;
+    body: string;
+    user: { name: string; email: string };
+  }>;
+  linkPanels: DocumentLinkPanels;
+  createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
+  createCommentAction: (formData: FormData) => Promise<void>;
 }) {
   const [mode, setMode] = useState<EditorMode>("split");
   const [title, setTitle] = useState(document?.title ?? "");
@@ -112,6 +131,16 @@ export function DocumentEditor({
           </ModeButton>
         </div>
       </div>
+      <DocumentProperties
+        document={document}
+        tags={tags}
+        properties={properties}
+        comments={comments}
+        linkPanels={linkPanels}
+        canWrite={canWrite}
+        createFromBrokenLinkAction={createFromBrokenLinkAction}
+        createCommentAction={createCommentAction}
+      />
       <form
         action={uploadAttachmentAction}
         className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-white px-3 py-2"
@@ -137,15 +166,14 @@ export function DocumentEditor({
       <div
         className={
           mode === "split"
-            ? "grid min-h-[520px] grid-cols-2 overflow-hidden rounded-md border border-border bg-white"
-            : "min-h-[520px] overflow-hidden rounded-md border border-border bg-white"
+            ? "grid grid-cols-2 overflow-hidden rounded-md border border-border bg-white"
+            : "overflow-hidden rounded-md border border-border bg-white"
         }
       >
         {mode !== "preview" ? (
           <div className="relative min-w-0 border-r border-border">
             <CodeMirror
               value={contentMarkdown}
-              height="520px"
               basicSetup={{
                 foldGutter: false,
                 highlightActiveLine: false,
@@ -221,8 +249,149 @@ function ModeButton({
 
 function MarkdownPreview({ markdown }: { markdown: string }) {
   return (
-    <div className="markdown-preview min-w-0 overflow-auto p-5">
+    <div className="markdown-preview min-w-0 p-5">
       <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown || "_Nothing to preview._"}</ReactMarkdown>
+    </div>
+  );
+}
+
+function DocumentProperties({
+  document,
+  tags,
+  properties,
+  comments,
+  linkPanels,
+  canWrite,
+  createFromBrokenLinkAction,
+  createCommentAction,
+}: {
+  document: EditableDocument;
+  tags: Pick<Tag, "id" | "name">[];
+  properties: Pick<DocumentProperty, "id" | "key" | "valueJson">[];
+  comments: Array<{
+    id: string;
+    body: string;
+    user: { name: string; email: string };
+  }>;
+  linkPanels: DocumentLinkPanels;
+  canWrite: boolean;
+  createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
+  createCommentAction: (formData: FormData) => Promise<void>;
+}) {
+  const linkedItems = [
+    ...linkPanels.outgoing.map((link) => ({
+      id: `outgoing-${link.id}`,
+      label: link.targetTitleRaw,
+      href: link.targetDocument ? `?document=${link.targetDocument.id}` : null,
+      linkId: link.id,
+      broken: link.isBroken,
+    })),
+    ...linkPanels.backlinks.map((backlink) => ({
+      id: `backlink-${backlink.id}`,
+      label: backlink.sourceDocument.title,
+      href: `?document=${backlink.sourceDocument.id}`,
+      linkId: null,
+      broken: false,
+    })),
+  ];
+
+  return (
+    <section aria-label="Document properties" className="space-y-3 py-2">
+      <h2 className="text-lg font-semibold">Properties</h2>
+      <div className="space-y-2 text-sm">
+        <PropertyRow label="tags">
+          {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
+          {tags.map((tag) => (
+            <span key={tag.id} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
+              #{tag.name}
+            </span>
+          ))}
+        </PropertyRow>
+        <PropertyRow label="links">
+          {linkedItems.length === 0 ? <span className="text-slate-400">none</span> : null}
+          {linkedItems.map((item) =>
+            item.broken && item.linkId ? (
+              <form key={item.id} action={createFromBrokenLinkAction} className="inline-flex">
+                <input type="hidden" name="linkId" value={item.linkId} />
+                <button
+                  type="submit"
+                  disabled={!canWrite}
+                  className="rounded-full px-1 text-slate-400 underline decoration-slate-300 underline-offset-2 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Create document from broken link"
+                >
+                  {item.label}
+                </button>
+              </form>
+            ) : item.href ? (
+              <Link
+                key={item.id}
+                href={item.href}
+                className="rounded-full px-1 text-violet-600 underline underline-offset-2 hover:text-violet-700"
+              >
+                {item.label}
+              </Link>
+            ) : (
+              <span key={item.id} className="text-slate-400">
+                {item.label}
+              </span>
+            ),
+          )}
+        </PropertyRow>
+        {properties.map((property) => (
+          <PropertyRow key={property.id} label={property.key}>
+            <span className="break-words text-slate-700">{String(property.valueJson)}</span>
+          </PropertyRow>
+        ))}
+        {properties.length === 0 ? (
+          <PropertyRow label="frontmatter">
+            <span className="text-slate-400">none</span>
+          </PropertyRow>
+        ) : null}
+        <PropertyRow label="comments">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            {comments.length === 0 ? <span className="text-slate-400">none</span> : null}
+            {comments.map((comment) => (
+              <span
+                key={comment.id}
+                className="inline-flex max-w-full items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-slate-600"
+              >
+                <MessageSquare className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">
+                  {comment.user.name}: {comment.body}
+                </span>
+              </span>
+            ))}
+            <form action={createCommentAction} className="flex min-w-[220px] flex-1 items-center gap-2">
+              <input type="hidden" name="documentId" value={document.id} />
+              <label className="sr-only" htmlFor={`comment-body-${document.id}`}>
+                Add comment
+              </label>
+              <input
+                id={`comment-body-${document.id}`}
+                name="body"
+                disabled={!canWrite}
+                placeholder="Add comment"
+                className="h-8 min-w-0 flex-1 rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
+              />
+              <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
+                Comment
+              </Button>
+            </form>
+          </div>
+        </PropertyRow>
+      </div>
+    </section>
+  );
+}
+
+function PropertyRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-[120px_minmax(0,1fr)] items-start gap-4">
+      <div className="flex items-center gap-2 text-slate-500">
+        <span className="font-mono text-xs leading-none text-slate-400">::</span>
+        <span>{label}</span>
+      </div>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">{children}</div>
     </div>
   );
 }

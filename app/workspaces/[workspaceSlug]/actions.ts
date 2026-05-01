@@ -28,6 +28,7 @@ export async function updateDocumentAction(workspaceSlug: string, formData: Form
 
 const documentTemplates: Record<string, { title: string; contentMarkdown: string }> = {
   blank: { title: "Untitled", contentMarkdown: "" },
+  folder: { title: "Untitled folder", contentMarkdown: "" },
   runbook: {
     title: "Untitled Runbook",
     contentMarkdown:

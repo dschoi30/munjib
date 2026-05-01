@@ -178,6 +178,9 @@ describe("wiki link reconciliation", () => {
     });
 
     expect(created.title).toBe("Missing Runbook");
+    expect(created.contentMarkdown).toBe("");
+    expect(created.path).toBe("/missing-runbook");
+    expect(created.parentId).toBeNull();
     const repaired = await prisma.documentLink.findUniqueOrThrow({ where: { id: broken.id } });
     expect(repaired.isBroken).toBe(false);
     expect(repaired.targetDocumentId).toBe(created.id);
