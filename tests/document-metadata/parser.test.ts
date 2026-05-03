@@ -36,4 +36,27 @@ Use #incident and #platform notes.`),
       { key: "owner", value: "Platform", valueType: "string" },
     ]);
   });
+
+  it("parses standard YAML values without splitting on colons or newlines", () => {
+    expect(
+      parseDocumentMetadata(`---
+summary: "Owner: Platform"
+notes: |
+  first line
+  second line
+owners:
+  - Platform
+  - Design
+settings:
+  review: true
+---
+
+# Plan`).properties,
+    ).toEqual([
+      { key: "summary", value: "Owner: Platform", valueType: "string" },
+      { key: "notes", value: "first line\nsecond line\n", valueType: "string" },
+      { key: "owners", value: ["Platform", "Design"], valueType: "array" },
+      { key: "settings", value: { review: true }, valueType: "object" },
+    ]);
+  });
 });

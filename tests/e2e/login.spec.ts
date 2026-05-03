@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 test("development credentials login opens the workspace", async ({ page }) => {
+  const missingRunbookTitle = `Missing Runbook ${Date.now()}`;
+  const commentBody = `Please review this document ${Date.now()}.`;
   const consoleErrors: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") {
@@ -43,14 +45,14 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Engineering Runbook", exact: true }).click();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("# Welcome\n\nSee [[Engineering Runbook]]");
   await editor.fill(
-    "---\nowner: Platform\nstatus: draft\n---\n\n# Welcome\n\nSee [[Engineering Runbook]] and [[Missing Runbook]] #review",
+    `---\nowner: Platform\nstatus: draft\n---\n\n# Welcome\n\nSee [[Engineering Runbook]] and [[${missingRunbookTitle}]] #review`,
   );
   await page.getByRole("button", { name: "Save" }).click();
   const properties = page.getByRole("region", { name: "Document properties" });
   await expect(properties.getByText("#review", { exact: true })).toBeVisible();
   await expect(properties.getByText("Platform")).toBeVisible();
   await expect(properties.getByRole("link", { name: "Engineering Runbook" }).first()).toBeVisible();
-  await expect(properties.getByRole("button", { name: "Missing Runbook" })).toBeVisible();
+  await expect(properties.getByRole("button", { name: missingRunbookTitle })).toBeVisible();
   await page.getByLabel("Upload attachment").setInputFiles({
     name: "notes.txt",
     mimeType: "text/plain",
@@ -60,14 +62,16 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const metadataPanel = page.locator("aside").last();
   await expect(metadataPanel.getByRole("link", { name: "notes.txt" }).first()).toBeVisible();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue(/notes\.txt/);
-  await page.getByLabel("Add comment").fill("Please review this document.");
+  await page.getByLabel("Add comment").fill(commentBody);
   await page.getByRole("button", { name: "Comment" }).click();
-  await expect(properties.getByText("Please review this document.")).toBeVisible();
+  await expect(properties.getByText(commentBody)).toBeVisible();
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
-  await expect(page.getByText("See [[Engineering Runbook]] and [[Missing Runbook]] #review")).toBeVisible();
-  await properties.getByRole("button", { name: "Missing Runbook" }).click();
-  await expect(page.locator("[name='title']")).toHaveValue("Missing Runbook");
+  await expect(
+    page.getByText(`See [[Engineering Runbook]] and [[${missingRunbookTitle}]] #review`),
+  ).toBeVisible();
+  await properties.getByRole("button", { name: missingRunbookTitle }).click();
+  await expect(page.locator("[name='title']")).toHaveValue(missingRunbookTitle);
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
   await page.getByRole("button", { name: "New folder" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled folder");
