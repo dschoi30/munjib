@@ -1,5 +1,17 @@
 # Repository Agent Rules
 
+## Feature Start Workflow
+
+Before implementing a new feature, create a GitHub issue by running:
+
+```bash
+pnpm wiki:feature-start "<feature title>"
+```
+
+The command should create the issue with GitHub CLI when possible. If GitHub CLI is unavailable or unauthenticated, use the printed issue template to create the issue manually before implementation starts.
+
+When the current branch is `main`, the command creates and switches to `issue-<number>-<slug>`. When the current branch is already a feature branch or worktree branch, stay on that branch unless there is a concrete reason to split the work.
+
 ## Wiki-First Lookup
 
 Before using broad `rg` to find project knowledge, read `wiki/index.md` or run:
