@@ -90,6 +90,76 @@ describe("wiki link reconciliation", () => {
     await expect(prisma.documentLink.findMany({ where: { sourceDocumentId: source.id } })).resolves.toEqual([]);
   });
 
+  it("keeps existing backlinks connected when a target document is renamed", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: "Read [[Runbook]].",
+    });
+
+    const renamed = await updateDocument({
+      documentId: target.id,
+      actorId: fixture.user.id,
+      title: "Production Runbook",
+      contentMarkdown: "# Production Runbook",
+    });
+
+    const targetPanels = await getDocumentLinkPanels(renamed.id, fixture.user.id);
+    expect(targetPanels.backlinks).toEqual([
+      {
+        id: expect.any(String),
+        sourceDocument: {
+          id: expect.any(String),
+          title: "Incident Guide",
+          slug: "incident-guide",
+        },
+      },
+    ]);
+  });
+
+  it("filters backlinks from restricted source documents", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Restricted Incident Guide",
+      contentMarkdown: "Read [[Runbook]].",
+    });
+    const otherEditor = await prisma.user.create({
+      data: { email: `link-editor-${source.id}@example.com`, name: "Link Editor" },
+    });
+    await prisma.workspaceMember.create({
+      data: { workspaceId: fixture.workspace.id, userId: otherEditor.id, role: WorkspaceRole.EDITOR },
+    });
+    await prisma.permission.create({
+      data: {
+        resourceType: "DOCUMENT",
+        resourceId: source.id,
+        subjectType: "USER",
+        subjectId: otherEditor.id,
+        permission: "MANAGE",
+      },
+    });
+
+    const targetPanels = await getDocumentLinkPanels(target.id, fixture.user.id);
+
+    expect(targetPanels.backlinks).toEqual([]);
+  });
+
   it("creates a missing target document from a broken link and repairs the link", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const source = await createDocument({
@@ -108,6 +178,9 @@ describe("wiki link reconciliation", () => {
     });
 
     expect(created.title).toBe("Missing Runbook");
+    expect(created.contentMarkdown).toBe("");
+    expect(created.path).toBe("/missing-runbook");
+    expect(created.parentId).toBeNull();
     const repaired = await prisma.documentLink.findUniqueOrThrow({ where: { id: broken.id } });
     expect(repaired.isBroken).toBe(false);
     expect(repaired.targetDocumentId).toBe(created.id);

@@ -1,7 +1,9 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, signOut } from "next-auth/react";
 import { useState } from "react";
+
+const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
 
 export function LoginForm() {
   const [email, setEmail] = useState("owner@example.com");
@@ -23,8 +25,17 @@ export function LoginForm() {
       return;
     }
 
-    setError("No matching development user was found.");
+    setError(
+      result?.error === "CredentialsSignin"
+        ? "No matching development user was found. Run pnpm run db:seed and try one of the listed accounts."
+        : "Sign in failed. Clear the local session and try again.",
+    );
     setIsSubmitting(false);
+  }
+
+  async function clearSession() {
+    setError(null);
+    await signOut({ redirect: false });
   }
 
   return (
@@ -36,6 +47,18 @@ export function LoginForm() {
       <p className="mt-2 text-sm text-slate-600">
         Use owner@example.com, editor@example.com, or viewer@example.com.
       </p>
+      <div className="mt-4 grid grid-cols-1 gap-2">
+        {developmentUsers.map((userEmail) => (
+          <button
+            key={userEmail}
+            type="button"
+            onClick={() => setEmail(userEmail)}
+            className="rounded-md border border-border px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
+          >
+            {userEmail}
+          </button>
+        ))}
+      </div>
       <label className="mt-6 block text-sm font-medium text-slate-700" htmlFor="email">
         Email
       </label>
@@ -53,6 +76,13 @@ export function LoginForm() {
         className="mt-4 w-full rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {isSubmitting ? "Signing in..." : "Sign in"}
+      </button>
+      <button
+        type="button"
+        onClick={clearSession}
+        className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 hover:bg-muted"
+      >
+        Clear local session
       </button>
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
     </form>

@@ -13,7 +13,7 @@ export const authOptions: NextAuthOptions = {
   session: { strategy: "jwt" },
   cookies: {
     sessionToken: {
-      name: "obsidian-clone.session-token",
+      name: "munjib.session-token",
       options: {
         httpOnly: true,
         sameSite: "lax",
