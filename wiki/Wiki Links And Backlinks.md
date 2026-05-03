@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-03
-source_count: 7
+source_count: 8
 tags:
   - munjib
   - wiki-links
@@ -54,6 +54,12 @@ Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
 
 `DocumentEditor`는 Markdown editor에서 active wiki link completion을 감지한다. `[[` 뒤의 query가 현재 cursor 위치와 맞으면 workspace 안의 후보 문서 title을 최대 6개까지 보여주고, 선택 시 `[[Title]]` 형태로 markdown에 삽입한다. 현재 문서 자신은 후보에서 제외한다.
 
+## Preview link rendering
+
+Markdown preview는 `[[Target Title]]`과 `[[Target Title|Alias]]`를 Obsidian-style navigation link로 렌더링한다. `lib/wiki-links/preview.ts`는 workspace에서 읽을 수 있는 문서 후보를 title slug 기준으로 찾고, 일치하는 target은 `?document=<id>` link로 바꾼다. Alias가 있으면 link label은 alias를 사용한다.
+
+아직 matching document가 없는 target은 navigation target을 만들 수 없으므로 대괄호 없는 plain text label로 보여준다. Embed syntax와 inline/fenced code 안의 wiki link text는 preview 변환에서 제외한다.
+
 ## Backlinks
 
 Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 link의 source document 목록이 Properties links row와 local graph에 표시된다.
@@ -79,6 +85,8 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `lib/wiki-links/reconcile.ts`
 - `lib/wiki-links/service.ts`
 - `lib/wiki-links/autocomplete.ts`
+- `lib/wiki-links/preview.ts`
 - `lib/documents/service.ts`
 - `components/document-editor.tsx`
+- `tests/wiki-links/preview.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
