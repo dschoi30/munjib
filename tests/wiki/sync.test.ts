@@ -1,6 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { selectCandidatePages, WikiSyncRequiredError } from "@/lib/wiki/sync";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { afterEach, describe, expect, it } from "vitest";
+import { listChangedFiles, selectCandidatePages, WikiSyncRequiredError } from "@/lib/wiki/sync";
 import type { WikiManifestPage } from "@/lib/wiki/types";
+
+const execFileAsync = promisify(execFile);
+let root: string | undefined;
 
 const pages: WikiManifestPage[] = [
   page("wiki/index.md", "Wiki Index", "Repository wiki index."),
@@ -15,6 +23,13 @@ const pages: WikiManifestPage[] = [
 ];
 
 describe("wiki sync", () => {
+  afterEach(async () => {
+    if (root) {
+      await rm(root, { recursive: true, force: true });
+      root = undefined;
+    }
+  });
+
   it("maps wiki tooling changes to schema and local workflow pages", () => {
     const candidates = selectCandidatePages(["lib/wiki/sync.ts", "scripts/wiki/sync-check.ts"], pages);
 
@@ -51,6 +66,17 @@ describe("wiki sync", () => {
     expect(error.name).toBe("WikiSyncRequiredError");
     expect(error.plan.candidatePages[0]?.title).toBe("Document Editing Workflow");
   });
+
+  it("includes deleted tracked files in staged changes", async () => {
+    root = await createGitRoot();
+    await writeFile(path.join(root, "lib", "documents", "removed.ts"), "export const removed = true;\n");
+    await git(root, ["add", "."]);
+    await git(root, ["commit", "-m", "seed"]);
+    await rm(path.join(root, "lib", "documents", "removed.ts"));
+    await git(root, ["add", "."]);
+
+    await expect(listChangedFiles(root, { mode: "staged" })).resolves.toEqual(["lib/documents/removed.ts"]);
+  });
 });
 
 function page(path: string, title: string, summary: string): WikiManifestPage {
@@ -66,4 +92,17 @@ function page(path: string, title: string, summary: string): WikiManifestPage {
     source_count: 1,
     searchPriority: 50,
   };
+}
+
+async function createGitRoot(): Promise<string> {
+  const tempRoot = await mkdtemp(path.join(tmpdir(), "obsidian-wiki-sync-"));
+  await mkdir(path.join(tempRoot, "lib", "documents"), { recursive: true });
+  await git(tempRoot, ["init"]);
+  await git(tempRoot, ["config", "user.email", "test@example.com"]);
+  await git(tempRoot, ["config", "user.name", "Test User"]);
+  return tempRoot;
+}
+
+async function git(cwd: string, args: string[]) {
+  await execFileAsync("git", args, { cwd });
 }
