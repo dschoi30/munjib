@@ -3,10 +3,10 @@ id: workflow-wiki-maintenance-automation
 title: Wiki Maintenance Automation
 type: workflow
 status: active
-summary: Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
+summary: Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
-updated: 2026-05-03
-source_count: 7
+updated: 2026-05-04
+source_count: 9
 tags:
   - munjib
   - wiki
@@ -28,6 +28,7 @@ Munjib wiki는 `llm-wiki.md`의 의도처럼 source change와 질문이 쌓일 �
 ## 명령
 
 ```bash
+pnpm wiki:feature-start "<feature title>"
 pnpm wiki:sync-plan
 pnpm wiki:sync-plan --staged
 pnpm wiki:sync-plan --since HEAD~1
@@ -38,6 +39,18 @@ pnpm wiki:install-hooks
 `wiki:sync-plan`은 변경된 source file과 이미 변경된 wiki maintenance file을 출력하고, 변경 경로 규칙에 따라 후보 wiki page를 제안한다. 추가, 복사, 수정, 이름변경뿐 아니라 삭제된 tracked source file도 후보 산정에 포함한다. `wiki:sync-check`는 source change가 있는데 `wiki/` 또는 `AGENTS.md` 변경이 없으면 실패한다.
 
 `.githooks/pre-commit`은 `pnpm wiki:sync-check --staged`와 `pnpm wiki:lint`를 실행한다. `pnpm wiki:install-hooks`는 현재 checkout의 `core.hooksPath`를 `.githooks`로 설정해 커밋마다 이 검사를 자동 실행한다.
+
+## Feature Start 루프
+
+신규 기능 구현은 source 변경 전에 GitHub issue를 먼저 만든다.
+
+```bash
+pnpm wiki:feature-start "<feature title>"
+```
+
+이 명령은 `gh issue create`를 우선 사용한다. GitHub CLI가 없거나 인증되지 않았거나 네트워크 문제로 실패하면 issue title/body template과 수동 branch guidance를 출력한다. 이 fallback은 구현 시작 허가가 아니라 수동으로 issue를 발행하라는 복구 경로다.
+
+현재 branch가 `main`이면 issue 번호 기반 `issue-<number>-<slug>` branch를 만들고 전환한다. 이미 feature branch나 worktree branch에 있으면 현재 branch를 유지한다. 이렇게 하면 기존 격리 작업공간을 방해하지 않으면서 `main`에서 바로 기능을 구현하는 실수를 줄인다.
 
 ## Ingest 루프
 
@@ -125,6 +138,8 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - `AGENTS.md`
 - `.githooks/pre-commit`
 - `lib/wiki/sync.ts`
+- `lib/wiki/feature-start.ts`
+- `scripts/wiki/feature-start.ts`
 - `package.json`
 - `wiki/Wiki Schema.md`
 - `wiki/log.md`

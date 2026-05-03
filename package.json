@@ -15,6 +15,7 @@
     "wiki:log": "tsx scripts/wiki/log.ts",
     "wiki:lint": "tsx scripts/wiki/lint.ts",
     "wiki:manifest": "tsx scripts/wiki/manifest.ts",
+    "wiki:feature-start": "tsx scripts/wiki/feature-start.ts",
     "wiki:install-hooks": "git config core.hooksPath .githooks",
     "wiki:sync-check": "tsx scripts/wiki/sync-check.ts",
     "wiki:sync-plan": "tsx scripts/wiki/sync-plan.ts",
