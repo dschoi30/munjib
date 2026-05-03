@@ -3,10 +3,10 @@ id: index-main
 title: Wiki Index
 type: index
 status: active
-summary: Munjib repository wiki의 탐색 인덱스.
+summary: Munjib repository wiki의 탐색 인덱스와 feature-start 포함 workflow navigation.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 18
+updated: 2026-05-04
+source_count: 21
 tags:
   - index
   - munjib
@@ -44,8 +44,8 @@ links:
 
 - [[Document Editing Workflow]] - 문서 생성, 수정, properties, attachment, comment, version restore, 감사 로그, link/metadata reconciliation 흐름.
 - [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role과 document-level explicit permission 흐름.
-- [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, wiki maintenance 명령.
-- [[Wiki Maintenance Automation]] - Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
+- [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, feature start, wiki maintenance 명령.
+- [[Wiki Maintenance Automation]] - Feature Start, Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
 
 ## 결정
 
@@ -63,6 +63,6 @@ links:
 
 - 최신 구현 현황: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]]
 - 데이터/권한/링크 모델: [[Document Knowledge Model]], [[Auth And Permissions Workflow]], [[Wiki Links And Backlinks]]
-- wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]
+- wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]; 신규 기능 시작은 `pnpm wiki:feature-start "<feature title>"`로 GitHub issue를 먼저 만든다.
 - 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
 - stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.
