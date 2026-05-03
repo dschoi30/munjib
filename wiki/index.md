@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스.
 created: 2026-04-29
 updated: 2026-05-03
-source_count: 10
+source_count: 18
 tags:
   - index
   - munjib
@@ -31,21 +31,21 @@ links:
 
 ## 제품과 근거
 
-- [[Munjib]] - Obsidian형 기업 문서 위키로서의 제품 정의와 현재 구현 범위.
-- [[Project PRD]] - `prd.md`, `obsidian-analysis-report.md`, 현재 source code를 연결한 source note.
+- [[Munjib]] - Obsidian형 기업 문서 위키로서의 제품 정의와 최신 구현 범위.
+- [[Project PRD]] - `prd.md`, `obsidian-analysis-report.md`, 현재 source code, 남은 roadmap을 연결한 source note.
 
 ## 핵심 개념
 
-- [[Document Knowledge Model]] - Organization, Workspace, Document, DocumentVersion, DocumentLink, Permission, AuditLog 모델.
-- [[Wiki Links And Backlinks]] - `[[문서 링크]]`, alias, backlink, broken link 저장 및 reconciliation 방식.
+- [[Document Knowledge Model]] - Organization, Workspace, Document, DocumentVersion, DocumentLink, Tag, DocumentProperty, Attachment, Comment, Permission, AuditLog 모델.
+- [[Wiki Links And Backlinks]] - `[[문서 링크]]`, alias, autocomplete, backlink, broken link 저장 및 reconciliation 방식.
 - [[Wiki Schema]] - wiki page frontmatter, link, manifest 유지 규칙.
 
 ## 워크플로우
 
-- [[Document Editing Workflow]] - 문서 생성, 수정, 버전 저장, 감사 로그, link reconciliation 흐름.
-- [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role 권한 흐름.
+- [[Document Editing Workflow]] - 문서 생성, 수정, properties, attachment, comment, version restore, 감사 로그, link/metadata reconciliation 흐름.
+- [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role과 document-level explicit permission 흐름.
 - [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, wiki maintenance 명령.
-- [[Wiki Maintenance Automation]] - 커밋 전 변경 파일 기반 wiki sync plan/check 운영 방식.
+- [[Wiki Maintenance Automation]] - Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
 
 ## 결정
 
@@ -58,3 +58,11 @@ links:
 ## 로그
 
 - [[log|Wiki Log]] - wiki maintenance timeline.
+
+## 상태판
+
+- 최신 구현 현황: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]]
+- 데이터/권한/링크 모델: [[Document Knowledge Model]], [[Auth And Permissions Workflow]], [[Wiki Links And Backlinks]]
+- wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]
+- 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
+- stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.

@@ -3,10 +3,10 @@ id: schema-main
 title: Wiki Schema
 type: concept
 status: active
-summary: Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.
+summary: Munjib markdown wiki의 page metadata, link, evidence, page template, manifest 유지 규칙.
 created: 2026-04-29
 updated: 2026-05-03
-source_count: 2
+source_count: 4
 tags:
   - schema
   - munjib
@@ -78,6 +78,62 @@ pnpm wiki:lint
 새로 발견한 durable knowledge는 관련 page, [[index|Wiki Index]], [[log|Wiki Log]], `wiki/manifest.json`을 함께 갱신한다.
 
 `raw/sources/` 아래 파일은 source evidence로 취급하고 wiki maintenance 중 수정하지 않는다.
+
+## 근거 기록 규칙
+
+각 page의 `## 근거`에는 재사용 가능한 주장의 출처를 구체적으로 남긴다.
+
+- Code evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `lib/documents/service.ts`처럼 실제 path를 쓴다.
+- Git evidence: 특정 변경의 근거가 commit이면 short hash와 commit subject를 함께 쓴다.
+- Source evidence: 원본 문서는 `raw/sources/...` 또는 root source document path를 쓴다.
+- Test evidence: 동작 보장을 설명할 때 관련 test file을 함께 둔다.
+
+근거가 없는 추정은 현재형으로 쓰지 않는다. 추정이 필요하면 `## Open questions` 또는 `question` page로 분리한다.
+
+## 타입별 권장 섹션
+
+`source` page:
+
+- `## Source summary`
+- `## Claims`
+- `## Affected pages`
+- `## Open questions`
+- `## 근거`
+
+`concept` page:
+
+- `## 정의`
+- `## 현재 구현`
+- `## 관계`
+- `## 한계`
+- `## 근거`
+
+`workflow` page:
+
+- `## Entry points`
+- `## Steps`
+- `## Failure modes`
+- `## Tests`
+- `## 근거`
+
+`decision` page:
+
+- `## 결정`
+- `## 이유`
+- `## 비용`
+- `## 재검토 기준`
+- `## 근거`
+
+`question` page:
+
+- `## 질문`
+- `## 답`
+- `## 근거`
+- `## 후속 질문`
+
+`index` page는 탐색 목차와 상태판 역할을 함께 한다. 최신 구현, 운영, 결정, 디자인, stale/draft 후보를 빠르게 찾을 수 있어야 한다.
+
+`log` page는 append-only timeline이다. 각 entry는 `Result`, `Coverage` 또는 `Affected pages`, `Source evidence`, `Verification` 중 해당 항목을 포함한다.
 
 ## 커밋 전 sync 규칙
 

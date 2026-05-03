@@ -3,10 +3,10 @@ id: workflow-wiki-maintenance-automation
 title: Wiki Maintenance Automation
 type: workflow
 status: active
-summary: 커밋 전 변경 파일을 기준으로 wiki 업데이트 후보를 만들고 누락을 감지하는 자동화 흐름.
+summary: Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
 updated: 2026-05-03
-source_count: 5
+source_count: 7
 tags:
   - munjib
   - wiki
@@ -21,7 +21,9 @@ links:
 
 # Wiki Maintenance Automation
 
-Munjib wiki는 `llm-wiki.md`의 의도처럼 source change가 쌓일 때마다 durable knowledge를 wiki에 반영하는 운영 방식을 따른다. 완전 자동 작성 대신, 커밋 전 변경 파일을 분석해 LLM 작업자가 검토해야 할 wiki page 후보를 만들고 wiki maintenance 누락을 감지한다.
+Munjib wiki는 `llm-wiki.md`의 의도처럼 source change와 질문이 쌓일 때마다 durable knowledge를 wiki에 반영하는 운영 방식을 따른다. 목표는 질문할 때마다 원문을 다시 조합하는 것이 아니라, source evidence를 구조화된 markdown page network로 컴파일해 계속 갱신하는 것이다.
+
+현재 자동화는 완전 자동 작성이 아니라 LLM 작업자가 사용할 guardrail이다. 커밋 전 변경 파일을 분석해 검토해야 할 후보 page를 제안하고, wiki maintenance 누락을 감지한다. 그 위에 Ingest, Query, Lint 루프를 운영 규칙으로 둔다.
 
 ## 명령
 
@@ -36,6 +38,51 @@ pnpm wiki:install-hooks
 `wiki:sync-plan`은 변경된 source file과 이미 변경된 wiki maintenance file을 출력하고, 변경 경로 규칙에 따라 후보 wiki page를 제안한다. 추가, 복사, 수정, 이름변경뿐 아니라 삭제된 tracked source file도 후보 산정에 포함한다. `wiki:sync-check`는 source change가 있는데 `wiki/` 또는 `AGENTS.md` 변경이 없으면 실패한다.
 
 `.githooks/pre-commit`은 `pnpm wiki:sync-check --staged`와 `pnpm wiki:lint`를 실행한다. `pnpm wiki:install-hooks`는 현재 checkout의 `core.hooksPath`를 `.githooks`로 설정해 커밋마다 이 검사를 자동 실행한다.
+
+## Ingest 루프
+
+Ingest는 새 source를 wiki에 편입하는 작업이다. Source는 code commit, PR review, design artifact, PRD, runtime debugging 결과, raw source document가 될 수 있다.
+
+1. Source evidence를 식별한다. `raw/sources/`는 수정하지 않는다.
+2. `wiki/index.md`와 관련 후보 page를 먼저 읽는다.
+3. 새 주장을 단일 summary page에만 넣지 않고, concept/workflow/decision/source/question page 중 영향을 받는 곳에 나눠 반영한다.
+4. 새 page가 필요하면 [[Wiki Schema]]의 타입별 권장 섹션을 따른다.
+5. 기존 주장과 충돌하면 덮어쓰지 말고 어떤 근거가 최신인지 적고, 필요하면 오래된 page나 section을 `stale`로 표시한다.
+6. `wiki/index.md`를 갱신해 탐색 경로를 유지한다.
+7. `wiki/log.md`에 source evidence, affected pages, verification을 남긴다.
+
+Ingest entry는 가능하면 다음 정보를 포함한다.
+
+- `Source evidence`: path, commit hash, issue/PR, raw source.
+- `Affected pages`: 갱신한 wiki page 목록.
+- `Claims added`: 새로 확인한 durable facts.
+- `Claims changed`: 바뀐 기존 이해.
+- `Open questions`: 아직 근거가 부족한 부분.
+
+## Query 환류 루프
+
+Query는 사용자의 질문에 답하는 과정이면서 지식을 생산하는 과정이다.
+
+1. `pnpm wiki:find "<topic>"` 또는 `wiki/index.md`에서 시작한다.
+2. wiki가 missing, stale, too broad, code-level verification 필요 상태일 때만 source search로 내려간다.
+3. 답변이 재사용 가능한 결론, 비교, 설계 판단, 디버깅 원인, 운영 절차를 만든다면 wiki에 환류한다.
+4. 짧은 보강은 기존 page section에 넣고, 독립 가치가 있으면 `question` page를 만든다.
+5. 환류한 경우 `wiki/log.md`에 query-derived maintenance entry를 남긴다.
+
+질문 답변은 일회성 채팅 결과로만 남기지 않는다. 같은 질문을 다시 받을 가능성이 높거나 다음 개발자가 읽어야 하는 내용이면 wiki가 source of navigation이 되게 만든다.
+
+## Lint 루프
+
+`pnpm wiki:lint`는 frontmatter, manifest, index coverage, unresolved wiki link를 검사한다. LLM maintenance에서는 여기에 의미론적 health check를 더한다.
+
+- stale claims: code, tests, recent commits와 맞지 않는 현재형 설명.
+- contradictions: 두 page가 같은 사실을 다르게 설명하는 경우.
+- orphan pages: index나 관련 page에서 도달하기 어려운 page.
+- missing concepts: 여러 page에서 반복되지만 독립 page가 없는 개념.
+- missing evidence: 중요한 claim이 `## 근거` 없이 남아 있는 경우.
+- source gaps: web/source/code 확인이 필요한데 추정으로 남은 내용.
+
+Semantic lint 결과는 바로 고치거나 `question` page/open question으로 남긴다.
 
 ## 커밋 전 루프
 
@@ -79,3 +126,5 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - `.githooks/pre-commit`
 - `lib/wiki/sync.ts`
 - `package.json`
+- `wiki/Wiki Schema.md`
+- `wiki/log.md`

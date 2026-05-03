@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-05-03
-source_count: 5
+source_count: 7
 tags:
   - munjib
   - workflow
@@ -66,6 +66,12 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 ## Seed와 로그인
 
 `pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다.
+
+## Test coverage
+
+현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
+
+E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
 
 ## Wiki-first lookup
 
