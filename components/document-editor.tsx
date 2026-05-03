@@ -10,7 +10,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { renderPreviewMarkdownWithWikiLinks } from "@/lib/wiki-links/preview";
+import {
+  buildWikiLinkPreviewCandidateMap,
+  renderPreviewMarkdownWithWikiLinks,
+} from "@/lib/wiki-links/preview";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 import {
   getActiveWikiLinkCompletion,
@@ -255,34 +258,35 @@ function MarkdownPreview({
   markdown: string;
   linkCandidates: LinkCandidate[];
 }) {
+  const candidateBySlug = useMemo(
+    () => buildWikiLinkPreviewCandidateMap(linkCandidates),
+    [linkCandidates],
+  );
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+        const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
+        return href?.startsWith("?document=") ? (
+          <Link href={href} className={className}>
+            {children}
+          </Link>
+        ) : (
+          <a href={href} className={className}>
+            {children}
+          </a>
+        );
+      },
+    }),
+    [],
+  );
   const previewMarkdown = useMemo(
-    () => renderPreviewMarkdownWithWikiLinks(markdown, linkCandidates),
-    [markdown, linkCandidates],
+    () => renderPreviewMarkdownWithWikiLinks(markdown, candidateBySlug),
+    [markdown, candidateBySlug],
   );
 
   return (
     <div className="markdown-preview min-w-0 p-5">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          a: ({ href, children }) =>
-            href?.startsWith("?document=") ? (
-              <Link
-                href={href}
-                className="text-violet-600 underline underline-offset-2 hover:text-violet-700"
-              >
-                {children}
-              </Link>
-            ) : (
-              <a
-                href={href}
-                className="text-violet-600 underline underline-offset-2 hover:text-violet-700"
-              >
-                {children}
-              </a>
-            ),
-        }}
-      >
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
         {previewMarkdown || "_Nothing to preview._"}
       </ReactMarkdown>
     </div>

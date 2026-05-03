@@ -5,26 +5,49 @@ export type WikiLinkPreviewCandidate = {
   title: string;
 };
 
+export function buildWikiLinkPreviewCandidateMap(candidates: WikiLinkPreviewCandidate[]) {
+  return new Map(candidates.map((candidate) => [slugifyTitle(candidate.title), candidate]));
+}
+
 export function renderPreviewMarkdownWithWikiLinks(
   markdown: string,
-  candidates: WikiLinkPreviewCandidate[],
+  candidateBySlug: Map<string, WikiLinkPreviewCandidate>,
 ) {
-  const candidateBySlug = new Map(
-    candidates.map((candidate) => [slugifyTitle(candidate.title), candidate]),
-  );
-  let inFencedCode = false;
+  let openFence: MarkdownFence | null = null;
 
   return markdown
     .split("\n")
     .map((line) => {
-      if (/^\s*(```|~~~)/.test(line)) {
-        inFencedCode = !inFencedCode;
+      const fence = getMarkdownFence(line);
+      if (fence && (!openFence || isClosingFence(openFence, fence, line))) {
+        openFence = openFence ? null : fence;
         return line;
       }
 
-      return inFencedCode ? line : transformPreviewLine(line, candidateBySlug);
+      return openFence ? line : transformPreviewLine(line, candidateBySlug);
     })
     .join("\n");
+}
+
+type MarkdownFence = {
+  marker: "`" | "~";
+  width: number;
+};
+
+function getMarkdownFence(line: string): MarkdownFence | null {
+  const match = line.match(/^ {0,3}(`{3,}|~{3,})/);
+  if (!match?.[1]) return null;
+  const markerRun = match[1];
+  return {
+    marker: markerRun[0] as "`" | "~",
+    width: markerRun.length,
+  };
+}
+
+function isClosingFence(openFence: MarkdownFence, fence: MarkdownFence, line: string) {
+  if (fence.marker !== openFence.marker || fence.width < openFence.width) return false;
+  const closingFence = fence.marker === "`" ? "`" : "~";
+  return new RegExp(`^ {0,3}\\${closingFence}{${openFence.width},}\\s*$`).test(line);
 }
 
 function transformPreviewLine(
@@ -32,16 +55,23 @@ function transformPreviewLine(
   candidateBySlug: Map<string, WikiLinkPreviewCandidate>,
 ) {
   const segments = line.split(/(`+)/);
-  let inCode = false;
+  let openingTicks: string | null = null;
 
   return segments
     .map((segment) => {
       if (/^`+$/.test(segment)) {
-        if (segment.length % 2 === 1) inCode = !inCode;
+        if (!openingTicks) {
+          openingTicks = segment;
+          return segment;
+        }
+        if (segment === openingTicks) {
+          openingTicks = null;
+          return segment;
+        }
         return segment;
       }
 
-      return inCode ? segment : transformWikiLinks(segment, candidateBySlug);
+      return openingTicks ? segment : transformWikiLinks(segment, candidateBySlug);
     })
     .join("");
 }
