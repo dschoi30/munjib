@@ -5,6 +5,7 @@ import type { WikiManifestPage } from "./types";
 
 const execFileAsync = promisify(execFile);
 
+const SOURCE_DIFF_FILTER = "--diff-filter=ACMRD";
 const WIKI_PATHS = ["wiki/", "AGENTS.md"];
 const IGNORED_PATHS = [".next/", ".worktrees/", "node_modules/", "coverage/", "test-results/", "playwright-report/"];
 
@@ -91,15 +92,15 @@ export class WikiSyncRequiredError extends Error {
 export async function listChangedFiles(rootDir: string, options: WikiSyncOptions = {}): Promise<string[]> {
   const mode = options.mode ?? "working-tree";
   if (mode === "staged") {
-    return gitChangedFiles(rootDir, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
+    return gitChangedFiles(rootDir, ["diff", "--cached", "--name-only", SOURCE_DIFF_FILTER]);
   }
   if (mode === "since") {
     const since = options.since ?? "HEAD~1";
-    return gitChangedFiles(rootDir, ["diff", "--name-only", "--diff-filter=ACMR", `${since}..HEAD`]);
+    return gitChangedFiles(rootDir, ["diff", "--name-only", SOURCE_DIFF_FILTER, `${since}..HEAD`]);
   }
 
-  const staged = await gitChangedFiles(rootDir, ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]);
-  const unstaged = await gitChangedFiles(rootDir, ["diff", "--name-only", "--diff-filter=ACMR"]);
+  const staged = await gitChangedFiles(rootDir, ["diff", "--cached", "--name-only", SOURCE_DIFF_FILTER]);
+  const unstaged = await gitChangedFiles(rootDir, ["diff", "--name-only", SOURCE_DIFF_FILTER]);
   const untracked = await gitChangedFiles(rootDir, ["ls-files", "--others", "--exclude-standard"]);
   return uniqueSorted([...staged, ...unstaged, ...untracked]);
 }

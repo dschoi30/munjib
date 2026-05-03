@@ -33,7 +33,7 @@ pnpm wiki:sync-check --staged
 pnpm wiki:install-hooks
 ```
 
-`wiki:sync-plan`은 변경된 source file과 이미 변경된 wiki maintenance file을 출력하고, 변경 경로 규칙에 따라 후보 wiki page를 제안한다. `wiki:sync-check`는 source change가 있는데 `wiki/` 또는 `AGENTS.md` 변경이 없으면 실패한다.
+`wiki:sync-plan`은 변경된 source file과 이미 변경된 wiki maintenance file을 출력하고, 변경 경로 규칙에 따라 후보 wiki page를 제안한다. 추가, 복사, 수정, 이름변경뿐 아니라 삭제된 tracked source file도 후보 산정에 포함한다. `wiki:sync-check`는 source change가 있는데 `wiki/` 또는 `AGENTS.md` 변경이 없으면 실패한다.
 
 `.githooks/pre-commit`은 `pnpm wiki:sync-check --staged`와 `pnpm wiki:lint`를 실행한다. `pnpm wiki:install-hooks`는 현재 checkout의 `core.hooksPath`를 `.githooks`로 설정해 커밋마다 이 검사를 자동 실행한다.
 
@@ -50,6 +50,7 @@ pnpm wiki:install-hooks
 Wiki 갱신이 필요한 변경:
 
 - 데이터 모델, 문서 편집 흐름, 인증/권한, wiki link, attachment, versioning처럼 제품/아키텍처 이해에 영향을 주는 변경.
+- 기능, 컴포넌트, 서비스, 스키마 파일 삭제처럼 기존 설명을 제거하거나 정리해야 할 수 있는 변경.
 - 개발 명령, test/e2e, seed, 환경 변수, dependency, build 설정 변경.
 - PRD, product naming, 디자인 산출물처럼 repository 탐색자가 나중에 다시 찾아야 할 결정.
 
