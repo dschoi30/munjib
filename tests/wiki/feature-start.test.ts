@@ -30,6 +30,13 @@ describe("feature start helpers", () => {
     });
   });
 
+  it("parses issue urls from non-github.com hosts", () => {
+    expect(parseIssueFromGhOutput("https://github.enterprise.example.com/acme/wiki/issues/42\n")).toEqual({
+      number: 42,
+      url: "https://github.enterprise.example.com/acme/wiki/issues/42",
+    });
+  });
+
   it("decides branch creation only from main", () => {
     expect(shouldCreateFeatureBranch("main")).toBe(true);
     expect(shouldCreateFeatureBranch("issue-16-existing")).toBe(false);
@@ -99,6 +106,21 @@ describe("runFeatureStart", () => {
     expect(result.status).toBe("manual-fallback");
     expect(result.message).toContain("Reason: gh auth failed");
     expect(result.message).toContain("Do not start implementation until the GitHub issue exists.");
+  });
+
+  it("uses command stderr in manual fallback messages", async () => {
+    const runner: CommandRunner = async (command) => {
+      if (command === "gh") {
+        throw Object.assign(new Error("Command failed"), { stderr: "gh auth login required\n" });
+      }
+      throw new Error(`Unexpected command: ${command}`);
+    };
+
+    const result = await runFeatureStart("Add graph filter controls", { runner });
+
+    expect(result.status).toBe("manual-fallback");
+    expect(result.message).toContain("Reason: gh auth login required");
+    expect(result.message).not.toContain("Command failed");
   });
 
   it("returns branch guidance when branch lookup fails after creating an issue", async () => {
