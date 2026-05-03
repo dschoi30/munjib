@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 9
+updated: 2026-05-03
+source_count: 10
 tags:
   - index
   - munjib
@@ -20,6 +20,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
+  - "[[Wiki Maintenance Automation]]"
   - "[[designs/index|UI Design Excalidraw Index]]"
   - "[[log|Wiki Log]]"
 ---
@@ -44,6 +45,7 @@ links:
 - [[Document Editing Workflow]] - 문서 생성, 수정, 버전 저장, 감사 로그, link reconciliation 흐름.
 - [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role 권한 흐름.
 - [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, wiki maintenance 명령.
+- [[Wiki Maintenance Automation]] - 커밋 전 변경 파일 기반 wiki sync plan/check 운영 방식.
 
 ## 결정
 

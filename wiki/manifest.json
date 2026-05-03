@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-04-28",
+  "updated": "2026-05-03",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -108,10 +108,11 @@
         "[[Local Development Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
+        "[[Wiki Maintenance Automation]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 9,
+      "source_count": 10,
       "searchPriority": 5
     },
     {
@@ -130,9 +131,10 @@
         "[[Munjib]]",
         "[[Auth And Permissions Workflow]]",
         "[[Document Editing Workflow]]",
-        "[[Wiki Schema]]"
+        "[[Wiki Schema]]",
+        "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 3,
+      "source_count": 5,
       "searchPriority": 50
     },
     {
@@ -149,9 +151,10 @@
       "links": [
         "[[index|Wiki Index]]",
         "[[Munjib]]",
-        "[[Project PRD]]"
+        "[[Project PRD]]",
+        "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 1,
+      "source_count": 2,
       "searchPriority": 1
     },
     {
@@ -240,6 +243,28 @@
       "searchPriority": 50
     },
     {
+      "id": "workflow-wiki-maintenance-automation",
+      "path": "wiki/Wiki Maintenance Automation.md",
+      "title": "Wiki Maintenance Automation",
+      "type": "workflow",
+      "status": "active",
+      "summary": "커밋 전 변경 파일을 기준으로 wiki 업데이트 후보를 만들고 누락을 감지하는 자동화 흐름.",
+      "tags": [
+        "munjib",
+        "wiki",
+        "automation",
+        "workflow"
+      ],
+      "links": [
+        "[[Wiki Schema]]",
+        "[[Local Development Workflow]]",
+        "[[index|Wiki Index]]",
+        "[[log|Wiki Log]]"
+      ],
+      "source_count": 5,
+      "searchPriority": 50
+    },
+    {
       "id": "schema-main",
       "path": "wiki/Wiki Schema.md",
       "title": "Wiki Schema",
@@ -254,9 +279,10 @@
         "[[index|Wiki Index]]",
         "[[Munjib]]",
         "[[Local Development Workflow]]",
+        "[[Wiki Maintenance Automation]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 1,
+      "source_count": 2,
       "searchPriority": 50
     }
   ]
