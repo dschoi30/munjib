@@ -50,6 +50,8 @@ pnpm wiki:feature-start "<feature title>"
 
 이 명령은 `gh issue create`를 우선 사용한다. GitHub CLI가 없거나 인증되지 않았거나 네트워크 문제로 실패하면 issue title/body template과 수동 branch guidance를 출력한다. 이 fallback은 구현 시작 허가가 아니라 수동으로 issue를 발행하라는 복구 경로다.
 
+`gh issue create` 성공 출력은 GitHub Enterprise 같은 custom host에서도 `/issues/<number>` URL을 읽어 issue 번호와 URL을 보존한다. `gh` 또는 `git` command가 실패하면 가능한 경우 stderr를 사용자 메시지에 우선 표시해 인증 실패나 branch 생성 실패 이유를 바로 확인하게 한다.
+
 현재 branch가 `main`이면 issue 번호 기반 `issue-<number>-<slug>` branch를 만들고 전환한다. 이미 feature branch나 worktree branch에 있으면 현재 branch를 유지한다. 이렇게 하면 기존 격리 작업공간을 방해하지 않으면서 `main`에서 바로 기능을 구현하는 실수를 줄인다.
 
 ## Ingest 루프

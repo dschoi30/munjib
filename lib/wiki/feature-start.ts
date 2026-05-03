@@ -15,6 +15,10 @@ export type CommandResult = {
 
 export type CommandRunner = (command: string, args: string[]) => Promise<CommandResult>;
 
+type ErrorWithStderr = {
+  stderr?: unknown;
+};
+
 export type FeatureStartStatus =
   | "created-with-branch"
   | "created-without-branch"
@@ -59,7 +63,7 @@ export function parseIssueFromGhOutput(output: string): CreatedIssue {
   const url = output
     .split(/\s+/)
     .map((part) => part.trim())
-    .find((part) => /^https:\/\/github\.com\/.+\/.+\/issues\/\d+$/.test(part));
+    .find((part) => /^https:\/\/[^/]+\/.+\/.+\/issues\/\d+$/.test(part));
 
   if (!url) {
     throw new Error("Could not find a GitHub issue URL in gh output.");
@@ -205,6 +209,14 @@ export async function runFeatureStart(
 }
 
 function errorMessage(error: unknown): string {
+  if (hasStderr(error)) {
+    const stderr = String(error.stderr).trim();
+    if (stderr) return stderr;
+  }
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function hasStderr(error: unknown): error is ErrorWithStderr {
+  return Boolean(error && typeof error === "object" && "stderr" in error);
 }

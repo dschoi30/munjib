@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 5
+source_count: 6
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-04T01:20:00+09:00 - review
+
+- Source evidence: PR #17 review comments by Codex and Gemini, `lib/wiki/feature-start.ts`, `tests/wiki/feature-start.test.ts`, [[Wiki Maintenance Automation]].
+- Affected pages: [[Wiki Maintenance Automation]], [[log|Wiki Log]].
+- Result: feature-start workflow가 GitHub Enterprise 같은 custom host의 issue URL도 parse하고, command 실패 시 stderr를 우선 표시하도록 리뷰 피드백을 반영했다.
+- Verification: `pnpm exec vitest run tests/wiki/feature-start.test.ts`, `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-04T00:00:00+09:00 - maintenance
 
