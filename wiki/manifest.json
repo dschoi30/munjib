@@ -93,7 +93,7 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Munjib repository wiki의 탐색 인덱스.",
+      "summary": "Munjib repository wiki의 탐색 인덱스와 feature-start 포함 workflow navigation.",
       "tags": [
         "index",
         "munjib"
@@ -112,7 +112,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 18,
+      "source_count": 21,
       "searchPriority": 5
     },
     {
@@ -121,7 +121,7 @@
       "title": "Local Development Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.",
+      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.",
       "tags": [
         "munjib",
         "workflow",
@@ -134,7 +134,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 7,
+      "source_count": 6,
       "searchPriority": 50
     },
     {
@@ -154,7 +154,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "searchPriority": 1
     },
     {
@@ -249,7 +249,7 @@
       "title": "Wiki Maintenance Automation",
       "type": "workflow",
       "status": "active",
-      "summary": "Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.",
+      "summary": "Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.",
       "tags": [
         "munjib",
         "wiki",
@@ -262,7 +262,7 @@
         "[[index|Wiki Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 7,
+      "source_count": 9,
       "searchPriority": 50
     },
     {
