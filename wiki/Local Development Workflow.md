@@ -3,10 +3,10 @@ id: workflow-local-development
 title: Local Development Workflow
 type: workflow
 status: active
-summary: Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.
+summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 7
+updated: 2026-05-04
+source_count: 6
 tags:
   - munjib
   - workflow
@@ -45,6 +45,7 @@ Wiki maintenance 명령:
 
 ```bash
 pnpm wiki:find "<topic>"
+pnpm wiki:feature-start "<feature title>"
 pnpm wiki:sync-plan --staged
 pnpm wiki:sync-check --staged
 pnpm wiki:install-hooks
@@ -66,6 +67,18 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 ## Seed와 로그인
 
 `pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다.
+
+## Feature start
+
+신규 기능 source 변경 전에는 GitHub issue를 먼저 발행한다.
+
+```bash
+pnpm wiki:feature-start "<feature title>"
+```
+
+성공 시 issue URL을 출력한다. 현재 branch가 `main`이면 `issue-<number>-<slug>` branch를 생성하고 전환한다. 이미 feature branch이면 branch를 새로 만들지 않는다.
+
+`gh issue create`가 실패하면 issue template을 출력한다. 이 경우 구현을 시작하기 전에 출력된 template으로 GitHub issue를 수동 생성한다.
 
 ## Test coverage
 
@@ -89,4 +102,5 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 - `.env.example`
 - `prisma/seed.ts`
 - `lib/wiki/sync.ts`
+- `lib/wiki/feature-start.ts`
 - `.githooks/pre-commit`
