@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 5
+updated: 2026-05-03
+source_count: 14
 tags:
   - munjib
   - product
@@ -32,15 +32,23 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - Prisma/PostgreSQL 기반 조직, workspace, 문서, 버전, 링크, 권한, 감사 로그 모델.
 - 개발용 credentials login.
 - workspace role 기반 읽기/쓰기 권한 검사.
-- 문서 생성, 수정, 아카이브, broken link에서 문서 생성.
+- 문서 생성, 템플릿 기반 생성, folder-like 빈 문서 생성, 수정, 아카이브, broken link에서 문서 생성.
 - Markdown 원문과 plain text 본문 저장.
-- 문서 수정 시 version row 생성.
+- edit/split/preview 모드와 Markdown preview.
+- 문서 수정, attachment upload, version restore 시 version row 생성.
 - `[[문서명]]` wiki link 파싱과 `DocumentLink` reconciliation.
-- outgoing links, backlinks, broken links, versions, audit log를 보여주는 metadata panel.
+- wiki link autocomplete.
+- permission-aware document search, quick switcher, recent/favorites navigation.
+- tags와 YAML frontmatter properties extraction.
+- outgoing links, backlinks, broken links, comments를 title 아래 Properties 영역에 표시.
+- broken link 클릭 시 루트 경로에 blank document를 생성하고 link를 repair.
+- local graph, attachments, versions, audit log를 보여주는 metadata panel.
+- attachment upload/download와 comment creation.
+- explicit document permission이 있는 문서에 대한 read/write filtering.
 
 ## 아직 구현으로 과장하면 안 되는 범위
 
-`prd.md`에는 graph view, rich preview, properties, search, template, review flow, attachment, advanced export 같은 제품 방향이 포함되어 있다. 현재 UI의 `DocumentEditor`도 preview, backlinks, graph panel 일부를 "next milestone"로 표시한다. 따라서 wiki 문서에서는 이런 항목을 현재 구현이 아니라 계획 또는 예약된 영역으로 구분한다.
+`prd.md`에는 실시간 협업, 고급 graph 탐색, review workflow, export, 조직별 세밀한 권한 관리, search indexing 같은 제품 방향이 포함되어 있다. 현재 구현은 MVP 수준의 local graph, properties, search, template, attachment, comment, version restore까지 포함하지만, 완성형 협업 지식관리 제품으로 과장하지 않는다.
 
 ## 빠른 진입점
 
@@ -58,4 +66,11 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - `lib/wiki-links/*`
+- `lib/attachments/service.ts`
+- `lib/comments/service.ts`
+- `lib/document-metadata/*`
+- `lib/permissions/document.ts`
 - `app/workspaces/[workspaceSlug]/*`
+- `components/document-editor.tsx`
+- `components/document-navigation.tsx`
+- `components/metadata-panel.tsx`

@@ -20,7 +20,7 @@
         "[[Document Editing Workflow]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 5,
+      "source_count": 8,
       "searchPriority": 50
     },
     {
@@ -63,7 +63,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 4,
+      "source_count": 12,
       "searchPriority": 50
     },
     {
@@ -72,7 +72,7 @@
       "title": "Document Knowledge Model",
       "type": "concept",
       "status": "active",
-      "summary": "Munjib의 조직, workspace, 문서, 버전, 링크, 권한, 감사 로그 데이터 모델.",
+      "summary": "Munjib의 조직, workspace, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.",
       "tags": [
         "munjib",
         "data-model",
@@ -84,7 +84,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 2,
+      "source_count": 8,
       "searchPriority": 50
     },
     {
@@ -112,7 +112,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 10,
+      "source_count": 18,
       "searchPriority": 5
     },
     {
@@ -134,7 +134,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 5,
+      "source_count": 7,
       "searchPriority": 50
     },
     {
@@ -154,7 +154,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 2,
+      "source_count": 4,
       "searchPriority": 1
     },
     {
@@ -177,7 +177,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 5,
+      "source_count": 14,
       "searchPriority": 50
     },
     {
@@ -217,9 +217,10 @@
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
         "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 7,
+      "source_count": 16,
       "searchPriority": 30
     },
     {
@@ -239,7 +240,7 @@
         "[[Document Knowledge Model]]",
         "[[Document Editing Workflow]]"
       ],
-      "source_count": 4,
+      "source_count": 7,
       "searchPriority": 50
     },
     {
@@ -248,7 +249,7 @@
       "title": "Wiki Maintenance Automation",
       "type": "workflow",
       "status": "active",
-      "summary": "커밋 전 변경 파일을 기준으로 wiki 업데이트 후보를 만들고 누락을 감지하는 자동화 흐름.",
+      "summary": "Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.",
       "tags": [
         "munjib",
         "wiki",
@@ -261,7 +262,7 @@
         "[[index|Wiki Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 5,
+      "source_count": 7,
       "searchPriority": 50
     },
     {
@@ -270,7 +271,7 @@
       "title": "Wiki Schema",
       "type": "concept",
       "status": "active",
-      "summary": "Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.",
+      "summary": "Munjib markdown wiki의 page metadata, link, evidence, page template, manifest 유지 규칙.",
       "tags": [
         "schema",
         "munjib"
@@ -282,7 +283,7 @@
         "[[Wiki Maintenance Automation]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 2,
+      "source_count": 4,
       "searchPriority": 50
     }
   ]

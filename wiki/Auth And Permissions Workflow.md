@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 5
+updated: 2026-05-03
+source_count: 8
 tags:
   - munjib
   - auth
@@ -34,13 +34,25 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 
 ## Workspace role
 
-현재 runtime 권한의 핵심은 `WorkspaceMember.role`이다.
+현재 runtime 권한의 기본값은 `WorkspaceMember.role`이다.
 
 - 읽기 가능: `OWNER`, `ADMIN`, `EDITOR`, `VIEWER`
 - 쓰기 가능: `OWNER`, `ADMIN`, `EDITOR`
 - 관리 가능: `OWNER`, `ADMIN`
 
 `assertCanReadWorkspace()`와 `assertCanWriteWorkspace()`는 role이 없거나 권한이 부족하면 명시적 error를 던진다.
+
+## Document-level explicit permission
+
+`Permission` table은 `resourceType=DOCUMENT`, `subjectType=USER`, `permission=READ|WRITE|MANAGE` 형태의 explicit document permission을 지원한다.
+
+문서에 explicit permission row가 하나라도 있으면 workspace role만으로는 충분하지 않다. `canReadDocument()`와 `canWriteDocument()`는 workspace role, explicit permission count, actor의 highest permission을 함께 판단한다.
+
+- explicit permission이 없는 문서: workspace role 기준으로 읽기/쓰기를 허용한다.
+- explicit permission이 있는 문서: 사용자에게 충분한 document permission이 있어야 읽기/쓰기 가능하다.
+- `MANAGE`는 read/write보다 높은 권한으로 취급된다.
+
+Workspace page는 문서 목록과 search 대상에서 읽을 수 없는 문서를 제외한다. Link panel도 outgoing target과 backlink source document를 permission-aware하게 필터링한다.
 
 ## 문서 service에서의 권한 적용
 
@@ -49,6 +61,8 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 `updateDocument()`와 `archiveDocument()`는 document id로 document와 workspace membership을 함께 찾고 read/write 권한을 요구한다.
 
 `createDocumentFromBrokenLink()`는 link id로 workspace membership을 찾고 read/write 권한을 모두 요구한다.
+
+`restoreDocumentVersion()`, attachment upload, comment creation도 document-level permission을 확인한다. Attachment download는 document read permission을 요구하고, upload/comment는 write 가능한 사용자만 수행한다.
 
 ## Seed 사용자
 
@@ -66,5 +80,9 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 - `lib/auth/config.ts`
 - `lib/auth/session.ts`
 - `lib/permissions/workspace.ts`
+- `lib/permissions/document.ts`
+- `lib/wiki-links/service.ts`
+- `lib/attachments/service.ts`
 - `tests/auth/config.test.ts`
+- `tests/permissions/document.test.ts`
 - `prisma/seed.ts`

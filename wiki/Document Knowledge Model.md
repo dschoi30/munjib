@@ -3,10 +3,10 @@ id: concept-document-knowledge-model
 title: Document Knowledge Model
 type: concept
 status: active
-summary: Munjib의 조직, workspace, 문서, 버전, 링크, 권한, 감사 로그 데이터 모델.
+summary: Munjib의 조직, workspace, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 2
+updated: 2026-05-03
+source_count: 8
 tags:
   - munjib
   - data-model
@@ -20,7 +20,7 @@ links:
 
 # Document Knowledge Model
 
-Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, document tree, document versions, document links, permissions, audit logs다.
+Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, document tree, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
 
 ## 조직과 workspace
 
@@ -44,6 +44,8 @@ Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 
 
 `Document`는 workspace 안에서 `slug`가 unique하다. `lib/documents/service.ts`의 `nextAvailableDocumentSlug()`가 중복 title을 `untitled-2`, `runbook-2` 같은 slug로 회피한다.
 
+`parentId`는 tree 구조를 위한 필드다. 현재 `New folder` UI는 별도 folder model이 아니라 title이 `Untitled folder`이고 내용이 비어 있는 루트 문서를 생성하는 folder-like entry로 동작한다.
+
 ## 문서 링크
 
 - `DocumentLink`: 한 문서에서 다른 문서를 향하는 wiki link edge다.
@@ -55,12 +57,33 @@ Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 
 
 링크 파싱과 reconciliation은 [[Wiki Links And Backlinks]]에서 설명한다.
 
+## 태그와 properties
+
+- `Tag`: workspace 단위 tag dictionary다. `normalizedName`으로 workspace 안 unique를 보장한다.
+- `DocumentTag`: 문서와 tag의 join table이다.
+- `DocumentProperty`: YAML frontmatter에서 추출한 key/value property다.
+
+`lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
+
+## 첨부와 댓글
+
+- `Attachment`: 문서에 업로드된 file metadata다. 실제 bytes는 `storage/attachments/<workspaceId>/<uuid>-<safeFileName>` 아래 저장되고 DB에는 fileName, mimeType, size, storageKey, uploadedById를 둔다.
+- `Comment`: 문서 comment다. `body`, `userId`, `createdAt`, optional `resolvedAt`을 가진다.
+
+Attachment upload는 markdown link를 문서 본문 끝에 append하고 새 document version과 audit log를 남긴다. Comment 생성은 write 가능한 사용자만 수행할 수 있고 `comment.created` audit log를 남긴다.
+
 ## 권한과 감사
 
-- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델을 위한 테이블이다. 현재 주요 runtime 권한은 workspace membership helper가 담당한다.
-- `AuditLog`: 문서 생성, 수정, 아카이브, broken link 기반 생성 같은 mutation 기록을 남긴다.
+- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다.
+- `AuditLog`: 문서 생성, 수정, 아카이브, version restore, broken link 기반 생성, attachment upload, comment 생성 같은 mutation 기록을 남긴다.
 
 ## 근거
 
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
+- `lib/document-metadata/parser.ts`
+- `lib/document-metadata/reconcile.ts`
+- `lib/attachments/service.ts`
+- `lib/comments/service.ts`
+- `lib/permissions/document.ts`
+- `tests/documents/service.test.ts`
