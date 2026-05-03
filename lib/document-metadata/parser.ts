@@ -1,7 +1,16 @@
+import { parseDocument } from "yaml";
+
+type ParsedDocumentPropertyValue =
+  | string
+  | boolean
+  | number
+  | ParsedDocumentPropertyValue[]
+  | { [key: string]: ParsedDocumentPropertyValue };
+
 export type ParsedDocumentProperty = {
   key: string;
-  value: string | boolean | number;
-  valueType: "string" | "boolean" | "number" | "date";
+  value: ParsedDocumentPropertyValue;
+  valueType: "string" | "boolean" | "number" | "date" | "array" | "object";
 };
 
 export type ParsedDocumentMetadata = {
@@ -26,19 +35,21 @@ function parseFrontmatter(markdown: string): ParsedDocumentProperty[] {
   const raw = normalizedMarkdown.slice(4, end).trim();
   if (!raw) return [];
 
+  const document = parseDocument(raw);
+  if (document.errors.length > 0) return [];
+
+  const parsed = document.toJSON();
+  if (!isPlainObject(parsed)) return [];
+
   const properties: ParsedDocumentProperty[] = [];
-  for (const line of raw.split("\n")) {
-    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.+)$/);
-    if (!match) continue;
+  for (const [rawKey, rawValue] of Object.entries(parsed)) {
+    const key = normalizePropertyKey(rawKey);
+    if (!key || rawValue == null) continue;
 
-    const key = normalizePropertyKey(match[1] ?? "");
-    const rawValue = (match[2] ?? "").trim().replace(/^["']|["']$/g, "");
-    if (!key || rawValue === "") continue;
+    const value = normalizeFrontmatterValue(rawValue);
+    if (value == null) continue;
 
-    properties.push({
-      key,
-      ...coercePropertyValue(rawValue),
-    });
+    properties.push({ key, value, valueType: propertyValueType(value) });
   }
 
   return properties;
@@ -68,19 +79,35 @@ export function normalizeTag(tag: string) {
   return tag.trim().toLowerCase();
 }
 
-function coercePropertyValue(rawValue: string): Omit<ParsedDocumentProperty, "key"> {
-  if (rawValue === "true" || rawValue === "false") {
-    return { value: rawValue === "true", valueType: "boolean" };
+function normalizeFrontmatterValue(value: unknown): ParsedDocumentPropertyValue | null {
+  if (typeof value === "string" || typeof value === "boolean") return value;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => normalizeFrontmatterValue(item))
+      .filter((item): item is ParsedDocumentPropertyValue => item != null);
+  }
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .map(([key, item]) => [key, normalizeFrontmatterValue(item)] as const)
+        .filter((entry): entry is readonly [string, ParsedDocumentPropertyValue] => entry[1] != null),
+    );
   }
 
-  const numberValue = Number(rawValue);
-  if (Number.isFinite(numberValue) && rawValue.trim() !== "") {
-    return { value: numberValue, valueType: "number" };
-  }
+  return null;
+}
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(rawValue)) {
-    return { value: rawValue, valueType: "date" };
-  }
+function propertyValueType(value: ParsedDocumentPropertyValue): ParsedDocumentProperty["valueType"] {
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "object") return "object";
+  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "number") return "number";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return "date";
+  return "string";
+}
 
-  return { value: rawValue, valueType: "string" };
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

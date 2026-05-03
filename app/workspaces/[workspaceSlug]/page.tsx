@@ -70,13 +70,17 @@ export default async function WorkspacePage({
   const explicitDocumentIds = new Set(
     documentsWithExplicitPermissions.map((permission) => permission.resourceId),
   );
+  const permissionsByDocumentId = new Map<string, typeof userDocumentPermissions>();
+  for (const permission of userDocumentPermissions) {
+    const permissions = permissionsByDocumentId.get(permission.resourceId) ?? [];
+    permissions.push(permission);
+    permissionsByDocumentId.set(permission.resourceId, permissions);
+  }
   const userPermissionByDocumentId = new Map(
     documentIds.map((documentId) => [
       documentId,
       highestPermissionLevel(
-        userDocumentPermissions
-          .filter((permission) => permission.resourceId === documentId)
-          .map((permission) => permission.permission),
+        (permissionsByDocumentId.get(documentId) ?? []).map((permission) => permission.permission),
       ),
     ]),
   );
