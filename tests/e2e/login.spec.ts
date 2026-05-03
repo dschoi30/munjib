@@ -67,9 +67,8 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(properties.getByText(commentBody)).toBeVisible();
   await page.getByRole("button", { name: "Preview" }).click();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
-  await expect(
-    page.getByText(`See [[Engineering Runbook]] and [[${missingRunbookTitle}]] #review`),
-  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Engineering Runbook" }).first()).toBeVisible();
+  await expect(page.getByText(`and ${missingRunbookTitle} #review`)).toBeVisible();
   await properties.getByRole("button", { name: missingRunbookTitle }).click();
   await expect(page.locator("[name='title']")).toHaveValue(missingRunbookTitle);
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
