@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib markdown wiki의 page metadata, link, manifest 유지 규칙.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 1
+updated: 2026-05-03
+source_count: 2
 tags:
   - schema
   - munjib
@@ -14,6 +14,7 @@ links:
   - "[[index|Wiki Index]]"
   - "[[Munjib]]"
   - "[[Local Development Workflow]]"
+  - "[[Wiki Maintenance Automation]]"
   - "[[log|Wiki Log]]"
 ---
 
@@ -77,3 +78,16 @@ pnpm wiki:lint
 새로 발견한 durable knowledge는 관련 page, [[index|Wiki Index]], [[log|Wiki Log]], `wiki/manifest.json`을 함께 갱신한다.
 
 `raw/sources/` 아래 파일은 source evidence로 취급하고 wiki maintenance 중 수정하지 않는다.
+
+## 커밋 전 sync 규칙
+
+Source file을 커밋하기 전에는 [[Wiki Maintenance Automation]]의 sync loop를 따른다.
+
+```bash
+pnpm wiki:sync-plan --staged
+pnpm wiki:manifest
+pnpm wiki:lint
+pnpm wiki:sync-check --staged
+```
+
+`wiki:sync-plan`은 변경 파일을 기준으로 후보 page를 제안한다. `wiki:sync-check`는 staged source change가 있는데 `wiki/` 또는 `AGENTS.md` 변경이 없을 때 실패해 wiki maintenance 누락을 드러낸다.

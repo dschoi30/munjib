@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 1
+updated: 2026-05-03
+source_count: 2
 tags:
   - log
   - munjib
@@ -14,9 +14,16 @@ links:
   - "[[index|Wiki Index]]"
   - "[[Munjib]]"
   - "[[Project PRD]]"
+  - "[[Wiki Maintenance Automation]]"
 ---
 
 # Wiki Log
+
+## 2026-05-03T00:00:00+09:00 - maintenance
+
+- Result: 커밋 전 source 변경을 기준으로 wiki 후보 page를 제안하고 wiki maintenance 누락을 감지하는 [[Wiki Maintenance Automation]] workflow를 추가했다.
+- Tooling: `pnpm wiki:sync-plan`, `pnpm wiki:sync-check`, `pnpm wiki:install-hooks`, `.githooks/pre-commit`.
+- Source evidence: `llm-wiki.md`, `AGENTS.md`, `.githooks/pre-commit`, `lib/wiki/sync.ts`, `package.json`.
 
 ## 2026-04-29T01:05:00+09:00 - maintenance
 

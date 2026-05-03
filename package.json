@@ -15,6 +15,9 @@
     "wiki:log": "tsx scripts/wiki/log.ts",
     "wiki:lint": "tsx scripts/wiki/lint.ts",
     "wiki:manifest": "tsx scripts/wiki/manifest.ts",
+    "wiki:install-hooks": "git config core.hooksPath .githooks",
+    "wiki:sync-check": "tsx scripts/wiki/sync-check.ts",
+    "wiki:sync-plan": "tsx scripts/wiki/sync-plan.ts",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts"

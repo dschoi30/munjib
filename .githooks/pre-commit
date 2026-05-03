@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+pnpm wiki:sync-check --staged
+pnpm wiki:lint

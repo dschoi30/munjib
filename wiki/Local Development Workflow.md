@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 3
+updated: 2026-05-03
+source_count: 5
 tags:
   - munjib
   - workflow
@@ -16,6 +16,7 @@ links:
   - "[[Auth And Permissions Workflow]]"
   - "[[Document Editing Workflow]]"
   - "[[Wiki Schema]]"
+  - "[[Wiki Maintenance Automation]]"
 ---
 
 # Local Development Workflow
@@ -44,6 +45,9 @@ Wiki maintenance 명령:
 
 ```bash
 pnpm wiki:find "<topic>"
+pnpm wiki:sync-plan --staged
+pnpm wiki:sync-check --staged
+pnpm wiki:install-hooks
 pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:log
@@ -67,8 +71,16 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 
 작업자는 broad `rg` 전에 `wiki/index.md`를 읽거나 `pnpm wiki:find "<topic>"`을 먼저 실행한다. wiki가 비어 있거나 stale하거나 raw source verification이 필요할 때만 source search로 내려간다.
 
+## Commit-time wiki sync
+
+Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행해 변경 파일에 맞는 wiki 후보 page를 확인한다. durable knowledge가 생긴 경우 후보 page와 [[index|Wiki Index]], [[log|Wiki Log]]를 갱신한 뒤 `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`를 실행한다.
+
+`wiki:sync-check --staged`는 staged source change가 있는데 staged wiki maintenance change가 없으면 실패한다. `.githooks/pre-commit`은 이 검사를 커밋마다 자동 실행하며, `pnpm wiki:install-hooks`로 현재 checkout에 연결한다.
+
 ## 근거
 
 - `package.json`
 - `.env.example`
 - `prisma/seed.ts`
+- `lib/wiki/sync.ts`
+- `.githooks/pre-commit`
