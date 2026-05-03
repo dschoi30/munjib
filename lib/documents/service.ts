@@ -1,6 +1,12 @@
-import { DocumentStatus, type Prisma } from "@prisma/client";
+import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
+import { reconcileDocumentMetadata } from "@/lib/document-metadata/reconcile";
 import { prisma } from "@/lib/db/client";
+import {
+  assertCanReadDocument,
+  assertCanWriteDocument,
+  highestPermissionLevel,
+} from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { slugifyTitle } from "@/lib/text/slug";
@@ -8,6 +14,7 @@ import type {
   ArchiveDocumentInput,
   CreateDocumentFromBrokenLinkInput,
   CreateDocumentInput,
+  RestoreDocumentVersionInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
@@ -50,8 +57,38 @@ async function getDocumentMembership(documentId: string, actorId: string) {
   if (!document) throw new Error("DOCUMENT_NOT_FOUND");
   const role = document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
+  const access = await getUserDocumentAccess(document.id, actorId);
+  assertCanReadDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
-  return { document, workspace: document.workspace, role };
+  return { document, workspace: document.workspace, role, access };
+}
+
+async function getUserDocumentAccess(documentId: string, actorId: string) {
+  const [explicitPermissionCount, userPermissions] = await Promise.all([
+    prisma.permission.count({
+      where: { resourceType: "DOCUMENT", resourceId: documentId },
+    }),
+    prisma.permission.findMany({
+      where: {
+        resourceType: "DOCUMENT",
+        resourceId: documentId,
+        subjectType: "USER",
+        subjectId: actorId,
+      },
+      select: { permission: true },
+    }),
+  ]);
+
+  return {
+    explicitPermissionCount,
+    userPermission: highestPermissionLevel(
+      userPermissions.map((permission) => permission.permission),
+    ),
+  };
 }
 
 async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: string) {
@@ -61,6 +98,59 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
   });
 
   return latest ? latest.versionNumber + 1 : 1;
+}
+
+async function nextAvailableDocumentSlug(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  title: string,
+  excludeDocumentId?: string,
+) {
+  const baseSlug = slugifyTitle(title);
+  const existingDocuments = await tx.document.findMany({
+    where: {
+      workspaceId,
+      slug: { startsWith: baseSlug },
+      ...(excludeDocumentId ? { id: { not: excludeDocumentId } } : {}),
+    },
+    select: { slug: true },
+  });
+  const existingSlugs = new Set(existingDocuments.map((document) => document.slug));
+
+  if (!existingSlugs.has(baseSlug)) return baseSlug;
+
+  let suffix = 2;
+  while (existingSlugs.has(`${baseSlug}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${baseSlug}-${suffix}`;
+}
+
+function isDocumentSlugUniqueConstraintError(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002" &&
+    Array.isArray(error.meta?.target) &&
+    error.meta.target.includes("workspaceId") &&
+    error.meta.target.includes("slug")
+  );
+}
+
+async function runWithDocumentSlugRetry<T>(operation: () => Promise<T>) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation();
+    } catch (error) {
+      if (!isDocumentSlugUniqueConstraintError(error) || attempt === maxAttempts) {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error("DOCUMENT_SLUG_RETRY_EXHAUSTED");
 }
 
 async function createDocumentWithInitialVersion(
@@ -73,7 +163,7 @@ async function createDocumentWithInitialVersion(
     changeSummary: string;
   },
 ) {
-  const slug = slugifyTitle(input.title);
+  const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, input.title);
   const contentText = markdownToPlainText(input.contentMarkdown);
 
   const document = await tx.document.create({
@@ -107,7 +197,7 @@ export async function createDocument(input: CreateDocumentInput) {
   const { workspace, role } = await getWorkspaceMembership(input.workspaceSlug, input.actorId);
   assertCanWriteWorkspace(role);
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: workspace.id,
       actorId: input.actorId,
@@ -121,6 +211,11 @@ export async function createDocument(input: CreateDocumentInput) {
       sourceDocumentId: document.id,
       contentMarkdown: document.contentMarkdown,
     });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: workspace.id,
+      documentId: document.id,
+      contentMarkdown: document.contentMarkdown,
+    });
 
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
@@ -132,20 +227,25 @@ export async function createDocument(input: CreateDocumentInput) {
     });
 
     return document;
-  });
+  }));
 }
 
 export async function updateDocument(input: UpdateDocumentInput) {
-  const { document, workspace, role } = await getDocumentMembership(
+  const { document, workspace, role, access } = await getDocumentMembership(
     input.documentId,
     input.actorId,
   );
   assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
-  const slug = slugifyTitle(input.title);
   const contentText = markdownToPlainText(input.contentMarkdown);
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const slug = await nextAvailableDocumentSlug(tx, workspace.id, input.title, document.id);
     const updated = await tx.document.update({
       where: { id: document.id },
       data: {
@@ -174,6 +274,11 @@ export async function updateDocument(input: UpdateDocumentInput) {
       sourceDocumentId: updated.id,
       contentMarkdown: updated.contentMarkdown,
     });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: workspace.id,
+      documentId: updated.id,
+      contentMarkdown: updated.contentMarkdown,
+    });
 
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
@@ -185,15 +290,20 @@ export async function updateDocument(input: UpdateDocumentInput) {
     });
 
     return updated;
-  });
+  }));
 }
 
 export async function archiveDocument(input: ArchiveDocumentInput) {
-  const { document, workspace, role } = await getDocumentMembership(
+  const { document, workspace, role, access } = await getDocumentMembership(
     input.documentId,
     input.actorId,
   );
   assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
 
   return prisma.$transaction(async (tx) => {
     const archived = await tx.document.update({
@@ -218,6 +328,95 @@ export async function archiveDocument(input: ArchiveDocumentInput) {
   });
 }
 
+export async function restoreDocumentVersion(input: RestoreDocumentVersionInput) {
+  const version = await prisma.documentVersion.findUnique({
+    where: { id: input.versionId },
+    include: {
+      document: {
+        include: {
+          workspace: {
+            include: {
+              organization: true,
+              members: { where: { userId: input.actorId }, take: 1 },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!version) throw new Error("DOCUMENT_VERSION_NOT_FOUND");
+
+  const role = version.document.workspace.members[0]?.role;
+  assertCanReadWorkspace(role);
+  const access = await getUserDocumentAccess(version.document.id, input.actorId);
+  assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
+
+  const contentText = markdownToPlainText(version.contentMarkdown);
+
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const slug = await nextAvailableDocumentSlug(
+      tx,
+      version.document.workspaceId,
+      version.title,
+      version.document.id,
+    );
+    const restored = await tx.document.update({
+      where: { id: version.document.id },
+      data: {
+        title: version.title,
+        slug,
+        path: `/${slug}`,
+        contentMarkdown: version.contentMarkdown,
+        contentText,
+        updatedById: input.actorId,
+      },
+    });
+
+    await tx.documentVersion.create({
+      data: {
+        documentId: restored.id,
+        versionNumber: await nextVersionNumber(tx, restored.id),
+        title: restored.title,
+        contentMarkdown: restored.contentMarkdown,
+        createdById: input.actorId,
+        changeSummary: `Restored version ${version.versionNumber}`,
+      },
+    });
+
+    await reconcileDocumentLinks(tx, {
+      workspaceId: version.document.workspaceId,
+      sourceDocumentId: restored.id,
+      contentMarkdown: restored.contentMarkdown,
+    });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: version.document.workspaceId,
+      documentId: restored.id,
+      contentMarkdown: restored.contentMarkdown,
+    });
+
+    await writeAuditLog(tx, {
+      organizationId: version.document.workspace.organizationId,
+      actorId: input.actorId,
+      action: "document.version_restored",
+      resourceType: "document",
+      resourceId: restored.id,
+      metadata: {
+        title: restored.title,
+        restoredVersionNumber: version.versionNumber,
+        restoredVersionId: version.id,
+      },
+    });
+
+    return restored;
+  }));
+}
+
 export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrokenLinkInput) {
   const link = await prisma.documentLink.findUnique({
     where: { id: input.linkId },
@@ -236,9 +435,9 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
 
-  const contentMarkdown = `# ${link.targetTitleRaw}\n\nCreated from broken link.`;
+  const contentMarkdown = "";
 
-  return prisma.$transaction(async (tx) => {
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: link.workspaceId,
       actorId: input.actorId,
@@ -252,6 +451,11 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
       targetDocumentId: document.id,
       targetTitle: link.targetTitleRaw,
     });
+    await reconcileDocumentMetadata(tx, {
+      workspaceId: link.workspaceId,
+      documentId: document.id,
+      contentMarkdown: document.contentMarkdown,
+    });
 
     await writeAuditLog(tx, {
       organizationId: link.workspace.organizationId,
@@ -263,5 +467,5 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
     });
 
     return document;
-  });
+  }));
 }

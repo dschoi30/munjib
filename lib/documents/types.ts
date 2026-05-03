@@ -17,6 +17,11 @@ export type ArchiveDocumentInput = {
   actorId: string;
 };
 
+export type RestoreDocumentVersionInput = {
+  versionId: string;
+  actorId: string;
+};
+
 export type CreateDocumentFromBrokenLinkInput = {
   linkId: string;
   actorId: string;

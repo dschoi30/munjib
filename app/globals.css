@@ -11,3 +11,84 @@
 body {
   min-height: 100vh;
 }
+
+.markdown-preview {
+  color: #1c2230;
+  line-height: 1.65;
+}
+
+.markdown-preview > * + * {
+  margin-top: 0.85rem;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3 {
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.markdown-preview h1 {
+  font-size: 1.75rem;
+}
+
+.markdown-preview h2 {
+  font-size: 1.35rem;
+}
+
+.markdown-preview h3 {
+  font-size: 1.1rem;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+  padding-left: 1.25rem;
+}
+
+.markdown-preview ul {
+  list-style: disc;
+}
+
+.markdown-preview ol {
+  list-style: decimal;
+}
+
+.markdown-preview code {
+  border-radius: 4px;
+  background: #eef2f7;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.9em;
+}
+
+.markdown-preview pre {
+  overflow: auto;
+  border-radius: 6px;
+  background: #111827;
+  padding: 1rem;
+  color: #f8fafc;
+}
+
+.markdown-preview pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  border: 1px solid #d6dce5;
+  padding: 0.45rem 0.6rem;
+  text-align: left;
+}
+
+.markdown-preview blockquote {
+  border-left: 3px solid #94a3b8;
+  padding-left: 0.9rem;
+  color: #475569;
+}

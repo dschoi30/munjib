@@ -9,6 +9,9 @@ test-results
 .env.*.local
 *.log
 *.swp
+*.tsbuildinfo
 .DS_Store
 .superpowers/
 .worktrees/
+wiki/.obsidian/
+storage/attachments/

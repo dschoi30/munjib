@@ -54,6 +54,8 @@ model User {
   documentsCreated    Document[]           @relation("DocumentCreatedBy")
   documentsUpdated    Document[]           @relation("DocumentUpdatedBy")
   documentVersions    DocumentVersion[]
+  attachmentsUploaded Attachment[]
+  comments            Comment[]
   auditLogs           AuditLog[]
 }
 
@@ -92,6 +94,7 @@ model Workspace {
   members        WorkspaceMember[]
   documents      Document[]
   documentLinks  DocumentLink[]
+  tags           Tag[]
 
   @@unique([organizationId, slug])
 }
@@ -131,6 +134,10 @@ model Document {
   versions        DocumentVersion[]
   outgoingLinks   DocumentLink[]     @relation("DocumentOutgoingLinks")
   incomingLinks   DocumentLink[]     @relation("DocumentIncomingLinks")
+  tags            DocumentTag[]
+  properties      DocumentProperty[]
+  attachments     Attachment[]
+  comments        Comment[]
 
   @@unique([workspaceId, slug])
   @@index([workspaceId, status])
@@ -169,6 +176,71 @@ model DocumentLink {
   @@index([sourceDocumentId])
   @@index([targetDocumentId])
   @@index([workspaceId, targetTitleRaw])
+}
+
+model Tag {
+  id             String        @id @default(cuid())
+  workspaceId    String
+  name           String
+  normalizedName String
+  createdAt      DateTime      @default(now())
+  workspace      Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  documents      DocumentTag[]
+
+  @@unique([workspaceId, normalizedName])
+  @@index([workspaceId])
+}
+
+model DocumentTag {
+  id         String   @id @default(cuid())
+  documentId String
+  tagId      String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, tagId])
+  @@index([tagId])
+}
+
+model DocumentProperty {
+  id        String   @id @default(cuid())
+  documentId String
+  key       String
+  valueJson Json
+  valueType String
+  document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, key])
+}
+
+model Attachment {
+  id          String   @id @default(cuid())
+  documentId  String
+  fileName    String
+  mimeType    String
+  size        Int
+  storageKey  String
+  uploadedById String
+  createdAt   DateTime @default(now())
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  uploadedBy  User     @relation(fields: [uploadedById], references: [id])
+
+  @@index([documentId])
+  @@index([uploadedById])
+}
+
+model Comment {
+  id         String    @id @default(cuid())
+  documentId String
+  userId     String
+  body       String
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+  document   Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  user       User      @relation(fields: [userId], references: [id])
+
+  @@index([documentId, createdAt])
+  @@index([userId])
 }
 
 model Permission {
