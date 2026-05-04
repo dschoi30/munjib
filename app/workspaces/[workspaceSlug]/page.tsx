@@ -200,6 +200,7 @@ export default async function WorkspacePage({
           uploadAttachmentAction={uploadAttachmentAction}
           linkCandidates={readableDocuments.map((document) => ({
             id: document.id,
+            slug: document.slug,
             title: document.title,
           }))}
           tags={documentTags.map((documentTag) => documentTag.tag)}
