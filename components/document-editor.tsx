@@ -19,6 +19,7 @@ import {
   getActiveWikiLinkCompletion,
   type ActiveWikiLinkCompletion,
 } from "@/lib/wiki-links/autocomplete";
+import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -333,6 +334,7 @@ function DocumentProperties({
       broken: false,
     })),
   ];
+  const visibleProperties = visibleDocumentProperties(properties);
 
   return (
     <section aria-label="Document properties" className="space-y-3 py-2">
@@ -376,12 +378,12 @@ function DocumentProperties({
             ),
           )}
         </PropertyRow>
-        {properties.map((property) => (
+        {visibleProperties.map((property) => (
           <PropertyRow key={property.id} label={property.key}>
             <span className="break-words text-slate-700">{String(property.valueJson)}</span>
           </PropertyRow>
         ))}
-        {properties.length === 0 ? (
+        {visibleProperties.length === 0 ? (
           <PropertyRow label="frontmatter">
             <span className="text-slate-400">none</span>
           </PropertyRow>
