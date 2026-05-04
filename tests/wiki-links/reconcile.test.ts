@@ -113,6 +113,54 @@ Body [[Ignored Content Link]].`,
     ).resolves.toBeNull();
   });
 
+  it("orders link panels by current frontmatter order even when stored rows are stale", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const alpha = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Alpha",
+      contentMarkdown: "# Alpha",
+    });
+    const zeta = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Zeta",
+      contentMarkdown: "# Zeta",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Stale Links",
+      contentMarkdown: `---
+links:
+  - "[[Zeta]]"
+  - "[[Alpha]]"
+---
+
+Body [[Content Only]].`,
+    });
+    await prisma.documentLink.updateMany({
+      where: { sourceDocumentId: source.id },
+      data: { sortOrder: 0 },
+    });
+    await prisma.documentLink.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        sourceDocumentId: source.id,
+        targetTitleRaw: "Content Only",
+        targetDocumentId: null,
+        isBroken: true,
+        sortOrder: 0,
+      },
+    });
+
+    const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
+
+    expect(panels.outgoing.map((link) => link.targetTitleRaw)).toEqual(["Zeta", "Alpha"]);
+    expect(panels.outgoing.map((link) => link.targetDocument?.id)).toEqual([zeta.id, alpha.id]);
+    expect(panels.brokenLinks).toEqual([]);
+  });
+
   it("replaces outgoing links when a document is updated", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createDocument({

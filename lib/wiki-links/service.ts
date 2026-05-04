@@ -5,6 +5,7 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { assertCanReadWorkspace } from "@/lib/permissions/workspace";
+import { parseFrontmatterWikiLinks } from "@/lib/wiki-links/parser";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 
 async function getReadableDocument(documentId: string, actorId: string) {
@@ -107,7 +108,11 @@ export async function getDocumentLinkPanels(
   documentId: string,
   actorId: string,
 ): Promise<DocumentLinkPanels> {
-  await getReadableDocument(documentId, actorId);
+  const document = await getReadableDocument(documentId, actorId);
+  const frontmatterLinks = parseFrontmatterWikiLinks(document.contentMarkdown);
+  const frontmatterOrderByTarget = new Map(
+    frontmatterLinks.map((link, index) => [link.targetTitleRaw.toLowerCase(), index]),
+  );
 
   const [outgoing, backlinks] = await Promise.all([
     prisma.documentLink.findMany({
@@ -133,8 +138,14 @@ export async function getDocumentLinkPanels(
     actorId,
   );
   const readableOutgoing = outgoing.filter(
-    (link) => !link.targetDocument || readableTargetIds.has(link.targetDocument.id),
-  );
+    (link) =>
+      frontmatterOrderByTarget.has(link.targetTitleRaw.toLowerCase()) &&
+      (!link.targetDocument || readableTargetIds.has(link.targetDocument.id)),
+  ).sort((left, right) => {
+    const leftOrder = frontmatterOrderByTarget.get(left.targetTitleRaw.toLowerCase()) ?? 0;
+    const rightOrder = frontmatterOrderByTarget.get(right.targetTitleRaw.toLowerCase()) ?? 0;
+    return leftOrder - rightOrder;
+  });
   const readableBacklinks = backlinks.filter((link) =>
     readableSourceIds.has(link.sourceDocument.id),
   );

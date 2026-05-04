@@ -68,7 +68,7 @@ Preview 변환은 후보 문서 title slug map을 caller에서 memoize해 전달
 
 ## Backlinks
 
-Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 frontmatter link의 source document 목록이 Properties links row와 local graph에 표시된다.
+Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 frontmatter link의 source document 목록은 local graph와 metadata panel 쪽 관계 정보에 사용하지만, Properties Links row에는 현재 문서의 YAML `links:` outgoing만 표시한다.
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
@@ -76,7 +76,7 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `createDocumentFromBrokenLink()`는 broken link row를 기준으로 새 문서를 만든다. 새 문서 title은 `targetTitleRaw`이고 초기 markdown은 빈 문자열이다. 생성 후 `repairBrokenLinksForTarget()`이 같은 workspace 안에서 같은 `targetTitleRaw`를 가진 broken links를 새 문서로 연결한다.
 
-UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 함께 표시한다. 정상 link와 backlink는 보라색 link로, broken link는 연한 회색 underline button으로 보여 시각적으로 구분한다.
+UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 함께 표시한다. 정상 outgoing link는 보라색 link로, broken outgoing link는 연한 회색 underline button으로 보여 시각적으로 구분한다.
 
 ## 현재 한계
 
