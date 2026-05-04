@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 16
+source_count: 17
 tags:
   - munjib
   - workflow
@@ -16,6 +16,7 @@ tags:
 links:
   - "[[Munjib]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Auth And Permissions Workflow]]"
 ---
@@ -38,18 +39,22 @@ links:
 
 좌측 navigation은 title/body search, quick switcher, recent documents, localStorage favorites를 제공한다. 검색 결과는 permission filter를 통과한 문서 안에서 title 또는 `contentText` 기준으로 좁힌다.
 
+Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
+
 ## 생성 흐름
 
 `createDocumentAction()`은 현재 user를 확인한 뒤 `createDocument()`를 호출한다.
 
-`createDocumentAction()`은 `blank`, `runbook`, `policy`, `folder` template을 지원한다. `folder`는 별도 folder table이 아니라 `Untitled folder` title과 빈 markdown을 가진 루트 문서를 만든다.
+현재 `createDocumentAction()`은 `blank`, `runbook`, `policy`, `folder` template을 지원한다. `folder`는 별도 folder table이 아니라 `Untitled folder` title과 빈 markdown을 가진 루트 문서를 만든다.
+
+Issue #20 구현 후 `folder` template 방식은 제거되고 `New folder`는 `Folder` row를 생성한다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다.
 
 `createDocument()`는 다음을 수행한다.
 
 1. workspace membership을 조회한다.
 2. read/write 권한을 확인한다.
-3. title에서 unique slug를 만든다.
-4. markdown과 plain text를 저장해 `Document`를 생성한다.
+3. 선택 folder 안에서 unique slug를 만든다.
+4. folder path와 document slug를 결합한 `path`와 함께 `Document`를 생성한다.
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
 7. `document.created` audit log를 남긴다.
@@ -63,7 +68,7 @@ links:
 
 1. document와 workspace membership을 조회한다.
 2. write 권한을 확인한다.
-3. title에 맞춰 unique slug를 다시 계산한다. 현재 document id는 중복 검사에서 제외한다.
+3. 현재 folder 안에서 title에 맞춰 unique slug를 다시 계산한다. 현재 document id는 중복 검사에서 제외한다.
 4. markdown, plain text, title, slug, path, updatedBy를 갱신한다.
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
@@ -80,6 +85,8 @@ links:
 ## 아카이브와 broken link 생성
 
 `archiveDocument()`는 문서 status를 `ARCHIVED`로 바꾸고 `archivedAt`을 채운다. 현재 workspace 문서 목록은 active 문서만 보여준다.
+
+Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
 `createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다.
 
