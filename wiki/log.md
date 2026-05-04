@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 11
+source_count: 12
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-04T17:50:00+09:00 - design
+
+- Result: 현재 Prisma schema 전체를 `Document Knowledge Model`에 Mermaid `erDiagram`으로 추가하기 위한 설계를 확정했다.
+- Coverage: ERD 대상은 `prisma/schema.prisma`의 전체 model set이며, enum은 Mermaid entity로 분리하지 않고 기존 prose 설명에 유지한다.
+- Pages: [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #21, `docs/superpowers/specs/2026-05-04-mermaid-erd-wiki-design.md`, `prisma/schema.prisma`.
+- Verification: spec self-review에서 placeholder, TODO, scope ambiguity 없음.
 
 ## 2026-05-04T12:35:00+09:00 - review
 
