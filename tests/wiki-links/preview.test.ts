@@ -6,8 +6,8 @@ import {
 
 describe("renderPreviewMarkdownWithWikiLinks", () => {
   const candidateBySlug = buildWikiLinkPreviewCandidateMap([
-    { id: "doc-runbook", title: "Engineering Runbook" },
-    { id: "doc-welcome", title: "Welcome" },
+    { id: "doc-runbook", slug: "engineering-runbook", title: "Engineering Runbook" },
+    { id: "doc-welcome", slug: "welcome", title: "Welcome" },
   ]);
 
   it("renders resolved wiki links as markdown links to the selected document", () => {
@@ -50,5 +50,33 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
         candidateBySlug,
       ),
     ).toBe("````\n```\n[[Welcome]]\n````\nOutside [Welcome](?document=doc-welcome)");
+  });
+
+  it("preserves code span state across line endings", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("Keep `code\n[[Welcome]]\ncode` literal.", candidateBySlug),
+    ).toBe("Keep `code\n[[Welcome]]\ncode` literal.");
+  });
+
+  it("does not link ambiguous title slug collisions", () => {
+    const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
+      { id: "first", slug: "runbook", title: "Runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook]].", ambiguousCandidates)).toBe(
+      "See Runbook.",
+    );
+  });
+
+  it("still links explicit stored slugs when title slugs collide", () => {
+    const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
+      { id: "first", slug: "runbook", title: "Runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook 2]].", ambiguousCandidates)).toBe(
+      "See [Runbook 2](?document=second).",
+    );
   });
 });

@@ -2,18 +2,34 @@ import { slugifyTitle } from "@/lib/text/slug";
 
 export type WikiLinkPreviewCandidate = {
   id: string;
+  slug: string;
   title: string;
 };
 
 export function buildWikiLinkPreviewCandidateMap(candidates: WikiLinkPreviewCandidate[]) {
-  return new Map(candidates.map((candidate) => [slugifyTitle(candidate.title), candidate]));
+  const candidateBySlug = new Map<string, WikiLinkPreviewCandidate | null>();
+
+  for (const candidate of candidates) {
+    candidateBySlug.set(candidate.slug, candidate);
+
+    const titleSlug = slugifyTitle(candidate.title);
+    const existing = candidateBySlug.get(titleSlug);
+    if (existing === undefined) {
+      candidateBySlug.set(titleSlug, candidate);
+    } else if (existing?.id !== candidate.id) {
+      candidateBySlug.set(titleSlug, null);
+    }
+  }
+
+  return candidateBySlug;
 }
 
 export function renderPreviewMarkdownWithWikiLinks(
   markdown: string,
-  candidateBySlug: Map<string, WikiLinkPreviewCandidate>,
+  candidateBySlug: Map<string, WikiLinkPreviewCandidate | null>,
 ) {
   let openFence: MarkdownFence | null = null;
+  let openingTicks: string | null = null;
 
   return markdown
     .split("\n")
@@ -24,7 +40,11 @@ export function renderPreviewMarkdownWithWikiLinks(
         return line;
       }
 
-      return openFence ? line : transformPreviewLine(line, candidateBySlug);
+      if (openFence) return line;
+
+      const result = transformPreviewLine(line, candidateBySlug, openingTicks);
+      openingTicks = result.openingTicks;
+      return result.line;
     })
     .join("\n");
 }
@@ -52,12 +72,13 @@ function isClosingFence(openFence: MarkdownFence, fence: MarkdownFence, line: st
 
 function transformPreviewLine(
   line: string,
-  candidateBySlug: Map<string, WikiLinkPreviewCandidate>,
+  candidateBySlug: Map<string, WikiLinkPreviewCandidate | null>,
+  currentOpeningTicks: string | null,
 ) {
   const segments = line.split(/(`+)/);
-  let openingTicks: string | null = null;
+  let openingTicks = currentOpeningTicks;
 
-  return segments
+  const transformedLine = segments
     .map((segment) => {
       if (/^`+$/.test(segment)) {
         if (!openingTicks) {
@@ -74,11 +95,13 @@ function transformPreviewLine(
       return openingTicks ? segment : transformWikiLinks(segment, candidateBySlug);
     })
     .join("");
+
+  return { line: transformedLine, openingTicks };
 }
 
 function transformWikiLinks(
   text: string,
-  candidateBySlug: Map<string, WikiLinkPreviewCandidate>,
+  candidateBySlug: Map<string, WikiLinkPreviewCandidate | null>,
 ) {
   return text.replace(/(!?)\[\[([^\]]+)\]\]/g, (match, embedPrefix: string, rawContent: string) => {
     if (embedPrefix) return match;

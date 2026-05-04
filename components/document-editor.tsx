@@ -30,6 +30,7 @@ type EditableDocument = {
 };
 type LinkCandidate = {
   id: string;
+  slug: string;
   title: string;
 };
 
