@@ -43,11 +43,12 @@ export async function reconcileDocumentMetadata(
 
   if (metadata.properties.length > 0) {
     await tx.documentProperty.createMany({
-      data: metadata.properties.map((property) => ({
+      data: metadata.properties.map((property, index) => ({
         documentId: input.documentId,
         key: property.key,
         valueJson: property.value,
         valueType: property.valueType,
+        sortOrder: index,
       })),
     });
   }

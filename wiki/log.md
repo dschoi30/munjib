@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 9
+source_count: 10
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-04T12:25:00+09:00 - review
+
+- Result: Properties 영역의 frontmatter property 표시 순서가 markdown 파일의 YAML key 순서와 달라지던 문제를 수정했다.
+- Coverage: `DocumentProperty.sortOrder`를 추가하고 metadata reconciliation 시 YAML key 순서를 저장하며, workspace page는 `sortOrder` 기준으로 properties를 조회한다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `prisma/schema.prisma`, `prisma/migrations/20260504122500_add_document_property_sort_order/migration.sql`, `lib/document-metadata/reconcile.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/documents/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/documents/service.test.ts tests/document-metadata/parser.test.ts tests/document-metadata/display.test.ts`.
 
 ## 2026-05-04T12:15:00+09:00 - review
 

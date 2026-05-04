@@ -130,7 +130,7 @@ export default async function WorkspacePage({
   const documentProperties = selectedDocument
     ? await prisma.documentProperty.findMany({
         where: { documentId: selectedDocument.id },
-        orderBy: { key: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
       })
     : [];
   const attachments = selectedDocument

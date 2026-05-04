@@ -208,9 +208,11 @@ model DocumentProperty {
   key       String
   valueJson Json
   valueType String
+  sortOrder Int      @default(0)
   document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, key])
+  @@index([documentId, sortOrder])
 }
 
 model Attachment {

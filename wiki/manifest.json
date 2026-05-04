@@ -63,7 +63,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 14,
+      "source_count": 15,
       "searchPriority": 50
     },
     {
@@ -84,7 +84,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 8,
+      "source_count": 9,
       "searchPriority": 50
     },
     {
@@ -154,7 +154,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 9,
+      "source_count": 10,
       "searchPriority": 1
     },
     {

@@ -62,14 +62,14 @@ Track #review work.`,
     });
     const properties = await prisma.documentProperty.findMany({
       where: { documentId: document.id },
-      orderBy: { key: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
     });
 
     expect(tags.map((documentTag) => documentTag.tag.normalizedName)).toEqual(["review"]);
-    expect(properties.map((property) => [property.key, property.valueJson])).toEqual([
-      ["owner", "Platform"],
-      ["review_due_at", "2026-05-01"],
-      ["status", "draft"],
+    expect(properties.map((property) => [property.key, property.valueJson, property.sortOrder])).toEqual([
+      ["owner", "Platform", 0],
+      ["status", "draft", 1],
+      ["review_due_at", "2026-05-01", 2],
     ]);
   });
 
