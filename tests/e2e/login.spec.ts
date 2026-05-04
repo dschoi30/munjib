@@ -45,7 +45,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Engineering Runbook", exact: true }).click();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("# Welcome\n\nSee [[Engineering Runbook]]");
   await editor.fill(
-    `---\nowner: Platform\nstatus: draft\n---\n\n# Welcome\n\nSee [[Engineering Runbook]] and [[${missingRunbookTitle}]] #review`,
+    `---\nowner: Platform\nstatus: draft\nlinks:\n  - "[[Engineering Runbook]]"\n  - "[[${missingRunbookTitle}]]"\n---\n\n# Welcome\n\nSee [[Engineering Runbook]] and [[${missingRunbookTitle}]] #review`,
   );
   await page.getByRole("button", { name: "Save" }).click();
   const properties = page.getByRole("region", { name: "Document properties" });
