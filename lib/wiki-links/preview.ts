@@ -41,6 +41,7 @@ export function renderPreviewMarkdownWithWikiLinks(
       }
 
       if (openFence) return line;
+      if (isIndentedCodeLine(line)) return line;
 
       const result = transformPreviewLine(line, candidateBySlug, openingTicks);
       openingTicks = result.openingTicks;
@@ -68,6 +69,10 @@ function isClosingFence(openFence: MarkdownFence, fence: MarkdownFence, line: st
   if (fence.marker !== openFence.marker || fence.width < openFence.width) return false;
   const closingFence = fence.marker === "`" ? "`" : "~";
   return new RegExp(`^ {0,3}\\${closingFence}{${openFence.width},}\\s*$`).test(line);
+}
+
+function isIndentedCodeLine(line: string) {
+  return /^( {4,}|\t)/.test(line);
 }
 
 function transformPreviewLine(
@@ -103,7 +108,8 @@ function transformWikiLinks(
   text: string,
   candidateBySlug: Map<string, WikiLinkPreviewCandidate | null>,
 ) {
-  return text.replace(/(!?)\[\[([^\]]+)\]\]/g, (match, embedPrefix: string, rawContent: string) => {
+  return text.replace(/(!?)\[\[([^\]]+)\]\]/g, (match, embedPrefix: string, rawContent: string, offset: number) => {
+    if (text[offset - 1] === "\\") return match;
     if (embedPrefix) return match;
 
     const raw = rawContent.trim();
