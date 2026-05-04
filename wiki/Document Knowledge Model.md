@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 8
+updated: 2026-05-04
+source_count: 9
 tags:
   - munjib
   - data-model
@@ -63,7 +63,7 @@ Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 
 - `DocumentTag`: 문서와 tag의 join table이다.
 - `DocumentProperty`: YAML frontmatter에서 추출한 key/value property다.
 
-`lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
+`lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `DocumentProperty.sortOrder`는 YAML frontmatter에 적힌 key 순서를 보존해 Properties UI가 markdown 파일의 속성 순서와 일치하도록 한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
 
 ## 첨부와 댓글
 
