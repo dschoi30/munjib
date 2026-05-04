@@ -10,11 +10,17 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  buildWikiLinkPreviewCandidateMap,
+  renderPreviewMarkdownWithWikiLinks,
+} from "@/lib/wiki-links/preview";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 import {
   getActiveWikiLinkCompletion,
   type ActiveWikiLinkCompletion,
 } from "@/lib/wiki-links/autocomplete";
+import { visibleDocumentProperties } from "@/lib/document-metadata/display";
+import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -26,6 +32,7 @@ type EditableDocument = {
 };
 type LinkCandidate = {
   id: string;
+  slug: string;
   title: string;
 };
 
@@ -206,7 +213,7 @@ export function DocumentEditor({
           </div>
         ) : null}
         {mode !== "edit" ? (
-          <MarkdownPreview markdown={contentMarkdown} />
+          <MarkdownPreview markdown={contentMarkdown} linkCandidates={linkCandidates} />
         ) : null}
       </div>
       <div className="flex items-center justify-between">
@@ -247,10 +254,44 @@ function ModeButton({
   );
 }
 
-function MarkdownPreview({ markdown }: { markdown: string }) {
+function MarkdownPreview({
+  markdown,
+  linkCandidates,
+}: {
+  markdown: string;
+  linkCandidates: LinkCandidate[];
+}) {
+  const candidateBySlug = useMemo(
+    () => buildWikiLinkPreviewCandidateMap(linkCandidates),
+    [linkCandidates],
+  );
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+        const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
+        return href?.startsWith("?document=") ? (
+          <Link href={href} className={className}>
+            {children}
+          </Link>
+        ) : (
+          <a href={href} className={className}>
+            {children}
+          </a>
+        );
+      },
+    }),
+    [],
+  );
+  const previewMarkdown = useMemo(
+    () => renderPreviewMarkdownWithWikiLinks(stripDocumentFrontmatter(markdown), candidateBySlug),
+    [markdown, candidateBySlug],
+  );
+
   return (
     <div className="markdown-preview min-w-0 p-5">
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{markdown || "_Nothing to preview._"}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        {previewMarkdown || "_Nothing to preview._"}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -278,71 +319,50 @@ function DocumentProperties({
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   createCommentAction: (formData: FormData) => Promise<void>;
 }) {
-  const linkedItems = [
-    ...linkPanels.outgoing.map((link) => ({
-      id: `outgoing-${link.id}`,
-      label: link.targetTitleRaw,
-      href: link.targetDocument ? `?document=${link.targetDocument.id}` : null,
-      linkId: link.id,
-      broken: link.isBroken,
-    })),
-    ...linkPanels.backlinks.map((backlink) => ({
-      id: `backlink-${backlink.id}`,
-      label: backlink.sourceDocument.title,
-      href: `?document=${backlink.sourceDocument.id}`,
-      linkId: null,
-      broken: false,
-    })),
-  ];
+  const linkedItems = linkPanels.outgoing.map((link) => ({
+    id: `outgoing-${link.id}`,
+    label: link.targetTitleRaw,
+    href: link.targetDocument ? `?document=${link.targetDocument.id}` : null,
+    linkId: link.id,
+    broken: link.isBroken,
+  }));
+  const visibleProperties = visibleDocumentProperties(properties);
+  const hasFrontmatterTags = properties.some((property) => property.key === "tags");
+  const hasFrontmatterLinks = properties.some((property) => property.key === "links");
 
   return (
     <section aria-label="Document properties" className="space-y-3 py-2">
       <h2 className="text-lg font-semibold">Properties</h2>
       <div className="space-y-2 text-sm">
-        <PropertyRow label="tags">
-          {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
-          {tags.map((tag) => (
-            <span key={tag.id} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
-              #{tag.name}
-            </span>
-          ))}
-        </PropertyRow>
-        <PropertyRow label="links">
-          {linkedItems.length === 0 ? <span className="text-slate-400">none</span> : null}
-          {linkedItems.map((item) =>
-            item.broken && item.linkId ? (
-              <form key={item.id} action={createFromBrokenLinkAction} className="inline-flex">
-                <input type="hidden" name="linkId" value={item.linkId} />
-                <button
-                  type="submit"
-                  disabled={!canWrite}
-                  className="rounded-full px-1 text-slate-400 underline decoration-slate-300 underline-offset-2 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
-                  title="Create document from broken link"
-                >
-                  {item.label}
-                </button>
-              </form>
-            ) : item.href ? (
-              <Link
-                key={item.id}
-                href={item.href}
-                className="rounded-full px-1 text-violet-600 underline underline-offset-2 hover:text-violet-700"
-              >
-                {item.label}
-              </Link>
-            ) : (
-              <span key={item.id} className="text-slate-400">
-                {item.label}
-              </span>
-            ),
-          )}
-        </PropertyRow>
-        {properties.map((property) => (
-          <PropertyRow key={property.id} label={property.key}>
-            <span className="break-words text-slate-700">{String(property.valueJson)}</span>
-          </PropertyRow>
-        ))}
-        {properties.length === 0 ? (
+        {!hasFrontmatterTags ? <TagsPropertyRow tags={tags} /> : null}
+        {!hasFrontmatterLinks && linkedItems.length > 0 ? (
+          <LinksPropertyRow
+            linkedItems={linkedItems}
+            canWrite={canWrite}
+            createFromBrokenLinkAction={createFromBrokenLinkAction}
+          />
+        ) : null}
+        {properties.map((property) => {
+          if (property.key === "tags") {
+            return <TagsPropertyRow key={property.id} tags={tags} />;
+          }
+          if (property.key === "links") {
+            return (
+              <LinksPropertyRow
+                key={property.id}
+                linkedItems={linkedItems}
+                canWrite={canWrite}
+                createFromBrokenLinkAction={createFromBrokenLinkAction}
+              />
+            );
+          }
+          return (
+            <PropertyRow key={property.id} label={property.key}>
+              <span className="break-words text-slate-700">{String(property.valueJson)}</span>
+            </PropertyRow>
+          );
+        })}
+        {visibleProperties.length === 0 && !hasFrontmatterTags && linkedItems.length === 0 ? (
           <PropertyRow label="frontmatter">
             <span className="text-slate-400">none</span>
           </PropertyRow>
@@ -381,6 +401,68 @@ function DocumentProperties({
         </PropertyRow>
       </div>
     </section>
+  );
+}
+
+function TagsPropertyRow({ tags }: { tags: Pick<Tag, "id" | "name">[] }) {
+  return (
+    <PropertyRow label="tags">
+      {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
+      {tags.map((tag) => (
+        <span key={tag.id} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
+          #{tag.name}
+        </span>
+      ))}
+    </PropertyRow>
+  );
+}
+
+function LinksPropertyRow({
+  linkedItems,
+  canWrite,
+  createFromBrokenLinkAction,
+}: {
+  linkedItems: Array<{
+    id: string;
+    label: string;
+    href: string | null;
+    linkId: string;
+    broken: boolean;
+  }>;
+  canWrite: boolean;
+  createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <PropertyRow label="links">
+      {linkedItems.length === 0 ? <span className="text-slate-400">none</span> : null}
+      {linkedItems.map((item) =>
+        item.broken ? (
+          <form key={item.id} action={createFromBrokenLinkAction} className="inline-flex">
+            <input type="hidden" name="linkId" value={item.linkId} />
+            <button
+              type="submit"
+              disabled={!canWrite}
+              className="rounded-full px-1 text-slate-400 underline decoration-slate-300 underline-offset-2 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+              title="Create document from broken link"
+            >
+              {item.label}
+            </button>
+          </form>
+        ) : item.href ? (
+          <Link
+            key={item.id}
+            href={item.href}
+            className="rounded-full px-1 text-violet-600 underline underline-offset-2 hover:text-violet-700"
+          >
+            {item.label}
+          </Link>
+        ) : (
+          <span key={item.id} className="text-slate-400">
+            {item.label}
+          </span>
+        ),
+      )}
+    </PropertyRow>
   );
 }
 

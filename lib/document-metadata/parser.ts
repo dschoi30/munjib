@@ -25,6 +25,14 @@ export function parseDocumentMetadata(markdown: string): ParsedDocumentMetadata 
   return { tags, properties };
 }
 
+export function stripDocumentFrontmatter(markdown: string) {
+  const normalizedMarkdown = markdown.replace(/\r\n/g, "\n").trimStart();
+  const match = normalizedMarkdown.match(/^---[ \t]*\n[\s\S]*?\n---[ \t]*(?:\n|$)/);
+  if (!match) return markdown;
+
+  return normalizedMarkdown.slice(match[0].length).replace(/^\n/, "");
+}
+
 function parseFrontmatter(markdown: string): ParsedDocumentProperty[] {
   const normalizedMarkdown = markdown.replace(/\r\n/g, "\n").trimStart();
   if (!normalizedMarkdown.startsWith("---\n")) return [];

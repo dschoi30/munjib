@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { slugifyTitle } from "@/lib/text/slug";
-import { parseWikiLinks } from "@/lib/wiki-links/parser";
+import { parseFrontmatterWikiLinks } from "@/lib/wiki-links/parser";
 
 export async function reconcileDocumentLinks(
   tx: Prisma.TransactionClient,
@@ -14,7 +14,7 @@ export async function reconcileDocumentLinks(
     where: { sourceDocumentId: input.sourceDocumentId },
   });
 
-  const parsedLinks = parseWikiLinks(input.contentMarkdown);
+  const parsedLinks = parseFrontmatterWikiLinks(input.contentMarkdown);
   if (parsedLinks.length === 0) return;
 
   const targetSlugs = parsedLinks.map((link) => slugifyTitle(link.targetTitleRaw));
@@ -29,7 +29,7 @@ export async function reconcileDocumentLinks(
   const targetIdBySlug = new Map(targets.map((target) => [target.slug, target.id]));
 
   await tx.documentLink.createMany({
-    data: parsedLinks.map((link) => {
+    data: parsedLinks.map((link, index) => {
       const targetId = targetIdBySlug.get(slugifyTitle(link.targetTitleRaw));
       return {
         workspaceId: input.workspaceId,
@@ -38,6 +38,7 @@ export async function reconcileDocumentLinks(
         targetTitleRaw: link.targetTitleRaw,
         alias: link.alias,
         isBroken: !targetId,
+        sortOrder: index,
       };
     }),
   });

@@ -1,0 +1,97 @@
+import { describe, expect, it } from "vitest";
+import {
+  buildWikiLinkPreviewCandidateMap,
+  renderPreviewMarkdownWithWikiLinks,
+} from "@/lib/wiki-links/preview";
+
+describe("renderPreviewMarkdownWithWikiLinks", () => {
+  const candidateBySlug = buildWikiLinkPreviewCandidateMap([
+    { id: "doc-runbook", slug: "engineering-runbook", title: "Engineering Runbook" },
+    { id: "doc-welcome", slug: "welcome", title: "Welcome" },
+  ]);
+
+  it("renders resolved wiki links as markdown links to the selected document", () => {
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Engineering Runbook]].", candidateBySlug)).toBe(
+      "See [Engineering Runbook](?document=doc-runbook).",
+    );
+  });
+
+  it("uses aliases for link labels while resolving by target title", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("See [[Engineering Runbook|the runbook]].", candidateBySlug),
+    ).toBe("See [the runbook](?document=doc-runbook).");
+  });
+
+  it("removes brackets from unresolved page links without creating a navigation target", () => {
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Missing Policy]].", candidateBySlug)).toBe(
+      "See Missing Policy.",
+    );
+  });
+
+  it("leaves embeds and code untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks(
+        "Keep ![[Image.png]] and `[[Welcome]]` literal.\n\n```\n[[Welcome]]\n```",
+        candidateBySlug,
+      ),
+    ).toBe("Keep ![[Image.png]] and `[[Welcome]]` literal.\n\n```\n[[Welcome]]\n```");
+  });
+
+  it("leaves escaped wiki links untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("Keep \\[[Welcome]] literal.", candidateBySlug),
+    ).toBe("Keep \\[[Welcome]] literal.");
+  });
+
+  it("leaves indented code blocks untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks(
+        "    [[Welcome]]\n\t[[Welcome]]\nOutside [[Welcome]]",
+        candidateBySlug,
+      ),
+    ).toBe("    [[Welcome]]\n\t[[Welcome]]\nOutside [Welcome](?document=doc-welcome)");
+  });
+
+  it("leaves even-length backtick code spans untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("Keep ``[[Welcome]]`` literal.", candidateBySlug),
+    ).toBe("Keep ``[[Welcome]]`` literal.");
+  });
+
+  it("does not close longer fenced code blocks with shorter fences", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks(
+        "````\n```\n[[Welcome]]\n````\nOutside [[Welcome]]",
+        candidateBySlug,
+      ),
+    ).toBe("````\n```\n[[Welcome]]\n````\nOutside [Welcome](?document=doc-welcome)");
+  });
+
+  it("preserves code span state across line endings", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("Keep `code\n[[Welcome]]\ncode` literal.", candidateBySlug),
+    ).toBe("Keep `code\n[[Welcome]]\ncode` literal.");
+  });
+
+  it("does not link ambiguous title slug collisions", () => {
+    const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
+      { id: "first", slug: "runbook", title: "Runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook]].", ambiguousCandidates)).toBe(
+      "See Runbook.",
+    );
+  });
+
+  it("still links explicit stored slugs when title slugs collide", () => {
+    const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
+      { id: "first", slug: "runbook", title: "Runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook 2]].", ambiguousCandidates)).toBe(
+      "See [Runbook 2](?document=second).",
+    );
+  });
+});

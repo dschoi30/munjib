@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 12
+updated: 2026-05-04
+source_count: 16
 tags:
   - munjib
   - workflow
@@ -89,7 +89,9 @@ links:
 
 Editor는 edit/split/preview mode를 제공한다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다.
 
-Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Links row는 outgoing links와 backlinks를 가로로 합쳐 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
+Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
+
+Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
 우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit/split mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
 
@@ -102,7 +104,12 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 - `components/document-navigation.tsx`
 - `components/metadata-panel.tsx`
 - `lib/documents/service.ts`
+- `lib/wiki-links/preview.ts`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
+- `lib/document-metadata/display.ts`
+- `lib/document-metadata/parser.ts`
 - `lib/document-metadata/reconcile.ts`
+- `prisma/schema.prisma`
+- `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`

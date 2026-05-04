@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseWikiLinks } from "@/lib/wiki-links/parser";
+import { parseFrontmatterWikiLinks, parseWikiLinks } from "@/lib/wiki-links/parser";
 
 describe("parseWikiLinks", () => {
   it("extracts unique wiki links in first-seen order", () => {
@@ -25,5 +25,24 @@ describe("parseWikiLinks", () => {
     expect(parseWikiLinks("[[  Product Spec  |  spec  ]]")).toEqual([
       { targetTitleRaw: "Product Spec", alias: "spec" },
     ]);
+  });
+
+  it("extracts links only from YAML frontmatter links in file order", () => {
+    expect(
+      parseFrontmatterWikiLinks(`---
+links:
+  - "[[Runbook]]"
+  - "[[Engineering Guide|guide]]"
+---
+
+Content [[Ignored Link]].`),
+    ).toEqual([
+      { targetTitleRaw: "Runbook", alias: null },
+      { targetTitleRaw: "Engineering Guide", alias: "guide" },
+    ]);
+  });
+
+  it("ignores content links when frontmatter links are missing", () => {
+    expect(parseFrontmatterWikiLinks("# Plan\n\nSee [[Runbook]].")).toEqual([]);
   });
 });
