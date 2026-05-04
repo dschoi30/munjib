@@ -37,6 +37,21 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     ).toBe("Keep ![[Image.png]] and `[[Welcome]]` literal.\n\n```\n[[Welcome]]\n```");
   });
 
+  it("leaves escaped wiki links untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks("Keep \\[[Welcome]] literal.", candidateBySlug),
+    ).toBe("Keep \\[[Welcome]] literal.");
+  });
+
+  it("leaves indented code blocks untouched", () => {
+    expect(
+      renderPreviewMarkdownWithWikiLinks(
+        "    [[Welcome]]\n\t[[Welcome]]\nOutside [[Welcome]]",
+        candidateBySlug,
+      ),
+    ).toBe("    [[Welcome]]\n\t[[Welcome]]\nOutside [Welcome](?document=doc-welcome)");
+  });
+
   it("leaves even-length backtick code spans untouched", () => {
     expect(
       renderPreviewMarkdownWithWikiLinks("Keep ``[[Welcome]]`` literal.", candidateBySlug),

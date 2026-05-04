@@ -43,8 +43,8 @@ links:
 
 ## 2026-05-04T01:55:00+09:00 - review
 
-- Result: PR #19 review feedback에 따라 markdown preview 변환이 multi-line inline code span과 longer fenced code block을 올바르게 보존하고, slug collision에서 임의 target을 고르지 않도록 보강했다.
-- Coverage: matching backtick delimiter 기반 inline code span tracking, opening fence marker/width 기반 fenced code tracking, preview candidate slug map memoization, ReactMarkdown link component memoization, duplicate title slug ambiguity fallback.
+- Result: PR #19 review feedback에 따라 markdown preview 변환이 multi-line inline code span, longer fenced code block, escaped wiki link, indented code block을 올바르게 보존하고, slug collision에서 임의 target을 고르지 않도록 보강했다.
+- Coverage: matching backtick delimiter 기반 inline code span tracking, opening fence marker/width 기반 fenced code tracking, escaped `\[[...]]` literal fallback, 4-space/tab indented code block preservation, preview candidate slug map memoization, ReactMarkdown link component memoization, duplicate title slug ambiguity fallback.
 - Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
 - Source evidence: PR #19 review comments, `components/document-editor.tsx`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/parser.test.ts`.
