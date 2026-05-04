@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 16
+updated: 2026-05-04
+source_count: 17
 tags:
   - munjib
   - source
@@ -14,6 +14,7 @@ tags:
 links:
   - "[[Munjib]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Next.js Prisma Monolith]]"
@@ -66,6 +67,10 @@ links:
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
 
+## 진행 중인 계획
+
+Issue #20은 `New folder`가 빈 document를 만드는 현재 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸는 계획이다. 확정된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는 것이다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -84,6 +89,7 @@ links:
 - `components/document-navigation.tsx`: search, quick switcher, recent/favorites navigation.
 - `components/metadata-panel.tsx`: local graph, attachments, versions, audit log.
 - `.githooks/pre-commit`, `lib/wiki/sync.ts`: commit-time wiki sync automation.
+- GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 계획.
 
 ## Wiki 작성 원칙
 

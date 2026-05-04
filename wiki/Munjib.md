@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 14
+updated: 2026-05-04
+source_count: 15
 tags:
   - munjib
   - product
@@ -14,6 +14,7 @@ tags:
 links:
   - "[[Project PRD]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Auth And Permissions Workflow]]"
@@ -46,6 +47,10 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
 
+## 계획된 다음 구조 변경
+
+Issue #20은 현재 folder-like 빈 문서 생성을 실제 folder hierarchy로 대체하는 계획이다. `Folder`는 markdown이 없는 컨테이너가 되고, `Document`는 folder path 아래 위치한 note가 된다. 세부 결정은 [[Folder Hierarchy Model]]에 정리되어 있다.
+
 ## 아직 구현으로 과장하면 안 되는 범위
 
 `prd.md`에는 실시간 협업, 고급 graph 탐색, review workflow, export, 조직별 세밀한 권한 관리, search indexing 같은 제품 방향이 포함되어 있다. 현재 구현은 MVP 수준의 local graph, properties, search, template, attachment, comment, version restore까지 포함하지만, 완성형 협업 지식관리 제품으로 과장하지 않는다.
@@ -53,6 +58,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 ## 빠른 진입점
 
 - 데이터 모델은 [[Document Knowledge Model]]에서 본다.
+- folder hierarchy 계획은 [[Folder Hierarchy Model]]에서 본다.
 - `[[wiki link]]` 동작은 [[Wiki Links And Backlinks]]에서 본다.
 - 문서 저장 흐름은 [[Document Editing Workflow]]에서 본다.
 - 인증과 권한은 [[Auth And Permissions Workflow]]에서 본다.
@@ -74,3 +80,4 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - `components/document-editor.tsx`
 - `components/document-navigation.tsx`
 - `components/metadata-panel.tsx`
+- GitHub issue #20

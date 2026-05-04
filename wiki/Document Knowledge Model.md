@@ -3,16 +3,17 @@ id: concept-document-knowledge-model
 title: Document Knowledge Model
 type: concept
 status: active
-summary: Munjib의 조직, workspace, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
+summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 9
+source_count: 10
 tags:
   - munjib
   - data-model
   - prisma
 links:
   - "[[Munjib]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Auth And Permissions Workflow]]"
@@ -20,7 +21,7 @@ links:
 
 # Document Knowledge Model
 
-Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, document tree, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
+Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, folder hierarchy, documents, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
 
 ## 조직과 workspace
 
@@ -32,19 +33,25 @@ Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
-## 문서와 버전
+## 폴더, 문서, 버전
+
+Issue #20 설계에서는 현재 folder-like document creation을 실제 folder hierarchy로 대체한다. 자세한 결정사항은 [[Folder Hierarchy Model]]을 본다.
 
 - `Document`: workspace 안의 문서 본체다.
-- `title`, `slug`, `path`는 문서 탐색과 URL/표시 이름의 기반이다.
+- `Folder`: workspace 안에서 markdown이 없는 컨테이너다. `parentFolderId`, `name`, `slug`, `path`, `status`를 가지며 하위 folder/document의 위치를 정한다.
+- `Document.folderId`: 문서가 속한 folder를 가리킨다. `null`이면 workspace root 문서다.
+- `title`, `slug`, `path`는 문서 탐색과 URL/표시 이름의 기반이다. 실제 folder hierarchy에서는 `path`가 folder path와 document slug를 결합한 workspace 안 unique location이다.
 - `contentMarkdown`은 작성 원문이다.
 - `contentText`는 검색과 표시를 위한 plain text 파생값이다.
 - `status`는 `ACTIVE` 또는 `ARCHIVED`다.
-- `parentId`는 tree 구조를 위한 필드지만, 현재 UI의 핵심 흐름은 flat document list에 가깝다.
+- `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
 
-`Document`는 workspace 안에서 `slug`가 unique하다. `lib/documents/service.ts`의 `nextAvailableDocumentSlug()`가 중복 title을 `untitled-2`, `runbook-2` 같은 slug로 회피한다.
+현재 구현의 `Document`는 workspace 안에서 `slug`가 unique하다. `lib/documents/service.ts`의 `nextAvailableDocumentSlug()`가 중복 title을 `untitled-2`, `runbook-2` 같은 slug로 회피한다.
 
 `parentId`는 tree 구조를 위한 필드다. 현재 `New folder` UI는 별도 folder model이 아니라 title이 `Untitled folder`이고 내용이 비어 있는 루트 문서를 생성하는 folder-like entry로 동작한다.
+
+Issue #20 구현 후에는 같은 folder 안에서는 document slug가 unique여야 하지만 서로 다른 folder 사이에서는 같은 document title/slug를 허용한다. 예를 들어 `/operations/onboarding`과 `/engineering/onboarding`은 둘 다 `Onboarding` 문서일 수 있다. `New folder`는 더 이상 빈 `Document`를 만들지 않고 `Folder`를 만든다.
 
 ## 문서 링크
 

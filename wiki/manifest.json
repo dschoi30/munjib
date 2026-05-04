@@ -8,7 +8,7 @@
       "title": "Auth And Permissions Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.",
+      "summary": "Munjib의 개발용 로그인, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.",
       "tags": [
         "munjib",
         "auth",
@@ -18,9 +18,10 @@
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
         "[[Document Editing Workflow]]",
+        "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 8,
+      "source_count": 9,
       "searchPriority": 50
     },
     {
@@ -60,10 +61,11 @@
       "links": [
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 16,
+      "source_count": 17,
       "searchPriority": 50
     },
     {
@@ -72,7 +74,7 @@
       "title": "Document Knowledge Model",
       "type": "concept",
       "status": "active",
-      "summary": "Munjib의 조직, workspace, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.",
+      "summary": "Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.",
       "tags": [
         "munjib",
         "data-model",
@@ -80,11 +82,34 @@
       ],
       "links": [
         "[[Munjib]]",
+        "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 9,
+      "source_count": 10,
+      "searchPriority": 50
+    },
+    {
+      "id": "concept-folder-hierarchy-model",
+      "path": "wiki/Folder Hierarchy Model.md",
+      "title": "Folder Hierarchy Model",
+      "type": "concept",
+      "status": "active",
+      "summary": "Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.",
+      "tags": [
+        "munjib",
+        "data-model",
+        "folders",
+        "hierarchy"
+      ],
+      "links": [
+        "[[Document Knowledge Model]]",
+        "[[Document Editing Workflow]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Auth And Permissions Workflow]]"
+      ],
+      "source_count": 5,
       "searchPriority": 50
     },
     {
@@ -102,6 +127,7 @@
         "[[Munjib]]",
         "[[Project PRD]]",
         "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]",
@@ -112,7 +138,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 22,
+      "source_count": 23,
       "searchPriority": 5
     },
     {
@@ -154,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 11,
+      "source_count": 12,
       "searchPriority": 1
     },
     {
@@ -172,12 +198,13 @@
       "links": [
         "[[Project PRD]]",
         "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 14,
+      "source_count": 15,
       "searchPriority": 50
     },
     {
@@ -216,11 +243,12 @@
       "links": [
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 16,
+      "source_count": 17,
       "searchPriority": 30
     },
     {
@@ -238,9 +266,10 @@
       "links": [
         "[[Munjib]]",
         "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
         "[[Document Editing Workflow]]"
       ],
-      "source_count": 10,
+      "source_count": 11,
       "searchPriority": 50
     },
     {
