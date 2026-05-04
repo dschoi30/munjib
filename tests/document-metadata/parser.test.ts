@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDocumentMetadata } from "@/lib/document-metadata/parser";
+import { parseDocumentMetadata, stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 describe("parseDocumentMetadata", () => {
   it("extracts YAML frontmatter properties and inline tags", () => {
@@ -58,5 +58,25 @@ settings:
       { key: "owners", value: ["Platform", "Design"], valueType: "array" },
       { key: "settings", value: { review: true }, valueType: "object" },
     ]);
+  });
+
+  it("strips leading YAML frontmatter from preview body content", () => {
+    expect(
+      stripDocumentFrontmatter(`---
+owner: Platform
+links:
+  - "[[Welcome]]"
+---
+
+# Plan
+
+See [[Welcome]].`),
+    ).toBe("# Plan\n\nSee [[Welcome]].");
+  });
+
+  it("keeps markdown unchanged when there is no leading YAML frontmatter block", () => {
+    expect(stripDocumentFrontmatter("# Plan\n\n---\nnot frontmatter")).toBe(
+      "# Plan\n\n---\nnot frontmatter",
+    );
   });
 });

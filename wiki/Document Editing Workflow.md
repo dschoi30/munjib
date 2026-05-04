@@ -89,7 +89,7 @@ links:
 
 Editor는 edit/split/preview mode를 제공한다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다.
 
-Preview mode는 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
+Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
 
 Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Links row는 outgoing links와 backlinks를 가로로 합쳐 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. YAML frontmatter의 `links` key는 같은 wiki link edge를 이미 canonical Links row가 렌더링하므로 일반 frontmatter property 목록에서는 숨긴다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
@@ -108,6 +108,7 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
 - `lib/document-metadata/display.ts`
+- `lib/document-metadata/parser.ts`
 - `lib/document-metadata/reconcile.ts`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`

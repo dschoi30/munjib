@@ -21,11 +21,11 @@ links:
 
 ## 2026-05-04T12:15:00+09:00 - review
 
-- Result: Properties 영역에서 YAML frontmatter `links` key가 canonical Links row와 중복 표시되던 문제를 수정했다.
-- Coverage: `links` frontmatter property는 일반 property 목록에서 숨기고, outgoing/backlink/broken link rendering은 기존 Links row에만 맡긴다.
+- Result: Properties 영역에서 YAML frontmatter `links` key가 canonical Links row와 중복 표시되던 문제와 preview content 영역에 YAML frontmatter가 재차 표시되던 문제를 수정했다.
+- Coverage: `links` frontmatter property는 일반 property 목록에서 숨기고, outgoing/backlink/broken link rendering은 기존 Links row에만 맡긴다. Markdown preview는 YAML frontmatter block을 제거한 본문만 렌더링한다.
 - Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
-- Source evidence: 사용자 보고, `components/document-editor.tsx`, `lib/document-metadata/display.ts`, `tests/document-metadata/display.test.ts`.
-- Verification: `pnpm exec vitest run tests/document-metadata/display.test.ts tests/wiki-links/preview.test.ts tests/wiki-links/parser.test.ts`.
+- Source evidence: 사용자 보고, `components/document-editor.tsx`, `lib/document-metadata/display.ts`, `lib/document-metadata/parser.ts`, `tests/document-metadata/display.test.ts`, `tests/document-metadata/parser.test.ts`.
+- Verification: `pnpm exec vitest run tests/document-metadata/display.test.ts tests/document-metadata/parser.test.ts tests/wiki-links/preview.test.ts tests/wiki-links/parser.test.ts`.
 
 ## 2026-05-04T01:20:00+09:00 - review
 

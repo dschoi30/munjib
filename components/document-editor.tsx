@@ -20,6 +20,7 @@ import {
   type ActiveWikiLinkCompletion,
 } from "@/lib/wiki-links/autocomplete";
 import { visibleDocumentProperties } from "@/lib/document-metadata/display";
+import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -282,7 +283,7 @@ function MarkdownPreview({
     [],
   );
   const previewMarkdown = useMemo(
-    () => renderPreviewMarkdownWithWikiLinks(markdown, candidateBySlug),
+    () => renderPreviewMarkdownWithWikiLinks(stripDocumentFrontmatter(markdown), candidateBySlug),
     [markdown, candidateBySlug],
   );
 
