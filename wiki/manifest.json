@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-03",
+  "updated": "2026-05-04",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -63,7 +63,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 12,
+      "source_count": 16,
       "searchPriority": 50
     },
     {
@@ -84,7 +84,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 8,
+      "source_count": 9,
       "searchPriority": 50
     },
     {
@@ -112,7 +112,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 21,
+      "source_count": 22,
       "searchPriority": 5
     },
     {
@@ -154,7 +154,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 6,
+      "source_count": 11,
       "searchPriority": 1
     },
     {
@@ -240,7 +240,7 @@
         "[[Document Knowledge Model]]",
         "[[Document Editing Workflow]]"
       ],
-      "source_count": 7,
+      "source_count": 10,
       "searchPriority": 50
     },
     {

@@ -167,6 +167,7 @@ model DocumentLink {
   alias            String?
   linkType         String    @default("wiki")
   isBroken         Boolean   @default(false)
+  sortOrder        Int       @default(0)
   createdAt        DateTime  @default(now())
   workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   sourceDocument   Document  @relation("DocumentOutgoingLinks", fields: [sourceDocumentId], references: [id], onDelete: Cascade)
@@ -174,6 +175,7 @@ model DocumentLink {
 
   @@index([workspaceId])
   @@index([sourceDocumentId])
+  @@index([sourceDocumentId, sortOrder])
   @@index([targetDocumentId])
   @@index([workspaceId, targetTitleRaw])
 }
@@ -208,9 +210,11 @@ model DocumentProperty {
   key       String
   valueJson Json
   valueType String
+  sortOrder Int      @default(0)
   document  Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, key])
+  @@index([documentId, sortOrder])
 }
 
 model Attachment {

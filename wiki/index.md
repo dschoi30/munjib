@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스와 feature-start 포함 workflow navigation.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 21
+source_count: 22
 tags:
   - index
   - munjib
@@ -37,7 +37,7 @@ links:
 ## 핵심 개념
 
 - [[Document Knowledge Model]] - Organization, Workspace, Document, DocumentVersion, DocumentLink, Tag, DocumentProperty, Attachment, Comment, Permission, AuditLog 모델.
-- [[Wiki Links And Backlinks]] - `[[문서 링크]]`, alias, autocomplete, backlink, broken link 저장 및 reconciliation 방식.
+- [[Wiki Links And Backlinks]] - `[[문서 링크]]`, alias, autocomplete, preview link rendering, backlink, broken link 저장 및 reconciliation 방식.
 - [[Wiki Schema]] - wiki page frontmatter, link, manifest 유지 규칙.
 
 ## 워크플로우

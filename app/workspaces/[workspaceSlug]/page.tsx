@@ -130,7 +130,7 @@ export default async function WorkspacePage({
   const documentProperties = selectedDocument
     ? await prisma.documentProperty.findMany({
         where: { documentId: selectedDocument.id },
-        orderBy: { key: "asc" },
+        orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
       })
     : [];
   const attachments = selectedDocument
@@ -200,6 +200,7 @@ export default async function WorkspacePage({
           uploadAttachmentAction={uploadAttachmentAction}
           linkCandidates={readableDocuments.map((document) => ({
             id: document.id,
+            slug: document.slug,
             title: document.title,
           }))}
           tags={documentTags.map((documentTag) => documentTag.tag)}
