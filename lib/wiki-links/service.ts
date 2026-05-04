@@ -112,7 +112,7 @@ export async function getDocumentLinkPanels(
   const [outgoing, backlinks] = await Promise.all([
     prisma.documentLink.findMany({
       where: { sourceDocumentId: documentId },
-      orderBy: { targetTitleRaw: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { targetTitleRaw: "asc" }],
       include: { targetDocument: { select: { id: true, title: true, slug: true } } },
     }),
     prisma.documentLink.findMany({

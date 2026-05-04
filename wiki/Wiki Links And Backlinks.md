@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 9
+updated: 2026-05-04
+source_count: 10
 tags:
   - munjib
   - wiki-links
@@ -42,13 +42,15 @@ Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
 `reconcileDocumentLinks()`는 문서 생성/수정 후 실행된다.
 
 1. source 문서의 기존 `DocumentLink` row를 삭제한다.
-2. 최신 markdown에서 wiki links를 다시 파싱한다.
+2. 최신 markdown의 YAML frontmatter `links:` 배열에서 wiki links를 다시 파싱한다.
 3. target title을 `slugifyTitle()`로 slug화한다.
 4. 같은 workspace 안의 active document 중 target slug와 일치하는 문서를 찾는다.
 5. 대상이 있으면 `targetDocumentId`를 채우고 `isBroken=false`로 저장한다.
 6. 대상이 없으면 `targetDocumentId=null`, `isBroken=true`로 저장한다.
 
-이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown과 항상 다시 맞춰지도록 단순하게 만든다.
+본문 content 영역의 `[[...]]`는 preview navigation 대상으로는 렌더링하지만 Properties Links row와 backlink graph의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
+
+이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown의 frontmatter links와 항상 다시 맞춰지도록 단순하게 만든다.
 
 ## Autocomplete
 
@@ -66,7 +68,7 @@ Preview 변환은 후보 문서 title slug map을 caller에서 memoize해 전달
 
 ## Backlinks
 
-Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 link의 source document 목록이 Properties links row와 local graph에 표시된다.
+Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 frontmatter link의 source document 목록이 Properties links row와 local graph에 표시된다.
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 

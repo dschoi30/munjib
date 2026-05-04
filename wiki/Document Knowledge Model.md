@@ -54,6 +54,7 @@ Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 
 - `targetTitleRaw`: markdown 안에 적힌 대상 제목 원문.
 - `alias`: `[[Target|Alias]]`의 alias.
 - `isBroken`: 대상 문서가 없으면 `true`.
+- `sortOrder`: YAML frontmatter `links:` 배열 안에서 link가 적힌 순서.
 
 링크 파싱과 reconciliation은 [[Wiki Links And Backlinks]]에서 설명한다.
 

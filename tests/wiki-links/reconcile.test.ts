@@ -10,7 +10,7 @@ describe("wiki link reconciliation", () => {
     await resetTestData();
   });
 
-  it("stores outgoing links and backlinks for existing target documents", async () => {
+  it("stores frontmatter links and backlinks for existing target documents", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const target = await createDocument({
       workspaceSlug: fixture.workspace.slug,
@@ -22,7 +22,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
 
     const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
@@ -51,7 +56,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Missing Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Missing Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
 
     const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
@@ -63,6 +73,44 @@ describe("wiki link reconciliation", () => {
         alias: null,
       },
     ]);
+  });
+
+  it("preserves frontmatter links order and ignores content wiki links", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const alpha = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Alpha",
+      contentMarkdown: "# Alpha",
+    });
+    const zeta = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Zeta",
+      contentMarkdown: "# Zeta",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Ordered Links",
+      contentMarkdown: `---
+links:
+  - "[[Zeta]]"
+  - "[[Alpha]]"
+---
+
+Body [[Ignored Content Link]].`,
+    });
+
+    const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
+
+    expect(panels.outgoing.map((link) => link.targetTitleRaw)).toEqual(["Zeta", "Alpha"]);
+    expect(panels.outgoing.map((link) => link.targetDocument?.id)).toEqual([zeta.id, alpha.id]);
+    await expect(
+      prisma.documentLink.findFirst({
+        where: { sourceDocumentId: source.id, targetTitleRaw: "Ignored Content Link" },
+      }),
+    ).resolves.toBeNull();
   });
 
   it("replaces outgoing links when a document is updated", async () => {
@@ -77,7 +125,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
 
     await updateDocument({
@@ -102,7 +155,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
 
     const renamed = await updateDocument({
@@ -137,7 +195,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Restricted Incident Guide",
-      contentMarkdown: "Read [[Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
     const otherEditor = await prisma.user.create({
       data: { email: `link-editor-${source.id}@example.com`, name: "Link Editor" },
@@ -166,7 +229,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: fixture.user.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Missing Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Missing Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
     const broken = await prisma.documentLink.findFirstOrThrow({
       where: { sourceDocumentId: source.id, targetTitleRaw: "Missing Runbook" },
@@ -198,7 +266,12 @@ describe("wiki link reconciliation", () => {
       workspaceSlug: fixture.workspace.slug,
       actorId: editor.id,
       title: "Incident Guide",
-      contentMarkdown: "Read [[Missing Runbook]].",
+      contentMarkdown: `---
+links:
+  - "[[Missing Runbook]]"
+---
+
+Read [[Ignored Content Link]].`,
     });
     const broken = await prisma.documentLink.findFirstOrThrow({
       where: { sourceDocumentId: source.id, targetTitleRaw: "Missing Runbook" },

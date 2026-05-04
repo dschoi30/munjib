@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 10
+source_count: 11
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-04T12:35:00+09:00 - review
+
+- Result: Properties Links row가 content 영역의 `[[...]]`를 포함하지 않고 YAML frontmatter `links:` 안의 `[[...]]`만 표시하도록 수정했다.
+- Coverage: `parseFrontmatterWikiLinks()`가 YAML `links:` 배열만 읽고, `DocumentLink.sortOrder`가 markdown 파일의 links 배열 순서를 보존하며, `getDocumentLinkPanels()`는 `sortOrder` 기준으로 outgoing links를 조회한다.
+- Pages: [[Wiki Links And Backlinks]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `lib/wiki-links/parser.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/service.ts`, `prisma/schema.prisma`, `prisma/migrations/20260504123500_add_document_link_sort_order/migration.sql`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: `pnpm exec vitest run tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts tests/documents/service.test.ts`.
 
 ## 2026-05-04T12:25:00+09:00 - review
 
