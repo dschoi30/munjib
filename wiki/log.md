@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-05T18:20:00+09:00 - design
+
+- Result: Issue #25 Markdown heading folding 설계를 기록했다.
+- Coverage: Obsidian-style heading hierarchy folding, Preview chevron hover/focus behavior, Edit mode CodeMirror heading folding, 문서별 `localStorage` fold state, split mode 제거 계획.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #25, `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
 ## 2026-05-05T23:10:00+09:00 - review
 
 - Result: PR #24 리뷰를 반영해 document service에 남아 있던 document 관련 error code literal을 `SERVICE_ERROR_CODES`에 추가했다.

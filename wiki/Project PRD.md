@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 20
+source_count: 21
 tags:
   - munjib
   - source
@@ -67,6 +67,8 @@ links:
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
 
+Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위한 planned enhancement다. 설계 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장, 기존 split mode 제거다.
+
 ## 최근 구현된 구조 변경
 
 Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸었다. 구현된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
@@ -93,6 +95,7 @@ Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder`
 - `components/metadata-panel.tsx`: local graph, attachments, versions, audit log.
 - `.githooks/pre-commit`, `lib/wiki/sync.ts`: commit-time wiki sync automation.
 - GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 설계.
+- GitHub issue #25와 `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`: Markdown heading folding 설계.
 
 ## Wiki 작성 원칙
 
