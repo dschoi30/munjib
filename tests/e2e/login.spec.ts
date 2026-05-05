@@ -24,8 +24,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: /Quick switcher/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Add Welcome to favorites" }).first().click();
+  await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
   await expect(page.getByText("Favorites")).toBeVisible();
+  await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
 
   await page.getByLabel("Search documents").fill("Backlinked");
   await page.keyboard.press("Enter");
@@ -76,7 +78,31 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "New folder" }).click();
   await expect(page.getByRole("heading", { name: "Untitled folder" })).toBeVisible();
   await expect(page.getByText(/^\/untitled-folder(?:-\d+)?$/)).toBeVisible();
-  await page.getByRole("button", { name: "New document" }).click();
+  const folderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
+  expect(folderName).toBeTruthy();
+  const folderLabel = folderName ?? "Untitled folder";
+  const folderAction = documentList.getByRole("button", { name: `Open actions for ${folderLabel}` }).last();
+  const folderRow = folderAction.locator("..").locator("..");
+  await folderAction.click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  await expect(documentList.getByRole("link", { name: folderLabel }).first()).toBeVisible();
+
+  await folderRow.getByRole("button", { name: `Open actions for ${folderLabel}` }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  await page.getByLabel(`Rename ${folderLabel}`).fill("Product Notes");
+  await page.getByRole("button", { name: "Rename" }).click();
+  await expect(page.getByRole("heading", { name: "Product Notes" })).toBeVisible();
+  const productNotesAction = documentList.getByRole("button", { name: "Open actions for Product Notes" }).last();
+  const productNotesRow = productNotesAction.locator("..").locator("..");
+
+  await productNotesRow.getByRole("button", { name: "New document in Product Notes" }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Untitled");
+  await productNotesRow.getByRole("button", { name: "Product Notes", exact: true }).click();
+
+  await productNotesAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(page.getByText("Empty this folder before moving it to trash.")).toBeVisible();
+  await page.getByRole("button", { name: "New document", exact: true }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   await page.getByRole("button", { name: "Edit" }).click();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
