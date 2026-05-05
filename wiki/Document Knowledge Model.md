@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 10
+updated: 2026-05-05
+source_count: 11
 tags:
   - munjib
   - data-model
@@ -58,6 +58,20 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  Folder {
+    String id PK
+    String workspaceId FK
+    String parentFolderId FK
+    String name
+    String slug
+    String path
+    DocumentStatus status
+    String createdById FK
+    String updatedById FK
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime archivedAt
+  }
   WorkspaceMember {
     String id PK
     String workspaceId FK
@@ -69,6 +83,7 @@ erDiagram
     String id PK
     String workspaceId FK
     String parentId FK
+    String folderId FK
     String title
     String slug
     String path
@@ -100,6 +115,7 @@ erDiagram
     String alias
     String linkType
     Boolean isBroken
+    Boolean isAmbiguous
     Int sortOrder
     DateTime createdAt
   }
@@ -168,11 +184,16 @@ erDiagram
   Organization ||--o{ AuditLog : records
   User ||--o{ WorkspaceMember : joins
   Workspace ||--o{ WorkspaceMember : has
+  Workspace ||--o{ Folder : contains
   Workspace ||--o{ Document : contains
   Workspace ||--o{ DocumentLink : indexes
   Workspace ||--o{ Tag : owns
   User ||--o{ Document : creates
   User ||--o{ Document : updates
+  User ||--o{ Folder : creates
+  User ||--o{ Folder : updates
+  Folder ||--o{ Folder : parents
+  Folder ||--o{ Document : contains
   Document ||--o{ Document : parents
   Document ||--o{ DocumentVersion : snapshots
   User ||--o{ DocumentVersion : authors
@@ -200,7 +221,7 @@ erDiagram
 
 ## 폴더, 문서, 버전
 
-Issue #20 설계에서는 현재 folder-like document creation을 실제 folder hierarchy로 대체한다. 자세한 결정사항은 [[Folder Hierarchy Model]]을 본다.
+Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLink.isAmbiguous`가 추가되었다. 자세한 결정사항은 [[Folder Hierarchy Model]]을 본다.
 
 - `Document`: workspace 안의 문서 본체다.
 - `Folder`: workspace 안에서 markdown이 없는 컨테이너다. `parentFolderId`, `name`, `slug`, `path`, `status`를 가지며 하위 folder/document의 위치를 정한다.
@@ -212,11 +233,11 @@ Issue #20 설계에서는 현재 folder-like document creation을 실제 folder 
 - `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
 
-현재 구현의 `Document`는 workspace 안에서 `slug`가 unique하다. `lib/documents/service.ts`의 `nextAvailableDocumentSlug()`가 중복 title을 `untitled-2`, `runbook-2` 같은 slug로 회피한다.
+현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 
 `parentId`는 tree 구조를 위한 필드다. 현재 `New folder` UI는 별도 folder model이 아니라 title이 `Untitled folder`이고 내용이 비어 있는 루트 문서를 생성하는 folder-like entry로 동작한다.
 
-Issue #20 구현 후에는 같은 folder 안에서는 document slug가 unique여야 하지만 서로 다른 folder 사이에서는 같은 document title/slug를 허용한다. 예를 들어 `/operations/onboarding`과 `/engineering/onboarding`은 둘 다 `Onboarding` 문서일 수 있다. `New folder`는 더 이상 빈 `Document`를 만들지 않고 `Folder`를 만든다.
+같은 folder 안에서는 document slug가 unique여야 하지만 서로 다른 folder 사이에서는 같은 document title/slug를 허용한다. 예를 들어 `/operations/onboarding`과 `/engineering/onboarding`은 둘 다 `Onboarding` 문서일 수 있다. `New folder`는 더 이상 빈 `Document`를 만들지 않고 `Folder`를 만든다.
 
 ## 문서 링크
 
@@ -226,6 +247,7 @@ Issue #20 구현 후에는 같은 folder 안에서는 document slug가 unique여
 - `targetTitleRaw`: markdown 안에 적힌 대상 제목 원문.
 - `alias`: `[[Target|Alias]]`의 alias.
 - `isBroken`: 대상 문서가 없으면 `true`.
+- `isAmbiguous`: title-only link가 여러 active document와 충돌해 임의 target을 고르지 않은 상태면 `true`.
 - `sortOrder`: YAML frontmatter `links:` 배열 안에서 link가 적힌 순서.
 
 링크 파싱과 reconciliation은 [[Wiki Links And Backlinks]]에서 설명한다.
@@ -253,6 +275,7 @@ Attachment upload는 markdown link를 문서 본문 끝에 append하고 새 docu
 ## 근거
 
 - `prisma/schema.prisma`
+- `prisma/migrations/20260505001000_add_folder_hierarchy/migration.sql`
 - `lib/documents/service.ts`
 - `lib/document-metadata/parser.ts`
 - `lib/document-metadata/reconcile.ts`
