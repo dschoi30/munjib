@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 10
+updated: 2026-05-05
+source_count: 17
 tags:
   - munjib
   - wiki-links
@@ -14,6 +14,7 @@ tags:
 links:
   - "[[Munjib]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Document Editing Workflow]]"
 ---
 
@@ -37,16 +38,21 @@ Munjib의 link model은 Markdown 안의 `[[문서명]]` 구문을 `DocumentLink`
 
 Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
 
+Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허용하므로 path-qualified wikilink를 지원한다. 예를 들어 `[[Operations/Onboarding]]`은 `/operations/onboarding` 문서를 가리키고, `[[Operations/Onboarding|Onboarding]]`은 같은 target에 짧은 label을 붙인다.
+
 ## Reconciliation
 
 `reconcileDocumentLinks()`는 문서 생성/수정 후 실행된다.
 
 1. source 문서의 기존 `DocumentLink` row를 삭제한다.
 2. 최신 markdown의 YAML frontmatter `links:` 배열에서 wiki links를 다시 파싱한다.
-3. target title을 `slugifyTitle()`로 slug화한다.
-4. 같은 workspace 안의 active document 중 target slug와 일치하는 문서를 찾는다.
-5. 대상이 있으면 `targetDocumentId`를 채우고 `isBroken=false`로 저장한다.
-6. 대상이 없으면 `targetDocumentId=null`, `isBroken=true`로 저장한다.
+3. target이 path-qualified인지 title-only인지 판단한다.
+4. path-qualified target은 각 path segment를 slug로 정규화한 뒤 workspace 안의 active document `path`로 먼저 찾는다. 예를 들어 `[[Operations/Incident Runbook]]`은 `/operations/incident-runbook`으로 resolve한다.
+5. path match가 없으면 slash가 포함된 target도 title fallback을 시도한다. `[[Q1/Q2 Plan]]`처럼 title 자체에 `/`가 들어간 문서는 root title link로 계속 resolve할 수 있다.
+6. title-only target은 readable active document 중 title slug가 일치하는 후보를 찾는다.
+6. 후보가 하나면 `targetDocumentId`를 채우고 `isBroken=false`로 저장한다.
+7. 후보가 없으면 broken link로 저장한다.
+8. 후보가 여러 개면 `isAmbiguous=true`, `isBroken=false`, `targetDocumentId=null`로 저장하고 임의 target을 선택하지 않는다.
 
 본문 content 영역의 `[[...]]`는 preview navigation 대상으로는 렌더링하지만 Properties Links row와 backlink graph의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
 
@@ -54,13 +60,17 @@ Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
 
 ## Autocomplete
 
-`DocumentEditor`는 Markdown editor에서 active wiki link completion을 감지한다. `[[` 뒤의 query가 현재 cursor 위치와 맞으면 workspace 안의 후보 문서 title을 최대 6개까지 보여주고, 선택 시 `[[Title]]` 형태로 markdown에 삽입한다. 현재 문서 자신은 후보에서 제외한다.
+`DocumentEditor`는 Markdown editor에서 active wiki link completion을 감지한다. `[[` 뒤의 query가 현재 cursor 위치와 맞으면 workspace 안의 후보 문서를 최대 6개까지 보여준다. 현재 문서 자신은 후보에서 제외한다.
+
+Issue #20 이후 autocomplete는 `getWikiLinkCompletionOptions()`를 통해 title과 path target을 함께 검색한다. 같은 title의 후보가 하나뿐이면 `[[Title]]`을 삽입하고, duplicate title 후보가 있으면 folder path를 포함한 label을 보여주며 path-qualified target을 삽입한다. 예를 들어 `/operations/onboarding` 후보는 `Operations/Onboarding` label과 `[[Operations/Onboarding]]` insert text를 사용한다.
 
 ## Preview link rendering
 
 Markdown preview는 `[[Target Title]]`과 `[[Target Title|Alias]]`를 Obsidian-style navigation link로 렌더링한다. `lib/wiki-links/preview.ts`는 workspace에서 읽을 수 있는 문서 후보를 title slug 기준으로 찾고, 일치하는 target은 `?document=<id>` link로 바꾼다. Alias가 있으면 link label은 alias를 사용한다.
 
 아직 matching document가 없는 target은 navigation target을 만들 수 없으므로 대괄호 없는 plain text label로 보여준다. Title slug가 여러 readable document와 충돌하면 preview는 임의 target을 고르지 않고 plain text로 표시한다. Stored document slug와 정확히 일치하는 target은 충돌 상황에서도 해당 document로 연결한다.
+
+Issue #20 이후 preview는 path-qualified link를 document path로 resolve한다. Title-only link가 여러 readable active document와 충돌하면 ambiguous link로 보고 plain text fallback을 유지한다. Preview candidate map은 slug collision에서도 임의 target을 고르지 않으며, path-qualified key는 `/`를 제거하고 segment별 slug 정규화를 거친 path로 찾는다. Path key가 없으면 title slug fallback을 시도해 slash-containing title link를 보존한다.
 
 Embed syntax, escaped wiki links, inline/fenced code, indented code block 안의 wiki link text는 preview 변환에서 제외한다. Inline code는 backtick delimiter 길이를 맞춰 닫을 때만 code span을 종료하고, line ending을 포함하는 code span 상태도 문서 변환 중 유지한다. Fenced code는 opening fence의 marker와 width를 보존해 더 짧은 fence line 때문에 code block을 조기 종료하지 않는다.
 
@@ -76,6 +86,8 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `createDocumentFromBrokenLink()`는 broken link row를 기준으로 새 문서를 만든다. 새 문서 title은 `targetTitleRaw`이고 초기 markdown은 빈 문자열이다. 생성 후 `repairBrokenLinksForTarget()`이 같은 workspace 안에서 같은 `targetTitleRaw`를 가진 broken links를 새 문서로 연결한다.
 
+Issue #20 이후 broken link target이 `Operations/Incident Runbook`처럼 path-qualified이고 parent folder path(`/operations`)가 존재하면, 마지막 segment(`Incident Runbook`)를 title로 사용해 해당 folder 아래 문서를 생성한다. 이렇게 만들어진 문서는 `/operations/incident-runbook` path를 가져 다음 reconciliation에서도 같은 path-qualified link가 계속 resolve된다. Parent folder path가 없으면 target 전체를 slash-containing title로 보고 root 문서로 만든다.
+
 UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 함께 표시한다. 정상 outgoing link는 보라색 link로, broken outgoing link는 연한 회색 underline button으로 보여 시각적으로 구분한다.
 
 ## 현재 한계
@@ -89,10 +101,13 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 
 - `lib/wiki-links/parser.ts`
 - `lib/wiki-links/reconcile.ts`
+- `lib/wiki-links/targets.ts`
 - `lib/wiki-links/service.ts`
 - `lib/wiki-links/autocomplete.ts`
 - `lib/wiki-links/preview.ts`
+- `lib/wiki-links/types.ts`
 - `lib/documents/service.ts`
 - `components/document-editor.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
+- `tests/wiki-links/autocomplete.test.ts`

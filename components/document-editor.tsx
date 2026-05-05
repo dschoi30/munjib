@@ -17,7 +17,9 @@ import {
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 import {
   getActiveWikiLinkCompletion,
+  getWikiLinkCompletionOptions,
   type ActiveWikiLinkCompletion,
+  type WikiLinkCompletionOption,
 } from "@/lib/wiki-links/autocomplete";
 import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
@@ -34,6 +36,7 @@ type LinkCandidate = {
   id: string;
   slug: string;
   title: string;
+  path: string;
 };
 
 export function DocumentEditor({
@@ -72,11 +75,10 @@ export function DocumentEditor({
   const extensions = useMemo(() => [markdown()], []);
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
-    const query = activeCompletion.query.toLowerCase();
-    return linkCandidates
-      .filter((candidate) => candidate.id !== document?.id)
-      .filter((candidate) => candidate.title.toLowerCase().includes(query))
-      .slice(0, 6);
+    return getWikiLinkCompletionOptions(
+      activeCompletion.query,
+      linkCandidates.filter((candidate) => candidate.id !== document?.id),
+    );
   }, [activeCompletion, document?.id, linkCandidates]);
 
   useEffect(() => {
@@ -92,9 +94,9 @@ export function DocumentEditor({
     );
   }
 
-  function insertWikiLink(candidate: LinkCandidate) {
+  function insertWikiLink(option: WikiLinkCompletionOption) {
     if (!activeCompletion) return;
-    const nextMarkdown = `${contentMarkdown.slice(0, activeCompletion.from)}[[${candidate.title}]]${contentMarkdown.slice(
+    const nextMarkdown = `${contentMarkdown.slice(0, activeCompletion.from)}${option.insertText}${contentMarkdown.slice(
       activeCompletion.to,
     )}`;
     updateMarkdown(nextMarkdown);
@@ -198,14 +200,14 @@ export function DocumentEditor({
                 <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
                   Wiki links
                 </div>
-                {suggestions.map((candidate) => (
+                {suggestions.map((option) => (
                   <button
-                    key={candidate.id}
+                    key={option.id}
                     type="button"
-                    onClick={() => insertWikiLink(candidate)}
+                    onClick={() => insertWikiLink(option)}
                     className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
                   >
-                    {candidate.title}
+                    {option.label}
                   </button>
                 ))}
               </div>

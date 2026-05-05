@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 13
+updated: 2026-05-05
+source_count: 27
 tags:
   - log
   - munjib
@@ -18,6 +18,118 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T22:55:00+09:00 - review
+
+- Result: PR #22 추가 리뷰를 반영해 slash-containing title link가 path-qualified fallback 때문에 깨지지 않도록 보강했다.
+- Coverage: path-qualified document path를 먼저 resolve하고, path match가 없으면 `[[Q1/Q2 Plan]]` 같은 slash-containing title을 title slug로 fallback resolve한다. Broken link creation도 parent folder path가 없으면 root slash-title 문서로 생성한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #22 review comments, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/preview.test.ts`.
+- Verification: `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T15:25:00+09:00 - review
+
+- Result: PR #22 추가 리뷰를 반영해 path-qualified broken link creation과 folder move slug 충돌을 수정했다.
+- Coverage: `[[Operations/Incident Runbook]]` broken link에서 `/operations` folder 아래 `Incident Runbook` 문서 생성, 다음 reconciliation에서도 link 유지, folder move 시 destination sibling slug 재계산.
+- Pages: [[Folder Hierarchy Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #22 review comments, `lib/documents/service.ts`, `lib/folders/service.ts`, `lib/wiki-links/targets.ts`, `tests/folders/service.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts`, `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T14:45:00+09:00 - review
+
+- Result: PR #22 리뷰 1,2번을 반영해 folder parent workspace 검증과 path-qualified wiki target 정규화를 보강했다.
+- Coverage: `createFolder`/`moveFolder`에서 parent folder가 같은 workspace의 active folder인지 검증, `[[Operations/Incident Runbook]]` 같은 multi-word path-qualified target의 reconcile/preview resolve.
+- Pages: [[Folder Hierarchy Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #22 review comments, `lib/folders/service.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/folders/service.test.ts`, `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/preview.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts`, `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T14:20:00+09:00 - implementation
+
+- Result: Workspace sidebar folder tree를 editor navigation link에서 accordion disclosure UI로 조정했다.
+- Coverage: folder row chevron toggle, 펼쳐진 child group 세로 guide line, folder toggle 시 editor 유지, `Recents` 최대 5개 표시, recents depth-independent padding, 전체 tree의 `Documents` heading.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `components/document-navigation.tsx`, `tests/e2e/login.spec.ts`, `wiki/designs/obsidian1.png`, `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/workspace-tree.test.ts`, `pnpm run test:e2e`.
+
+## 2026-05-05T13:00:00+09:00 - implementation
+
+- Result: Issue #20 최종 integration을 위해 seed data와 project wiki 현황을 실제 folder hierarchy 구현 기준으로 정리했다.
+- Coverage: `/operations` folder seed, folder 하위 `Operations Runbook` seed, folder-like 문서 생성 표현 제거, PRD/제품/index 문서의 구현 현황 갱신.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `prisma/seed.ts`, `wiki/Munjib.md`, `wiki/Project PRD.md`, `wiki/Document Knowledge Model.md`, `wiki/Folder Hierarchy Model.md`, `wiki/index.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm exec vitest run tests/folders/path.test.ts tests/folders/service.test.ts tests/documents/service.test.ts tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts tests/wiki-links/autocomplete.test.ts tests/workspace-tree.test.ts`, `pnpm test`, `pnpm run build`, `pnpm run test:e2e`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T12:50:00+09:00 - implementation
+
+- Result: Wiki link autocomplete가 duplicate title 후보에 path-qualified target을 삽입하도록 변경했다.
+- Coverage: title/path query matching, duplicate title count 기반 `[[Folder/Title]]` insert text, editor suggestion label과 insertion wiring.
+- Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/wiki-links/autocomplete.ts`, `components/document-editor.tsx`, `tests/wiki-links/autocomplete.test.ts`.
+- Verification: `pnpm exec vitest run tests/wiki-links/autocomplete.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T12:45:00+09:00 - implementation
+
+- Result: Issue #20 workspace 화면을 folder/document tree로 전환하고, `New folder`를 실제 `Folder` row 생성으로 분리했다.
+- Coverage: active folders 조회, readable document filtering helper, folder selection query, folder detail panel, selected-folder document creation, path-aware navigation/quick switcher labels, schema 변경에 맞춘 seed upsert key 조정.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/folder-detail.tsx`, `lib/workspace-tree.ts`, `prisma/seed.ts`, `tests/workspace-tree.test.ts`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts tests/documents/service.test.ts tests/folders/service.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T01:00:00+09:00 - implementation
+
+- Result: Wiki link reconciliation과 preview가 folder path를 인식하도록 변경했다.
+- Coverage: path-qualified wikilink의 document path resolve, duplicate title-only link의 `isAmbiguous` 저장, ambiguous link panel data, preview의 path-qualified rendering과 ambiguous plain text fallback.
+- Pages: [[Wiki Links And Backlinks]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts`, `lib/wiki-links/types.ts`, `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/preview.test.ts`.
+- Verification: `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`.
+
+## 2026-05-05T00:50:00+09:00 - implementation
+
+- Result: Document service를 folder-aware하게 변경했다.
+- Coverage: `CreateDocumentInput.folderId`, folder별 document slug/path 계산, duplicate title의 cross-folder 허용, title update/version restore path 보존, `moveDocument()`와 `document.moved` audit log.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/documents/service.ts`, `lib/documents/types.ts`, `tests/documents/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts`.
+
+## 2026-05-05T00:40:00+09:00 - implementation
+
+- Result: Folder service를 추가했다.
+- Coverage: create, rename, move, archive folder mutation, workspace write 권한 검사, audit log 기록, descendant path recalculation, move cycle guard, non-empty archive guard.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `lib/folders/service.ts`, `lib/folders/types.ts`, `tests/folders/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts`.
+
+## 2026-05-05T00:30:00+09:00 - implementation
+
+- Result: Folder hierarchy path helper를 추가했다.
+- Coverage: root/nested folder path 정규화, parent path와 child slug 결합, document path를 path-qualified wikilink target label로 변환.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `lib/folders/path.ts`, `tests/folders/path.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/path.test.ts`.
+
+## 2026-05-05T00:20:00+09:00 - implementation
+
+- Result: Issue #20 folder hierarchy의 첫 구현 단계로 Prisma schema와 migration에 `Folder`, `Document.folderId`, `DocumentLink.isAmbiguous`를 추가했다.
+- Coverage: workspace-folder relation, nested folder parent relation, folder/document path uniqueness, root/folder별 slug partial unique index, folder creator/updater relation, ambiguous wiki link 저장 필드.
+- Pages: [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: `prisma/schema.prisma`, `prisma/migrations/20260505001000_add_folder_hierarchy/migration.sql`.
+- Verification: `pnpm exec prisma validate`, `pnpm exec prisma generate`, `pnpm exec prisma migrate deploy`.
+
+## 2026-05-05T00:00:00+09:00 - planning
+
+- Result: Issue #20 실제 folder hierarchy 구현 계획을 작성했다.
+- Coverage: Prisma `Folder` schema, path helper, folder service, folder-aware document service, path-qualified wikilink resolution, ambiguous link 상태, workspace tree UI, autocomplete, seed, wiki maintenance, verification command 순서.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`, `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-04T18:55:00+09:00 - planning
+
+- Result: Issue #20 실제 folder hierarchy 설계를 wiki에 반영했다. `Folder`는 별도 컨테이너 model이고, `Document.folderId`와 path 기반 위치를 사용하며, 서로 다른 folder의 duplicate title을 허용한다.
+- Coverage: path-qualified wikilink, title-only ambiguous link fallback, workspace-write folder 관리 권한, folder-specific permission 제외, 비어 있지 않은 folder archive 차단, 관련 implementation plan 필수 wiki 업데이트 범위.
+- Pages: [[Folder Hierarchy Model]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #20, `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`, Obsidian Hub beginner guide, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/reconcile.ts`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-04T18:00:00+09:00 - maintenance
 

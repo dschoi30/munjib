@@ -3,10 +3,10 @@ id: workflow-auth-and-permissions
 title: Auth And Permissions Workflow
 type: workflow
 status: active
-summary: Munjib의 개발용 로그인, NextAuth session, workspace role 기반 권한 검사 흐름.
+summary: Munjib의 개발용 로그인, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 8
+updated: 2026-05-04
+source_count: 9
 tags:
   - munjib
   - auth
@@ -15,6 +15,7 @@ links:
   - "[[Munjib]]"
   - "[[Document Knowledge Model]]"
   - "[[Document Editing Workflow]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Local Development Workflow]]"
 ---
 
@@ -57,6 +58,8 @@ Workspace page는 문서 목록과 search 대상에서 읽을 수 없는 문서�
 ## 문서 service에서의 권한 적용
 
 `createDocument()`는 workspace slug와 actor id로 membership을 찾고 write 권한을 요구한다.
+
+Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, archive는 workspace write 권한을 요구한다. Folder-specific permission과 folder-to-document inherited ACL은 MVP 범위에서 제외한다. 기존 document-level explicit permission은 문서 read/write 판단에만 적용된다.
 
 `updateDocument()`와 `archiveDocument()`는 document id로 document와 workspace membership을 함께 찾고 read/write 권한을 요구한다.
 

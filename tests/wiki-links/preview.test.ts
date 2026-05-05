@@ -6,8 +6,13 @@ import {
 
 describe("renderPreviewMarkdownWithWikiLinks", () => {
   const candidateBySlug = buildWikiLinkPreviewCandidateMap([
-    { id: "doc-runbook", slug: "engineering-runbook", title: "Engineering Runbook" },
-    { id: "doc-welcome", slug: "welcome", title: "Welcome" },
+    {
+      id: "doc-runbook",
+      slug: "engineering-runbook",
+      title: "Engineering Runbook",
+      path: "/engineering-runbook",
+    },
+    { id: "doc-welcome", slug: "welcome", title: "Welcome", path: "/welcome" },
   ]);
 
   it("renders resolved wiki links as markdown links to the selected document", () => {
@@ -75,8 +80,8 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
 
   it("does not link ambiguous title slug collisions", () => {
     const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
-      { id: "first", slug: "runbook", title: "Runbook" },
-      { id: "second", slug: "runbook-2", title: "Runbook" },
+      { id: "first", slug: "runbook", title: "Runbook", path: "/first/runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook", path: "/second/runbook" },
     ]);
 
     expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook]].", ambiguousCandidates)).toBe(
@@ -86,12 +91,43 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
 
   it("still links explicit stored slugs when title slugs collide", () => {
     const ambiguousCandidates = buildWikiLinkPreviewCandidateMap([
-      { id: "first", slug: "runbook", title: "Runbook" },
-      { id: "second", slug: "runbook-2", title: "Runbook" },
+      { id: "first", slug: "runbook", title: "Runbook", path: "/first/runbook" },
+      { id: "second", slug: "runbook-2", title: "Runbook", path: "/second/runbook-2" },
     ]);
 
     expect(renderPreviewMarkdownWithWikiLinks("See [[Runbook 2]].", ambiguousCandidates)).toBe(
       "See [Runbook 2](?document=second).",
+    );
+  });
+
+  it("renders path-qualified links and leaves ambiguous title-only links as text", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "ops", slug: "onboarding", title: "Onboarding", path: "/operations/onboarding" },
+      { id: "eng", slug: "onboarding", title: "Onboarding", path: "/engineering/onboarding" },
+      {
+        id: "incident",
+        slug: "incident-runbook",
+        title: "Incident Runbook",
+        path: "/operations/incident-runbook",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Operations/Onboarding]]", candidates)).toBe(
+      "[Operations/Onboarding](?document=ops)",
+    );
+    expect(renderPreviewMarkdownWithWikiLinks("[[Operations/Incident Runbook]]", candidates)).toBe(
+      "[Operations/Incident Runbook](?document=incident)",
+    );
+    expect(renderPreviewMarkdownWithWikiLinks("[[Onboarding]]", candidates)).toBe("Onboarding");
+  });
+
+  it("falls back to slash-containing titles when no path candidate matches", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "q1-q2-plan", title: "Q1/Q2 Plan", path: "/q1-q2-plan" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Q1/Q2 Plan]]", candidates)).toBe(
+      "[Q1/Q2 Plan](?document=plan)",
     );
   });
 });

@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-05-03
-source_count: 14
+updated: 2026-05-05
+source_count: 18
 tags:
   - munjib
   - product
@@ -14,6 +14,7 @@ tags:
 links:
   - "[[Project PRD]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Auth And Permissions Workflow]]"
@@ -32,19 +33,23 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - Prisma/PostgreSQL 기반 조직, workspace, 문서, 버전, 링크, 권한, 감사 로그 모델.
 - 개발용 credentials login.
 - workspace role 기반 읽기/쓰기 권한 검사.
-- 문서 생성, 템플릿 기반 생성, folder-like 빈 문서 생성, 수정, 아카이브, broken link에서 문서 생성.
+- 문서 생성, 템플릿 기반 생성, 실제 folder 컨테이너 생성, 수정, 아카이브, broken link에서 문서 생성.
 - Markdown 원문과 plain text 본문 저장.
 - edit/split/preview 모드와 Markdown preview.
 - 문서 수정, attachment upload, version restore 시 version row 생성.
 - `[[문서명]]` wiki link 파싱과 `DocumentLink` reconciliation.
 - wiki link autocomplete.
-- permission-aware document search, quick switcher, recent/favorites navigation.
+- permission-aware document search, folder/document tree navigation, quick switcher, recent/favorites navigation.
 - tags와 YAML frontmatter properties extraction.
 - outgoing links, backlinks, broken links, comments를 title 아래 Properties 영역에 표시.
 - broken link 클릭 시 루트 경로에 blank document를 생성하고 link를 repair.
 - local graph, attachments, versions, audit log를 보여주는 metadata panel.
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
+
+## Folder hierarchy
+
+Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder` row를 만든다. `Folder`는 markdown이 없는 컨테이너이고, `Document`는 root 또는 folder path 아래 위치한 note다. 세부 결정은 [[Folder Hierarchy Model]]에 정리되어 있다.
 
 ## 아직 구현으로 과장하면 안 되는 범위
 
@@ -53,6 +58,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 ## 빠른 진입점
 
 - 데이터 모델은 [[Document Knowledge Model]]에서 본다.
+- folder hierarchy 구현은 [[Folder Hierarchy Model]]에서 본다.
 - `[[wiki link]]` 동작은 [[Wiki Links And Backlinks]]에서 본다.
 - 문서 저장 흐름은 [[Document Editing Workflow]]에서 본다.
 - 인증과 권한은 [[Auth And Permissions Workflow]]에서 본다.
@@ -65,6 +71,8 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - `package.json`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
+- `lib/folders/service.ts`
+- `lib/workspace-tree.ts`
 - `lib/wiki-links/*`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
@@ -72,5 +80,8 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - `lib/permissions/document.ts`
 - `app/workspaces/[workspaceSlug]/*`
 - `components/document-editor.tsx`
+- `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
+- GitHub issue #20

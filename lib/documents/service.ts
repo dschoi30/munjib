@@ -2,6 +2,7 @@ import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { reconcileDocumentMetadata } from "@/lib/document-metadata/reconcile";
 import { prisma } from "@/lib/db/client";
+import { buildChildPath } from "@/lib/folders/path";
 import {
   assertCanReadDocument,
   assertCanWriteDocument,
@@ -14,10 +15,12 @@ import type {
   ArchiveDocumentInput,
   CreateDocumentFromBrokenLinkInput,
   CreateDocumentInput,
+  MoveDocumentInput,
   RestoreDocumentVersionInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
+import { pathQualifiedTargetToCreateInput } from "@/lib/wiki-links/targets";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -103,6 +106,7 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
 async function nextAvailableDocumentSlug(
   tx: Prisma.TransactionClient,
   workspaceId: string,
+  folderId: string | null,
   title: string,
   excludeDocumentId?: string,
 ) {
@@ -110,6 +114,7 @@ async function nextAvailableDocumentSlug(
   const existingDocuments = await tx.document.findMany({
     where: {
       workspaceId,
+      folderId,
       slug: { startsWith: baseSlug },
       ...(excludeDocumentId ? { id: { not: excludeDocumentId } } : {}),
     },
@@ -131,10 +136,23 @@ function isDocumentSlugUniqueConstraintError(error: unknown) {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2002" &&
-    Array.isArray(error.meta?.target) &&
-    error.meta.target.includes("workspaceId") &&
-    error.meta.target.includes("slug")
+    Array.isArray(error.meta?.target)
   );
+}
+
+async function getParentFolderPath(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  folderId: string | null | undefined,
+) {
+  if (!folderId) return "/";
+  const folder = await tx.folder.findFirst({
+    where: { id: folderId, workspaceId, status: "ACTIVE" },
+    select: { path: true },
+  });
+
+  if (!folder) throw new Error("FOLDER_NOT_FOUND");
+  return folder.path;
 }
 
 async function runWithDocumentSlugRetry<T>(operation: () => Promise<T>) {
@@ -158,20 +176,24 @@ async function createDocumentWithInitialVersion(
   input: {
     workspaceId: string;
     actorId: string;
+    folderId?: string | null;
     title: string;
     contentMarkdown: string;
     changeSummary: string;
   },
 ) {
-  const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, input.title);
+  const folderId = input.folderId ?? null;
+  const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, folderId, input.title);
+  const parentPath = await getParentFolderPath(tx, input.workspaceId, folderId);
   const contentText = markdownToPlainText(input.contentMarkdown);
 
   const document = await tx.document.create({
     data: {
       workspaceId: input.workspaceId,
+      folderId,
       title: input.title,
       slug,
-      path: `/${slug}`,
+      path: buildChildPath(parentPath, slug),
       contentMarkdown: input.contentMarkdown,
       contentText,
       createdById: input.actorId,
@@ -201,6 +223,7 @@ export async function createDocument(input: CreateDocumentInput) {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: workspace.id,
       actorId: input.actorId,
+      folderId: input.folderId ?? null,
       title: input.title,
       contentMarkdown: input.contentMarkdown,
       changeSummary: "Initial version",
@@ -245,13 +268,20 @@ export async function updateDocument(input: UpdateDocumentInput) {
   const contentText = markdownToPlainText(input.contentMarkdown);
 
   return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
-    const slug = await nextAvailableDocumentSlug(tx, workspace.id, input.title, document.id);
+    const slug = await nextAvailableDocumentSlug(
+      tx,
+      workspace.id,
+      document.folderId,
+      input.title,
+      document.id,
+    );
+    const parentPath = await getParentFolderPath(tx, workspace.id, document.folderId);
     const updated = await tx.document.update({
       where: { id: document.id },
       data: {
         title: input.title,
         slug,
-        path: `/${slug}`,
+        path: buildChildPath(parentPath, slug),
         contentMarkdown: input.contentMarkdown,
         contentText,
         updatedById: input.actorId,
@@ -363,15 +393,21 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
     const slug = await nextAvailableDocumentSlug(
       tx,
       version.document.workspaceId,
+      version.document.folderId,
       version.title,
       version.document.id,
+    );
+    const parentPath = await getParentFolderPath(
+      tx,
+      version.document.workspaceId,
+      version.document.folderId,
     );
     const restored = await tx.document.update({
       where: { id: version.document.id },
       data: {
         title: version.title,
         slug,
-        path: `/${slug}`,
+        path: buildChildPath(parentPath, slug),
         contentMarkdown: version.contentMarkdown,
         contentText,
         updatedById: input.actorId,
@@ -438,10 +474,15 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   const contentMarkdown = "";
 
   return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const targetCreateInput = await getBrokenLinkCreateInput(tx, {
+      workspaceId: link.workspaceId,
+      targetTitleRaw: link.targetTitleRaw,
+    });
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: link.workspaceId,
       actorId: input.actorId,
-      title: link.targetTitleRaw,
+      folderId: targetCreateInput.folderId,
+      title: targetCreateInput.title,
       contentMarkdown,
       changeSummary: "Created from broken wiki link",
     });
@@ -467,5 +508,71 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
     });
 
     return document;
+  }));
+}
+
+async function getBrokenLinkCreateInput(
+  tx: Prisma.TransactionClient,
+  input: { workspaceId: string; targetTitleRaw: string },
+) {
+  const pathTarget = pathQualifiedTargetToCreateInput(input.targetTitleRaw);
+  if (!pathTarget) return { folderId: null, title: input.targetTitleRaw };
+
+  const folder = await tx.folder.findFirst({
+    where: {
+      workspaceId: input.workspaceId,
+      path: pathTarget.folderPath,
+      status: DocumentStatus.ACTIVE,
+    },
+    select: { id: true },
+  });
+
+  if (!folder) return { folderId: null, title: input.targetTitleRaw };
+
+  return { folderId: folder.id, title: pathTarget.title };
+}
+
+export async function moveDocument(input: MoveDocumentInput) {
+  const { document, workspace, role, access } = await getDocumentMembership(
+    input.documentId,
+    input.actorId,
+  );
+  assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
+
+  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const slug = await nextAvailableDocumentSlug(
+      tx,
+      workspace.id,
+      input.folderId,
+      document.title,
+      document.id,
+    );
+    const parentPath = await getParentFolderPath(tx, workspace.id, input.folderId);
+    const previousPath = document.path;
+    const moved = await tx.document.update({
+      where: { id: document.id },
+      data: {
+        folderId: input.folderId,
+        slug,
+        path: buildChildPath(parentPath, slug),
+        updatedById: input.actorId,
+      },
+    });
+
+    await writeAuditLog(tx, {
+      organizationId: workspace.organizationId,
+      actorId: input.actorId,
+      action: "document.moved",
+      resourceType: "document",
+      resourceId: moved.id,
+      metadata: { title: moved.title, previousPath, path: moved.path },
+    });
+
+    return moved;
   }));
 }

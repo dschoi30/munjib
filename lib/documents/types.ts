@@ -1,8 +1,15 @@
 export type CreateDocumentInput = {
   workspaceSlug: string;
   actorId: string;
+  folderId?: string | null;
   title: string;
   contentMarkdown: string;
+};
+
+export type MoveDocumentInput = {
+  documentId: string;
+  actorId: string;
+  folderId: string | null;
 };
 
 export type UpdateDocumentInput = {

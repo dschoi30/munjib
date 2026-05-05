@@ -57,7 +57,7 @@ async function main() {
   }
 
   const welcome = await prisma.document.upsert({
-    where: { workspaceId_slug: { workspaceId: workspace.id, slug: "welcome" } },
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/welcome" } },
     update: {
       contentMarkdown:
         "# Welcome\n\nThis is the first company handbook document.\n\nRead [[Engineering Runbook]] and [[Missing Policy]].",
@@ -79,7 +79,7 @@ async function main() {
   });
 
   const engineeringRunbook = await prisma.document.upsert({
-    where: { workspaceId_slug: { workspaceId: workspace.id, slug: "engineering-runbook" } },
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/engineering-runbook" } },
     update: {
       contentMarkdown: "# Engineering Runbook\n\nBacklinked from [[Welcome]].",
       contentText: "Engineering Runbook Backlinked from Welcome.",
@@ -96,6 +96,39 @@ async function main() {
     },
   });
 
+  const operationsFolder = await prisma.folder.upsert({
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations" } },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      name: "Operations",
+      slug: "operations",
+      path: "/operations",
+      createdById: owner.id,
+      updatedById: owner.id,
+    },
+  });
+
+  const operationsRunbook = await prisma.document.upsert({
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations/operations-runbook" } },
+    update: {
+      folderId: operationsFolder.id,
+      contentMarkdown: "# Operations Runbook\n\nA folder-based runbook linked from [[Welcome]].",
+      contentText: "Operations Runbook A folder-based runbook linked from Welcome.",
+    },
+    create: {
+      workspaceId: workspace.id,
+      folderId: operationsFolder.id,
+      title: "Operations Runbook",
+      slug: "operations-runbook",
+      path: "/operations/operations-runbook",
+      contentMarkdown: "# Operations Runbook\n\nA folder-based runbook linked from [[Welcome]].",
+      contentText: "Operations Runbook A folder-based runbook linked from Welcome.",
+      createdById: owner.id,
+      updatedById: owner.id,
+    },
+  });
+
   await prisma.$transaction(async (tx) => {
     await reconcileDocumentLinks(tx, {
       workspaceId: workspace.id,
@@ -106,6 +139,11 @@ async function main() {
       workspaceId: workspace.id,
       sourceDocumentId: engineeringRunbook.id,
       contentMarkdown: engineeringRunbook.contentMarkdown,
+    });
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: operationsRunbook.id,
+      contentMarkdown: operationsRunbook.contentMarkdown,
     });
   });
 }
