@@ -1183,7 +1183,7 @@ pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add lib/wiki-links tests/wiki-links
@@ -1403,7 +1403,7 @@ git commit -m "feat: render workspace folder tree"
 - Modify: `components/document-editor.tsx`
 - Test: `tests/wiki-links/autocomplete.test.ts`
 
-- [ ] **Step 1: Add failing autocomplete tests**
+- [x] **Step 1: Add failing autocomplete tests**
 
 Create or update `tests/wiki-links/autocomplete.test.ts`:
 
@@ -1426,7 +1426,7 @@ describe("wiki link autocomplete options", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run:
 
@@ -1436,7 +1436,7 @@ pnpm exec vitest run tests/wiki-links/autocomplete.test.ts
 
 Expected: FAIL because `getWikiLinkCompletionOptions()` does not exist.
 
-- [ ] **Step 3: Implement completion options**
+- [x] **Step 3: Implement completion options**
 
 In `lib/wiki-links/autocomplete.ts`, add:
 
@@ -1477,7 +1477,7 @@ export function getWikiLinkCompletionOptions(
 }
 ```
 
-- [ ] **Step 4: Wire editor to insertText**
+- [x] **Step 4: Wire editor to insertText**
 
 In `components/document-editor.tsx`, replace manual `[[${candidate.title}]]` insertion with:
 
@@ -1494,7 +1494,7 @@ const nextMarkdown =
   contentMarkdown.slice(activeCompletion.to);
 ```
 
-- [ ] **Step 5: Run autocomplete and preview tests**
+- [x] **Step 5: Run autocomplete and preview tests**
 
 Run:
 
@@ -1503,6 +1503,8 @@ pnpm exec vitest run tests/wiki-links/autocomplete.test.ts tests/wiki-links/prev
 ```
 
 Expected: PASS.
+
+Implementation note: Task 7 was verified with `pnpm exec vitest run tests/wiki-links/autocomplete.test.ts tests/wiki-links/preview.test.ts` and `pnpm exec tsc --noEmit`.
 
 - [ ] **Step 6: Commit**
 
