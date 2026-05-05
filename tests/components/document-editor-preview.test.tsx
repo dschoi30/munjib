@@ -92,6 +92,23 @@ describe("DocumentEditor heading preview folding", () => {
     expect(screen.getByRole("button", { name: "Expand section A" })).toBeTruthy();
   });
 
+  it("restores folded wikilink headings using raw markdown keys", () => {
+    window.localStorage.setItem("munjib:heading-folds:doc-1", "[\"1-welcome-0\"]");
+
+    renderEditor("# [[Welcome]]\nBody", {
+      linkCandidates: [
+        { id: "doc-welcome", slug: "welcome", title: "Welcome", path: "Welcome" },
+      ],
+    });
+
+    expect(screen.queryByText("Body")).toBeNull();
+    expect(screen.getByRole("button", { name: "Expand section Welcome" })).toBeTruthy();
+
+    const heading = screen.getByRole("heading", { name: "Welcome" });
+    const link = within(heading).getByRole("link", { name: "Welcome" });
+    expect(link.getAttribute("href")).toBe("?document=doc-welcome");
+  });
+
   it("renders inline markdown and wiki links inside preview headings", () => {
     renderEditor("# **Bold** [[Target]]\nBody", {
       linkCandidates: [{ id: "target-doc", slug: "target", title: "Target", path: "Target" }],

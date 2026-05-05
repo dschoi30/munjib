@@ -1,6 +1,8 @@
 "use client";
 
 import { markdown } from "@codemirror/lang-markdown";
+import { foldEffect } from "@codemirror/language";
+import type { EditorView } from "@codemirror/view";
 import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -87,6 +89,7 @@ export function DocumentEditor({
   const [mode, setMode] = useState<EditorMode>("preview");
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
+  const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
   const extensions = useMemo(() => [markdown()], []);
   const suggestions = useMemo(() => {
@@ -100,11 +103,13 @@ export function DocumentEditor({
   useEffect(() => {
     setTitle(document?.title ?? "");
     setContentMarkdown(document?.contentMarkdown ?? "");
+    setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);
 
   function updateMarkdown(value: string, cursorPosition?: number) {
     setContentMarkdown(value);
+    setContentDocumentId(document?.id ?? null);
     setActiveCompletion(
       typeof cursorPosition === "number" ? getActiveWikiLinkCompletion(value, cursorPosition) : null,
     );
@@ -117,6 +122,40 @@ export function DocumentEditor({
     )}`;
     updateMarkdown(nextMarkdown);
   }
+
+  const restoreEditorFolds = useCallback(
+    (view: EditorView) => {
+      if (!document?.id || typeof window === "undefined") {
+        return;
+      }
+
+      const foldTree = buildHeadingFoldTree(contentMarkdown);
+      const storageKey = `munjib:heading-folds:${document.id}`;
+      const foldedKeys = readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys);
+      const effects = foldedKeys.flatMap((key) => {
+        const editorRange = foldTree.sectionByKey.get(key)?.editorRange;
+
+        if (!editorRange) {
+          return [];
+        }
+
+        try {
+          const from = view.state.doc.line(editorRange.fromLine).from;
+          const to = view.state.doc.line(editorRange.toLine).to;
+
+          return from < to ? [foldEffect.of({ from, to })] : [];
+        } catch {
+          return [];
+        }
+      });
+
+      if (effects.length > 0) {
+        view.dispatch({ effects });
+      }
+    },
+    [contentMarkdown, document?.id],
+  );
+  const editorMarkdownReady = contentDocumentId === document?.id;
 
   if (!document) {
     return (
@@ -185,7 +224,7 @@ export function DocumentEditor({
         </Button>
       </form>
       <div className="overflow-hidden rounded-md border border-border bg-white">
-        {mode === "edit" ? (
+        {mode === "edit" && editorMarkdownReady ? (
           <div className="relative min-w-0">
             <CodeMirror
               value={contentMarkdown}
@@ -196,6 +235,7 @@ export function DocumentEditor({
               }}
               editable={canWrite}
               extensions={extensions}
+              onCreateEditor={restoreEditorFolds}
               onChange={(value, viewUpdate) =>
                 updateMarkdown(value, viewUpdate.state.selection.main.head)
               }
@@ -316,12 +356,9 @@ function MarkdownPreview({
     }),
     [],
   );
-  const previewMarkdown = useMemo(
-    () => renderPreviewMarkdownWithWikiLinks(stripDocumentFrontmatter(markdown), candidateBySlug),
-    [markdown, candidateBySlug],
-  );
-  const foldTree = useMemo(() => buildHeadingFoldTree(previewMarkdown), [previewMarkdown]);
-  const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(previewMarkdown), [previewMarkdown]);
+  const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
+  const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
+  const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(strippedMarkdown), [strippedMarkdown]);
   const storageKey = `munjib:heading-folds:${documentId}`;
   const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
     new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
@@ -357,7 +394,7 @@ function MarkdownPreview({
         <>
           {leadingMarkdown.trim().length > 0 ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {leadingMarkdown}
+              {renderPreviewMarkdownWithWikiLinks(leadingMarkdown, candidateBySlug)}
             </ReactMarkdown>
           ) : null}
           {foldTree.sections.map((section) => (
@@ -366,13 +403,14 @@ function MarkdownPreview({
               section={section}
               foldedKeys={foldedKeys}
               markdownComponents={markdownComponents}
+              candidateBySlug={candidateBySlug}
               onToggle={toggleSection}
             />
           ))}
         </>
       ) : (
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {previewMarkdown || "_Nothing to preview._"}
+          {renderPreviewMarkdownWithWikiLinks(strippedMarkdown, candidateBySlug) || "_Nothing to preview._"}
         </ReactMarkdown>
       )}
     </div>
@@ -383,16 +421,20 @@ function MarkdownPreviewSection({
   section,
   foldedKeys,
   markdownComponents,
+  candidateBySlug,
   onToggle,
 }: {
   section: HeadingFoldSection;
   foldedKeys: Set<string>;
   markdownComponents: Components;
+  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>;
   onToggle: (key: string) => void;
 }) {
   const folded = foldedKeys.has(section.key);
   const headingLabel = markdownInlineToPlainText(section.title);
   const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
+  const previewHeadingMarkdown = renderPreviewMarkdownWithWikiLinks(headingMarkdown, candidateBySlug);
+  const previewBodyMarkdown = renderPreviewMarkdownWithWikiLinks(section.bodyMarkdown, candidateBySlug);
 
   return (
     <section>
@@ -415,14 +457,14 @@ function MarkdownPreviewSection({
           )}
         </button>
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {headingMarkdown}
+          {previewHeadingMarkdown}
         </ReactMarkdown>
       </div>
       {folded ? null : (
         <>
           {section.bodyMarkdown.trim().length > 0 ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {section.bodyMarkdown}
+              {previewBodyMarkdown}
             </ReactMarkdown>
           ) : null}
           {section.children.map((child) => (
@@ -431,6 +473,7 @@ function MarkdownPreviewSection({
               section={child}
               foldedKeys={foldedKeys}
               markdownComponents={markdownComponents}
+              candidateBySlug={candidateBySlug}
               onToggle={onToggle}
             />
           ))}
@@ -461,6 +504,9 @@ function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string
 
 function markdownInlineToPlainText(markdown: string) {
   return markdown
+    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target: string, alias: string | undefined) =>
+      alias ?? target,
+    )
     .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
     .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
     .replace(/`([^`]+)`/g, "$1")
