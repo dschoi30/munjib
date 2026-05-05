@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 16
+source_count: 17
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T00:30:00+09:00 - implementation
+
+- Result: Folder hierarchy path helper를 추가했다.
+- Coverage: root/nested folder path 정규화, parent path와 child slug 결합, document path를 path-qualified wikilink target label로 변환.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `lib/folders/path.ts`, `tests/folders/path.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/path.test.ts`.
 
 ## 2026-05-05T00:20:00+09:00 - implementation
 
