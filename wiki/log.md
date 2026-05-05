@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 31
+source_count: 32
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T23:59:00+09:00 - implementation
+
+- Result: Issue #26 folder row hover actions menu를 구현했다.
+- Coverage: folder row hover/focus highlight, `...` menu, row-level `+` document creation, inline folder rename, non-empty folder trash guard feedback, folder favorites, document favorite menu migration, always-visible star icon removal.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #26, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm run test:e2e`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-05T23:58:00+09:00 - plan
 
