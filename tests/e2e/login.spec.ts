@@ -75,7 +75,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
   await page.getByRole("button", { name: "New folder" }).click();
   await expect(page.getByRole("heading", { name: "Untitled folder" })).toBeVisible();
-  await expect(page.getByText("/untitled-folder")).toBeVisible();
+  await expect(page.getByText(/^\/untitled-folder(?:-\d+)?$/)).toBeVisible();
   await page.getByRole("button", { name: "New document" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   await page.getByRole("button", { name: "Edit" }).click();

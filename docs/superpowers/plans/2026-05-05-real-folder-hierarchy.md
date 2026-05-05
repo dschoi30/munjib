@@ -1389,6 +1389,8 @@ Expected: PASS. If local browser dependencies are missing, run the closest avail
 
 Implementation note: Task 6 was verified with `pnpm exec vitest run tests/workspace-tree.test.ts tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts tests/documents/service.test.ts tests/folders/service.test.ts` and `pnpm exec tsc --noEmit`. Full Playwright e2e remains part of Task 8 final verification.
 
+Follow-up UI decision: folder rows in `components/document-navigation.tsx` are accordion toggle buttons, not editor navigation links. They use disclosure chevron icons instead of folder icons, render expanded children under a continuous vertical guide line, keep the current editor document unchanged when toggled, rename `Recent` to `Recents`, cap recents at five documents, and add a `Documents` heading above the full tree. Recents use consistent left padding independent of `treeDepth`.
+
 - [ ] **Step 8: Commit**
 
 ```bash

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { Folder, Search, Star } from "lucide-react";
+import { ChevronDown, ChevronRight, Search, Star } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
-import { documentDisplayLabel, treeDepth } from "@/lib/workspace-tree";
+import { documentDisplayLabel } from "@/lib/workspace-tree";
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -22,8 +22,11 @@ export function DocumentNavigation({
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [switcherQuery, setSwitcherQuery] = useState("");
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
+    () => new Set(folders.map((folder) => folder.id)),
+  );
   const favoriteDocuments = documents.filter((document) => favoriteIds.includes(document.id));
-  const recentDocuments = documents.slice(0, 4);
+  const recentDocuments = documents.slice(0, 5);
   const switcherResults = useMemo(() => {
     const query = switcherQuery.toLowerCase().trim();
     if (!query) return documents.slice(0, 8);
@@ -50,6 +53,16 @@ export function DocumentNavigation({
   }, [favoriteIds, workspaceSlug]);
 
   useEffect(() => {
+    setExpandedFolderIds((current) => {
+      const next = new Set(current);
+      for (const folderId of current) {
+        if (!folders.some((folder) => folder.id === folderId)) next.delete(folderId);
+      }
+      return next;
+    });
+  }, [folders]);
+
+  useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -68,6 +81,53 @@ export function DocumentNavigation({
         ? current.filter((favoriteId) => favoriteId !== documentId)
         : [...current, documentId],
     );
+  }
+
+  function toggleFolder(folderId: string) {
+    setExpandedFolderIds((current) => {
+      const next = new Set(current);
+      if (next.has(folderId)) next.delete(folderId);
+      else next.add(folderId);
+      return next;
+    });
+  }
+
+  function renderTreeItems(parentFolderId: string | null) {
+    const items = buildTreeItems(folders, documents, parentFolderId);
+
+    return items.map((item) => {
+      if (item.kind === "document") {
+        return (
+          <DocumentLinkRow
+            key={item.document.id}
+            workspaceSlug={workspaceSlug}
+            document={item.document}
+            favoriteIds={favoriteIds}
+            searchQuery={searchQuery}
+            onToggleFavorite={toggleFavorite}
+          />
+        );
+      }
+
+      const isExpanded = expandedFolderIds.has(item.folder.id);
+      const hasChildren = hasTreeChildren(folders, documents, item.folder.id);
+
+      return (
+        <div key={item.folder.id}>
+          <FolderToggleRow
+            folder={item.folder}
+            expanded={isExpanded}
+            selected={item.folder.id === selectedFolderId}
+            onToggle={() => toggleFolder(item.folder.id)}
+          />
+          {isExpanded && hasChildren ? (
+            <div className="ml-3 border-l border-slate-200 pl-2">
+              {renderTreeItems(item.folder.id)}
+            </div>
+          ) : null}
+        </div>
+      );
+    });
   }
 
   return (
@@ -95,7 +155,7 @@ export function DocumentNavigation({
       ) : null}
       {!searchQuery ? (
         <DocumentSection
-          title="Recent"
+          title="Recents"
           workspaceSlug={workspaceSlug}
           documents={recentDocuments}
           favoriteIds={favoriteIds}
@@ -104,6 +164,11 @@ export function DocumentNavigation({
         />
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
+        {!searchQuery ? (
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Documents
+          </p>
+        ) : null}
         {documents.length === 0 && (searchQuery || folders.length === 0) ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
             No documents found.
@@ -120,25 +185,7 @@ export function DocumentNavigation({
                 onToggleFavorite={toggleFavorite}
               />
             ))
-          : buildTreeRows(folders, documents).map((row) =>
-              row.kind === "folder" ? (
-                <FolderLinkRow
-                  key={row.folder.id}
-                  workspaceSlug={workspaceSlug}
-                  folder={row.folder}
-                  selected={row.folder.id === selectedFolderId}
-                />
-              ) : (
-                <DocumentLinkRow
-                  key={row.document.id}
-                  workspaceSlug={workspaceSlug}
-                  document={row.document}
-                  favoriteIds={favoriteIds}
-                  searchQuery={searchQuery}
-                  onToggleFavorite={toggleFavorite}
-                />
-              ),
-            )}
+          : renderTreeItems(null)}
       </nav>
       {isSwitcherOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/20 p-6" role="dialog" aria-modal="true">
@@ -235,7 +282,6 @@ function DocumentLinkRow({
           searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
         }`}
         className="min-w-0 flex-1 px-2 py-2 text-sm"
-        style={searchQuery ? undefined : { paddingLeft: `${8 + treeDepth(document.path) * 16}px` }}
       >
         <span className="block truncate">{documentDisplayLabel(document)}</span>
         {searchQuery ? (
@@ -258,28 +304,33 @@ function DocumentLinkRow({
   );
 }
 
-function FolderLinkRow({
-  workspaceSlug,
+function FolderToggleRow({
   folder,
+  expanded,
   selected,
+  onToggle,
 }: {
-  workspaceSlug: string;
   folder: FolderListItem;
+  expanded: boolean;
   selected: boolean;
+  onToggle: () => void;
 }) {
+  const ChevronIcon = expanded ? ChevronDown : ChevronRight;
+
   return (
-    <Link
-      href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={onToggle}
       className={
         selected
-          ? "flex items-center gap-2 rounded-md bg-white px-2 py-2 text-sm font-medium shadow-sm"
-          : "flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+          ? "flex w-full items-center gap-1 rounded-md bg-white px-2 py-2 text-left text-sm font-medium shadow-sm"
+          : "flex w-full items-center gap-1 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
       }
-      style={{ paddingLeft: `${8 + treeDepth(folder.path) * 16}px` }}
     >
-      <Folder className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+      <ChevronIcon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
       <span className="min-w-0 truncate">{folder.name}</span>
-    </Link>
+    </button>
   );
 }
 
@@ -287,13 +338,32 @@ type TreeRow =
   | { kind: "folder"; folder: FolderListItem }
   | { kind: "document"; document: DocumentListItem };
 
-function buildTreeRows(folders: FolderListItem[], documents: DocumentListItem[]): TreeRow[] {
+function buildTreeItems(
+  folders: FolderListItem[],
+  documents: DocumentListItem[],
+  parentFolderId: string | null,
+): TreeRow[] {
   return [
-    ...folders.map((folder) => ({ kind: "folder" as const, folder })),
-    ...documents.map((document) => ({ kind: "document" as const, document })),
+    ...folders
+      .filter((folder) => folder.parentFolderId === parentFolderId)
+      .map((folder) => ({ kind: "folder" as const, folder })),
+    ...documents
+      .filter((document) => document.folderId === parentFolderId)
+      .map((document) => ({ kind: "document" as const, document })),
   ].sort((left, right) => {
     const leftPath = left.kind === "folder" ? left.folder.path : left.document.path;
     const rightPath = right.kind === "folder" ? right.folder.path : right.document.path;
     return leftPath.localeCompare(rightPath);
   });
+}
+
+function hasTreeChildren(
+  folders: FolderListItem[],
+  documents: DocumentListItem[],
+  folderId: string,
+) {
+  return (
+    folders.some((folder) => folder.parentFolderId === folderId) ||
+    documents.some((document) => document.folderId === folderId)
+  );
 }
