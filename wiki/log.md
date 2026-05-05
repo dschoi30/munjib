@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-05T23:35:00+09:00 - maintenance
+
+- Result: 기존 feature branch에 다른 issue 작업이 있으면 `git worktree` 또는 clean `main` checkout으로 새 작업공간을 분리해야 한다는 운영 규칙을 추가했다.
+- Coverage: `wiki:feature-start`가 이미 feature branch에서는 새 branch를 만들지 않는 동작의 전제, worktree 사용 예시, issue #25 branch separation recovery.
+- Pages: [[Local Development Workflow]], [[Wiki Maintenance Automation]], [[log|Wiki Log]].
+- Source evidence: Issue #25 설계 커밋을 `issue-23-centralize-service-error-codes`에서 `issue-25-markdown-heading-folding`으로 분리한 작업.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
 ## 2026-05-05T18:20:00+09:00 - design
 
 - Result: Issue #25 Markdown heading folding 설계를 기록했다.
