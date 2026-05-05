@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-04
-source_count: 7
+source_count: 9
 tags:
   - munjib
   - data-model
@@ -79,13 +79,18 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 첫 구현 유틸리티는 `lib/folders/path.ts`다. `normalizeFolderPath()`는 root와 중첩 경로를 소문자 leading-slash path로 정규화하고, `buildChildPath()`는 parent folder path와 child slug를 결합하며, `pathToWikiTarget()`은 `/operations/onboarding` 같은 document path를 `Operations/Onboarding` wikilink target label로 변환한다.
 
+`lib/folders/service.ts`는 folder create, rename, move, archive를 담당한다. 모든 mutation은 workspace write 권한을 요구하고 audit log를 남긴다. Rename/move는 descendant folder/document path를 재계산하며, 자기 자신 또는 descendant 아래로 이동하는 cycle은 `FOLDER_MOVE_CYCLE`로 거부한다. Archive는 active child folder/document가 있으면 `FOLDER_NOT_EMPTY`로 거부한다.
+
 ## 근거
 
 - GitHub issue #20
 - `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`
 - `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`
 - `lib/folders/path.ts`
+- `lib/folders/service.ts`
+- `lib/folders/types.ts`
 - `tests/folders/path.test.ts`
+- `tests/folders/service.test.ts`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - Obsidian Hub beginner guide: https://publish.obsidian.md/hub/04%20-%20Guides%2C%20Workflows%2C%20%26%20Courses/for%20Beginners
