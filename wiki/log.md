@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 17
+source_count: 18
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T00:40:00+09:00 - implementation
+
+- Result: Folder service를 추가했다.
+- Coverage: create, rename, move, archive folder mutation, workspace write 권한 검사, audit log 기록, descendant path recalculation, move cycle guard, non-empty archive guard.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `lib/folders/service.ts`, `lib/folders/types.ts`, `tests/folders/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts`.
 
 ## 2026-05-05T00:30:00+09:00 - implementation
 
