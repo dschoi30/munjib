@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   archiveDocument,
   createDocument,
+  moveDocument,
   restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
+import { createFolder } from "@/lib/folders/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("document service", () => {
@@ -92,6 +94,66 @@ Track #review work.`,
     expect(first.slug).toBe("untitled");
     expect(second.slug).toBe("untitled-2");
     expect(second.path).toBe("/untitled-2");
+  });
+
+  it("allows duplicate document titles in different folders", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const engineering = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Engineering",
+    });
+
+    const first = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+    const second = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: engineering.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+
+    expect(first.slug).toBe("onboarding");
+    expect(first.path).toBe("/operations/onboarding");
+    expect(second.slug).toBe("onboarding");
+    expect(second.path).toBe("/engineering/onboarding");
+  });
+
+  it("moves a document into a folder and recalculates path", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const folder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "",
+    });
+
+    const moved = await moveDocument({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      folderId: folder.id,
+    });
+
+    expect(moved.path).toBe("/operations/runbook");
   });
 
   it("updates a document with a new version and audit log", async () => {

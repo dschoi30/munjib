@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-04
-source_count: 9
+source_count: 11
 tags:
   - munjib
   - data-model
@@ -81,6 +81,8 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 `lib/folders/service.ts`는 folder create, rename, move, archive를 담당한다. 모든 mutation은 workspace write 권한을 요구하고 audit log를 남긴다. Rename/move는 descendant folder/document path를 재계산하며, 자기 자신 또는 descendant 아래로 이동하는 cycle은 `FOLDER_MOVE_CYCLE`로 거부한다. Archive는 active child folder/document가 있으면 `FOLDER_NOT_EMPTY`로 거부한다.
 
+`lib/documents/service.ts`는 `CreateDocumentInput.folderId`와 `moveDocument()`를 지원한다. 문서 생성, title update, version restore는 현재 folder path와 document slug를 결합해 `Document.path`를 계산한다. 서로 다른 folder 안에서는 같은 document title/slug를 허용하고, 같은 folder 안에서는 next-available slug를 사용한다. `moveDocument()`는 target folder의 path 아래로 문서를 이동하고 `document.moved` audit log에 previous path와 새 path를 기록한다.
+
 ## 근거
 
 - GitHub issue #20
@@ -89,8 +91,11 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 - `lib/folders/path.ts`
 - `lib/folders/service.ts`
 - `lib/folders/types.ts`
+- `lib/documents/service.ts`
+- `lib/documents/types.ts`
 - `tests/folders/path.test.ts`
 - `tests/folders/service.test.ts`
+- `tests/documents/service.test.ts`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - Obsidian Hub beginner guide: https://publish.obsidian.md/hub/04%20-%20Guides%2C%20Workflows%2C%20%26%20Courses/for%20Beginners
