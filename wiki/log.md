@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 27
+source_count: 29
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T23:10:00+09:00 - review
+
+- Result: PR #24 리뷰를 반영해 document service에 남아 있던 document 관련 error code literal을 `SERVICE_ERROR_CODES`에 추가했다.
+- Coverage: `DOCUMENT_NOT_FOUND`, `DOCUMENT_VERSION_NOT_FOUND`, `DOCUMENT_LINK_NOT_FOUND`를 service error registry에 포함하고 document service가 상수를 참조하도록 변경.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #24 review comments, `lib/service-errors.ts`, `lib/documents/service.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-05T22:55:00+09:00 - review
 
@@ -34,6 +42,14 @@ links:
 - Pages: [[Folder Hierarchy Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
 - Source evidence: PR #22 review comments, `lib/documents/service.ts`, `lib/folders/service.ts`, `lib/wiki-links/targets.ts`, `tests/folders/service.test.ts`, `tests/wiki-links/reconcile.test.ts`.
 - Verification: `pnpm exec vitest run tests/folders/service.test.ts`, `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T15:05:00+09:00 - implementation
+
+- Result: Issue #23에서 folder/document service error code 문자열을 `SERVICE_ERROR_CODES`로 중앙화했다.
+- Coverage: workspace/folder not found, parent folder not found, folder move cycle, non-empty folder archive, document slug retry exhaustion code를 `lib/service-errors.ts`로 이동하고 service/tests가 상수를 참조하도록 변경.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #23, PR #22 Gemini review comments, `lib/service-errors.ts`, `lib/folders/service.ts`, `lib/documents/service.ts`, `tests/folders/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-05T14:45:00+09:00 - review
 
