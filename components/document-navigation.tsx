@@ -414,6 +414,7 @@ function DocumentLinkRow({
 }) {
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
+  const displayLabel = documentDisplayLabel(document);
 
   return (
     <div className="group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted">
@@ -431,7 +432,7 @@ function DocumentLinkRow({
       </Link>
       <button
         type="button"
-        aria-label={`Open actions for ${document.title}`}
+        aria-label={`Open actions for ${displayLabel}`}
         aria-expanded={isMenuOpen}
         onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
@@ -495,6 +496,7 @@ function FolderToggleRow({
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;
   const menuId = `folder:${folder.id}`;
   const isMenuOpen = openMenuId === menuId;
+  const displayLabel = folderDisplayLabel(folder);
   const rowClassName = selected
     ? "group relative flex w-full items-center gap-1 rounded-md bg-white px-2 py-1.5 text-left text-sm font-medium shadow-sm focus-within:bg-white"
     : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-within:bg-muted";
@@ -512,7 +514,7 @@ function FolderToggleRow({
       >
         <input type="hidden" name="folderId" value={folder.id} />
         <label className="sr-only" htmlFor={renameInputId}>
-          Rename {folder.name}
+          Rename {displayLabel}
         </label>
         <input
           id={renameInputId}
@@ -554,7 +556,7 @@ function FolderToggleRow({
           <button
             type="submit"
             disabled={!canWrite}
-            aria-label={`New document in ${folder.name}`}
+            aria-label={`New document in ${displayLabel}`}
             className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -562,7 +564,7 @@ function FolderToggleRow({
         </form>
         <button
           type="button"
-          aria-label={`Open actions for ${folder.name}`}
+          aria-label={`Open actions for ${displayLabel}`}
           aria-expanded={isMenuOpen}
           onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
           className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink"
@@ -641,6 +643,10 @@ function hasTreeChildren(
     folders.some((folder) => folder.parentFolderId === folderId) ||
     documents.some((document) => document.folderId === folderId)
   );
+}
+
+function folderDisplayLabel(folder: Pick<FolderListItem, "name" | "path">) {
+  return `${folder.name} ${folder.path}`;
 }
 
 function parseFavorites(raw: string | null): FavoriteState {
