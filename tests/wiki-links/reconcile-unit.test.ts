@@ -27,7 +27,7 @@ describe("reconcileDocumentLinks batching", () => {
       document: {
         findMany: async () => {
           calls.findMany += 1;
-          return [{ id: "runbook-id", slug: "runbook" }];
+          return [{ id: "runbook-id", path: "/runbook", title: "Runbook" }];
         },
         findFirst: async () => {
           calls.findFirst += 1;
@@ -39,7 +39,7 @@ describe("reconcileDocumentLinks batching", () => {
     await reconcileDocumentLinks(tx as never, {
       workspaceId: "workspace-id",
       sourceDocumentId: "source-id",
-      contentMarkdown: "[[Runbook]] [[Missing Policy]] [[Runbook]]",
+      contentMarkdown: "---\nlinks:\n  - \"[[Runbook]]\"\n  - \"[[Missing Policy]]\"\n  - \"[[Runbook]]\"\n---\n\n# Source",
     });
 
     expect(calls).toEqual({
@@ -57,6 +57,8 @@ describe("reconcileDocumentLinks batching", () => {
         targetTitleRaw: "Runbook",
         alias: null,
         isBroken: false,
+        isAmbiguous: false,
+        sortOrder: 0,
       },
       {
         workspaceId: "workspace-id",
@@ -65,6 +67,8 @@ describe("reconcileDocumentLinks batching", () => {
         targetTitleRaw: "Missing Policy",
         alias: null,
         isBroken: true,
+        isAmbiguous: false,
+        sortOrder: 1,
       },
     ]);
   });

@@ -235,7 +235,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 
 현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 
-`parentId`는 tree 구조를 위한 필드다. 현재 `New folder` UI는 별도 folder model이 아니라 title이 `Untitled folder`이고 내용이 비어 있는 루트 문서를 생성하는 folder-like entry로 동작한다.
+`parentId`는 legacy document tree 구조를 위한 필드다. 현재 folder hierarchy의 위치 source of truth는 `Folder.parentFolderId`와 `Document.folderId`다.
 
 같은 folder 안에서는 document slug가 unique여야 하지만 서로 다른 folder 사이에서는 같은 document title/slug를 허용한다. 예를 들어 `/operations/onboarding`과 `/engineering/onboarding`은 둘 다 `Onboarding` 문서일 수 있다. `New folder`는 더 이상 빈 `Document`를 만들지 않고 `Folder`를 만든다.
 

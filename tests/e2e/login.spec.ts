@@ -33,6 +33,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ })).toBeVisible();
   await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
+  await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
