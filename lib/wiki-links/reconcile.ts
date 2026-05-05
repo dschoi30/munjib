@@ -47,7 +47,7 @@ function resolveLinkTarget(
   targetTitleRaw: string,
 ) {
   if (targetTitleRaw.includes("/")) {
-    const targetPath = `/${targetTitleRaw.trim().replace(/^\/+|\/+$/g, "").toLowerCase()}`;
+    const targetPath = pathQualifiedTargetToDocumentPath(targetTitleRaw);
     const target = targets.find((candidate) => candidate.path === targetPath);
     return {
       targetDocumentId: target?.id ?? null,
@@ -79,6 +79,16 @@ function resolveLinkTarget(
     isBroken: true,
     isAmbiguous: false,
   };
+}
+
+function pathQualifiedTargetToDocumentPath(targetTitleRaw: string) {
+  const segments = targetTitleRaw
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .map((segment) => slugifyTitle(segment))
+    .filter(Boolean);
+  return `/${segments.join("/")}`;
 }
 
 export async function repairBrokenLinksForTarget(

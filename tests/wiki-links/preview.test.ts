@@ -104,10 +104,19 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     const candidates = buildWikiLinkPreviewCandidateMap([
       { id: "ops", slug: "onboarding", title: "Onboarding", path: "/operations/onboarding" },
       { id: "eng", slug: "onboarding", title: "Onboarding", path: "/engineering/onboarding" },
+      {
+        id: "incident",
+        slug: "incident-runbook",
+        title: "Incident Runbook",
+        path: "/operations/incident-runbook",
+      },
     ]);
 
     expect(renderPreviewMarkdownWithWikiLinks("[[Operations/Onboarding]]", candidates)).toBe(
       "[Operations/Onboarding](?document=ops)",
+    );
+    expect(renderPreviewMarkdownWithWikiLinks("[[Operations/Incident Runbook]]", candidates)).toBe(
+      "[Operations/Incident Runbook](?document=incident)",
     );
     expect(renderPreviewMarkdownWithWikiLinks("[[Onboarding]]", candidates)).toBe("Onboarding");
   });

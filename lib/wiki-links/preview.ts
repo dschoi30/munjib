@@ -139,7 +139,12 @@ function transformWikiLinks(
 
 function candidateLookupKey(targetTitle: string) {
   return targetTitle.includes("/")
-    ? targetTitle.replace(/^\/+|\/+$/g, "").toLowerCase()
+    ? targetTitle
+        .replace(/^\/+|\/+$/g, "")
+        .split("/")
+        .map((segment) => slugifyTitle(segment))
+        .filter(Boolean)
+        .join("/")
     : slugifyTitle(targetTitle);
 }
 
