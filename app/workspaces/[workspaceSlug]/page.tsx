@@ -15,9 +15,11 @@ import { countFolderChildren, filterReadableDocuments } from "@/lib/workspace-tr
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createFolderAction,
+  archiveFolderAction,
   createDocumentAction,
   createCommentAction,
   createDocumentFromBrokenLinkAction,
+  renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
   uploadDocumentAttachmentAction,
@@ -28,11 +30,16 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string; folder?: string; q?: string }>;
+  searchParams: Promise<{ document?: string; folder?: string; q?: string; folderError?: string }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
-  const { document: selectedDocumentId, folder: selectedFolderIdParam, q } = await searchParams;
+  const {
+    document: selectedDocumentId,
+    folder: selectedFolderIdParam,
+    q,
+    folderError,
+  } = await searchParams;
   const searchQuery = q?.trim() ?? "";
 
   const workspace = await prisma.workspace.findFirst({
@@ -169,6 +176,8 @@ export default async function WorkspacePage({
     : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
   const createFolder = createFolderAction.bind(null, workspaceSlug);
+  const renameFolder = renameFolderAction.bind(null, workspaceSlug);
+  const archiveFolder = archiveFolderAction.bind(null, workspaceSlug);
   const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
     null,
@@ -199,6 +208,9 @@ export default async function WorkspacePage({
           canWrite={canWrite}
           createAction={createAction}
           createFolderAction={createFolder}
+          renameFolderAction={renameFolder}
+          archiveFolderAction={archiveFolder}
+          folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           searchQuery={searchQuery}
         />

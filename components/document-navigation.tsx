@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Search, Star } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
+
+type FavoriteState = { documents: string[]; folders: string[] };
+
+const emptyFavorites: FavoriteState = { documents: [], folders: [] };
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -12,21 +16,43 @@ export function DocumentNavigation({
   documents,
   selectedFolderId,
   searchQuery,
+  canWrite,
+  createAction,
+  renameFolderAction,
+  archiveFolderAction,
+  folderError,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
   documents: DocumentListItem[];
   selectedFolderId: string | null;
   searchQuery: string;
+  canWrite: boolean;
+  createAction: (formData: FormData) => Promise<void>;
+  renameFolderAction: (formData: FormData) => Promise<void>;
+  archiveFolderAction: (formData: FormData) => Promise<void>;
+  folderError: string;
 }) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [switcherQuery, setSwitcherQuery] = useState("");
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
-  const favoriteDocuments = documents.filter((document) => favoriteIds.includes(document.id));
-  const recentDocuments = documents.slice(0, 5);
+
+  const favoriteDocumentIds = useMemo(
+    () => new Set(favorites.documents),
+    [favorites.documents],
+  );
+  const favoriteFolderIds = useMemo(() => new Set(favorites.folders), [favorites.folders]);
+  const favoriteDocuments = documents.filter((document) => favoriteDocumentIds.has(document.id));
+  const favoriteFolders = folders.filter((folder) => favoriteFolderIds.has(folder.id));
+  const recentDocuments = documents
+    .filter((document) => !favoriteDocumentIds.has(document.id))
+    .slice(0, 5);
+  const folderErrorText = folderErrorMessage(folderError);
   const switcherResults = useMemo(() => {
     const query = switcherQuery.toLowerCase().trim();
     if (!query) return documents.slice(0, 8);
@@ -40,17 +66,13 @@ export function DocumentNavigation({
   }, [documents, switcherQuery]);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);
-      setFavoriteIds(raw ? (JSON.parse(raw) as string[]) : []);
-    } catch {
-      setFavoriteIds([]);
-    }
+    const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);
+    setFavorites(parseFavorites(raw));
   }, [workspaceSlug]);
 
   useEffect(() => {
-    window.localStorage.setItem(`munjib:favorites:${workspaceSlug}`, JSON.stringify(favoriteIds));
-  }, [favoriteIds, workspaceSlug]);
+    window.localStorage.setItem(`munjib:favorites:${workspaceSlug}`, JSON.stringify(favorites));
+  }, [favorites, workspaceSlug]);
 
   useEffect(() => {
     setExpandedFolderIds((current) => {
@@ -68,19 +90,31 @@ export function DocumentNavigation({
         event.preventDefault();
         setIsSwitcherOpen(true);
       }
-      if (event.key === "Escape") setIsSwitcherOpen(false);
+      if (event.key === "Escape") {
+        setIsSwitcherOpen(false);
+        setOpenMenuId(null);
+        setRenamingFolderId(null);
+      }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  function toggleFavorite(documentId: string) {
-    setFavoriteIds((current) =>
-      current.includes(documentId)
-        ? current.filter((favoriteId) => favoriteId !== documentId)
-        : [...current, documentId],
-    );
+  function toggleFavoriteDocument(documentId: string) {
+    setFavorites((current) => ({
+      ...current,
+      documents: toggleListValue(current.documents, documentId),
+    }));
+    setOpenMenuId(null);
+  }
+
+  function toggleFavoriteFolder(folderId: string) {
+    setFavorites((current) => ({
+      ...current,
+      folders: toggleListValue(current.folders, folderId),
+    }));
+    setOpenMenuId(null);
   }
 
   function toggleFolder(folderId: string) {
@@ -90,6 +124,11 @@ export function DocumentNavigation({
       else next.add(folderId);
       return next;
     });
+  }
+
+  function startFolderRename(folderId: string) {
+    setRenamingFolderId(folderId);
+    setOpenMenuId(null);
   }
 
   function renderTreeItems(parentFolderId: string | null) {
@@ -102,9 +141,11 @@ export function DocumentNavigation({
             key={item.document.id}
             workspaceSlug={workspaceSlug}
             document={item.document}
-            favoriteIds={favoriteIds}
+            isFavorite={favoriteDocumentIds.has(item.document.id)}
             searchQuery={searchQuery}
-            onToggleFavorite={toggleFavorite}
+            openMenuId={openMenuId}
+            onOpenMenu={setOpenMenuId}
+            onToggleFavorite={toggleFavoriteDocument}
           />
         );
       }
@@ -118,6 +159,17 @@ export function DocumentNavigation({
             folder={item.folder}
             expanded={isExpanded}
             selected={item.folder.id === selectedFolderId}
+            canWrite={canWrite}
+            createAction={createAction}
+            renameFolderAction={renameFolderAction}
+            archiveFolderAction={archiveFolderAction}
+            isFavorite={favoriteFolderIds.has(item.folder.id)}
+            isRenaming={renamingFolderId === item.folder.id}
+            openMenuId={openMenuId}
+            onOpenMenu={setOpenMenuId}
+            onStartRename={startFolderRename}
+            onCancelRename={() => setRenamingFolderId(null)}
+            onToggleFavorite={toggleFavoriteFolder}
             onToggle={() => toggleFolder(item.folder.id)}
           />
           {isExpanded && hasChildren ? (
@@ -143,14 +195,21 @@ export function DocumentNavigation({
         </span>
         <span className="text-xs">Ctrl K</span>
       </button>
-      {favoriteDocuments.length > 0 ? (
-        <DocumentSection
-          title="Favorites"
+      {folderErrorText ? (
+        <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+          {folderErrorText}
+        </p>
+      ) : null}
+      {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
+        <FavoriteSection
           workspaceSlug={workspaceSlug}
+          folders={favoriteFolders}
           documents={favoriteDocuments}
-          favoriteIds={favoriteIds}
+          favoriteDocumentIds={favoriteDocumentIds}
           searchQuery={searchQuery}
-          onToggleFavorite={toggleFavorite}
+          openMenuId={openMenuId}
+          onOpenMenu={setOpenMenuId}
+          onToggleFavorite={toggleFavoriteDocument}
         />
       ) : null}
       {!searchQuery ? (
@@ -158,9 +217,11 @@ export function DocumentNavigation({
           title="Recents"
           workspaceSlug={workspaceSlug}
           documents={recentDocuments}
-          favoriteIds={favoriteIds}
+          favoriteDocumentIds={favoriteDocumentIds}
           searchQuery={searchQuery}
-          onToggleFavorite={toggleFavorite}
+          openMenuId={openMenuId}
+          onOpenMenu={setOpenMenuId}
+          onToggleFavorite={toggleFavoriteDocument}
         />
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
@@ -180,9 +241,11 @@ export function DocumentNavigation({
                 key={document.id}
                 workspaceSlug={workspaceSlug}
                 document={document}
-                favoriteIds={favoriteIds}
+                isFavorite={favoriteDocumentIds.has(document.id)}
                 searchQuery={searchQuery}
-                onToggleFavorite={toggleFavorite}
+                openMenuId={openMenuId}
+                onOpenMenu={setOpenMenuId}
+                onToggleFavorite={toggleFavoriteDocument}
               />
             ))
           : renderTreeItems(null)}
@@ -226,19 +289,73 @@ export function DocumentNavigation({
   );
 }
 
+function FavoriteSection({
+  workspaceSlug,
+  folders,
+  documents,
+  favoriteDocumentIds,
+  searchQuery,
+  openMenuId,
+  onOpenMenu,
+  onToggleFavorite,
+}: {
+  workspaceSlug: string;
+  folders: FolderListItem[];
+  documents: DocumentListItem[];
+  favoriteDocumentIds: Set<string>;
+  searchQuery: string;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
+  onToggleFavorite: (documentId: string) => void;
+}) {
+  return (
+    <section className="mb-4">
+      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Favorites</p>
+      <div className="space-y-1">
+        {folders.map((folder) => (
+          <Link
+            key={`Favorites-folder-${folder.id}`}
+            href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+            className="block rounded-md px-2 py-2 text-sm hover:bg-muted"
+          >
+            <span className="block truncate">{folder.name}</span>
+            <span className="mt-1 block truncate text-xs text-slate-500">{folder.path}</span>
+          </Link>
+        ))}
+        {documents.map((document) => (
+          <DocumentLinkRow
+            key={`Favorites-${document.id}`}
+            workspaceSlug={workspaceSlug}
+            document={document}
+            isFavorite={favoriteDocumentIds.has(document.id)}
+            searchQuery={searchQuery}
+            openMenuId={openMenuId}
+            onOpenMenu={onOpenMenu}
+            onToggleFavorite={onToggleFavorite}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DocumentSection({
   title,
   workspaceSlug,
   documents,
-  favoriteIds,
+  favoriteDocumentIds,
   searchQuery,
+  openMenuId,
+  onOpenMenu,
   onToggleFavorite,
 }: {
   title: string;
   workspaceSlug: string;
   documents: DocumentListItem[];
-  favoriteIds: string[];
+  favoriteDocumentIds: Set<string>;
   searchQuery: string;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
 }) {
   return (
@@ -250,8 +367,10 @@ function DocumentSection({
             key={`${title}-${document.id}`}
             workspaceSlug={workspaceSlug}
             document={document}
-            favoriteIds={favoriteIds}
+            isFavorite={favoriteDocumentIds.has(document.id)}
             searchQuery={searchQuery}
+            openMenuId={openMenuId}
+            onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
           />
         ))}
@@ -263,20 +382,25 @@ function DocumentSection({
 function DocumentLinkRow({
   workspaceSlug,
   document,
-  favoriteIds,
+  isFavorite,
   searchQuery,
+  openMenuId,
+  onOpenMenu,
   onToggleFavorite,
 }: {
   workspaceSlug: string;
   document: DocumentListItem;
-  favoriteIds: string[];
+  isFavorite: boolean;
   searchQuery: string;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
 }) {
-  const isFavorite = favoriteIds.includes(document.id);
+  const menuId = `document:${document.id}`;
+  const isMenuOpen = openMenuId === menuId;
 
   return (
-    <div className="group flex items-start gap-1 rounded-md hover:bg-muted">
+    <div className="group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted">
       <Link
         href={`/workspaces/${workspaceSlug}?document=${document.id}${
           searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
@@ -285,21 +409,31 @@ function DocumentLinkRow({
       >
         <span className="block truncate">{documentDisplayLabel(document)}</span>
         {searchQuery ? (
-          <span className="mt-1 block truncate text-xs text-slate-500">
-            {document.path}
-          </span>
+          <span className="mt-1 block truncate text-xs text-slate-500">{document.path}</span>
         ) : null}
       </Link>
       <button
         type="button"
-        aria-label={
-          isFavorite ? `Remove ${document.title} from favorites` : `Add ${document.title} to favorites`
-        }
-        onClick={() => onToggleFavorite(document.id)}
-        className="mt-1 rounded p-1 text-slate-400 hover:text-ink"
+        aria-label={`Open actions for ${document.title}`}
+        aria-expanded={isMenuOpen}
+        onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+        className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
+          isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        }`}
       >
-        <Star className={isFavorite ? "h-4 w-4 fill-current" : "h-4 w-4"} aria-hidden="true" />
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
       </button>
+      {isMenuOpen ? (
+        <div className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(document.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
+          >
+            {isFavorite ? "Remove from favorites" : "Add to favorites"}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -308,29 +442,137 @@ function FolderToggleRow({
   folder,
   expanded,
   selected,
+  canWrite,
+  createAction,
+  renameFolderAction,
+  archiveFolderAction,
+  isFavorite,
+  isRenaming,
+  openMenuId,
+  onOpenMenu,
+  onStartRename,
+  onCancelRename,
+  onToggleFavorite,
   onToggle,
 }: {
   folder: FolderListItem;
   expanded: boolean;
   selected: boolean;
+  canWrite: boolean;
+  createAction: (formData: FormData) => Promise<void>;
+  renameFolderAction: (formData: FormData) => Promise<void>;
+  archiveFolderAction: (formData: FormData) => Promise<void>;
+  isFavorite: boolean;
+  isRenaming: boolean;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
+  onStartRename: (folderId: string) => void;
+  onCancelRename: () => void;
+  onToggleFavorite: (folderId: string) => void;
   onToggle: () => void;
 }) {
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;
+  const menuId = `folder:${folder.id}`;
+  const isMenuOpen = openMenuId === menuId;
+  const rowClassName = selected
+    ? "group relative flex w-full items-center gap-1 rounded-md bg-white px-2 py-1.5 text-left text-sm font-medium shadow-sm focus-within:bg-white"
+    : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-within:bg-muted";
+
+  if (isRenaming) {
+    return (
+      <form
+        action={renameFolderAction}
+        className={rowClassName}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") onCancelRename();
+        }}
+      >
+        <input type="hidden" name="folderId" value={folder.id} />
+        <input
+          name="name"
+          defaultValue={folder.name}
+          required
+          autoFocus
+          className="min-w-0 flex-1 rounded border border-border bg-white px-2 py-1 text-sm outline-none focus:border-ink"
+        />
+        <button
+          type="submit"
+          className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-muted"
+        >
+          Save
+        </button>
+      </form>
+    );
+  }
 
   return (
-    <button
-      type="button"
-      aria-expanded={expanded}
-      onClick={onToggle}
-      className={
-        selected
-          ? "flex w-full items-center gap-1 rounded-md bg-white px-2 py-2 text-left text-sm font-medium shadow-sm"
-          : "flex w-full items-center gap-1 rounded-md px-2 py-2 text-left text-sm hover:bg-muted"
-      }
-    >
-      <ChevronIcon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-      <span className="min-w-0 truncate">{folder.name}</span>
-    </button>
+    <div className={rowClassName}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={onToggle}
+        className="flex min-w-0 flex-1 items-center gap-1 py-0.5 text-left"
+      >
+        <ChevronIcon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+        <span className="min-w-0 truncate">{folder.name}</span>
+      </button>
+      <div
+        className={`flex items-center gap-0.5 ${
+          isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        }`}
+      >
+        <form action={createAction}>
+          <input type="hidden" name="folderId" value={folder.id} />
+          <input type="hidden" name="template" value="blank" />
+          <button
+            type="submit"
+            disabled={!canWrite}
+            aria-label={`New document in ${folder.name}`}
+            className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </form>
+        <button
+          type="button"
+          aria-label={`Open actions for ${folder.name}`}
+          aria-expanded={isMenuOpen}
+          onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+          className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink"
+        >
+          <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+      {isMenuOpen ? (
+        <div className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
+          <button
+            type="button"
+            disabled={!canWrite}
+            onClick={() => onStartRename(folder.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+          >
+            Rename
+          </button>
+          <form action={archiveFolderAction}>
+            <input type="hidden" name="folderId" value={folder.id} />
+            <button
+              type="submit"
+              disabled={!canWrite}
+              className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+            >
+              Move to trash
+            </button>
+          </form>
+          <button
+            type="button"
+            onClick={() => onToggleFavorite(folder.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
+          >
+            {isFavorite ? "Remove from favorites" : "Add to favorites"}
+          </button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -366,4 +608,37 @@ function hasTreeChildren(
     folders.some((folder) => folder.parentFolderId === folderId) ||
     documents.some((document) => document.folderId === folderId)
   );
+}
+
+function parseFavorites(raw: string | null): FavoriteState {
+  if (!raw) return emptyFavorites;
+
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return { documents: parsed.filter(isString), folders: [] };
+    if (!parsed || typeof parsed !== "object") return emptyFavorites;
+
+    const value = parsed as Partial<Record<keyof FavoriteState, unknown>>;
+    return {
+      documents: Array.isArray(value.documents) ? value.documents.filter(isString) : [],
+      folders: Array.isArray(value.folders) ? value.folders.filter(isString) : [],
+    };
+  } catch {
+    return emptyFavorites;
+  }
+}
+
+function toggleListValue(values: string[], value: string) {
+  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function folderErrorMessage(folderError: string) {
+  if (!folderError) return "";
+  if (folderError === "FOLDER_NOT_EMPTY") return "Empty this folder before moving it to trash.";
+  if (folderError === "FOLDER_NAME_REQUIRED") return "Folder name is required.";
+  return "The folder action could not be completed.";
 }
