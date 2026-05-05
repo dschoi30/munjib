@@ -6,6 +6,7 @@ import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
 import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import {
   archiveDocument,
   createDocument,
@@ -99,10 +100,15 @@ export async function archiveFolderAction(workspaceSlug: string, formData: FormD
       actorId: user.id,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "FOLDER_ACTION_FAILED";
+    if (!(error instanceof Error) || error.message !== SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY) {
+      throw error;
+    }
+
     revalidatePath(`/workspaces/${workspaceSlug}`);
     redirect(
-      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(message)}`,
+      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(
+        error.message,
+      )}`,
     );
   }
 
