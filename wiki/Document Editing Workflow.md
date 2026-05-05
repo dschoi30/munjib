@@ -98,7 +98,7 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 `DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다.
 
-Editor는 edit/split/preview mode를 제공한다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다.
+Editor는 edit/split/preview mode를 제공한다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
 

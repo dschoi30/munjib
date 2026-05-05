@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 12
+updated: 2026-05-05
+source_count: 14
 tags:
   - munjib
   - wiki-links
@@ -59,9 +59,9 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 
 ## Autocomplete
 
-`DocumentEditor`는 Markdown editor에서 active wiki link completion을 감지한다. `[[` 뒤의 query가 현재 cursor 위치와 맞으면 workspace 안의 후보 문서 title을 최대 6개까지 보여주고, 선택 시 `[[Title]]` 형태로 markdown에 삽입한다. 현재 문서 자신은 후보에서 제외한다.
+`DocumentEditor`는 Markdown editor에서 active wiki link completion을 감지한다. `[[` 뒤의 query가 현재 cursor 위치와 맞으면 workspace 안의 후보 문서를 최대 6개까지 보여준다. 현재 문서 자신은 후보에서 제외한다.
 
-Issue #20 이후 duplicate title 후보가 있으면 autocomplete는 folder path를 포함한 label을 보여주고 path-qualified target을 삽입해야 한다. 예를 들어 `Operations/Onboarding` 후보는 `[[Operations/Onboarding]]` 또는 alias가 필요한 경우 `[[Operations/Onboarding|Onboarding]]` 형태가 된다.
+Issue #20 이후 autocomplete는 `getWikiLinkCompletionOptions()`를 통해 title과 path target을 함께 검색한다. 같은 title의 후보가 하나뿐이면 `[[Title]]`을 삽입하고, duplicate title 후보가 있으면 folder path를 포함한 label을 보여주며 path-qualified target을 삽입한다. 예를 들어 `/operations/onboarding` 후보는 `Operations/Onboarding` label과 `[[Operations/Onboarding]]` insert text를 사용한다.
 
 ## Preview link rendering
 
@@ -106,3 +106,4 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `components/document-editor.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
+- `tests/wiki-links/autocomplete.test.ts`
