@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 23
+source_count: 24
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T14:20:00+09:00 - implementation
+
+- Result: Workspace sidebar folder tree를 editor navigation link에서 accordion disclosure UI로 조정했다.
+- Coverage: folder row chevron toggle, 펼쳐진 child group 세로 guide line, folder toggle 시 editor 유지, `Recents` 최대 5개 표시, recents depth-independent padding, 전체 tree의 `Documents` heading.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `components/document-navigation.tsx`, `tests/e2e/login.spec.ts`, `wiki/designs/obsidian1.png`, `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/workspace-tree.test.ts`, `pnpm run test:e2e`.
 
 ## 2026-05-05T13:00:00+09:00 - implementation
 
