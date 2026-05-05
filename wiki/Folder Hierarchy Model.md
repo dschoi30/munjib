@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-05
-source_count: 18
+source_count: 19
 tags:
   - munjib
   - data-model
@@ -93,6 +93,8 @@ Workspace 화면은 active folder와 readable active document를 함께 읽어 �
 
 문서 navigation과 quick switcher는 duplicate title을 구분할 수 있도록 `Document.path`를 함께 사용한다. Root title과 path가 일치하는 문서는 title만 표시하고, folder 아래에 같은 title이 있을 수 있는 문서는 `Title · /folder/title` 형태로 context를 보강한다.
 
+Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
+
 ## 근거
 
 - GitHub issue #20
@@ -118,6 +120,7 @@ Workspace 화면은 active folder와 readable active document를 함께 읽어 �
 - `app/workspaces/[workspaceSlug]/page.tsx`
 - `tests/workspace-tree.test.ts`
 - `tests/e2e/login.spec.ts`
+- `prisma/seed.ts`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - Obsidian Hub beginner guide: https://publish.obsidian.md/hub/04%20-%20Guides%2C%20Workflows%2C%20%26%20Courses/for%20Beginners

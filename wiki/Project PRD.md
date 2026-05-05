@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 17
+updated: 2026-05-05
+source_count: 20
 tags:
   - munjib
   - source
@@ -41,16 +41,16 @@ links:
 
 ## 현재 구현 현황
 
-2026-05-03 기준 repository는 PRD의 핵심 MVP 중 다음 범위를 구현했다.
+2026-05-05 기준 repository는 PRD의 핵심 MVP 중 다음 범위를 구현했다.
 
 - 개발용 credentials login, seed workspace, session cookie namespace 분리.
 - workspace role 기반 문서 read/write와 explicit document permission filtering.
-- 문서 생성/수정/아카이브, 템플릿 기반 생성, folder-like 루트 문서 생성.
+- 문서 생성/수정/아카이브, 템플릿 기반 생성, 실제 folder 컨테이너 생성.
 - Markdown editor의 edit/split/preview 모드와 wiki link autocomplete.
 - `[[문서명]]` link parsing, backlink, outgoing link, broken link reconciliation.
 - broken link 클릭 기반 blank document 생성과 기존 broken links repair.
 - title 아래 Properties 영역: tags, links, frontmatter properties, comments.
-- 좌측 navigation: 검색, quick switcher, recent, localStorage favorites.
+- 좌측 navigation: folder/document tree, 검색, quick switcher, recent, localStorage favorites.
 - 우측 metadata panel: local graph, attachments, versions restore, audit log.
 - attachment upload/download, 5MB 제한, 허용 MIME type, upload 시 markdown link append.
 - comment 생성과 audit log.
@@ -67,18 +67,20 @@ links:
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
 
-## 진행 중인 계획
+## 최근 구현된 구조 변경
 
-Issue #20은 `New folder`가 빈 document를 만드는 현재 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸는 계획이다. 확정된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는 것이다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
+Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸었다. 구현된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
 
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
 
 - `package.json`: Next.js, React, NextAuth, Prisma, Vitest, Playwright, wiki CLI.
-- `prisma/schema.prisma`: organization/workspace/document/link/permission/audit/tag/property/attachment/comment schema.
+- `prisma/schema.prisma`: organization/workspace/folder/document/link/permission/audit/tag/property/attachment/comment schema.
 - `prisma/seed.ts`: company handbook seed data와 owner/editor/viewer user.
 - `lib/documents/service.ts`: 문서 생성, 수정, 아카이브, version restore, broken link 생성.
+- `lib/folders/service.ts`: folder 생성, rename, move, archive guard.
+- `lib/workspace-tree.ts`: readable document filtering과 folder/document tree 표시 helper.
 - `lib/wiki-links/parser.ts`: `[[...]]` parsing.
 - `lib/wiki-links/reconcile.ts`: link row reconciliation과 repair.
 - `lib/document-metadata/*`: tags와 YAML frontmatter properties extraction.
@@ -87,9 +89,10 @@ Issue #20은 `New folder`가 빈 document를 만드는 현재 동작을 실제 `
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
 - `components/document-navigation.tsx`: search, quick switcher, recent/favorites navigation.
+- `components/folder-detail.tsx`: selected folder detail state.
 - `components/metadata-panel.tsx`: local graph, attachments, versions, audit log.
 - `.githooks/pre-commit`, `lib/wiki/sync.ts`: commit-time wiki sync automation.
-- GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 계획.
+- GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 설계.
 
 ## Wiki 작성 원칙
 

@@ -96,6 +96,39 @@ async function main() {
     },
   });
 
+  const operationsFolder = await prisma.folder.upsert({
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations" } },
+    update: {},
+    create: {
+      workspaceId: workspace.id,
+      name: "Operations",
+      slug: "operations",
+      path: "/operations",
+      createdById: owner.id,
+      updatedById: owner.id,
+    },
+  });
+
+  const operationsRunbook = await prisma.document.upsert({
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations/operations-runbook" } },
+    update: {
+      folderId: operationsFolder.id,
+      contentMarkdown: "# Operations Runbook\n\nA folder-based runbook linked from [[Welcome]].",
+      contentText: "Operations Runbook A folder-based runbook linked from Welcome.",
+    },
+    create: {
+      workspaceId: workspace.id,
+      folderId: operationsFolder.id,
+      title: "Operations Runbook",
+      slug: "operations-runbook",
+      path: "/operations/operations-runbook",
+      contentMarkdown: "# Operations Runbook\n\nA folder-based runbook linked from [[Welcome]].",
+      contentText: "Operations Runbook A folder-based runbook linked from Welcome.",
+      createdById: owner.id,
+      updatedById: owner.id,
+    },
+  });
+
   await prisma.$transaction(async (tx) => {
     await reconcileDocumentLinks(tx, {
       workspaceId: workspace.id,
@@ -106,6 +139,11 @@ async function main() {
       workspaceId: workspace.id,
       sourceDocumentId: engineeringRunbook.id,
       contentMarkdown: engineeringRunbook.contentMarkdown,
+    });
+    await reconcileDocumentLinks(tx, {
+      workspaceId: workspace.id,
+      sourceDocumentId: operationsRunbook.id,
+      contentMarkdown: operationsRunbook.contentMarkdown,
     });
   });
 }

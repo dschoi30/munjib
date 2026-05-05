@@ -735,7 +735,7 @@ pnpm exec vitest run tests/folders/service.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add lib/folders tests/folders
@@ -1521,7 +1521,7 @@ git commit -m "feat: insert path-qualified wiki completions"
 - Modify: `wiki/manifest.json`
 - Test: broad verification commands.
 
-- [ ] **Step 1: Update seed data**
+- [x] **Step 1: Update seed data**
 
 In `prisma/seed.ts`, create one folder and place at least one document under it:
 
@@ -1556,7 +1556,7 @@ await prisma.document.upsert({
 });
 ```
 
-- [ ] **Step 2: Update wiki pages**
+- [x] **Step 2: Update wiki pages**
 
 Update:
 
@@ -1574,7 +1574,7 @@ wiki/log.md
 
 Use current-tense implementation language for completed code. Record source evidence from changed files and tests in `wiki/log.md`.
 
-- [ ] **Step 3: Regenerate manifest and lint wiki**
+- [x] **Step 3: Regenerate manifest and lint wiki**
 
 Run:
 
@@ -1585,7 +1585,7 @@ pnpm wiki:lint
 
 Expected: both PASS.
 
-- [ ] **Step 4: Run focused test suite**
+- [x] **Step 4: Run focused test suite**
 
 Run:
 
@@ -1595,7 +1595,7 @@ pnpm exec vitest run tests/folders/path.test.ts tests/folders/service.test.ts te
 
 Expected: PASS.
 
-- [ ] **Step 5: Run full verification**
+- [x] **Step 5: Run full verification**
 
 Run:
 
@@ -1606,6 +1606,8 @@ pnpm run test:e2e
 ```
 
 Expected: PASS. If e2e requires local services, ensure Docker/Postgres and seed data are running before retrying.
+
+Implementation note: Final verification passed with `pnpm test`, `pnpm run build`, `pnpm run test:e2e`, and `pnpm exec tsc --noEmit`. The first e2e attempt reused a stale `next dev` server with a missing `.next/server/vendor-chunks/jose@4.15.9.js`; restarting `next dev` resolved the auth 500 before the final passing run.
 
 - [ ] **Step 6: Commit final integration**
 
