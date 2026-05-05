@@ -87,22 +87,51 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const folderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
   expect(folderName).toBeTruthy();
   const folderLabel = folderName ?? "Untitled folder";
-  const folderAction = documentList.getByRole("button", { name: `Open actions for ${folderLabel}` }).last();
+  const folderDisplayLabel = `${folderLabel} ${folderPath ?? ""}`;
+  const folderAction = documentList
+    .getByRole("button", { name: `Open actions for ${folderDisplayLabel}` })
+    .last();
   const folderRow = folderAction.locator("..").locator("..");
   await folderAction.click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
   const favoritesSection = page.locator("section").filter({ has: page.getByText("Favorites", { exact: true }) });
   await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
 
-  await folderRow.getByRole("button", { name: `Open actions for ${folderLabel}` }).click();
+  await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
-  await page.getByLabel(`Rename ${folderLabel}`).fill("Product Notes");
+  await page.getByLabel(`Rename ${folderDisplayLabel}`).fill("Product Notes");
   await page.getByRole("button", { name: "Rename" }).click();
   await expect(page.getByRole("heading", { name: "Product Notes" })).toBeVisible();
-  const productNotesAction = documentList.getByRole("button", { name: "Open actions for Product Notes" }).last();
+  const productNotesPathLocator = page.getByText(/^\/product-notes(?:-\d+)?$/).first();
+  await expect(productNotesPathLocator).toBeVisible();
+  const productNotesPath = await productNotesPathLocator.textContent();
+  expect(productNotesPath).toBeTruthy();
+  const productNotesDisplayLabel = `Product Notes ${productNotesPath ?? ""}`;
+  const productNotesAction = documentList
+    .getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` })
+    .last();
   const productNotesRow = productNotesAction.locator("..").locator("..");
 
-  await productNotesRow.getByRole("button", { name: "New document in Product Notes" }).click();
+  await page.getByRole("button", { name: "New folder" }).click();
+  await expect(page.getByRole("heading", { name: /^Untitled folder/ })).toBeVisible();
+  const emptyFolderPathLocator = page
+    .getByText(/^\/product-notes(?:-\d+)?\/untitled-folder(?:-\d+)?$/)
+    .first();
+  await expect(emptyFolderPathLocator).toBeVisible();
+  const emptyFolderPath = await emptyFolderPathLocator.textContent();
+  expect(emptyFolderPath).toBeTruthy();
+  const emptyFolderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
+  const emptyFolderDisplayLabel = `${emptyFolderName ?? "Untitled folder"} ${emptyFolderPath ?? ""}`;
+  const emptyFolderAction = documentList
+    .getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` })
+    .last();
+  await emptyFolderAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(
+    documentList.getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` }),
+  ).toHaveCount(0);
+
+  await productNotesRow.getByRole("button", { name: `New document in ${productNotesDisplayLabel}` }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   await productNotesRow.getByRole("button", { name: "Product Notes", exact: true }).click();
 
