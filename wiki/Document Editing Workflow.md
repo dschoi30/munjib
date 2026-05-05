@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 17
+source_count: 18
 tags:
   - munjib
   - workflow
@@ -47,7 +47,7 @@ Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/doc
 
 현재 `createDocumentAction()`은 `blank`, `runbook`, `policy`, `folder` template을 지원한다. `folder`는 별도 folder table이 아니라 `Untitled folder` title과 빈 markdown을 가진 루트 문서를 만든다.
 
-Issue #20 구현 후 `folder` template 방식은 제거되고 `New folder`는 `Folder` row를 생성한다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다.
+Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다.
 
 `createDocument()`는 다음을 수행한다.
 
@@ -59,6 +59,8 @@ Issue #20 구현 후 `folder` template 방식은 제거되고 `New folder`는 `F
 6. wiki links와 document metadata를 reconcile한다.
 7. `document.created` audit log를 남긴다.
 8. 생성 문서로 redirect한다.
+
+`moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다.
 
 ## 수정 흐름
 
