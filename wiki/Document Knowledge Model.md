@@ -23,6 +23,171 @@ links:
 
 Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, folder hierarchy, documents, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
 
+## Mermaid ERD
+
+```mermaid
+erDiagram
+  User {
+    String id PK
+    String email UK
+    String name
+    String avatarUrl
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  Organization {
+    String id PK
+    String name
+    String slug UK
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  OrganizationMember {
+    String id PK
+    String organizationId FK
+    String userId FK
+    OrganizationRole role
+    DateTime createdAt
+  }
+  Workspace {
+    String id PK
+    String organizationId FK
+    String name
+    String slug
+    String visibility
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  WorkspaceMember {
+    String id PK
+    String workspaceId FK
+    String userId FK
+    WorkspaceRole role
+    DateTime createdAt
+  }
+  Document {
+    String id PK
+    String workspaceId FK
+    String parentId FK
+    String title
+    String slug
+    String path
+    String contentMarkdown
+    String contentText
+    DocumentStatus status
+    String createdById FK
+    String updatedById FK
+    DateTime createdAt
+    DateTime updatedAt
+    DateTime archivedAt
+  }
+  DocumentVersion {
+    String id PK
+    String documentId FK
+    Int versionNumber
+    String title
+    String contentMarkdown
+    String createdById FK
+    String changeSummary
+    DateTime createdAt
+  }
+  DocumentLink {
+    String id PK
+    String workspaceId FK
+    String sourceDocumentId FK
+    String targetDocumentId FK
+    String targetTitleRaw
+    String alias
+    String linkType
+    Boolean isBroken
+    Int sortOrder
+    DateTime createdAt
+  }
+  Tag {
+    String id PK
+    String workspaceId FK
+    String name
+    String normalizedName
+    DateTime createdAt
+  }
+  DocumentTag {
+    String id PK
+    String documentId FK
+    String tagId FK
+  }
+  DocumentProperty {
+    String id PK
+    String documentId FK
+    String key
+    Json valueJson
+    String valueType
+    Int sortOrder
+  }
+  Attachment {
+    String id PK
+    String documentId FK
+    String fileName
+    String mimeType
+    Int size
+    String storageKey
+    String uploadedById FK
+    DateTime createdAt
+  }
+  Comment {
+    String id PK
+    String documentId FK
+    String userId FK
+    String body
+    DateTime createdAt
+    DateTime resolvedAt
+  }
+  Permission {
+    String id PK
+    PermissionResourceType resourceType
+    String resourceId
+    PermissionSubjectType subjectType
+    String subjectId
+    PermissionLevel permission
+    String inheritedFromId
+    DateTime createdAt
+  }
+  AuditLog {
+    String id PK
+    String organizationId FK
+    String actorId FK
+    String action
+    String resourceType
+    String resourceId
+    Json metadataJson
+    DateTime createdAt
+  }
+
+  User ||--o{ OrganizationMember : joins
+  Organization ||--o{ OrganizationMember : has
+  Organization ||--o{ Workspace : owns
+  Organization ||--o{ AuditLog : records
+  User ||--o{ WorkspaceMember : joins
+  Workspace ||--o{ WorkspaceMember : has
+  Workspace ||--o{ Document : contains
+  Workspace ||--o{ DocumentLink : indexes
+  Workspace ||--o{ Tag : owns
+  User ||--o{ Document : creates
+  User ||--o{ Document : updates
+  Document ||--o{ Document : parents
+  Document ||--o{ DocumentVersion : snapshots
+  User ||--o{ DocumentVersion : authors
+  Document ||--o{ DocumentLink : source
+  Document ||--o{ DocumentLink : target
+  Document ||--o{ DocumentTag : tagged
+  Tag ||--o{ DocumentTag : labels
+  Document ||--o{ DocumentProperty : has
+  Document ||--o{ Attachment : has
+  User ||--o{ Attachment : uploads
+  Document ||--o{ Comment : has
+  User ||--o{ Comment : writes
+  User ||--o{ AuditLog : acts
+```
+
 ## 조직과 workspace
 
 - `User`: 로그인 사용자. 조직 membership, workspace membership, 생성/수정 문서, 버전, 감사 로그와 연결된다.

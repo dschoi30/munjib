@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 13
+updated: 2026-05-05
+source_count: 15
 tags:
   - log
   - munjib
@@ -34,6 +34,22 @@ links:
 - Pages: [[Folder Hierarchy Model]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #20, `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`, Obsidian Hub beginner guide, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/reconcile.ts`.
 - Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-04T18:00:00+09:00 - maintenance
+
+- Result: `Document Knowledge Model`에 현재 `prisma/schema.prisma` 전체 model set을 Mermaid `erDiagram`으로 추가했다.
+- Coverage: 조직, workspace, 사용자 membership, 문서 tree/version/link, tag/property, attachment/comment, permission, audit log 관계를 한 다이어그램에서 확인할 수 있게 했다.
+- Pages: [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #21, `prisma/schema.prisma`, `docs/superpowers/specs/2026-05-04-mermaid-erd-wiki-design.md`, `docs/superpowers/plans/2026-05-04-mermaid-erd-wiki.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-04T17:50:00+09:00 - design
+
+- Result: 현재 Prisma schema 전체를 `Document Knowledge Model`에 Mermaid `erDiagram`으로 추가하기 위한 설계를 확정했다.
+- Coverage: ERD 대상은 `prisma/schema.prisma`의 전체 model set이며, enum은 Mermaid entity로 분리하지 않고 기존 prose 설명에 유지한다.
+- Pages: [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #21, `docs/superpowers/specs/2026-05-04-mermaid-erd-wiki-design.md`, `prisma/schema.prisma`.
+- Verification: spec self-review에서 placeholder, TODO, scope ambiguity 없음.
 
 ## 2026-05-04T12:35:00+09:00 - review
 
