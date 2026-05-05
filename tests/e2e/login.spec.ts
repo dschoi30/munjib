@@ -77,7 +77,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
   await page.getByRole("button", { name: "New folder" }).click();
   await expect(page.getByRole("heading", { name: "Untitled folder" })).toBeVisible();
-  await expect(page.getByText(/^\/untitled-folder(?:-\d+)?$/)).toBeVisible();
+  const folderPathLocator = page.getByText(/^\/untitled-folder(?:-\d+)?$/);
+  await expect(folderPathLocator).toBeVisible();
+  const folderPath = await folderPathLocator.textContent();
+  expect(folderPath).toBeTruthy();
   const folderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
   expect(folderName).toBeTruthy();
   const folderLabel = folderName ?? "Untitled folder";
@@ -85,7 +88,8 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const folderRow = folderAction.locator("..").locator("..");
   await folderAction.click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
-  await expect(documentList.getByRole("link", { name: folderLabel }).first()).toBeVisible();
+  const favoritesSection = page.locator("section").filter({ has: page.getByText("Favorites", { exact: true }) });
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
 
   await folderRow.getByRole("button", { name: `Open actions for ${folderLabel}` }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
