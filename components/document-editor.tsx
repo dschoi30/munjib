@@ -1,8 +1,8 @@
 "use client";
 
 import { markdown } from "@codemirror/lang-markdown";
-import { foldEffect } from "@codemirror/language";
-import type { EditorView } from "@codemirror/view";
+import { foldEffect, foldedRanges } from "@codemirror/language";
+import { EditorView } from "@codemirror/view";
 import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -16,7 +16,7 @@ import {
   Save,
   Upload,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ import {
   createHeadingFoldStorageValue,
   getValidFoldedHeadingKeys,
   parseHeadingFoldStorageValue,
+  type HeadingFoldTree,
   type HeadingFoldSection,
 } from "@/lib/markdown/folding";
 import {
@@ -91,7 +92,34 @@ export function DocumentEditor({
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
-  const extensions = useMemo(() => [markdown()], []);
+  const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${document.id}` : null;
+  const editorFoldTree = useMemo(
+    () => (document?.id ? buildHeadingFoldTree(contentMarkdown) : null),
+    [contentMarkdown, document?.id],
+  );
+  const editorFoldContextRef = useRef<{
+    storageKey: string;
+    foldTree: HeadingFoldTree;
+  } | null>(null);
+  editorFoldContextRef.current =
+    editorFoldStorageKey && editorFoldTree
+      ? { storageKey: editorFoldStorageKey, foldTree: editorFoldTree }
+      : null;
+  const extensions = useMemo(
+    () => [
+      markdown(),
+      EditorView.updateListener.of((update) => {
+        const context = editorFoldContextRef.current;
+
+        if (!context) {
+          return;
+        }
+
+        persistEditorFoldState(update.view, context.storageKey, context.foldTree);
+      }),
+    ],
+    [],
+  );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
     return getWikiLinkCompletionOptions(
@@ -511,6 +539,63 @@ function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string
   }
 }
 
+function persistEditorFoldState(
+  view: EditorView,
+  storageKey: string,
+  foldTree: HeadingFoldTree,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const foldedKeys = getEditorFoldedHeadingKeys(view, foldTree);
+
+  if (!foldedKeys) {
+    return;
+  }
+
+  writeStoredFoldedHeadingKeys(storageKey, foldedKeys);
+}
+
+function getEditorFoldedHeadingKeys(view: EditorView, foldTree: HeadingFoldTree) {
+  const sectionKeyByEditorRange = new Map<string, string>();
+
+  for (const section of foldTree.sectionByKey.values()) {
+    if (section.editorRange) {
+      sectionKeyByEditorRange.set(
+        createEditorRangeKey(section.editorRange.fromLine, section.editorRange.toLine),
+        section.key,
+      );
+    }
+  }
+
+  try {
+    const foldedKeys = new Set<string>();
+
+    foldedRanges(view.state).between(0, view.state.doc.length, (from, to) => {
+      try {
+        const fromLine = view.state.doc.lineAt(from).number;
+        const toLine = view.state.doc.lineAt(to).number;
+        const sectionKey = sectionKeyByEditorRange.get(createEditorRangeKey(fromLine, toLine));
+
+        if (sectionKey) {
+          foldedKeys.add(sectionKey);
+        }
+      } catch {
+        // Ignore a range that cannot be mapped back to a document line.
+      }
+    });
+
+    return new Set(getValidFoldedHeadingKeys(foldedKeys, foldTree.headingKeys));
+  } catch {
+    return null;
+  }
+}
+
+function createEditorRangeKey(fromLine: number, toLine: number) {
+  return `${fromLine}:${toLine}`;
+}
+
 function markdownInlineToPlainText(markdown: string) {
   return markdown
     .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target: string, alias: string | undefined) =>
@@ -567,7 +652,9 @@ function getSharedMarkdownDefinitions(markdown: string) {
   const definitions: string[] = [];
   let inFence: { marker: "`" | "~"; length: number } | null = null;
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+
     if (inFence) {
       const closingFence = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
 
@@ -594,6 +681,17 @@ function getSharedMarkdownDefinitions(markdown: string) {
 
     if (isMarkdownDefinitionLine(line)) {
       definitions.push(line);
+
+      for (index += 1; index < lines.length; index += 1) {
+        const continuationLine = lines[index];
+
+        if (!isMarkdownDefinitionContinuationLine(continuationLine)) {
+          index -= 1;
+          break;
+        }
+
+        definitions.push(continuationLine);
+      }
     }
   }
 
@@ -612,6 +710,10 @@ function renderPreviewChunk(
 
 function isMarkdownDefinitionLine(line: string) {
   return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*\S/.test(line);
+}
+
+function isMarkdownDefinitionContinuationLine(line: string) {
+  return line.trim().length === 0 || /^[ \t]/.test(line);
 }
 
 function DocumentProperties({

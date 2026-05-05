@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-05-06
-source_count: 21
+source_count: 22
 tags:
   - munjib
   - product
@@ -36,7 +36,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - 문서 생성, 템플릿 기반 생성, 실제 folder 컨테이너 생성, 수정, 아카이브, broken link에서 문서 생성.
 - Markdown 원문과 plain text 본문 저장.
 - edit/preview 모드와 Markdown preview.
-- Obsidian-style heading folding, Preview chevron folding, Edit mode fold gutter, 문서별 `localStorage` fold state.
+- Obsidian-style heading folding, Preview chevron folding, Edit mode fold gutter, 문서별 `localStorage` fold state 복원과 edit/preview 동기화.
 - 문서 수정, attachment upload, version restore 시 version row 생성.
 - `[[문서명]]` wiki link 파싱과 `DocumentLink` reconciliation.
 - wiki link autocomplete.
@@ -58,7 +58,7 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 ## 편집 경험 개선
 
-Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/preview mode로 단순화되었다. Preview mode는 heading 왼쪽 chevron으로 section을 접고 펼치며, Edit mode는 CodeMirror heading fold gutter와 저장된 fold state 복원을 제공한다. 접힘 상태는 문서별 `munjib:heading-folds:<documentId>` `localStorage` key에 저장되어 preview와 edit mode가 공유한다.
+Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/preview mode로 단순화되었다. Preview mode는 heading 왼쪽 chevron으로 section을 접고 펼치며, Edit mode는 CodeMirror heading fold gutter와 저장된 fold state 복원/저장을 제공한다. 접힘 상태는 문서별 `munjib:heading-folds:<documentId>` `localStorage` key에 저장되어 preview와 edit mode가 공유한다.
 
 ## 빠른 진입점
 
@@ -95,3 +95,4 @@ Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/p
 - `lib/markdown/folding.ts`
 - `tests/markdown/folding.test.ts`
 - `tests/components/document-editor-preview.test.tsx`
+- Issue #25 final review blocker fix
