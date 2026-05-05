@@ -9,6 +9,7 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { slugifyTitle } from "@/lib/text/slug";
 import type {
@@ -34,7 +35,7 @@ async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
     },
   });
 
-  if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+  if (!workspace) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   const role = workspace.members[0]?.role;
   assertCanReadWorkspace(role);
 
@@ -57,7 +58,7 @@ async function getDocumentMembership(documentId: string, actorId: string) {
     },
   });
 
-  if (!document) throw new Error("DOCUMENT_NOT_FOUND");
+  if (!document) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   const role = document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   const access = await getUserDocumentAccess(document.id, actorId);
@@ -151,7 +152,7 @@ async function getParentFolderPath(
     select: { path: true },
   });
 
-  if (!folder) throw new Error("FOLDER_NOT_FOUND");
+  if (!folder) throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
   return folder.path;
 }
 
@@ -168,7 +169,7 @@ async function runWithDocumentSlugRetry<T>(operation: () => Promise<T>) {
     }
   }
 
-  throw new Error("DOCUMENT_SLUG_RETRY_EXHAUSTED");
+  throw new Error(SERVICE_ERROR_CODES.DOCUMENT_SLUG_RETRY_EXHAUSTED);
 }
 
 async function createDocumentWithInitialVersion(
@@ -375,7 +376,7 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
     },
   });
 
-  if (!version) throw new Error("DOCUMENT_VERSION_NOT_FOUND");
+  if (!version) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_VERSION_NOT_FOUND);
 
   const role = version.document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
@@ -466,7 +467,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
     },
   });
 
-  if (!link) throw new Error("DOCUMENT_LINK_NOT_FOUND");
+  if (!link) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_LINK_NOT_FOUND);
   const role = link.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);

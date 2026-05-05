@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 6
+updated: 2026-05-05
+source_count: 7
 tags:
   - munjib
   - workflow
@@ -86,6 +86,10 @@ pnpm wiki:feature-start "<feature title>"
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
 
+## Service error codes
+
+Service layer에서 caller/test가 비교하는 error code는 `lib/service-errors.ts`의 `SERVICE_ERROR_CODES`를 우선 사용한다. Folder/document service처럼 여러 module에서 공유하는 code는 문자열 literal을 직접 던지지 않고 이 상수 object를 참조해 drift를 줄인다.
+
 ## Wiki-first lookup
 
 작업자는 broad `rg` 전에 `wiki/index.md`를 읽거나 `pnpm wiki:find "<topic>"`을 먼저 실행한다. wiki가 비어 있거나 stale하거나 raw source verification이 필요할 때만 source search로 내려간다.
@@ -103,4 +107,5 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 - `prisma/seed.ts`
 - `lib/wiki/sync.ts`
 - `lib/wiki/feature-start.ts`
+- `lib/service-errors.ts`
 - `.githooks/pre-commit`

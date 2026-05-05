@@ -2,6 +2,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { archiveFolder, createFolder, moveFolder, renameFolder } from "@/lib/folders/service";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("folder service", () => {
@@ -45,7 +46,7 @@ describe("folder service", () => {
         parentFolderId: otherParent.id,
         name: "Child",
       }),
-    ).rejects.toThrow("PARENT_FOLDER_NOT_FOUND");
+    ).rejects.toThrow(SERVICE_ERROR_CODES.PARENT_FOLDER_NOT_FOUND);
   });
 
   it("renames a folder and recalculates descendant document paths", async () => {
@@ -95,7 +96,7 @@ describe("folder service", () => {
     });
 
     await expect(archiveFolder({ folderId: folder.id, actorId: fixture.user.id })).rejects.toThrow(
-      "FOLDER_NOT_EMPTY",
+      SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY,
     );
   });
 
@@ -116,7 +117,7 @@ describe("folder service", () => {
 
     await expect(
       moveFolder({ folderId: parent.id, actorId: fixture.user.id, parentFolderId: child.id }),
-    ).rejects.toThrow("FOLDER_MOVE_CYCLE");
+    ).rejects.toThrow(SERVICE_ERROR_CODES.FOLDER_MOVE_CYCLE);
   });
 
   it("recomputes a folder slug when moving into a parent with a same-name child", async () => {
@@ -178,6 +179,6 @@ describe("folder service", () => {
         actorId: fixture.user.id,
         parentFolderId: otherParent.id,
       }),
-    ).rejects.toThrow("PARENT_FOLDER_NOT_FOUND");
+    ).rejects.toThrow(SERVICE_ERROR_CODES.PARENT_FOLDER_NOT_FOUND);
   });
 });

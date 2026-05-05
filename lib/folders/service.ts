@@ -9,6 +9,7 @@ import type {
   RenameFolderInput,
 } from "@/lib/folders/types";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { slugifyTitle } from "@/lib/text/slug";
 
 async function getWorkspaceForWrite(workspaceSlug: string, actorId: string) {
@@ -20,7 +21,7 @@ async function getWorkspaceForWrite(workspaceSlug: string, actorId: string) {
     },
   });
 
-  if (!workspace) throw new Error("WORKSPACE_NOT_FOUND");
+  if (!workspace) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   const role = workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
@@ -40,7 +41,7 @@ async function getFolderForWrite(folderId: string, actorId: string) {
     },
   });
 
-  if (!folder) throw new Error("FOLDER_NOT_FOUND");
+  if (!folder) throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
   const role = folder.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
@@ -87,7 +88,7 @@ async function getParentFolderPath(
     select: { path: true },
   });
 
-  if (!folder) throw new Error("PARENT_FOLDER_NOT_FOUND");
+  if (!folder) throw new Error(SERVICE_ERROR_CODES.PARENT_FOLDER_NOT_FOUND);
   return folder.path;
 }
 
@@ -210,9 +211,11 @@ export async function moveFolder(input: MoveFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
-    if (input.parentFolderId === folder.id) throw new Error("FOLDER_MOVE_CYCLE");
+    if (input.parentFolderId === folder.id) {
+      throw new Error(SERVICE_ERROR_CODES.FOLDER_MOVE_CYCLE);
+    }
     if (input.parentFolderId && (await isDescendant(tx, folder.id, input.parentFolderId))) {
-      throw new Error("FOLDER_MOVE_CYCLE");
+      throw new Error(SERVICE_ERROR_CODES.FOLDER_MOVE_CYCLE);
     }
 
     const parentPath = await getParentFolderPath(tx, folder.workspaceId, input.parentFolderId);
@@ -255,7 +258,9 @@ export async function archiveFolder(input: ArchiveFolderInput) {
     prisma.document.count({ where: { folderId: folder.id, status: "ACTIVE" } }),
   ]);
 
-  if (childFolderCount > 0 || childDocumentCount > 0) throw new Error("FOLDER_NOT_EMPTY");
+  if (childFolderCount > 0 || childDocumentCount > 0) {
+    throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY);
+  }
 
   return prisma.$transaction(async (tx) => {
     const archived = await tx.folder.update({
