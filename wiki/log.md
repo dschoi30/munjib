@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 29
+source_count: 30
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T23:55:00+09:00 - design
+
+- Result: Issue #26 folder row hover actions menu 설계를 추가하고 Notion-style 참고 이미지 `wiki/designs/notion1.png`를 design evidence로 등록했다.
+- Coverage: folder row hover highlight, `...` menu, row-level `+` child document creation, folder rename/archive/favorite actions, existing star icon removal and document favorite menu migration.
+- Pages: [[designs/index|UI Design Excalidraw Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #26, `docs/superpowers/specs/2026-05-05-folder-row-hover-actions-menu-design.md`, `wiki/designs/notion1.png`.
 
 ## 2026-05-05T23:10:00+09:00 - review
 
