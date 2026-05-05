@@ -527,7 +527,7 @@ async function getBrokenLinkCreateInput(
     select: { id: true },
   });
 
-  if (!folder) throw new Error("FOLDER_NOT_FOUND");
+  if (!folder) return { folderId: null, title: input.targetTitleRaw };
 
   return { folderId: folder.id, title: pathTarget.title };
 }

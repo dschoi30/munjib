@@ -50,11 +50,13 @@ function resolveLinkTarget(
   if (targetTitleRaw.includes("/")) {
     const targetPath = pathQualifiedTargetToDocumentPath(targetTitleRaw);
     const target = targets.find((candidate) => candidate.path === targetPath);
-    return {
-      targetDocumentId: target?.id ?? null,
-      isBroken: !target,
-      isAmbiguous: false,
-    };
+    if (target) {
+      return {
+        targetDocumentId: target.id,
+        isBroken: false,
+        isAmbiguous: false,
+      };
+    }
   }
 
   const targetSlug = slugifyTitle(targetTitleRaw);

@@ -314,6 +314,30 @@ Read [[Ignored Content Link]].`,
     expect(link.isAmbiguous).toBe(false);
   });
 
+  it("falls back to title matching when a slash-containing target is not a document path", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Q1/Q2 Plan",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Q1/Q2 Plan]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
   it("marks title-only duplicate links as ambiguous", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const operations = await createFolder({
@@ -477,6 +501,43 @@ links:
 
     const reconciled = await prisma.documentLink.findFirstOrThrow({
       where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Incident Runbook" },
+    });
+    expect(reconciled.isBroken).toBe(false);
+    expect(reconciled.targetDocumentId).toBe(created.id);
+  });
+
+  it("creates a slash-containing title at root when no parent folder path exists", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Planning Source",
+      contentMarkdown: `---
+links:
+  - "[[Q1/Q2 Plan]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Q1/Q2 Plan" },
+    });
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Q1/Q2 Plan");
+    expect(created.folderId).toBeNull();
+
+    await updateDocument({
+      documentId: source.id,
+      actorId: fixture.user.id,
+      title: source.title,
+      contentMarkdown: source.contentMarkdown,
+    });
+
+    const reconciled = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Q1/Q2 Plan" },
     });
     expect(reconciled.isBroken).toBe(false);
     expect(reconciled.targetDocumentId).toBe(created.id);
