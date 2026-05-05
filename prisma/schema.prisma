@@ -53,6 +53,8 @@ model User {
   workspaceMembers    WorkspaceMember[]
   documentsCreated    Document[]           @relation("DocumentCreatedBy")
   documentsUpdated    Document[]           @relation("DocumentUpdatedBy")
+  foldersCreated      Folder[]             @relation("FolderCreatedBy")
+  foldersUpdated      Folder[]             @relation("FolderUpdatedBy")
   documentVersions    DocumentVersion[]
   attachmentsUploaded Attachment[]
   comments            Comment[]
@@ -92,6 +94,7 @@ model Workspace {
   updatedAt      DateTime          @updatedAt
   organization   Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        WorkspaceMember[]
+  folders        Folder[]
   documents      Document[]
   documentLinks  DocumentLink[]
   tags           Tag[]
@@ -111,10 +114,37 @@ model WorkspaceMember {
   @@unique([workspaceId, userId])
 }
 
+model Folder {
+  id             String         @id @default(cuid())
+  workspaceId    String
+  parentFolderId String?
+  name           String
+  slug           String
+  path           String
+  status         DocumentStatus @default(ACTIVE)
+  createdById    String
+  updatedById    String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  archivedAt     DateTime?
+  workspace      Workspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  parentFolder   Folder?        @relation("FolderTree", fields: [parentFolderId], references: [id], onDelete: Restrict)
+  childFolders   Folder[]       @relation("FolderTree")
+  documents      Document[]
+  createdBy      User           @relation("FolderCreatedBy", fields: [createdById], references: [id])
+  updatedBy      User           @relation("FolderUpdatedBy", fields: [updatedById], references: [id])
+
+  @@unique([workspaceId, path])
+  @@index([workspaceId, status])
+  @@index([parentFolderId])
+  @@index([workspaceId, parentFolderId, slug])
+}
+
 model Document {
   id              String            @id @default(cuid())
   workspaceId     String
   parentId        String?
+  folderId        String?
   title           String
   slug            String
   path            String
@@ -127,6 +157,7 @@ model Document {
   updatedAt       DateTime          @updatedAt
   archivedAt      DateTime?
   workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folder          Folder?           @relation(fields: [folderId], references: [id], onDelete: Restrict)
   parent          Document?         @relation("DocumentTree", fields: [parentId], references: [id])
   children        Document[]        @relation("DocumentTree")
   createdBy       User              @relation("DocumentCreatedBy", fields: [createdById], references: [id])
@@ -139,8 +170,10 @@ model Document {
   attachments     Attachment[]
   comments        Comment[]
 
-  @@unique([workspaceId, slug])
+  @@unique([workspaceId, path])
   @@index([workspaceId, status])
+  @@index([folderId])
+  @@index([workspaceId, folderId, slug])
 }
 
 model DocumentVersion {
@@ -167,6 +200,7 @@ model DocumentLink {
   alias            String?
   linkType         String    @default("wiki")
   isBroken         Boolean   @default(false)
+  isAmbiguous      Boolean   @default(false)
   sortOrder        Int       @default(0)
   createdAt        DateTime  @default(now())
   workspace        Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
