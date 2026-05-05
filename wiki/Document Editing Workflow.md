@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 23
+source_count: 26
 tags:
   - munjib
   - workflow
@@ -98,19 +98,19 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 `DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다.
 
-Editor는 edit/split/preview mode를 제공한다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
+Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
 
 Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
-우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit/split mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
+우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
 
-## 계획된 heading folding
+## Heading folding
 
-Issue #25 설계는 Obsidian-style markdown heading folding을 문서 editor에 추가한다. 구현 후 editor mode는 `edit`과 `preview`만 남고 split mode는 제거된다. Preview mode는 heading 왼쪽 chevron button으로 section을 접고 펼치며, 펼쳐진 heading은 hover/focus 때만 chevron을 보여주고 접힌 heading은 chevron을 항상 보여준다.
+Issue #25 구현은 Obsidian-style markdown heading folding을 document editor의 edit/preview mode에 추가했다. CodeMirror edit mode는 heading fold gutter를 제공하고, 문서 진입 시 저장된 heading fold state를 editor range로 복원한다. Preview mode는 YAML frontmatter block을 계속 숨기고 wiki link preview rendering을 유지하면서 heading 왼쪽 chevron button으로 section을 접고 펼친다.
 
-접힘 범위는 heading hierarchy를 따른다. `#` heading은 다음 `#` 전까지, `##` heading은 다음 `##` 또는 상위 heading 전까지 숨긴다. 접힘 상태는 Preview와 Edit mode가 공유하는 문서별 browser `localStorage` state로 저장하며, markdown 저장 payload나 DB 모델은 바꾸지 않는다. Edit mode는 CodeMirror heading folding을 활성화하고, 저장된 heading fold key를 editor range로 복원하는 방향으로 설계되었다.
+펼쳐진 heading은 hover/focus 때만 chevron을 보여주고, 접힌 heading은 chevron을 항상 보여준다. 접힘 범위는 heading hierarchy를 따른다. `#` heading은 다음 `#` 전까지, `##` heading은 다음 `##` 또는 상위 heading 전까지 숨긴다. 접힘 상태는 문서별 browser `localStorage` key인 `munjib:heading-folds:<documentId>`에 저장되어 preview와 edit mode가 공유한다. Fold state는 browser UI state이므로 markdown 저장 payload나 DB 모델을 바꾸지 않는다.
 
 ## 근거
 
@@ -123,6 +123,7 @@ Issue #25 설계는 Obsidian-style markdown heading folding을 문서 editor에 
 - `components/metadata-panel.tsx`
 - `lib/workspace-tree.ts`
 - `lib/documents/service.ts`
+- `lib/markdown/folding.ts`
 - `lib/wiki-links/preview.ts`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
@@ -130,6 +131,8 @@ Issue #25 설계는 Obsidian-style markdown heading folding을 문서 editor에 
 - `lib/document-metadata/parser.ts`
 - `lib/document-metadata/reconcile.ts`
 - `prisma/schema.prisma`
+- `tests/markdown/folding.test.ts`
+- `tests/components/document-editor-preview.test.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
 - GitHub issue #25
