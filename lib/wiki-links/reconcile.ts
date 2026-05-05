@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { slugifyTitle } from "@/lib/text/slug";
 import { parseFrontmatterWikiLinks } from "@/lib/wiki-links/parser";
+import { pathQualifiedTargetToDocumentPath } from "@/lib/wiki-links/targets";
 
 export async function reconcileDocumentLinks(
   tx: Prisma.TransactionClient,
@@ -79,16 +80,6 @@ function resolveLinkTarget(
     isBroken: true,
     isAmbiguous: false,
   };
-}
-
-function pathQualifiedTargetToDocumentPath(targetTitleRaw: string) {
-  const segments = targetTitleRaw
-    .trim()
-    .replace(/^\/+|\/+$/g, "")
-    .split("/")
-    .map((segment) => slugifyTitle(segment))
-    .filter(Boolean);
-  return `/${segments.join("/")}`;
 }
 
 export async function repairBrokenLinksForTarget(

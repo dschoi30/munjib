@@ -438,6 +438,50 @@ Read [[Ignored Content Link]].`,
     expect(repaired.targetDocumentId).toBe(created.id);
   });
 
+  it("creates a missing path-qualified target under the referenced folder", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Operations/Incident Runbook]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Incident Runbook" },
+    });
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Incident Runbook");
+    expect(created.folderId).toBe(operations.id);
+    expect(created.path).toBe("/operations/incident-runbook");
+
+    await updateDocument({
+      documentId: source.id,
+      actorId: fixture.user.id,
+      title: source.title,
+      contentMarkdown: source.contentMarkdown,
+    });
+
+    const reconciled = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Incident Runbook" },
+    });
+    expect(reconciled.isBroken).toBe(false);
+    expect(reconciled.targetDocumentId).toBe(created.id);
+  });
+
   it("prevents viewers from creating a missing target document", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.VIEWER);
     const editor = await prisma.user.create({

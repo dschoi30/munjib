@@ -119,6 +119,43 @@ describe("folder service", () => {
     ).rejects.toThrow("FOLDER_MOVE_CYCLE");
   });
 
+  it("recomputes a folder slug when moving into a parent with a same-name child", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const sourceParent = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Source",
+    });
+    const destinationParent = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Destination",
+    });
+    await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: destinationParent.id,
+      name: "Runbooks",
+    });
+    const moving = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: sourceParent.id,
+      name: "Runbooks",
+    });
+
+    const moved = await moveFolder({
+      folderId: moving.id,
+      actorId: fixture.user.id,
+      parentFolderId: destinationParent.id,
+    });
+
+    expect(moved.slug).toBe("runbooks-2");
+    expect(moved.path).toBe("/destination/runbooks-2");
+  });
+
   it("rejects moving a folder below a parent from another workspace", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const otherFixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
