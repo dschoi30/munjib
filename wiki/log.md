@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 29
+source_count: 30
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T23:45:00+09:00 - planning
+
+- Result: Issue #25 Markdown heading folding 구현 계획을 작성했다.
+- Coverage: markdown folding pure model, preview chevron UI와 localStorage, CodeMirror fold restoration, split mode 제거, regression/wiki verification tasks.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-05-markdown-heading-folding.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-05T23:35:00+09:00 - maintenance
 
