@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 31
+updated: 2026-05-06
+source_count: 32
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-06T00:45:00+09:00 - review
+
+- Result: Issue #25 final review blocker를 반영해 heading-folded preview chunk에서도 문서 전체 Markdown reference definition을 공유하고, stale planned wording을 현재 구현 상태로 정리했다.
+- Coverage: `[ref][x]`와 `[x]: https://example.com`이 서로 다른 heading section에 있어도 preview link가 resolve되며, Munjib/PRD/index 상태판이 edit/preview와 heading folding 구현 완료 상태를 말한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: final review blockers, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`, GitHub issue #25.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-05T23:50:00+09:00 - implementation
 

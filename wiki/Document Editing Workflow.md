@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-05
+updated: 2026-05-06
 source_count: 26
 tags:
   - munjib
@@ -111,6 +111,8 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 Issue #25 구현은 Obsidian-style markdown heading folding을 document editor의 edit/preview mode에 추가했다. CodeMirror edit mode는 heading fold gutter를 제공하고, 문서 진입 시 저장된 heading fold state를 editor range로 복원한다. Preview mode는 YAML frontmatter block을 계속 숨기고 wiki link preview rendering을 유지하면서 heading 왼쪽 chevron button으로 section을 접고 펼친다.
 
 펼쳐진 heading은 hover/focus 때만 chevron을 보여주고, 접힌 heading은 chevron을 항상 보여준다. 접힘 범위는 heading hierarchy를 따른다. `#` heading은 다음 `#` 전까지, `##` heading은 다음 `##` 또는 상위 heading 전까지 숨긴다. 접힘 상태는 문서별 browser `localStorage` key인 `munjib:heading-folds:<documentId>`에 저장되어 preview와 edit mode가 공유한다. Fold state는 browser UI state이므로 markdown 저장 payload나 DB 모델을 바꾸지 않는다.
+
+Preview는 folding을 위해 문서를 여러 `ReactMarkdown` chunk로 나누지만, frontmatter를 제거한 원문에서 Markdown reference link와 footnote definition line을 추출해 각 chunk에 붙인다. 이 때문에 뒤 section에 놓인 reference definition도 앞 section의 reference link를 계속 resolve한다.
 
 ## 근거
 

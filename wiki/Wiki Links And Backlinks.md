@@ -5,7 +5,7 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-05
+updated: 2026-05-06
 source_count: 19
 tags:
   - munjib
@@ -77,6 +77,8 @@ Embed syntax, escaped wiki links, inline/fenced code, indented code block 안의
 Preview 변환은 후보 문서 title slug map을 caller에서 memoize해 전달받는다. Preview mode에서 editor keystroke마다 전체 후보 목록을 다시 slugify하지 않도록 하기 위한 UI 성능 guardrail이다.
 
 Issue #25 preview surface는 wiki-link rendering과 heading folding을 같은 markdown preview 경로에서 적용한다. Fold key는 frontmatter를 제거한 raw markdown 기준으로 만들어 preview와 edit mode가 `munjib:heading-folds:<documentId>` localStorage state를 공유한다. Wiki-link conversion은 heading/body chunk가 `ReactMarkdown`에 전달되기 전에 적용되므로, 접힌 section을 다시 펼쳤을 때도 내부 wiki link는 기존 preview navigation 동작을 유지한다.
+
+Heading folding 때문에 preview를 leading markdown, heading, body chunk로 나누어 렌더링하더라도 문서 전체 Markdown reference link와 footnote definition은 각 chunk에 공유한다. 예를 들어 앞 section의 `[ref][x]`는 뒤 section의 `[x]: https://example.com` definition을 계속 resolve한다.
 
 ## Backlinks
 

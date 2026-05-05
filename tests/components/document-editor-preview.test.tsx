@@ -118,4 +118,11 @@ describe("DocumentEditor heading preview folding", () => {
     const link = within(heading).getByRole("link", { name: "Target" });
     expect(link.getAttribute("href")).toBe("?document=target-doc");
   });
+
+  it("resolves reference links whose definitions appear in later sections", () => {
+    renderEditor("# A\n[ref][x]\n# B\n[x]: https://example.com");
+
+    const link = screen.getByRole("link", { name: "ref" });
+    expect(link.getAttribute("href")).toContain("https://example.com");
+  });
 });
