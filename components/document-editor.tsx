@@ -561,11 +561,19 @@ function getEditorFoldedHeadingKeys(view: EditorView, foldTree: HeadingFoldTree)
   const sectionKeyByEditorRange = new Map<string, string>();
 
   for (const section of foldTree.sectionByKey.values()) {
-    if (section.editorRange) {
+    const editorRange = section.editorRange;
+
+    if (editorRange && editorRange.fromLine <= editorRange.toLine) {
+      const headingLine = editorRange.fromLine - 1;
+
       sectionKeyByEditorRange.set(
-        createEditorRangeKey(section.editorRange.fromLine, section.editorRange.toLine),
+        createEditorRangeKey(editorRange.fromLine, editorRange.toLine),
         section.key,
       );
+
+      if (headingLine >= 1 && headingLine <= editorRange.toLine) {
+        sectionKeyByEditorRange.set(createEditorRangeKey(headingLine, editorRange.toLine), section.key);
+      }
     }
   }
 
@@ -709,7 +717,7 @@ function renderPreviewChunk(
 }
 
 function isMarkdownDefinitionLine(line: string) {
-  return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*\S/.test(line);
+  return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*(?:\S.*)?$/.test(line);
 }
 
 function isMarkdownDefinitionContinuationLine(line: string) {
