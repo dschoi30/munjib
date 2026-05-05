@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
-import { createFolder } from "@/lib/folders/service";
+import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
 import {
   archiveDocument,
   createDocument,
@@ -67,6 +67,47 @@ export async function createFolderAction(workspaceSlug: string, formData: FormDa
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
+}
+
+export async function renameFolderAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const folderId = String(formData.get("folderId"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    redirect(
+      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(
+        "FOLDER_NAME_REQUIRED",
+      )}`,
+    );
+  }
+  const folder = await renameFolder({
+    folderId,
+    actorId: user.id,
+    name,
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
+}
+
+export async function archiveFolderAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const folderId = String(formData.get("folderId"));
+
+  try {
+    await archiveFolder({
+      folderId,
+      actorId: user.id,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "FOLDER_ACTION_FAILED";
+    revalidatePath(`/workspaces/${workspaceSlug}`);
+    redirect(
+      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(message)}`,
+    );
+  }
+
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}`);
 }
 
 export async function archiveDocumentAction(formData: FormData) {
