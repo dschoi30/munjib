@@ -4,24 +4,34 @@ export type WikiLinkPreviewCandidate = {
   id: string;
   slug: string;
   title: string;
+  path: string;
 };
 
 export function buildWikiLinkPreviewCandidateMap(candidates: WikiLinkPreviewCandidate[]) {
   const candidateBySlug = new Map<string, WikiLinkPreviewCandidate | null>();
 
   for (const candidate of candidates) {
-    candidateBySlug.set(candidate.slug, candidate);
+    setUniqueCandidate(candidateBySlug, candidate.slug, candidate);
+    candidateBySlug.set(candidate.path.replace(/^\/+|\/+$/g, "").toLowerCase(), candidate);
 
     const titleSlug = slugifyTitle(candidate.title);
-    const existing = candidateBySlug.get(titleSlug);
-    if (existing === undefined) {
-      candidateBySlug.set(titleSlug, candidate);
-    } else if (existing?.id !== candidate.id) {
-      candidateBySlug.set(titleSlug, null);
-    }
+    setUniqueCandidate(candidateBySlug, titleSlug, candidate);
   }
 
   return candidateBySlug;
+}
+
+function setUniqueCandidate(
+  candidateBySlug: Map<string, WikiLinkPreviewCandidate | null>,
+  key: string,
+  candidate: WikiLinkPreviewCandidate,
+) {
+  const existing = candidateBySlug.get(key);
+  if (existing === undefined) {
+    candidateBySlug.set(key, candidate);
+  } else if (existing?.id !== candidate.id) {
+    candidateBySlug.set(key, null);
+  }
 }
 
 export function renderPreviewMarkdownWithWikiLinks(
@@ -120,11 +130,17 @@ function transformWikiLinks(
     if (!targetTitle || targetTitle.startsWith("#")) return match;
 
     const label = aliasPart?.trim() || targetTitle;
-    const candidate = candidateBySlug.get(slugifyTitle(targetTitle));
+    const candidate = candidateBySlug.get(candidateLookupKey(targetTitle));
     if (!candidate) return escapeMarkdownText(label);
 
     return `[${escapeMarkdownLinkLabel(label)}](?document=${encodeURIComponent(candidate.id)})`;
   });
+}
+
+function candidateLookupKey(targetTitle: string) {
+  return targetTitle.includes("/")
+    ? targetTitle.replace(/^\/+|\/+$/g, "").toLowerCase()
+    : slugifyTitle(targetTitle);
 }
 
 function escapeMarkdownText(value: string) {

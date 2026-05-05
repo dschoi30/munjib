@@ -2,6 +2,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDocument, createDocumentFromBrokenLink, updateDocument } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
+import { createFolder } from "@/lib/folders/service";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -39,13 +40,19 @@ Read [[Ignored Content Link]].`,
         targetTitleRaw: "Runbook",
         alias: null,
         isBroken: false,
-        targetDocument: { id: target.id, title: "Runbook", slug: "runbook" },
+        isAmbiguous: false,
+        targetDocument: { id: target.id, title: "Runbook", slug: "runbook", path: "/runbook" },
       },
     ]);
     expect(targetPanels.backlinks).toEqual([
       {
         id: expect.any(String),
-        sourceDocument: { id: source.id, title: "Incident Guide", slug: "incident-guide" },
+        sourceDocument: {
+          id: source.id,
+          title: "Incident Guide",
+          slug: "incident-guide",
+          path: "/incident-guide",
+        },
       },
     ]);
   });
@@ -226,7 +233,105 @@ Read [[Ignored Content Link]].`,
           id: expect.any(String),
           title: "Incident Guide",
           slug: "incident-guide",
+          path: "/incident-guide",
         },
+      },
+    ]);
+  });
+
+  it("resolves path-qualified links when duplicate titles exist", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const engineering = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Engineering",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: engineering.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Operations/Onboarding]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
+  it("marks title-only duplicate links as ambiguous", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const engineering = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Engineering",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: engineering.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Onboarding]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBeNull();
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(true);
+
+    const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    expect(panels.ambiguousLinks).toEqual([
+      {
+        id: link.id,
+        targetTitleRaw: "Onboarding",
+        alias: null,
       },
     ]);
   });

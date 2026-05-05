@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-04
-source_count: 11
+source_count: 12
 tags:
   - munjib
   - wiki-links
@@ -38,7 +38,7 @@ Munjib의 link model은 Markdown 안의 `[[문서명]]` 구문을 `DocumentLink`
 
 Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
 
-Issue #20 설계에서는 서로 다른 folder에 같은 document title을 허용하므로 path-qualified wikilink를 추가로 지원해야 한다. 예를 들어 `[[Operations/Onboarding]]`은 `/operations/onboarding` 문서를 가리키고, `[[Operations/Onboarding|Onboarding]]`은 같은 target에 짧은 label을 붙인다.
+Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허용하므로 path-qualified wikilink를 지원한다. 예를 들어 `[[Operations/Onboarding]]`은 `/operations/onboarding` 문서를 가리키고, `[[Operations/Onboarding|Onboarding]]`은 같은 target에 짧은 label을 붙인다.
 
 ## Reconciliation
 
@@ -51,7 +51,7 @@ Issue #20 설계에서는 서로 다른 folder에 같은 document title을 허�
 5. title-only target은 readable active document 중 title slug가 일치하는 후보를 찾는다.
 6. 후보가 하나면 `targetDocumentId`를 채우고 `isBroken=false`로 저장한다.
 7. 후보가 없으면 broken link로 저장한다.
-8. 후보가 여러 개면 ambiguous/unresolved 상태로 저장하고 임의 target을 선택하지 않는다.
+8. 후보가 여러 개면 `isAmbiguous=true`, `isBroken=false`, `targetDocumentId=null`로 저장하고 임의 target을 선택하지 않는다.
 
 본문 content 영역의 `[[...]]`는 preview navigation 대상으로는 렌더링하지만 Properties Links row와 backlink graph의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
 
@@ -69,7 +69,7 @@ Markdown preview는 `[[Target Title]]`과 `[[Target Title|Alias]]`를 Obsidian-s
 
 아직 matching document가 없는 target은 navigation target을 만들 수 없으므로 대괄호 없는 plain text label로 보여준다. Title slug가 여러 readable document와 충돌하면 preview는 임의 target을 고르지 않고 plain text로 표시한다. Stored document slug와 정확히 일치하는 target은 충돌 상황에서도 해당 document로 연결한다.
 
-Issue #20 이후 preview는 path-qualified link를 document path로 resolve한다. Title-only link가 여러 readable active document와 충돌하면 ambiguous link로 보고 plain text fallback을 유지한다.
+Issue #20 이후 preview는 path-qualified link를 document path로 resolve한다. Title-only link가 여러 readable active document와 충돌하면 ambiguous link로 보고 plain text fallback을 유지한다. Preview candidate map은 slug collision에서도 임의 target을 고르지 않으며, path-qualified key는 `/`를 제거한 lowercase path로 찾는다.
 
 Embed syntax, escaped wiki links, inline/fenced code, indented code block 안의 wiki link text는 preview 변환에서 제외한다. Inline code는 backtick delimiter 길이를 맞춰 닫을 때만 code span을 종료하고, line ending을 포함하는 code span 상태도 문서 변환 중 유지한다. Fenced code는 opening fence의 marker와 width를 보존해 더 짧은 fence line 때문에 code block을 조기 종료하지 않는다.
 
@@ -101,6 +101,7 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `lib/wiki-links/service.ts`
 - `lib/wiki-links/autocomplete.ts`
 - `lib/wiki-links/preview.ts`
+- `lib/wiki-links/types.ts`
 - `lib/documents/service.ts`
 - `components/document-editor.tsx`
 - `tests/wiki-links/preview.test.ts`

@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-04
-source_count: 11
+source_count: 12
 tags:
   - munjib
   - data-model
@@ -83,6 +83,8 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 `lib/documents/service.ts`는 `CreateDocumentInput.folderId`와 `moveDocument()`를 지원한다. 문서 생성, title update, version restore는 현재 folder path와 document slug를 결합해 `Document.path`를 계산한다. 서로 다른 folder 안에서는 같은 document title/slug를 허용하고, 같은 folder 안에서는 next-available slug를 사용한다. `moveDocument()`는 target folder의 path 아래로 문서를 이동하고 `document.moved` audit log에 previous path와 새 path를 기록한다.
 
+Wiki link reconciliation은 path-qualified target을 document `path`로 우선 resolve한다. Title-only target이 하나의 active document와만 일치하면 연결하고, 여러 active document와 일치하면 `DocumentLink.isAmbiguous=true`로 저장한다. Markdown preview도 ambiguous title-only link를 plain text로 남기고 임의 target을 만들지 않는다.
+
 ## 근거
 
 - GitHub issue #20
@@ -93,9 +95,13 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 - `lib/folders/types.ts`
 - `lib/documents/service.ts`
 - `lib/documents/types.ts`
+- `lib/wiki-links/reconcile.ts`
+- `lib/wiki-links/preview.ts`
 - `tests/folders/path.test.ts`
 - `tests/folders/service.test.ts`
 - `tests/documents/service.test.ts`
+- `tests/wiki-links/reconcile.test.ts`
+- `tests/wiki-links/preview.test.ts`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - Obsidian Hub beginner guide: https://publish.obsidian.md/hub/04%20-%20Guides%2C%20Workflows%2C%20%26%20Courses/for%20Beginners
