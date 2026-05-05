@@ -180,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 31,
+      "source_count": 32,
       "searchPriority": 1
     },
     {
@@ -204,7 +204,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 19,
+      "source_count": 21,
       "searchPriority": 50
     },
     {
@@ -248,7 +248,7 @@
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 21,
+      "source_count": 24,
       "searchPriority": 30
     },
     {

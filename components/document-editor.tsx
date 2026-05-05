@@ -359,6 +359,7 @@ function MarkdownPreview({
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
   const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(strippedMarkdown), [strippedMarkdown]);
+  const sharedDefinitions = useMemo(() => getSharedMarkdownDefinitions(strippedMarkdown), [strippedMarkdown]);
   const storageKey = `munjib:heading-folds:${documentId}`;
   const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
     new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
@@ -394,7 +395,7 @@ function MarkdownPreview({
         <>
           {leadingMarkdown.trim().length > 0 ? (
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-              {renderPreviewMarkdownWithWikiLinks(leadingMarkdown, candidateBySlug)}
+              {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
             </ReactMarkdown>
           ) : null}
           {foldTree.sections.map((section) => (
@@ -404,13 +405,18 @@ function MarkdownPreview({
               foldedKeys={foldedKeys}
               markdownComponents={markdownComponents}
               candidateBySlug={candidateBySlug}
+              sharedDefinitions={sharedDefinitions}
               onToggle={toggleSection}
             />
           ))}
         </>
       ) : (
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {renderPreviewMarkdownWithWikiLinks(strippedMarkdown, candidateBySlug) || "_Nothing to preview._"}
+          {renderPreviewChunk(
+            strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
+            candidateBySlug,
+            sharedDefinitions,
+          )}
         </ReactMarkdown>
       )}
     </div>
@@ -422,19 +428,21 @@ function MarkdownPreviewSection({
   foldedKeys,
   markdownComponents,
   candidateBySlug,
+  sharedDefinitions,
   onToggle,
 }: {
   section: HeadingFoldSection;
   foldedKeys: Set<string>;
   markdownComponents: Components;
   candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>;
+  sharedDefinitions: string;
   onToggle: (key: string) => void;
 }) {
   const folded = foldedKeys.has(section.key);
   const headingLabel = markdownInlineToPlainText(section.title);
   const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
-  const previewHeadingMarkdown = renderPreviewMarkdownWithWikiLinks(headingMarkdown, candidateBySlug);
-  const previewBodyMarkdown = renderPreviewMarkdownWithWikiLinks(section.bodyMarkdown, candidateBySlug);
+  const previewHeadingMarkdown = renderPreviewChunk(headingMarkdown, candidateBySlug, sharedDefinitions);
+  const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
 
   return (
     <section>
@@ -474,6 +482,7 @@ function MarkdownPreviewSection({
               foldedKeys={foldedKeys}
               markdownComponents={markdownComponents}
               candidateBySlug={candidateBySlug}
+              sharedDefinitions={sharedDefinitions}
               onToggle={onToggle}
             />
           ))}
@@ -551,6 +560,58 @@ function getMarkdownBeforeFirstHeading(markdown: string) {
   }
 
   return markdown;
+}
+
+function getSharedMarkdownDefinitions(markdown: string) {
+  const lines = markdown.split("\n");
+  const definitions: string[] = [];
+  let inFence: { marker: "`" | "~"; length: number } | null = null;
+
+  for (const line of lines) {
+    if (inFence) {
+      const closingFence = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+      if (closingFence) {
+        const marker = closingFence[1][0] as "`" | "~";
+        const length = closingFence[1].length;
+
+        if (inFence.marker === marker && length >= inFence.length) {
+          inFence = null;
+        }
+      }
+
+      continue;
+    }
+
+    const openingFence = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    if (openingFence) {
+      inFence = {
+        marker: openingFence[1][0] as "`" | "~",
+        length: openingFence[1].length,
+      };
+      continue;
+    }
+
+    if (isMarkdownDefinitionLine(line)) {
+      definitions.push(line);
+    }
+  }
+
+  return definitions.join("\n");
+}
+
+function renderPreviewChunk(
+  markdown: string,
+  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>,
+  sharedDefinitions: string,
+) {
+  const markdownWithDefinitions = sharedDefinitions ? `${markdown}\n\n${sharedDefinitions}` : markdown;
+
+  return renderPreviewMarkdownWithWikiLinks(markdownWithDefinitions, candidateBySlug);
+}
+
+function isMarkdownDefinitionLine(line: string) {
+  return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*\S/.test(line);
 }
 
 function DocumentProperties({

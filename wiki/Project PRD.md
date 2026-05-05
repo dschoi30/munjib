@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 21
+updated: 2026-05-06
+source_count: 24
 tags:
   - munjib
   - source
@@ -46,7 +46,7 @@ links:
 - 개발용 credentials login, seed workspace, session cookie namespace 분리.
 - workspace role 기반 문서 read/write와 explicit document permission filtering.
 - 문서 생성/수정/아카이브, 템플릿 기반 생성, 실제 folder 컨테이너 생성.
-- Markdown editor의 edit/split/preview 모드와 wiki link autocomplete.
+- Markdown editor의 edit/preview 모드, wiki link autocomplete, heading folding.
 - `[[문서명]]` link parsing, backlink, outgoing link, broken link reconciliation.
 - broken link 클릭 기반 blank document 생성과 기존 broken links repair.
 - title 아래 Properties 영역: tags, links, frontmatter properties, comments.
@@ -67,11 +67,11 @@ links:
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
 
-Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위한 planned enhancement다. 설계 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장, 기존 split mode 제거다.
-
 ## 최근 구현된 구조 변경
 
 Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸었다. 구현된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
+
+Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위해 구현된 편집 구조 변경이다. 구현 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장, 기존 split mode 제거다. Preview rendering은 heading folding을 위해 문서를 chunk로 나누더라도 문서 전체의 reference link와 footnote definition을 각 chunk에 공유해 whole-document Markdown reference 해석을 보존한다.
 
 ## 현재 구현 근거
 
@@ -90,12 +90,14 @@ Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder`
 - `lib/comments/service.ts`: document comment creation.
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
+- `lib/markdown/folding.ts`: heading hierarchy fold tree와 stored fold key parsing.
 - `components/document-navigation.tsx`: search, quick switcher, recent/favorites navigation.
 - `components/folder-detail.tsx`: selected folder detail state.
 - `components/metadata-panel.tsx`: local graph, attachments, versions, audit log.
 - `.githooks/pre-commit`, `lib/wiki/sync.ts`: commit-time wiki sync automation.
 - GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 설계.
 - GitHub issue #25와 `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`: Markdown heading folding 설계.
+- `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 
 ## Wiki 작성 원칙
 
