@@ -128,7 +128,7 @@ function createFoldedRangeUpdate(fromLine: number, toLine: number) {
       throw new Error(`No line at ${position}`);
     },
   };
-  const from = lineOffsets.get(fromLine)?.from ?? 0;
+  const fromHeadingLineEnd = lineOffsets.get(fromLine)?.to ?? 0;
   const to = lineOffsets.get(toLine)?.to ?? 0;
 
   return {
@@ -137,7 +137,7 @@ function createFoldedRangeUpdate(fromLine: number, toLine: number) {
         doc,
         field: () => ({
           between: (_from: number, _to: number, callback: (from: number, to: number) => void) => {
-            callback(from, to);
+            callback(fromHeadingLineEnd, to);
           },
         }),
       },
@@ -220,6 +220,12 @@ describe("DocumentEditor heading preview folding", () => {
     expect(container.textContent?.replace(/\s+/g, " ")).toContain("first second");
   });
 
+  it("resolves empty first-line footnote definitions across preview sections", () => {
+    const { container } = renderEditor("# A\nFootnote[^one]\n# B\n[^one]:\n    first\n    second");
+
+    expect(container.textContent?.replace(/\s+/g, " ")).toContain("first second");
+  });
+
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
     renderEditor("# A\nLine\n# B\nOther");
 
@@ -228,7 +234,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     expect(codeMirrorHarness.updateListeners).toHaveLength(1);
 
-    codeMirrorHarness.updateListeners[0](createFoldedRangeUpdate(2, 2));
+    codeMirrorHarness.updateListeners[0](createFoldedRangeUpdate(1, 2));
 
     expect(window.localStorage.getItem("munjib:heading-folds:doc-1")).toBe("[\"1-a-0\"]");
   });
