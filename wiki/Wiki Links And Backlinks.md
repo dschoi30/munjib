@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 17
+source_count: 19
 tags:
   - munjib
   - wiki-links
@@ -74,7 +74,9 @@ Issue #20 이후 preview는 path-qualified link를 document path로 resolve한�
 
 Embed syntax, escaped wiki links, inline/fenced code, indented code block 안의 wiki link text는 preview 변환에서 제외한다. Inline code는 backtick delimiter 길이를 맞춰 닫을 때만 code span을 종료하고, line ending을 포함하는 code span 상태도 문서 변환 중 유지한다. Fenced code는 opening fence의 marker와 width를 보존해 더 짧은 fence line 때문에 code block을 조기 종료하지 않는다.
 
-Preview 변환은 후보 문서 title slug map을 caller에서 memoize해 전달받는다. Split/preview mode에서 editor keystroke마다 전체 후보 목록을 다시 slugify하지 않도록 하기 위한 UI 성능 guardrail이다.
+Preview 변환은 후보 문서 title slug map을 caller에서 memoize해 전달받는다. Preview mode에서 editor keystroke마다 전체 후보 목록을 다시 slugify하지 않도록 하기 위한 UI 성능 guardrail이다.
+
+Issue #25 preview surface는 wiki-link rendering과 heading folding을 같은 markdown preview 경로에서 적용한다. Fold key는 frontmatter를 제거한 raw markdown 기준으로 만들어 preview와 edit mode가 `munjib:heading-folds:<documentId>` localStorage state를 공유한다. Wiki-link conversion은 heading/body chunk가 `ReactMarkdown`에 전달되기 전에 적용되므로, 접힌 section을 다시 펼쳤을 때도 내부 wiki link는 기존 preview navigation 동작을 유지한다.
 
 ## Backlinks
 
@@ -106,8 +108,10 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `lib/wiki-links/autocomplete.ts`
 - `lib/wiki-links/preview.ts`
 - `lib/wiki-links/types.ts`
+- `lib/markdown/folding.ts`
 - `lib/documents/service.ts`
 - `components/document-editor.tsx`
+- `tests/components/document-editor-preview.test.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
 - `tests/wiki-links/autocomplete.test.ts`
