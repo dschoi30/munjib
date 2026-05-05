@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 30
+source_count: 31
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T23:58:00+09:00 - plan
+
+- Result: Issue #26 folder row hover actions menu implementation plan을 추가했다.
+- Coverage: folder mutation actions, sidebar action prop threading, document/folder row menus, folder favorite/error UI, Playwright smoke, wiki maintenance 순서.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-05-folder-row-hover-actions-menu.md`.
 
 ## 2026-05-05T23:55:00+09:00 - design
 
