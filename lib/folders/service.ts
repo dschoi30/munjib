@@ -216,12 +216,20 @@ export async function moveFolder(input: MoveFolderInput) {
     }
 
     const parentPath = await getParentFolderPath(tx, folder.workspaceId, input.parentFolderId);
+    const slug = await nextAvailableFolderSlug(
+      tx,
+      folder.workspaceId,
+      input.parentFolderId,
+      folder.name,
+      folder.id,
+    );
     const previousPath = folder.path;
     const updated = await tx.folder.update({
       where: { id: folder.id },
       data: {
         parentFolderId: input.parentFolderId,
-        path: buildChildPath(parentPath, folder.slug),
+        slug,
+        path: buildChildPath(parentPath, slug),
         updatedById: input.actorId,
       },
     });

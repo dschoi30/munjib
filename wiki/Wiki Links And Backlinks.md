@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 15
+source_count: 16
 tags:
   - munjib
   - wiki-links
@@ -85,6 +85,8 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `createDocumentFromBrokenLink()`는 broken link row를 기준으로 새 문서를 만든다. 새 문서 title은 `targetTitleRaw`이고 초기 markdown은 빈 문자열이다. 생성 후 `repairBrokenLinksForTarget()`이 같은 workspace 안에서 같은 `targetTitleRaw`를 가진 broken links를 새 문서로 연결한다.
 
+Issue #20 이후 broken link target이 `Operations/Incident Runbook`처럼 path-qualified이면 parent folder path(`/operations`)를 먼저 찾고, 마지막 segment(`Incident Runbook`)를 title로 사용해 해당 folder 아래 문서를 생성한다. 이렇게 만들어진 문서는 `/operations/incident-runbook` path를 가져 다음 reconciliation에서도 같은 path-qualified link가 계속 resolve된다.
+
 UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 함께 표시한다. 정상 outgoing link는 보라색 link로, broken outgoing link는 연한 회색 underline button으로 보여 시각적으로 구분한다.
 
 ## 현재 한계
@@ -98,6 +100,7 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 
 - `lib/wiki-links/parser.ts`
 - `lib/wiki-links/reconcile.ts`
+- `lib/wiki-links/targets.ts`
 - `lib/wiki-links/service.ts`
 - `lib/wiki-links/autocomplete.ts`
 - `lib/wiki-links/preview.ts`

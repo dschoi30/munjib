@@ -20,6 +20,7 @@ import type {
   UpdateDocumentInput,
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
+import { pathQualifiedTargetToCreateInput } from "@/lib/wiki-links/targets";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -473,11 +474,15 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   const contentMarkdown = "";
 
   return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+    const targetCreateInput = await getBrokenLinkCreateInput(tx, {
+      workspaceId: link.workspaceId,
+      targetTitleRaw: link.targetTitleRaw,
+    });
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: link.workspaceId,
       actorId: input.actorId,
-      folderId: null,
-      title: link.targetTitleRaw,
+      folderId: targetCreateInput.folderId,
+      title: targetCreateInput.title,
       contentMarkdown,
       changeSummary: "Created from broken wiki link",
     });
@@ -504,6 +509,27 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
 
     return document;
   }));
+}
+
+async function getBrokenLinkCreateInput(
+  tx: Prisma.TransactionClient,
+  input: { workspaceId: string; targetTitleRaw: string },
+) {
+  const pathTarget = pathQualifiedTargetToCreateInput(input.targetTitleRaw);
+  if (!pathTarget) return { folderId: null, title: input.targetTitleRaw };
+
+  const folder = await tx.folder.findFirst({
+    where: {
+      workspaceId: input.workspaceId,
+      path: pathTarget.folderPath,
+      status: DocumentStatus.ACTIVE,
+    },
+    select: { id: true },
+  });
+
+  if (!folder) throw new Error("FOLDER_NOT_FOUND");
+
+  return { folderId: folder.id, title: pathTarget.title };
 }
 
 export async function moveDocument(input: MoveDocumentInput) {

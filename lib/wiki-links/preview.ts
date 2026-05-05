@@ -1,4 +1,5 @@
 import { slugifyTitle } from "@/lib/text/slug";
+import { pathQualifiedTargetToLookupKey } from "@/lib/wiki-links/targets";
 
 export type WikiLinkPreviewCandidate = {
   id: string;
@@ -139,12 +140,7 @@ function transformWikiLinks(
 
 function candidateLookupKey(targetTitle: string) {
   return targetTitle.includes("/")
-    ? targetTitle
-        .replace(/^\/+|\/+$/g, "")
-        .split("/")
-        .map((segment) => slugifyTitle(segment))
-        .filter(Boolean)
-        .join("/")
+    ? pathQualifiedTargetToLookupKey(targetTitle)
     : slugifyTitle(targetTitle);
 }
 

@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-05
-source_count: 21
+source_count: 22
 tags:
   - munjib
   - data-model
@@ -79,7 +79,7 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 첫 구현 유틸리티는 `lib/folders/path.ts`다. `normalizeFolderPath()`는 root와 중첩 경로를 소문자 leading-slash path로 정규화하고, `buildChildPath()`는 parent folder path와 child slug를 결합하며, `pathToWikiTarget()`은 `/operations/onboarding` 같은 document path를 `Operations/Onboarding` wikilink target label로 변환한다.
 
-`lib/folders/service.ts`는 folder create, rename, move, archive를 담당한다. 모든 mutation은 workspace write 권한을 요구하고 audit log를 남긴다. Create/move에서 parent folder는 같은 workspace의 active folder여야 하며, 다른 workspace folder id를 parent로 넘기면 `PARENT_FOLDER_NOT_FOUND`로 거부한다. Rename/move는 descendant folder/document path를 재계산하며, 자기 자신 또는 descendant 아래로 이동하는 cycle은 `FOLDER_MOVE_CYCLE`로 거부한다. Archive는 active child folder/document가 있으면 `FOLDER_NOT_EMPTY`로 거부한다.
+`lib/folders/service.ts`는 folder create, rename, move, archive를 담당한다. 모든 mutation은 workspace write 권한을 요구하고 audit log를 남긴다. Create/move에서 parent folder는 같은 workspace의 active folder여야 하며, 다른 workspace folder id를 parent로 넘기면 `PARENT_FOLDER_NOT_FOUND`로 거부한다. Rename/move는 descendant folder/document path를 재계산하며, 자기 자신 또는 descendant 아래로 이동하는 cycle은 `FOLDER_MOVE_CYCLE`로 거부한다. Move는 destination parent 안의 sibling folder slug를 다시 검사해 같은 이름 folder가 이미 있으면 `runbooks-2` 같은 conflict-free slug/path로 이동한다. Archive는 active child folder/document가 있으면 `FOLDER_NOT_EMPTY`로 거부한다.
 
 `lib/documents/service.ts`는 `CreateDocumentInput.folderId`와 `moveDocument()`를 지원한다. 문서 생성, title update, version restore는 현재 folder path와 document slug를 결합해 `Document.path`를 계산한다. 서로 다른 folder 안에서는 같은 document title/slug를 허용하고, 같은 folder 안에서는 next-available slug를 사용한다. `moveDocument()`는 target folder의 path 아래로 문서를 이동하고 `document.moved` audit log에 previous path와 새 path를 기록한다.
 
@@ -108,6 +108,7 @@ Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/
 - `lib/documents/service.ts`
 - `lib/documents/types.ts`
 - `lib/wiki-links/reconcile.ts`
+- `lib/wiki-links/targets.ts`
 - `lib/wiki-links/preview.ts`
 - `tests/folders/path.test.ts`
 - `tests/folders/service.test.ts`
