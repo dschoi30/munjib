@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 22
+source_count: 23
 tags:
   - munjib
   - workflow
@@ -106,6 +106,12 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit/split mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
 
+## 계획된 heading folding
+
+Issue #25 설계는 Obsidian-style markdown heading folding을 문서 editor에 추가한다. 구현 후 editor mode는 `edit`과 `preview`만 남고 split mode는 제거된다. Preview mode는 heading 왼쪽 chevron button으로 section을 접고 펼치며, 펼쳐진 heading은 hover/focus 때만 chevron을 보여주고 접힌 heading은 chevron을 항상 보여준다.
+
+접힘 범위는 heading hierarchy를 따른다. `#` heading은 다음 `#` 전까지, `##` heading은 다음 `##` 또는 상위 heading 전까지 숨긴다. 접힘 상태는 Preview와 Edit mode가 공유하는 문서별 browser `localStorage` state로 저장하며, markdown 저장 payload나 DB 모델은 바꾸지 않는다. Edit mode는 CodeMirror heading folding을 활성화하고, 저장된 heading fold key를 editor range로 복원하는 방향으로 설계되었다.
+
 ## 근거
 
 - `app/workspaces/[workspaceSlug]/page.tsx`
@@ -126,3 +132,5 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 - `prisma/schema.prisma`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
+- GitHub issue #25
+- `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`

@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 18
+source_count: 19
 tags:
   - munjib
   - product
@@ -55,6 +55,10 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 `prd.md`에는 실시간 협업, 고급 graph 탐색, review workflow, export, 조직별 세밀한 권한 관리, search indexing 같은 제품 방향이 포함되어 있다. 현재 구현은 MVP 수준의 local graph, properties, search, template, attachment, comment, version restore까지 포함하지만, 완성형 협업 지식관리 제품으로 과장하지 않는다.
 
+## 계획된 편집 경험 개선
+
+Issue #25 설계는 Obsidian-style markdown heading folding을 문서 편집 경험에 추가한다. 계획된 범위는 split mode 제거, edit/preview mode 단순화, Preview heading chevron 기반 section folding, Edit mode CodeMirror heading folding, 문서별 `localStorage` 접힘 상태 저장이다. 아직 구현 완료 상태가 아니므로 현재 구현 목록에는 포함하지 않는다.
+
 ## 빠른 진입점
 
 - 데이터 모델은 [[Document Knowledge Model]]에서 본다.
@@ -85,3 +89,5 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 - `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
 - GitHub issue #20
+- GitHub issue #25
+- `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
