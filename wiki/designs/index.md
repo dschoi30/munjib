@@ -3,10 +3,10 @@ id: designs-index
 title: UI Design Excalidraw Index
 type: index
 status: active
-summary: GitHub UI 이슈별 Excalidraw 와이어프레임 모음.
+summary: GitHub UI 이슈별 Excalidraw 와이어프레임과 참고 이미지 모음.
 created: 2026-04-29
-updated: 2026-04-29
-source_count: 12
+updated: 2026-05-05
+source_count: 13
 tags:
   - ui
   - design
@@ -19,7 +19,7 @@ links:
 
 # UI Design Excalidraw Index
 
-UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임이다. 각 파일은 Excalidraw에서 직접 열 수 있는 JSON 형식이다.
+UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임과 참고 이미지다. Excalidraw 파일은 Excalidraw에서 직접 열 수 있는 JSON 형식이고, PNG 파일은 구현 참고용 visual evidence다.
 
 - #2: [Slug collision and document selection states](issue-02-document-slug-selection-stability.excalidraw)
 - #3: [Development login and session recovery](issue-03-auth-login-session-recovery.excalidraw)
@@ -33,3 +33,4 @@ UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임이다. 각
 - #11: [Folder, recent, favorite, quick switcher](issue-11-navigation-quick-switcher.excalidraw)
 - #12: [Image upload and attachment links](issue-12-attachments-upload.excalidraw)
 - #13: [Templates, comments, review operations](issue-13-templates-comments-review.excalidraw)
+- #26: [Folder row hover actions reference](notion1.png) - Notion-style folder hover highlight, `...` action menu, and `+` child document action reference.

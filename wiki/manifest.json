@@ -30,7 +30,7 @@
       "title": "UI Design Excalidraw Index",
       "type": "index",
       "status": "active",
-      "summary": "GitHub UI 이슈별 Excalidraw 와이어프레임 모음.",
+      "summary": "GitHub UI 이슈별 Excalidraw 와이어프레임과 참고 이미지 모음.",
       "tags": [
         "ui",
         "design",
@@ -41,7 +41,7 @@
         "[[Munjib]]",
         "[[Project PRD]]"
       ],
-      "source_count": 12,
+      "source_count": 13,
       "searchPriority": 30
     },
     {
@@ -180,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 29,
+      "source_count": 30,
       "searchPriority": 1
     },
     {
