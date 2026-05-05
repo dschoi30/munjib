@@ -4,12 +4,28 @@ import { markdown } from "@codemirror/lang-markdown";
 import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Columns2, Eye, MessageSquare, Paperclip, Pencil, Save, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  MessageSquare,
+  Paperclip,
+  Pencil,
+  Save,
+  Upload,
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  buildHeadingFoldTree,
+  createHeadingFoldStorageValue,
+  getValidFoldedHeadingKeys,
+  parseHeadingFoldStorageValue,
+  type HeadingFoldSection,
+} from "@/lib/markdown/folding";
 import {
   buildWikiLinkPreviewCandidateMap,
   renderPreviewMarkdownWithWikiLinks,
@@ -26,7 +42,7 @@ import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
-type EditorMode = "edit" | "split" | "preview";
+type EditorMode = "edit" | "preview";
 type EditableDocument = {
   id: string;
   title: string;
@@ -68,7 +84,7 @@ export function DocumentEditor({
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   createCommentAction: (formData: FormData) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<EditorMode>("split");
+  const [mode, setMode] = useState<EditorMode>("preview");
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
@@ -130,10 +146,6 @@ export function DocumentEditor({
             <Pencil className="h-4 w-4" aria-hidden="true" />
             <span>Edit</span>
           </ModeButton>
-          <ModeButton active={mode === "split"} onClick={() => setMode("split")}>
-            <Columns2 className="h-4 w-4" aria-hidden="true" />
-            <span>Split</span>
-          </ModeButton>
           <ModeButton active={mode === "preview"} onClick={() => setMode("preview")}>
             <Eye className="h-4 w-4" aria-hidden="true" />
             <span>Preview</span>
@@ -172,19 +184,13 @@ export function DocumentEditor({
           Upload
         </Button>
       </form>
-      <div
-        className={
-          mode === "split"
-            ? "grid grid-cols-2 overflow-hidden rounded-md border border-border bg-white"
-            : "overflow-hidden rounded-md border border-border bg-white"
-        }
-      >
-        {mode !== "preview" ? (
-          <div className="relative min-w-0 border-r border-border">
+      <div className="overflow-hidden rounded-md border border-border bg-white">
+        {mode === "edit" ? (
+          <div className="relative min-w-0">
             <CodeMirror
               value={contentMarkdown}
               basicSetup={{
-                foldGutter: false,
+                foldGutter: true,
                 highlightActiveLine: false,
                 highlightActiveLineGutter: false,
               }}
@@ -195,27 +201,19 @@ export function DocumentEditor({
               }
               aria-label="Markdown editor"
             />
-            {canWrite && suggestions.length > 0 ? (
-              <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
-                <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Wiki links
-                </div>
-                {suggestions.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => insertWikiLink(option)}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            <WikiLinkSuggestions
+              canWrite={canWrite}
+              suggestions={suggestions}
+              onSelect={insertWikiLink}
+            />
           </div>
         ) : null}
-        {mode !== "edit" ? (
-          <MarkdownPreview markdown={contentMarkdown} linkCandidates={linkCandidates} />
+        {mode === "preview" ? (
+          <MarkdownPreview
+            markdown={contentMarkdown}
+            documentId={document.id}
+            linkCandidates={linkCandidates}
+          />
         ) : null}
       </div>
       <div className="flex items-center justify-between">
@@ -227,6 +225,38 @@ export function DocumentEditor({
           Save
         </Button>
       </div>
+    </div>
+  );
+}
+
+function WikiLinkSuggestions({
+  canWrite,
+  suggestions,
+  onSelect,
+}: {
+  canWrite: boolean;
+  suggestions: WikiLinkCompletionOption[];
+  onSelect: (option: WikiLinkCompletionOption) => void;
+}) {
+  if (!canWrite || suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
+      <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        Wiki links
+      </div>
+      {suggestions.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          onClick={() => onSelect(option)}
+          className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -258,18 +288,20 @@ function ModeButton({
 
 function MarkdownPreview({
   markdown,
+  documentId,
   linkCandidates,
 }: {
   markdown: string;
+  documentId: string;
   linkCandidates: LinkCandidate[];
 }) {
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
-  const markdownComponents = useMemo(
+  const markdownComponents = useMemo<Components>(
     () => ({
-      a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+      a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
         return href?.startsWith("?document=") ? (
           <Link href={href} className={className}>
@@ -288,14 +320,191 @@ function MarkdownPreview({
     () => renderPreviewMarkdownWithWikiLinks(stripDocumentFrontmatter(markdown), candidateBySlug),
     [markdown, candidateBySlug],
   );
+  const foldTree = useMemo(() => buildHeadingFoldTree(previewMarkdown), [previewMarkdown]);
+  const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(previewMarkdown), [previewMarkdown]);
+  const storageKey = `munjib:heading-folds:${documentId}`;
+  const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
+    new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
+  );
+
+  useEffect(() => {
+    setFoldedKeys(new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)));
+  }, [storageKey, foldTree]);
+
+  const toggleSection = useCallback(
+    (key: string) => {
+      setFoldedKeys((current) => {
+        const next = new Set(current);
+
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+
+        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
+        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
+
+        return validKeySet;
+      });
+    },
+    [foldTree.headingKeys, storageKey],
+  );
 
   return (
     <div className="markdown-preview min-w-0 p-5">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {previewMarkdown || "_Nothing to preview._"}
-      </ReactMarkdown>
+      {foldTree.sections.length > 0 ? (
+        <>
+          {leadingMarkdown.trim().length > 0 ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {leadingMarkdown}
+            </ReactMarkdown>
+          ) : null}
+          {foldTree.sections.map((section) => (
+            <MarkdownPreviewSection
+              key={section.key}
+              section={section}
+              foldedKeys={foldedKeys}
+              markdownComponents={markdownComponents}
+              onToggle={toggleSection}
+            />
+          ))}
+        </>
+      ) : (
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {previewMarkdown || "_Nothing to preview._"}
+        </ReactMarkdown>
+      )}
     </div>
   );
+}
+
+function MarkdownPreviewSection({
+  section,
+  foldedKeys,
+  markdownComponents,
+  onToggle,
+}: {
+  section: HeadingFoldSection;
+  foldedKeys: Set<string>;
+  markdownComponents: Components;
+  onToggle: (key: string) => void;
+}) {
+  const folded = foldedKeys.has(section.key);
+  const headingLabel = markdownInlineToPlainText(section.title);
+  const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
+
+  return (
+    <section>
+      <div className="group flex items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-label={`${folded ? "Expand" : "Collapse"} section ${headingLabel}`}
+          onClick={() => onToggle(section.key)}
+          className={
+            folded
+              ? "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-muted hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
+              : "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 opacity-0 hover:bg-muted hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
+          }
+        >
+          {folded ? (
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {headingMarkdown}
+        </ReactMarkdown>
+      </div>
+      {folded ? null : (
+        <>
+          {section.bodyMarkdown.trim().length > 0 ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {section.bodyMarkdown}
+            </ReactMarkdown>
+          ) : null}
+          {section.children.map((child) => (
+            <MarkdownPreviewSection
+              key={child.key}
+              section={child}
+              foldedKeys={foldedKeys}
+              markdownComponents={markdownComponents}
+              onToggle={onToggle}
+            />
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {
+  try {
+    return getValidFoldedHeadingKeys(
+      parseHeadingFoldStorageValue(window.localStorage.getItem(storageKey)),
+      validKeys,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string>) {
+  try {
+    window.localStorage.setItem(storageKey, createHeadingFoldStorageValue(foldedKeys));
+  } catch {
+    // Folding remains usable in memory when browser storage is unavailable.
+  }
+}
+
+function markdownInlineToPlainText(markdown: string) {
+  return markdown
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_~]+/g, "")
+    .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, "$1")
+    .trim();
+}
+
+function getMarkdownBeforeFirstHeading(markdown: string) {
+  const lines = markdown.match(/^.*(?:\n|$)/gm) ?? [];
+  let offset = 0;
+  let inFence: { marker: "`" | "~"; length: number } | null = null;
+
+  for (const line of lines) {
+    const content = line.endsWith("\n") ? line.slice(0, -1) : line;
+
+    if (inFence) {
+      const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+      if (closingFence) {
+        const marker = closingFence[1][0] as "`" | "~";
+        const length = closingFence[1].length;
+
+        if (inFence.marker === marker && length >= inFence.length) {
+          inFence = null;
+        }
+      }
+    } else {
+      const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
+
+      if (openingFence) {
+        inFence = {
+          marker: openingFence[1][0] as "`" | "~",
+          length: openingFence[1].length,
+        };
+      } else if (/^ {0,3}#{1,6}(?:[ \t]+|$)/.test(content)) {
+        return markdown.slice(0, offset);
+      }
+    }
+
+    offset += line.length;
+  }
+
+  return markdown;
 }
 
 function DocumentProperties({
