@@ -28,6 +28,26 @@ describe("folder service", () => {
     expect(runbooks.path).toBe("/operations/runbooks");
   });
 
+  it("rejects creating a folder below a parent from another workspace", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const otherFixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const otherParent = await createFolder({
+      workspaceSlug: otherFixture.workspace.slug,
+      actorId: otherFixture.user.id,
+      parentFolderId: null,
+      name: "External Parent",
+    });
+
+    await expect(
+      createFolder({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        parentFolderId: otherParent.id,
+        name: "Child",
+      }),
+    ).rejects.toThrow("PARENT_FOLDER_NOT_FOUND");
+  });
+
   it("renames a folder and recalculates descendant document paths", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const operations = await createFolder({
@@ -97,5 +117,30 @@ describe("folder service", () => {
     await expect(
       moveFolder({ folderId: parent.id, actorId: fixture.user.id, parentFolderId: child.id }),
     ).rejects.toThrow("FOLDER_MOVE_CYCLE");
+  });
+
+  it("rejects moving a folder below a parent from another workspace", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const otherFixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const folder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Local",
+    });
+    const otherParent = await createFolder({
+      workspaceSlug: otherFixture.workspace.slug,
+      actorId: otherFixture.user.id,
+      parentFolderId: null,
+      name: "External Parent",
+    });
+
+    await expect(
+      moveFolder({
+        folderId: folder.id,
+        actorId: fixture.user.id,
+        parentFolderId: otherParent.id,
+      }),
+    ).rejects.toThrow("PARENT_FOLDER_NOT_FOUND");
   });
 });

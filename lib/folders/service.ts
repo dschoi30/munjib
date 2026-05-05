@@ -76,10 +76,14 @@ async function nextAvailableFolderSlug(
   return `${baseSlug}-${suffix}`;
 }
 
-async function getParentFolderPath(tx: Prisma.TransactionClient, folderId: string | null) {
+async function getParentFolderPath(
+  tx: Prisma.TransactionClient,
+  workspaceId: string,
+  folderId: string | null,
+) {
   if (!folderId) return "/";
-  const folder = await tx.folder.findUnique({
-    where: { id: folderId },
+  const folder = await tx.folder.findFirst({
+    where: { id: folderId, workspaceId, status: DocumentStatus.ACTIVE },
     select: { path: true },
   });
 
@@ -139,7 +143,7 @@ export async function createFolder(input: CreateFolderInput) {
 
   return prisma.$transaction(async (tx) => {
     const slug = await nextAvailableFolderSlug(tx, workspace.id, input.parentFolderId, input.name);
-    const parentPath = await getParentFolderPath(tx, input.parentFolderId);
+    const parentPath = await getParentFolderPath(tx, workspace.id, input.parentFolderId);
     const folder = await tx.folder.create({
       data: {
         workspaceId: workspace.id,
@@ -176,7 +180,7 @@ export async function renameFolder(input: RenameFolderInput) {
       input.name,
       folder.id,
     );
-    const parentPath = await getParentFolderPath(tx, folder.parentFolderId);
+    const parentPath = await getParentFolderPath(tx, folder.workspaceId, folder.parentFolderId);
     const previousPath = folder.path;
     const updated = await tx.folder.update({
       where: { id: folder.id },
@@ -211,7 +215,7 @@ export async function moveFolder(input: MoveFolderInput) {
       throw new Error("FOLDER_MOVE_CYCLE");
     }
 
-    const parentPath = await getParentFolderPath(tx, input.parentFolderId);
+    const parentPath = await getParentFolderPath(tx, folder.workspaceId, input.parentFolderId);
     const previousPath = folder.path;
     const updated = await tx.folder.update({
       where: { id: folder.id },

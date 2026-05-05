@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 14
+source_count: 15
 tags:
   - munjib
   - wiki-links
@@ -47,7 +47,7 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 1. source 문서의 기존 `DocumentLink` row를 삭제한다.
 2. 최신 markdown의 YAML frontmatter `links:` 배열에서 wiki links를 다시 파싱한다.
 3. target이 path-qualified인지 title-only인지 판단한다.
-4. path-qualified target은 workspace 안의 active document `path`로 찾는다.
+4. path-qualified target은 각 path segment를 slug로 정규화한 뒤 workspace 안의 active document `path`로 찾는다. 예를 들어 `[[Operations/Incident Runbook]]`은 `/operations/incident-runbook`으로 resolve한다.
 5. title-only target은 readable active document 중 title slug가 일치하는 후보를 찾는다.
 6. 후보가 하나면 `targetDocumentId`를 채우고 `isBroken=false`로 저장한다.
 7. 후보가 없으면 broken link로 저장한다.
@@ -69,7 +69,7 @@ Markdown preview는 `[[Target Title]]`과 `[[Target Title|Alias]]`를 Obsidian-s
 
 아직 matching document가 없는 target은 navigation target을 만들 수 없으므로 대괄호 없는 plain text label로 보여준다. Title slug가 여러 readable document와 충돌하면 preview는 임의 target을 고르지 않고 plain text로 표시한다. Stored document slug와 정확히 일치하는 target은 충돌 상황에서도 해당 document로 연결한다.
 
-Issue #20 이후 preview는 path-qualified link를 document path로 resolve한다. Title-only link가 여러 readable active document와 충돌하면 ambiguous link로 보고 plain text fallback을 유지한다. Preview candidate map은 slug collision에서도 임의 target을 고르지 않으며, path-qualified key는 `/`를 제거한 lowercase path로 찾는다.
+Issue #20 이후 preview는 path-qualified link를 document path로 resolve한다. Title-only link가 여러 readable active document와 충돌하면 ambiguous link로 보고 plain text fallback을 유지한다. Preview candidate map은 slug collision에서도 임의 target을 고르지 않으며, path-qualified key는 `/`를 제거하고 segment별 slug 정규화를 거친 path로 찾는다.
 
 Embed syntax, escaped wiki links, inline/fenced code, indented code block 안의 wiki link text는 preview 변환에서 제외한다. Inline code는 backtick delimiter 길이를 맞춰 닫을 때만 code span을 종료하고, line ending을 포함하는 code span 상태도 문서 변환 중 유지한다. Fenced code는 opening fence의 marker와 width를 보존해 더 짧은 fence line 때문에 code block을 조기 종료하지 않는다.
 
