@@ -97,7 +97,7 @@ Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chev
 
 Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
 
-Issue #26은 folder row interaction을 보강한다. Folder row는 hover/focus 상태에서 배경 highlight를 보여주고 `...`와 `+` control을 드러낸다. Row-level `+` control은 해당 folder 안에 blank document를 생성한다. `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공한다. Rename과 trash는 기존 folder service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다.
+Issue #26은 folder row interaction을 보강한다. Folder row는 hover/focus 상태에서 배경 highlight를 보여주고 `...`와 `+` control을 드러낸다. Row-level `+` control은 해당 folder 안에 blank document를 생성한다. `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공한다. Rename과 trash는 기존 folder service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다. Duplicate title/path 환경에서 action control을 구분할 수 있도록 document/folder row action label은 path context를 포함한다.
 
 ## 근거
 
