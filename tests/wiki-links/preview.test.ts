@@ -120,4 +120,14 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     );
     expect(renderPreviewMarkdownWithWikiLinks("[[Onboarding]]", candidates)).toBe("Onboarding");
   });
+
+  it("falls back to slash-containing titles when no path candidate matches", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "q1-q2-plan", title: "Q1/Q2 Plan", path: "/q1-q2-plan" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Q1/Q2 Plan]]", candidates)).toBe(
+      "[Q1/Q2 Plan](?document=plan)",
+    );
+  });
 });

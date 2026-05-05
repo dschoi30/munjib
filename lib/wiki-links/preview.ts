@@ -131,17 +131,19 @@ function transformWikiLinks(
     if (!targetTitle || targetTitle.startsWith("#")) return match;
 
     const label = aliasPart?.trim() || targetTitle;
-    const candidate = candidateBySlug.get(candidateLookupKey(targetTitle));
+    const candidate = candidateLookupKeys(targetTitle)
+      .map((key) => candidateBySlug.get(key))
+      .find((lookupCandidate) => lookupCandidate);
     if (!candidate) return escapeMarkdownText(label);
 
     return `[${escapeMarkdownLinkLabel(label)}](?document=${encodeURIComponent(candidate.id)})`;
   });
 }
 
-function candidateLookupKey(targetTitle: string) {
+function candidateLookupKeys(targetTitle: string) {
   return targetTitle.includes("/")
-    ? pathQualifiedTargetToLookupKey(targetTitle)
-    : slugifyTitle(targetTitle);
+    ? [pathQualifiedTargetToLookupKey(targetTitle), slugifyTitle(targetTitle)]
+    : [slugifyTitle(targetTitle)];
 }
 
 function escapeMarkdownText(value: string) {
