@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-05
+updated: 2026-05-06
 source_count: 32
 tags:
   - log
@@ -19,7 +19,7 @@ links:
 
 # Wiki Log
 
-## 2026-05-05T23:59:00+09:00 - implementation
+## 2026-05-06T00:43:00+09:00 - implementation
 
 - Result: Issue #26 folder row hover actions menu를 구현했다.
 - Coverage: folder row hover/focus highlight, `...` menu, row-level `+` document creation, inline folder rename, non-empty folder trash guard feedback, folder favorites, document favorite menu migration, always-visible star icon removal.
