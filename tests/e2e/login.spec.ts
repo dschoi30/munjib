@@ -73,10 +73,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='title']")).toHaveValue(missingRunbookTitle);
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
   await page.getByRole("button", { name: "New folder" }).click();
-  await expect(page.locator("[name='title']")).toHaveValue("Untitled folder");
-  await page.locator("[name='title']").fill("Design drafts");
-  await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.locator("[name='title']")).toHaveValue("Design drafts");
+  await expect(page.getByRole("heading", { name: "Untitled folder" })).toBeVisible();
+  await expect(page.getByText("/untitled-folder")).toBeVisible();
+  await page.getByRole("button", { name: "New document" }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   await page.getByRole("button", { name: "Edit" }).click();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
   await page.keyboard.press("Control+K");

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
+import { createFolder } from "@/lib/folders/service";
 import {
   archiveDocument,
   createDocument,
@@ -28,7 +29,6 @@ export async function updateDocumentAction(workspaceSlug: string, formData: Form
 
 const documentTemplates: Record<string, { title: string; contentMarkdown: string }> = {
   blank: { title: "Untitled", contentMarkdown: "" },
-  folder: { title: "Untitled folder", contentMarkdown: "" },
   runbook: {
     title: "Untitled Runbook",
     contentMarkdown:
@@ -45,13 +45,28 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
   const user = await requireCurrentUser();
   const templateKey = String(formData.get("template") ?? "blank");
   const template = documentTemplates[templateKey] ?? documentTemplates.blank;
+  const folderId = String(formData.get("folderId") || "") || null;
   const document = await createDocument({
     workspaceSlug,
     actorId: user.id,
+    folderId,
     title: template.title,
     contentMarkdown: template.contentMarkdown,
   });
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+}
+
+export async function createFolderAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const parentFolderId = String(formData.get("parentFolderId") || "") || null;
+  const folder = await createFolder({
+    workspaceSlug,
+    actorId: user.id,
+    parentFolderId,
+    name: "Untitled folder",
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
 }
 
 export async function archiveDocumentAction(formData: FormData) {

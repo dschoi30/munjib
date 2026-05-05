@@ -1,17 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { Search, Star } from "lucide-react";
+import { Folder, Search, Star } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { DocumentListItem } from "@/components/document-list";
+import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import { documentDisplayLabel, treeDepth } from "@/lib/workspace-tree";
 
 export function DocumentNavigation({
   workspaceSlug,
+  folders,
   documents,
+  selectedFolderId,
   searchQuery,
 }: {
   workspaceSlug: string;
+  folders: FolderListItem[];
   documents: DocumentListItem[];
+  selectedFolderId: string | null;
   searchQuery: string;
 }) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
@@ -99,21 +104,41 @@ export function DocumentNavigation({
         />
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
-        {documents.length === 0 ? (
+        {documents.length === 0 && (searchQuery || folders.length === 0) ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
             No documents found.
           </p>
         ) : null}
-        {documents.map((document) => (
-          <DocumentLinkRow
-            key={document.id}
-            workspaceSlug={workspaceSlug}
-            document={document}
-            favoriteIds={favoriteIds}
-            searchQuery={searchQuery}
-            onToggleFavorite={toggleFavorite}
-          />
-        ))}
+        {searchQuery
+          ? documents.map((document) => (
+              <DocumentLinkRow
+                key={document.id}
+                workspaceSlug={workspaceSlug}
+                document={document}
+                favoriteIds={favoriteIds}
+                searchQuery={searchQuery}
+                onToggleFavorite={toggleFavorite}
+              />
+            ))
+          : buildTreeRows(folders, documents).map((row) =>
+              row.kind === "folder" ? (
+                <FolderLinkRow
+                  key={row.folder.id}
+                  workspaceSlug={workspaceSlug}
+                  folder={row.folder}
+                  selected={row.folder.id === selectedFolderId}
+                />
+              ) : (
+                <DocumentLinkRow
+                  key={row.document.id}
+                  workspaceSlug={workspaceSlug}
+                  document={row.document}
+                  favoriteIds={favoriteIds}
+                  searchQuery={searchQuery}
+                  onToggleFavorite={toggleFavorite}
+                />
+              ),
+            )}
       </nav>
       {isSwitcherOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/20 p-6" role="dialog" aria-modal="true">
@@ -139,7 +164,8 @@ export function DocumentNavigation({
                   onClick={() => setIsSwitcherOpen(false)}
                   className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
                 >
-                  {document.title}
+                  <span className="block truncate">{document.title}</span>
+                  <span className="block truncate text-xs text-slate-500">{document.path}</span>
                 </Link>
               ))}
               {switcherResults.length === 0 ? (
@@ -209,11 +235,12 @@ function DocumentLinkRow({
           searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
         }`}
         className="min-w-0 flex-1 px-2 py-2 text-sm"
+        style={searchQuery ? undefined : { paddingLeft: `${8 + treeDepth(document.path) * 16}px` }}
       >
-        <span className="block truncate">{document.title}</span>
+        <span className="block truncate">{documentDisplayLabel(document)}</span>
         {searchQuery ? (
           <span className="mt-1 block truncate text-xs text-slate-500">
-            {document.contentText || "Title match"}
+            {document.path}
           </span>
         ) : null}
       </Link>
@@ -229,4 +256,44 @@ function DocumentLinkRow({
       </button>
     </div>
   );
+}
+
+function FolderLinkRow({
+  workspaceSlug,
+  folder,
+  selected,
+}: {
+  workspaceSlug: string;
+  folder: FolderListItem;
+  selected: boolean;
+}) {
+  return (
+    <Link
+      href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+      className={
+        selected
+          ? "flex items-center gap-2 rounded-md bg-white px-2 py-2 text-sm font-medium shadow-sm"
+          : "flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted"
+      }
+      style={{ paddingLeft: `${8 + treeDepth(folder.path) * 16}px` }}
+    >
+      <Folder className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+      <span className="min-w-0 truncate">{folder.name}</span>
+    </Link>
+  );
+}
+
+type TreeRow =
+  | { kind: "folder"; folder: FolderListItem }
+  | { kind: "document"; document: DocumentListItem };
+
+function buildTreeRows(folders: FolderListItem[], documents: DocumentListItem[]): TreeRow[] {
+  return [
+    ...folders.map((folder) => ({ kind: "folder" as const, folder })),
+    ...documents.map((document) => ({ kind: "document" as const, document })),
+  ].sort((left, right) => {
+    const leftPath = left.kind === "folder" ? left.folder.path : left.document.path;
+    const rightPath = right.kind === "folder" ? right.folder.path : right.document.path;
+    return leftPath.localeCompare(rightPath);
+  });
 }

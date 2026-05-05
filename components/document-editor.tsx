@@ -34,6 +34,7 @@ type LinkCandidate = {
   id: string;
   slug: string;
   title: string;
+  path: string;
 };
 
 export function DocumentEditor({

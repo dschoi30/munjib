@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-05-04
-source_count: 12
+updated: 2026-05-05
+source_count: 18
 tags:
   - munjib
   - data-model
@@ -85,6 +85,14 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 Wiki link reconciliation은 path-qualified target을 document `path`로 우선 resolve한다. Title-only target이 하나의 active document와만 일치하면 연결하고, 여러 active document와 일치하면 `DocumentLink.isAmbiguous=true`로 저장한다. Markdown preview도 ambiguous title-only link를 plain text로 남기고 임의 target을 만들지 않는다.
 
+## Workspace tree UI
+
+Workspace 화면은 active folder와 readable active document를 함께 읽어 경로 기준 tree row로 표시한다. Folder는 `?folder=<id>`로 선택되는 컨테이너이며, 선택 시 markdown editor 대신 folder detail panel을 보여준다. Folder detail은 folder name, path, direct child count, read-only 상태를 표시한다.
+
+`New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. `New document`는 현재 선택된 folder id를 hidden input으로 넘기며, folder 선택 상태에서는 새 문서가 해당 folder 아래에 생성된다.
+
+문서 navigation과 quick switcher는 duplicate title을 구분할 수 있도록 `Document.path`를 함께 사용한다. Root title과 path가 일치하는 문서는 title만 표시하고, folder 아래에 같은 title이 있을 수 있는 문서는 `Title · /folder/title` 형태로 context를 보강한다.
+
 ## 근거
 
 - GitHub issue #20
@@ -102,6 +110,14 @@ Wiki link reconciliation은 path-qualified target을 document `path`로 우선 r
 - `tests/documents/service.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
 - `tests/wiki-links/preview.test.ts`
+- `lib/workspace-tree.ts`
+- `components/folder-detail.tsx`
+- `components/document-list.tsx`
+- `components/document-navigation.tsx`
+- `app/workspaces/[workspaceSlug]/actions.ts`
+- `app/workspaces/[workspaceSlug]/page.tsx`
+- `tests/workspace-tree.test.ts`
+- `tests/e2e/login.spec.ts`
 - `prisma/schema.prisma`
 - `lib/documents/service.ts`
 - Obsidian Hub beginner guide: https://publish.obsidian.md/hub/04%20-%20Guides%2C%20Workflows%2C%20%26%20Courses/for%20Beginners

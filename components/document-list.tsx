@@ -4,21 +4,36 @@ import { FilePlus2, FolderPlus } from "lucide-react";
 
 export type DocumentListItem = {
   id: string;
+  folderId: string | null;
   title: string;
+  path: string;
   contentText: string;
+};
+
+export type FolderListItem = {
+  id: string;
+  parentFolderId: string | null;
+  name: string;
+  path: string;
 };
 
 export function DocumentList({
   workspaceSlug,
+  folders,
   documents,
   canWrite,
   createAction,
+  createFolderAction,
+  selectedFolderId,
   searchQuery,
 }: {
   workspaceSlug: string;
+  folders: FolderListItem[];
   documents: DocumentListItem[];
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
+  createFolderAction: (formData: FormData) => Promise<void>;
+  selectedFolderId: string | null;
   searchQuery: string;
 }) {
   return (
@@ -29,6 +44,7 @@ export function DocumentList({
       </div>
       <div className="mb-4 space-y-2">
         <form action={createAction} className="space-y-2">
+          <input type="hidden" name="folderId" value={selectedFolderId ?? ""} />
           <select
             name="template"
             disabled={!canWrite}
@@ -44,8 +60,8 @@ export function DocumentList({
             New document
           </Button>
         </form>
-        <form action={createAction}>
-          <input type="hidden" name="template" value="folder" />
+        <form action={createFolderAction}>
+          <input type="hidden" name="parentFolderId" value={selectedFolderId ?? ""} />
           <Button
             type="submit"
             disabled={!canWrite}
@@ -76,7 +92,9 @@ export function DocumentList({
       ) : null}
       <DocumentNavigation
         workspaceSlug={workspaceSlug}
+        folders={folders}
         documents={documents}
+        selectedFolderId={selectedFolderId}
         searchQuery={searchQuery}
       />
     </div>

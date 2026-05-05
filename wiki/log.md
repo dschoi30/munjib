@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 20
+source_count: 21
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-05T12:45:00+09:00 - implementation
+
+- Result: Issue #20 workspace 화면을 folder/document tree로 전환하고, `New folder`를 실제 `Folder` row 생성으로 분리했다.
+- Coverage: active folders 조회, readable document filtering helper, folder selection query, folder detail panel, selected-folder document creation, path-aware navigation/quick switcher labels, schema 변경에 맞춘 seed upsert key 조정.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/folder-detail.tsx`, `lib/workspace-tree.ts`, `prisma/seed.ts`, `tests/workspace-tree.test.ts`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts tests/documents/service.test.ts tests/folders/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-05T01:00:00+09:00 - implementation
 
