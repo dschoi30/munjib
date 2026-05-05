@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-05-05
-source_count: 7
+source_count: 8
 tags:
   - munjib
   - workflow
@@ -80,6 +80,16 @@ pnpm wiki:feature-start "<feature title>"
 
 `gh issue create`가 실패하면 issue template을 출력한다. 이 경우 구현을 시작하기 전에 출력된 template으로 GitHub issue를 수동 생성한다.
 
+기존 feature branch에 다른 작업이 있으면 같은 checkout에서 새 feature를 이어서 구현하지 않는다. 먼저 issue를 만든 뒤 `git worktree`로 별도 작업공간을 만들거나, clean `main` checkout에서 issue branch를 생성한다. 이렇게 하면 `wiki:feature-start`가 "이미 feature branch"로 판단해 현재 branch에 머무르는 상황에서도 서로 다른 issue의 커밋이 섞이지 않는다.
+
+예시:
+
+```bash
+git worktree add .worktrees/issue-25-markdown-heading-folding main
+cd .worktrees/issue-25-markdown-heading-folding
+pnpm wiki:feature-start "Markdown heading folding"
+```
+
 ## Test coverage
 
 현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
@@ -109,3 +119,4 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 - `lib/wiki/feature-start.ts`
 - `lib/service-errors.ts`
 - `.githooks/pre-commit`
+- GitHub issue #25 branch separation recovery
