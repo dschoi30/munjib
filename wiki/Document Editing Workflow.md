@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 18
+updated: 2026-05-05
+source_count: 22
 tags:
   - munjib
   - workflow
@@ -41,11 +41,13 @@ links:
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
+Tree row는 folder와 document를 `path` 기준으로 정렬한다. Folder row는 `?folder=<id>`, document row는 `?document=<id>`로 이동한다. Quick switcher는 document title과 path를 함께 표시해 folder별 duplicate title을 구분한다.
+
 ## 생성 흐름
 
 `createDocumentAction()`은 현재 user를 확인한 뒤 `createDocument()`를 호출한다.
 
-현재 `createDocumentAction()`은 `blank`, `runbook`, `policy`, `folder` template을 지원한다. `folder`는 별도 folder table이 아니라 `Untitled folder` title과 빈 markdown을 가진 루트 문서를 만든다.
+`createDocumentAction()`은 `blank`, `runbook`, `policy` template을 지원한다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다.
 
 Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다.
 
@@ -111,7 +113,9 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 - `components/document-editor.tsx`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
+- `lib/workspace-tree.ts`
 - `lib/documents/service.ts`
 - `lib/wiki-links/preview.ts`
 - `lib/attachments/service.ts`

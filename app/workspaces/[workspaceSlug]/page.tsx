@@ -2,17 +2,19 @@ import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentList } from "@/components/document-list";
+import { FolderDetail } from "@/components/folder-detail";
 import { MetadataPanel } from "@/components/metadata-panel";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import {
-  canReadDocument,
   canWriteDocument,
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { canWriteWorkspace } from "@/lib/permissions/workspace";
+import { countFolderChildren, filterReadableDocuments } from "@/lib/workspace-tree";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
+  createFolderAction,
   createDocumentAction,
   createCommentAction,
   createDocumentFromBrokenLinkAction,
@@ -26,11 +28,11 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string; q?: string }>;
+  searchParams: Promise<{ document?: string; folder?: string; q?: string }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
-  const { document: selectedDocumentId, q } = await searchParams;
+  const { document: selectedDocumentId, folder: selectedFolderIdParam, q } = await searchParams;
   const searchQuery = q?.trim() ?? "";
 
   const workspace = await prisma.workspace.findFirst({
@@ -40,6 +42,10 @@ export default async function WorkspacePage({
       documents: {
         where: { status: "ACTIVE" },
         orderBy: { updatedAt: "desc" },
+      },
+      folders: {
+        where: { status: "ACTIVE" },
+        orderBy: { path: "asc" },
       },
     },
   });
@@ -84,13 +90,12 @@ export default async function WorkspacePage({
       ),
     ]),
   );
-  const readableDocuments = workspace.documents.filter((document) =>
-    canReadDocument({
-      workspaceRole: role,
-      explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
-      userPermission: userPermissionByDocumentId.get(document.id),
-    }),
-  );
+  const readableDocuments = filterReadableDocuments({
+    documents: workspace.documents,
+    role,
+    explicitDocumentIds,
+    userPermissionsByDocumentId: userPermissionByDocumentId,
+  });
   const visibleDocuments = searchQuery
     ? readableDocuments.filter((document) => {
         const normalizedQuery = searchQuery.toLowerCase();
@@ -100,11 +105,14 @@ export default async function WorkspacePage({
         );
       })
     : readableDocuments;
-  const selectedDocument =
-    readableDocuments.find((document) => document.id === selectedDocumentId) ??
-    visibleDocuments[0] ??
-    readableDocuments[0] ??
-    null;
+  const selectedFolder =
+    workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
+  const selectedDocument = selectedFolder
+    ? null
+    : (readableDocuments.find((document) => document.id === selectedDocumentId) ??
+      visibleDocuments[0] ??
+      readableDocuments[0] ??
+      null);
 
   const versions = selectedDocument
     ? await prisma.documentVersion.findMany({
@@ -149,7 +157,7 @@ export default async function WorkspacePage({
 
   const linkPanels = selectedDocument
     ? await getDocumentLinkPanels(selectedDocument.id, user.id)
-    : { outgoing: [], backlinks: [], brokenLinks: [] };
+    : { outgoing: [], backlinks: [], brokenLinks: [], ambiguousLinks: [] };
 
   const canWrite = canWriteWorkspace(role);
   const canWriteSelectedDocument = selectedDocument
@@ -160,6 +168,7 @@ export default async function WorkspacePage({
       })
     : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
+  const createFolder = createFolderAction.bind(null, workspaceSlug);
   const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
     null,
@@ -174,46 +183,73 @@ export default async function WorkspacePage({
       left={
         <DocumentList
           workspaceSlug={workspaceSlug}
+          folders={workspace.folders.map((folder) => ({
+            id: folder.id,
+            parentFolderId: folder.parentFolderId,
+            name: folder.name,
+            path: folder.path,
+          }))}
           documents={visibleDocuments.map((document) => ({
             id: document.id,
+            folderId: document.folderId,
             title: document.title,
+            path: document.path,
             contentText: document.contentText,
           }))}
           canWrite={canWrite}
           createAction={createAction}
+          createFolderAction={createFolder}
+          selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           searchQuery={searchQuery}
         />
       }
       center={
-        <DocumentEditor
-          document={
-            selectedDocument
-              ? {
-                  id: selectedDocument.id,
-                  title: selectedDocument.title,
-                  contentMarkdown: selectedDocument.contentMarkdown,
-                }
-              : null
-          }
-          canWrite={canWriteSelectedDocument}
-          action={updateAction}
-          uploadAttachmentAction={uploadAttachmentAction}
-          linkCandidates={readableDocuments.map((document) => ({
-            id: document.id,
-            slug: document.slug,
-            title: document.title,
-          }))}
-          tags={documentTags.map((documentTag) => documentTag.tag)}
-          properties={documentProperties}
-          comments={comments.map((comment) => ({
-            id: comment.id,
-            body: comment.body,
-            user: comment.user,
-          }))}
-          linkPanels={linkPanels}
-          createFromBrokenLinkAction={createFromBrokenLinkAction}
-          createCommentAction={commentAction}
-        />
+        selectedFolder ? (
+          <FolderDetail
+            folder={{
+              id: selectedFolder.id,
+              name: selectedFolder.name,
+              path: selectedFolder.path,
+              childCount: countFolderChildren({
+                folderId: selectedFolder.id,
+                folders: workspace.folders,
+                documents: readableDocuments,
+              }),
+            }}
+            canWrite={canWrite}
+          />
+        ) : (
+          <DocumentEditor
+            document={
+              selectedDocument
+                ? {
+                    id: selectedDocument.id,
+                    title: selectedDocument.title,
+                    contentMarkdown: selectedDocument.contentMarkdown,
+                  }
+                : null
+            }
+            canWrite={canWriteSelectedDocument}
+            action={updateAction}
+            uploadAttachmentAction={uploadAttachmentAction}
+            linkCandidates={readableDocuments.map((document) => ({
+              id: document.id,
+              slug: document.slug,
+              title: document.title,
+              path: document.path,
+            }))}
+            tags={documentTags.map((documentTag) => documentTag.tag)}
+            properties={documentProperties}
+            comments={comments.map((comment) => ({
+              id: comment.id,
+              body: comment.body,
+              user: comment.user,
+            }))}
+            linkPanels={linkPanels}
+            createFromBrokenLinkAction={createFromBrokenLinkAction}
+            createCommentAction={commentAction}
+          />
+        )
       }
       right={
         <MetadataPanel

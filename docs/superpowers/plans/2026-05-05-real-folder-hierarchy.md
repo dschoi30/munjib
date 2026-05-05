@@ -1201,7 +1201,7 @@ git commit -m "feat: resolve wiki links by folder path"
 - Create: `components/folder-detail.tsx`
 - Test: `tests/e2e/login.spec.ts`
 
-- [ ] **Step 1: Create tree query helper**
+- [x] **Step 1: Create tree query helper**
 
 Create `lib/workspace-tree.ts`:
 
@@ -1232,7 +1232,7 @@ export function documentDisplayLabel(document: Pick<Document, "title" | "path">)
 }
 ```
 
-- [ ] **Step 2: Update actions**
+- [x] **Step 2: Update actions**
 
 In `app/workspaces/[workspaceSlug]/actions.ts`, import folder service and split creation:
 
@@ -1265,7 +1265,7 @@ const document = await createDocument({
 });
 ```
 
-- [ ] **Step 3: Update workspace page params and query**
+- [x] **Step 3: Update workspace page params and query**
 
 In `app/workspaces/[workspaceSlug]/page.tsx`, add `folder?: string` to `searchParams`, include active folders, and pass document paths to candidates:
 
@@ -1297,7 +1297,7 @@ linkCandidates={readableDocuments.map((document) => ({
 }))}
 ```
 
-- [ ] **Step 4: Add folder detail component**
+- [x] **Step 4: Add folder detail component**
 
 Create `components/folder-detail.tsx`:
 
@@ -1333,7 +1333,7 @@ export function FolderDetail({
 }
 ```
 
-- [ ] **Step 5: Update navigation rows**
+- [x] **Step 5: Update navigation rows**
 
 Change `DocumentListItem` to include `path` and add folder rows:
 
@@ -1365,7 +1365,7 @@ Render folder links with:
 
 Render document links with path labels when duplicate titles exist.
 
-- [ ] **Step 6: Update e2e smoke**
+- [x] **Step 6: Update e2e smoke**
 
 In `tests/e2e/login.spec.ts`, replace the old folder-like assertion:
 
@@ -1377,7 +1377,7 @@ await expect(page.locator("[name='title']")).toHaveValue("Untitled");
 await expect(page.getByText("/untitled-folder/untitled")).toBeVisible();
 ```
 
-- [ ] **Step 7: Run e2e or focused UI checks**
+- [x] **Step 7: Run e2e or focused UI checks**
 
 Run:
 
@@ -1386,6 +1386,8 @@ pnpm run test:e2e
 ```
 
 Expected: PASS. If local browser dependencies are missing, run the closest available unit tests and record the e2e blocker in the final implementation notes.
+
+Implementation note: Task 6 was verified with `pnpm exec vitest run tests/workspace-tree.test.ts tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts tests/documents/service.test.ts tests/folders/service.test.ts` and `pnpm exec tsc --noEmit`. Full Playwright e2e remains part of Task 8 final verification.
 
 - [ ] **Step 8: Commit**
 

@@ -57,7 +57,7 @@ async function main() {
   }
 
   const welcome = await prisma.document.upsert({
-    where: { workspaceId_slug: { workspaceId: workspace.id, slug: "welcome" } },
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/welcome" } },
     update: {
       contentMarkdown:
         "# Welcome\n\nThis is the first company handbook document.\n\nRead [[Engineering Runbook]] and [[Missing Policy]].",
@@ -79,7 +79,7 @@ async function main() {
   });
 
   const engineeringRunbook = await prisma.document.upsert({
-    where: { workspaceId_slug: { workspaceId: workspace.id, slug: "engineering-runbook" } },
+    where: { workspaceId_path: { workspaceId: workspace.id, path: "/engineering-runbook" } },
     update: {
       contentMarkdown: "# Engineering Runbook\n\nBacklinked from [[Welcome]].",
       contentText: "Engineering Runbook Backlinked from Welcome.",
