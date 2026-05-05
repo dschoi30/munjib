@@ -118,12 +118,12 @@ export async function getDocumentLinkPanels(
     prisma.documentLink.findMany({
       where: { sourceDocumentId: documentId },
       orderBy: [{ sortOrder: "asc" }, { targetTitleRaw: "asc" }],
-      include: { targetDocument: { select: { id: true, title: true, slug: true } } },
+      include: { targetDocument: { select: { id: true, title: true, slug: true, path: true } } },
     }),
     prisma.documentLink.findMany({
       where: { targetDocumentId: documentId, isBroken: false },
       orderBy: { createdAt: "desc" },
-      include: { sourceDocument: { select: { id: true, title: true, slug: true } } },
+      include: { sourceDocument: { select: { id: true, title: true, slug: true, path: true } } },
     }),
   ]);
 
@@ -156,6 +156,7 @@ export async function getDocumentLinkPanels(
       targetTitleRaw: link.targetTitleRaw,
       alias: link.alias,
       isBroken: link.isBroken,
+      isAmbiguous: link.isAmbiguous,
       targetDocument: link.targetDocument,
     })),
     backlinks: readableBacklinks.map((link) => ({
@@ -164,6 +165,13 @@ export async function getDocumentLinkPanels(
     })),
     brokenLinks: readableOutgoing
       .filter((link) => link.isBroken)
+      .map((link) => ({
+        id: link.id,
+        targetTitleRaw: link.targetTitleRaw,
+        alias: link.alias,
+      })),
+    ambiguousLinks: readableOutgoing
+      .filter((link) => link.isAmbiguous)
       .map((link) => ({
         id: link.id,
         targetTitleRaw: link.targetTitleRaw,

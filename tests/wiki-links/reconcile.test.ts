@@ -2,6 +2,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
 import { createDocument, createDocumentFromBrokenLink, updateDocument } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
+import { createFolder } from "@/lib/folders/service";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -39,13 +40,19 @@ Read [[Ignored Content Link]].`,
         targetTitleRaw: "Runbook",
         alias: null,
         isBroken: false,
-        targetDocument: { id: target.id, title: "Runbook", slug: "runbook" },
+        isAmbiguous: false,
+        targetDocument: { id: target.id, title: "Runbook", slug: "runbook", path: "/runbook" },
       },
     ]);
     expect(targetPanels.backlinks).toEqual([
       {
         id: expect.any(String),
-        sourceDocument: { id: source.id, title: "Incident Guide", slug: "incident-guide" },
+        sourceDocument: {
+          id: source.id,
+          title: "Incident Guide",
+          slug: "incident-guide",
+          path: "/incident-guide",
+        },
       },
     ]);
   });
@@ -226,7 +233,160 @@ Read [[Ignored Content Link]].`,
           id: expect.any(String),
           title: "Incident Guide",
           slug: "incident-guide",
+          path: "/incident-guide",
         },
+      },
+    ]);
+  });
+
+  it("resolves path-qualified links when duplicate titles exist", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const engineering = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Engineering",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: engineering.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Operations/Onboarding]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
+  it("normalizes multi-word path-qualified links before matching", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Incident Runbook",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Operations/Incident Runbook]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
+  it("falls back to title matching when a slash-containing target is not a document path", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Q1/Q2 Plan",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Q1/Q2 Plan]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
+  it("marks title-only duplicate links as ambiguous", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const engineering = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Engineering",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+    await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: engineering.id,
+      title: "Onboarding",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Onboarding]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBeNull();
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(true);
+
+    const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    expect(panels.ambiguousLinks).toEqual([
+      {
+        id: link.id,
+        targetTitleRaw: "Onboarding",
+        alias: null,
       },
     ]);
   });
@@ -300,6 +460,87 @@ Read [[Ignored Content Link]].`,
     const repaired = await prisma.documentLink.findUniqueOrThrow({ where: { id: broken.id } });
     expect(repaired.isBroken).toBe(false);
     expect(repaired.targetDocumentId).toBe(created.id);
+  });
+
+  it("creates a missing path-qualified target under the referenced folder", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Operations/Incident Runbook]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Incident Runbook" },
+    });
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Incident Runbook");
+    expect(created.folderId).toBe(operations.id);
+    expect(created.path).toBe("/operations/incident-runbook");
+
+    await updateDocument({
+      documentId: source.id,
+      actorId: fixture.user.id,
+      title: source.title,
+      contentMarkdown: source.contentMarkdown,
+    });
+
+    const reconciled = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Incident Runbook" },
+    });
+    expect(reconciled.isBroken).toBe(false);
+    expect(reconciled.targetDocumentId).toBe(created.id);
+  });
+
+  it("creates a slash-containing title at root when no parent folder path exists", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Planning Source",
+      contentMarkdown: `---
+links:
+  - "[[Q1/Q2 Plan]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Q1/Q2 Plan" },
+    });
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Q1/Q2 Plan");
+    expect(created.folderId).toBeNull();
+
+    await updateDocument({
+      documentId: source.id,
+      actorId: fixture.user.id,
+      title: source.title,
+      contentMarkdown: source.contentMarkdown,
+    });
+
+    const reconciled = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Q1/Q2 Plan" },
+    });
+    expect(reconciled.isBroken).toBe(false);
+    expect(reconciled.targetDocumentId).toBe(created.id);
   });
 
   it("prevents viewers from creating a missing target document", async () => {
