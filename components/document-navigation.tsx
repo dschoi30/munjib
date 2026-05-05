@@ -139,6 +139,7 @@ export function DocumentNavigation({
         return (
           <DocumentLinkRow
             key={item.document.id}
+            rowId={`tree-document:${item.document.id}`}
             workspaceSlug={workspaceSlug}
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
@@ -170,7 +171,10 @@ export function DocumentNavigation({
             onStartRename={startFolderRename}
             onCancelRename={() => setRenamingFolderId(null)}
             onToggleFavorite={toggleFavoriteFolder}
-            onToggle={() => toggleFolder(item.folder.id)}
+            onToggle={() => {
+              setOpenMenuId(null);
+              toggleFolder(item.folder.id);
+            }}
           />
           {isExpanded && hasChildren ? (
             <div className="ml-3 border-l border-slate-200 pl-2">
@@ -186,7 +190,10 @@ export function DocumentNavigation({
     <>
       <button
         type="button"
-        onClick={() => setIsSwitcherOpen(true)}
+        onClick={() => {
+          setOpenMenuId(null);
+          setIsSwitcherOpen(true);
+        }}
         className="mb-4 flex h-9 w-full items-center justify-between rounded-md border border-border bg-white px-3 text-sm text-slate-500 hover:bg-muted"
       >
         <span className="inline-flex items-center gap-2">
@@ -217,6 +224,7 @@ export function DocumentNavigation({
           title="Recents"
           workspaceSlug={workspaceSlug}
           documents={recentDocuments}
+          menuScope="recent-document"
           favoriteDocumentIds={favoriteDocumentIds}
           searchQuery={searchQuery}
           openMenuId={openMenuId}
@@ -239,6 +247,7 @@ export function DocumentNavigation({
           ? documents.map((document) => (
               <DocumentLinkRow
                 key={document.id}
+                rowId={`search-document:${document.id}`}
                 workspaceSlug={workspaceSlug}
                 document={document}
                 isFavorite={favoriteDocumentIds.has(document.id)}
@@ -316,6 +325,7 @@ function FavoriteSection({
           <Link
             key={`Favorites-folder-${folder.id}`}
             href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+            onClick={() => onOpenMenu(null)}
             className="block rounded-md px-2 py-2 text-sm hover:bg-muted"
           >
             <span className="block truncate">{folder.name}</span>
@@ -325,6 +335,7 @@ function FavoriteSection({
         {documents.map((document) => (
           <DocumentLinkRow
             key={`Favorites-${document.id}`}
+            rowId={`favorite-document:${document.id}`}
             workspaceSlug={workspaceSlug}
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
@@ -343,6 +354,7 @@ function DocumentSection({
   title,
   workspaceSlug,
   documents,
+  menuScope,
   favoriteDocumentIds,
   searchQuery,
   openMenuId,
@@ -352,6 +364,7 @@ function DocumentSection({
   title: string;
   workspaceSlug: string;
   documents: DocumentListItem[];
+  menuScope: string;
   favoriteDocumentIds: Set<string>;
   searchQuery: string;
   openMenuId: string | null;
@@ -365,6 +378,7 @@ function DocumentSection({
         {documents.map((document) => (
           <DocumentLinkRow
             key={`${title}-${document.id}`}
+            rowId={`${menuScope}:${document.id}`}
             workspaceSlug={workspaceSlug}
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
@@ -380,6 +394,7 @@ function DocumentSection({
 }
 
 function DocumentLinkRow({
+  rowId,
   workspaceSlug,
   document,
   isFavorite,
@@ -388,6 +403,7 @@ function DocumentLinkRow({
   onOpenMenu,
   onToggleFavorite,
 }: {
+  rowId: string;
   workspaceSlug: string;
   document: DocumentListItem;
   isFavorite: boolean;
@@ -396,7 +412,7 @@ function DocumentLinkRow({
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
 }) {
-  const menuId = `document:${document.id}`;
+  const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
 
   return (
@@ -405,6 +421,7 @@ function DocumentLinkRow({
         href={`/workspaces/${workspaceSlug}?document=${document.id}${
           searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
         }`}
+        onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-2 text-sm"
       >
         <span className="block truncate">{documentDisplayLabel(document)}</span>
@@ -424,9 +441,13 @@ function DocumentLinkRow({
         <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
       </button>
       {isMenuOpen ? (
-        <div className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
+        <div
+          role="menu"
+          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg"
+        >
           <button
             type="button"
+            role="menuitem"
             onClick={() => onToggleFavorite(document.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
@@ -479,6 +500,8 @@ function FolderToggleRow({
     : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-within:bg-muted";
 
   if (isRenaming) {
+    const renameInputId = `rename-folder-${folder.id}`;
+
     return (
       <form
         action={renameFolderAction}
@@ -488,7 +511,11 @@ function FolderToggleRow({
         }}
       >
         <input type="hidden" name="folderId" value={folder.id} />
+        <label className="sr-only" htmlFor={renameInputId}>
+          Rename {folder.name}
+        </label>
         <input
+          id={renameInputId}
           name="name"
           defaultValue={folder.name}
           required
@@ -544,9 +571,13 @@ function FolderToggleRow({
         </button>
       </div>
       {isMenuOpen ? (
-        <div className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg">
+        <div
+          role="menu"
+          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg"
+        >
           <button
             type="button"
+            role="menuitem"
             disabled={!canWrite}
             onClick={() => onStartRename(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
@@ -557,6 +588,7 @@ function FolderToggleRow({
             <input type="hidden" name="folderId" value={folder.id} />
             <button
               type="submit"
+              role="menuitem"
               disabled={!canWrite}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
             >
@@ -565,6 +597,7 @@ function FolderToggleRow({
           </form>
           <button
             type="button"
+            role="menuitem"
             onClick={() => onToggleFavorite(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
