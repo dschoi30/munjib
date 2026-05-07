@@ -157,6 +157,8 @@ describe("DocumentEditor heading preview folding", () => {
     renderEditor("# A\nVisible body\n# B\nOther body");
 
     const toggle = screen.getByRole("button", { name: "Collapse section A" });
+    expect(toggle.className).toContain("absolute");
+    expect(toggle.parentElement?.className).not.toContain("flex");
     expect(screen.getByText("Visible body")).toBeTruthy();
 
     fireEvent.click(toggle);
