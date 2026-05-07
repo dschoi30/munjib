@@ -24,6 +24,7 @@ export function DocumentNavigation({
   createAction,
   renameFolderAction,
   archiveFolderAction,
+  archiveDocumentAction,
   folderError,
 }: {
   workspaceSlug: string;
@@ -35,6 +36,7 @@ export function DocumentNavigation({
   createAction: (formData: FormData) => Promise<void>;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<void>;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
   folderError: string;
 }) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
@@ -160,6 +162,7 @@ export function DocumentNavigation({
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}
+            archiveDocumentAction={archiveDocumentAction}
           />
         );
       }
@@ -225,6 +228,7 @@ export function DocumentNavigation({
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
+          archiveDocumentAction={archiveDocumentAction}
         />
       ) : null}
       {!searchQuery ? (
@@ -238,6 +242,7 @@ export function DocumentNavigation({
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
+          archiveDocumentAction={archiveDocumentAction}
         />
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
@@ -263,6 +268,7 @@ export function DocumentNavigation({
                 openMenuId={openMenuId}
                 onOpenMenu={setOpenMenuId}
                 onToggleFavorite={toggleFavoriteDocument}
+                archiveDocumentAction={archiveDocumentAction}
               />
             ))
           : renderTreeItems(null)}
@@ -315,6 +321,7 @@ function FavoriteSection({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  archiveDocumentAction,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
@@ -324,6 +331,7 @@ function FavoriteSection({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <section className="mb-4">
@@ -351,6 +359,7 @@ function FavoriteSection({
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
+            archiveDocumentAction={archiveDocumentAction}
           />
         ))}
       </div>
@@ -368,6 +377,7 @@ function DocumentSection({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  archiveDocumentAction,
 }: {
   title: string;
   workspaceSlug: string;
@@ -378,6 +388,7 @@ function DocumentSection({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
     <section className="mb-4">
@@ -394,6 +405,7 @@ function DocumentSection({
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
+            archiveDocumentAction={archiveDocumentAction}
           />
         ))}
       </div>
@@ -410,6 +422,7 @@ function DocumentLinkRow({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  archiveDocumentAction,
 }: {
   rowId: string;
   workspaceSlug: string;
@@ -419,6 +432,7 @@ function DocumentLinkRow({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
@@ -462,6 +476,16 @@ function DocumentLinkRow({
           >
             {isFavorite ? "Remove from favorites" : "Add to favorites"}
           </button>
+          <form action={archiveDocumentAction}>
+            <input type="hidden" name="documentId" value={document.id} />
+            <button
+              type="submit"
+              role="menuitem"
+              className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50"
+            >
+              Move to trash
+            </button>
+          </form>
         </div>
       ) : null}
     </div>
