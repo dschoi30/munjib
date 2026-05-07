@@ -15,6 +15,7 @@ import { countFolderChildren, filterReadableDocuments } from "@/lib/workspace-tr
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createFolderAction,
+  archiveDocumentAction,
   archiveFolderAction,
   createDocumentAction,
   createCommentAction,
@@ -178,6 +179,7 @@ export default async function WorkspacePage({
   const createFolder = createFolderAction.bind(null, workspaceSlug);
   const renameFolder = renameFolderAction.bind(null, workspaceSlug);
   const archiveFolder = archiveFolderAction.bind(null, workspaceSlug);
+  const archiveDocument = archiveDocumentAction.bind(null, workspaceSlug);
   const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
     null,
@@ -210,6 +212,7 @@ export default async function WorkspacePage({
           createFolderAction={createFolder}
           renameFolderAction={renameFolder}
           archiveFolderAction={archiveFolder}
+          archiveDocumentAction={archiveDocument}
           folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           searchQuery={searchQuery}

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-08
-source_count: 35
+source_count: 36
 tags:
   - log
   - munjib
@@ -21,10 +21,10 @@ links:
 
 ## 2026-05-08T00:00:00+09:00 - review
 
-- Result: Issue #26 folder trash 실패 메시지를 shadcn Sonner toast로 전환했다.
-- Coverage: `FOLDER_NOT_EMPTY` user feedback은 기존 rose error style을 유지하면서 root `Toaster`의 `aria-live` 영역을 통해 화면 중앙 하단에 렌더링하고, 3초 뒤 자동으로 사라진다.
-- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
-- Source evidence: 사용자 피드백, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
+- Result: Issue #26 folder/document row action menu를 보강했다.
+- Coverage: `FOLDER_NOT_EMPTY` user feedback은 shadcn Sonner toast로 유지하고, document row `...` menu에는 `archiveDocumentAction()`에 연결된 Move to trash를 추가했다. 삭제된 문서는 active list에서 빠지고 workspace root로 redirect된다.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 피드백, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
 
 ## 2026-05-06T00:43:00+09:00 - implementation
 

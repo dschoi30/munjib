@@ -133,6 +133,8 @@ test("development credentials login opens the workspace", async ({ page }) => {
 
   await productNotesRow.getByRole("button", { name: `New document in ${productNotesDisplayLabel}` }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
+  const productNotesDocumentId = new URL(page.url()).searchParams.get("document");
+  expect(productNotesDocumentId).toBeTruthy();
   await productNotesRow.getByRole("button", { name: "Product Notes", exact: true }).click();
 
   await productNotesAction.click();
@@ -142,6 +144,21 @@ test("development credentials login opens the workspace", async ({ page }) => {
   });
   await expect(folderTrashToast).toBeVisible();
   await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
+  const productNotesDocumentLink = documentList.locator(
+    `a[href*="document=${productNotesDocumentId}"]`,
+  );
+  const productNotesDocumentRow = productNotesDocumentLink.locator("..");
+  const productNotesDocumentAction = productNotesDocumentRow.getByRole("button", {
+    name: /^Open actions for Untitled · \/product-notes(?:-\d+)?\/untitled(?:-\d+)?$/,
+  });
+  await productNotesDocumentAction.click();
+  await productNotesDocumentRow.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(productNotesDocumentLink).toHaveCount(0);
+  await productNotesAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(
+    documentList.getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` }),
+  ).toHaveCount(0);
   const childDocumentUrl = page.url();
   await page.getByRole("button", { name: "New document", exact: true }).click();
   await expect(page).not.toHaveURL(childDocumentUrl);

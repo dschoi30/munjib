@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-06
-source_count: 23
+updated: 2026-05-08
+source_count: 24
 tags:
   - munjib
   - workflow
@@ -43,7 +43,7 @@ Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/doc
 
 Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Quick switcher는 document title과 path를 함께 표시해 folder별 duplicate title을 구분한다.
 
-Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다.
+Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공한다.
 
 ## 생성 흐름
 
@@ -90,7 +90,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 
 ## 아카이브와 broken link 생성
 
-`archiveDocument()`는 문서 status를 `ARCHIVED`로 바꾸고 `archivedAt`을 채운다. 현재 workspace 문서 목록은 active 문서만 보여준다.
+`archiveDocument()`는 문서 status를 `ARCHIVED`로 바꾸고 `archivedAt`을 채운다. 현재 workspace 문서 목록은 active 문서만 보여준다. `archiveDocumentAction()`은 workspace path를 revalidate하고 workspace root로 redirect해 삭제된 문서 editor에 머무르지 않게 한다.
 
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 

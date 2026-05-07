@@ -116,12 +116,14 @@ export async function archiveFolderAction(workspaceSlug: string, formData: FormD
   redirect(`/workspaces/${workspaceSlug}`);
 }
 
-export async function archiveDocumentAction(formData: FormData) {
+export async function archiveDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
   await archiveDocument({
     actorId: user.id,
     documentId: String(formData.get("documentId")),
   });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}`);
 }
 
 export async function createDocumentFromBrokenLinkAction(

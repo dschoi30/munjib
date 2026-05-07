@@ -26,6 +26,7 @@ export function DocumentList({
   createFolderAction,
   renameFolderAction,
   archiveFolderAction,
+  archiveDocumentAction,
   folderError,
   selectedFolderId,
   searchQuery,
@@ -38,6 +39,7 @@ export function DocumentList({
   createFolderAction: (formData: FormData) => Promise<void>;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<void>;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
   folderError: string;
   selectedFolderId: string | null;
   searchQuery: string;
@@ -106,6 +108,7 @@ export function DocumentList({
         createAction={createAction}
         renameFolderAction={renameFolderAction}
         archiveFolderAction={archiveFolderAction}
+        archiveDocumentAction={archiveDocumentAction}
         folderError={folderError}
       />
     </div>
