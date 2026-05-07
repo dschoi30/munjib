@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import { Toast } from "@/components/ui/toast";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
 
 type FavoriteState = { documents: string[]; folders: string[] };
@@ -202,15 +203,7 @@ export function DocumentNavigation({
         </span>
         <span className="text-xs">Ctrl K</span>
       </button>
-      {folderErrorText ? (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg"
-        >
-          {folderErrorText}
-        </div>
-      ) : null}
+      <Toast message={folderErrorText} />
       {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
         <FavoriteSection
           workspaceSlug={workspaceSlug}

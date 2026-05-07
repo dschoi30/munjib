@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-08
-source_count: 33
+source_count: 34
 tags:
   - log
   - munjib
@@ -21,10 +21,10 @@ links:
 
 ## 2026-05-08T00:00:00+09:00 - review
 
-- Result: Issue #26 folder trash 실패 메시지를 sidebar inline text에서 화면 중앙 하단 toast로 이동했다.
-- Coverage: `FOLDER_NOT_EMPTY` user feedback은 기존 rose error style을 유지하면서 `role="status"` live region으로 렌더링한다.
+- Result: Issue #26 folder trash 실패 메시지를 재사용 가능한 toast component로 분리했다.
+- Coverage: `FOLDER_NOT_EMPTY` user feedback은 기존 rose error style을 유지하면서 화면 중앙 하단 `role="status"` live region으로 렌더링하고, 3초 뒤 자동으로 사라진다.
 - Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
-- Source evidence: 사용자 피드백, `components/document-navigation.tsx`, `tests/e2e/login.spec.ts`.
+- Source evidence: 사용자 피드백, `components/ui/toast.tsx`, `components/document-navigation.tsx`, `tests/e2e/login.spec.ts`.
 
 ## 2026-05-06T00:43:00+09:00 - implementation
 
