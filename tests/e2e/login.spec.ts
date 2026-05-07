@@ -137,7 +137,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
 
   await productNotesAction.click();
   await page.getByRole("menuitem", { name: "Move to trash" }).click();
-  await expect(page.getByText("Empty this folder before moving it to trash.")).toBeVisible();
+  await expect(page.getByRole("status")).toHaveText("Empty this folder before moving it to trash.");
   const childDocumentUrl = page.url();
   await page.getByRole("button", { name: "New document", exact: true }).click();
   await expect(page).not.toHaveURL(childDocumentUrl);

@@ -203,9 +203,13 @@ export function DocumentNavigation({
         <span className="text-xs">Ctrl K</span>
       </button>
       {folderErrorText ? (
-        <p className="mb-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg"
+        >
           {folderErrorText}
-        </p>
+        </div>
       ) : null}
       {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
         <FavoriteSection
