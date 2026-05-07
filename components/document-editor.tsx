@@ -474,7 +474,7 @@ function MarkdownPreviewSection({
 
   return (
     <section>
-      <div className="group flex items-center gap-2">
+      <div className="group relative">
         <button
           type="button"
           aria-expanded={!folded}
@@ -482,8 +482,8 @@ function MarkdownPreviewSection({
           onClick={() => onToggle(section.key)}
           className={
             folded
-              ? "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-muted hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
-              : "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-slate-500 opacity-0 hover:bg-muted hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
+              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-muted hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
+              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:bg-muted hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
           }
         >
           {folded ? (

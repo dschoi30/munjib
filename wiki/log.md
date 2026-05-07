@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-06
-source_count: 33
+updated: 2026-05-08
+source_count: 34
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-08T01:00:00+09:00 - review
+
+- Result: Preview heading chevron이 heading content를 밀어내지 않도록 absolute overlay 배치로 조정했다.
+- Coverage: 접힘/펼침 button은 heading 왼쪽 flow 바깥에 배치하고, expanded hover/focus 노출과 folded 상시 노출 behavior는 유지한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-06T01:05:00+09:00 - review
 
