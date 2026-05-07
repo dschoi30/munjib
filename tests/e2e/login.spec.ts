@@ -137,8 +137,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
 
   await productNotesAction.click();
   await page.getByRole("menuitem", { name: "Move to trash" }).click();
-  const folderTrashToast = page.getByRole("status");
-  await expect(folderTrashToast).toHaveText("Empty this folder before moving it to trash.");
+  const folderTrashToast = page.getByText("Empty this folder before moving it to trash.", {
+    exact: true,
+  });
+  await expect(folderTrashToast).toBeVisible();
   await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
   const childDocumentUrl = page.url();
   await page.getByRole("button", { name: "New document", exact: true }).click();

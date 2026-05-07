@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
+import { toast } from "sonner";
 import { useEffect, useMemo, useState } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
-import { Toast } from "@/components/ui/toast";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
 
 type FavoriteState = { documents: string[]; folders: string[] };
 
 const emptyFavorites: FavoriteState = { documents: [], folders: [] };
+const folderErrorToastId = "folder-trash-error";
+const folderErrorToastClassName =
+  "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -84,6 +87,15 @@ export function DocumentNavigation({
       return next;
     });
   }, [folders]);
+
+  useEffect(() => {
+    if (!folderErrorText) return;
+    toast(folderErrorText, {
+      id: folderErrorToastId,
+      className: folderErrorToastClassName,
+      unstyled: true,
+    });
+  }, [folderErrorText]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -203,7 +215,6 @@ export function DocumentNavigation({
         </span>
         <span className="text-xs">Ctrl K</span>
       </button>
-      <Toast message={folderErrorText} />
       {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
         <FavoriteSection
           workspaceSlug={workspaceSlug}
