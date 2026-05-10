@@ -158,6 +158,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     const toggle = screen.getByRole("button", { name: "Collapse section A" });
     expect(toggle.className).toContain("absolute");
+    expect(toggle.className).not.toContain("hover:bg");
     expect(toggle.parentElement?.className).not.toContain("flex");
     expect(screen.getByText("Visible body")).toBeTruthy();
 
@@ -171,6 +172,26 @@ describe("DocumentEditor heading preview folding", () => {
     fireEvent.click(screen.getByRole("button", { name: "Expand section A" }));
 
     expect(screen.getByText("Visible body")).toBeTruthy();
+  });
+
+  it("adds level-based spacing between preview heading sections", () => {
+    renderEditor("# One\nBody\n## Two\nBody\n### Three\nBody");
+
+    expect(screen.getByRole("heading", { name: "One" }).closest("section")?.className).toContain(
+      "mt-8",
+    );
+    expect(screen.getByRole("heading", { name: "Two" }).closest("section")?.className).toContain(
+      "mt-6",
+    );
+    expect(screen.getByRole("heading", { name: "Three" }).closest("section")?.className).toContain(
+      "mt-4",
+    );
+  });
+
+  it("shows preview fold controls after CRLF fenced code blocks", () => {
+    renderEditor("```ts\r\nconst value = 1;\r\n```\r\n# After code\r\nBody");
+
+    expect(screen.getByRole("button", { name: "Collapse section After code" })).toBeTruthy();
   });
 
   it("restores folded headings from document localStorage", () => {

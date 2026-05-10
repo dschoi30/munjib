@@ -473,7 +473,7 @@ function MarkdownPreviewSection({
   const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
 
   return (
-    <section>
+    <section className={getPreviewHeadingSectionClassName(section.level)}>
       <div className="group relative">
         <button
           type="button"
@@ -482,8 +482,8 @@ function MarkdownPreviewSection({
           onClick={() => onToggle(section.key)}
           className={
             folded
-              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:bg-muted hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
-              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:bg-muted hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
+              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
+              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
           }
         >
           {folded ? (
@@ -518,6 +518,22 @@ function MarkdownPreviewSection({
       )}
     </section>
   );
+}
+
+function getPreviewHeadingSectionClassName(level: number) {
+  if (level <= 1) {
+    return "mt-8 first:mt-0";
+  }
+
+  if (level === 2) {
+    return "mt-6";
+  }
+
+  if (level === 3) {
+    return "mt-4";
+  }
+
+  return "mt-3";
 }
 
 function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {

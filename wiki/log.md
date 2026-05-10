@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-08
-source_count: 34
+updated: 2026-05-10
+source_count: 35
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-10T17:40:00+09:00 - review
+
+- Result: Preview heading folding follow-up으로 chevron hover 배경 제거, heading level별 section spacing, CRLF fenced code block 뒤 heading 인식 문제를 보정했다.
+- Coverage: Preview chevron은 content flow를 밀지 않는 absolute 배치를 유지하면서 hover background를 쓰지 않는다. `#`, `##`, `###` section에는 level별 margin을 적용하고, CRLF 문서의 backtick code fence 종료도 parser가 인식한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-08T01:00:00+09:00 - review
 

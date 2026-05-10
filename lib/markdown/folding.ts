@@ -133,14 +133,15 @@ export function parseHeadingFoldStorageValue(value: string | null): string[] {
 function findHeadingTokens(markdown: string): HeadingToken[] {
   const lines = tokenizeLines(markdown);
   const headings: HeadingToken[] = [];
-  let inFrontmatter = lines[0]?.content.trim() === "---";
+  let inFrontmatter = normalizeLineContent(lines[0]?.content ?? "").trim() === "---";
   let inFence: { marker: "`" | "~"; length: number } | null = null;
 
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
+    const content = normalizeLineContent(line.content);
 
     if (inFrontmatter) {
-      if (index > 0 && line.content.trim() === "---") {
+      if (index > 0 && content.trim() === "---") {
         inFrontmatter = false;
       }
 
@@ -148,7 +149,7 @@ function findHeadingTokens(markdown: string): HeadingToken[] {
     }
 
     if (inFence) {
-      const closingFence = line.content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+      const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
 
       if (closingFence) {
         const marker = closingFence[1][0] as "`" | "~";
@@ -162,7 +163,7 @@ function findHeadingTokens(markdown: string): HeadingToken[] {
       continue;
     }
 
-    const openingFence = line.content.match(/^ {0,3}(`{3,}|~{3,})/);
+    const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
     if (openingFence) {
       inFence = {
         marker: openingFence[1][0] as "`" | "~",
@@ -171,7 +172,7 @@ function findHeadingTokens(markdown: string): HeadingToken[] {
       continue;
     }
 
-    const heading = line.content.match(/^( {0,3})(#{1,6})(?:[ \t]+|$)(.*)$/);
+    const heading = content.match(/^( {0,3})(#{1,6})(?:[ \t]+|$)(.*)$/);
 
     if (!heading) {
       continue;
@@ -191,6 +192,10 @@ function findHeadingTokens(markdown: string): HeadingToken[] {
   }
 
   return headings;
+}
+
+function normalizeLineContent(content: string) {
+  return content.endsWith("\r") ? content.slice(0, -1) : content;
 }
 
 function tokenizeLines(markdown: string): LineToken[] {
