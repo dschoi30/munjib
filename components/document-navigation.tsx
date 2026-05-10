@@ -13,6 +13,8 @@ const emptyFavorites: FavoriteState = { documents: [], folders: [] };
 const folderErrorToastId = "folder-trash-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
+const sectionHeadingClassName =
+  "mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500";
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -26,6 +28,7 @@ export function DocumentNavigation({
   archiveFolderAction,
   archiveDocumentAction,
   folderError,
+  selectedDocumentId,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
@@ -38,6 +41,7 @@ export function DocumentNavigation({
   archiveFolderAction: (formData: FormData) => Promise<void>;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
   folderError: string;
+  selectedDocumentId: string | null;
 }) {
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [switcherQuery, setSwitcherQuery] = useState("");
@@ -97,7 +101,28 @@ export function DocumentNavigation({
       className: folderErrorToastClassName,
       unstyled: true,
     });
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("folderError")) {
+      url.searchParams.delete("folderError");
+      window.history.replaceState(
+        window.history.state,
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
+    }
   }, [folderErrorText]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-row-action-menu]")) return;
+      setOpenMenuId(null);
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -158,6 +183,7 @@ export function DocumentNavigation({
             workspaceSlug={workspaceSlug}
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
+            selected={item.document.id === selectedDocumentId}
             searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
@@ -204,26 +230,28 @@ export function DocumentNavigation({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => {
-          setOpenMenuId(null);
-          setIsSwitcherOpen(true);
-        }}
-        className="mb-4 flex h-9 w-full items-center justify-between rounded-md border border-border bg-white px-3 text-sm text-slate-500 hover:bg-muted"
-      >
-        <span className="inline-flex items-center gap-2">
-          <Search className="h-4 w-4" aria-hidden="true" />
-          Quick switcher
-        </span>
-        <span className="text-xs">Ctrl K</span>
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() => {
+            setOpenMenuId(null);
+            setIsSwitcherOpen(true);
+          }}
+          className="mb-4 flex h-9 w-full items-center justify-between rounded-md border border-border bg-white px-3 text-sm text-slate-500 hover:bg-muted"
+        >
+          <span className="inline-flex items-center gap-2">
+            <Search className="h-4 w-4" aria-hidden="true" />
+            Quick switcher
+          </span>
+          <span className="text-xs">Ctrl K</span>
+        </button>
       {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
         <FavoriteSection
           workspaceSlug={workspaceSlug}
           folders={favoriteFolders}
           documents={favoriteDocuments}
           favoriteDocumentIds={favoriteDocumentIds}
+          selectedDocumentId={selectedDocumentId}
           searchQuery={searchQuery}
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
@@ -238,6 +266,7 @@ export function DocumentNavigation({
           documents={recentDocuments}
           menuScope="recent-document"
           favoriteDocumentIds={favoriteDocumentIds}
+          selectedDocumentId={selectedDocumentId}
           searchQuery={searchQuery}
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
@@ -247,9 +276,7 @@ export function DocumentNavigation({
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
         {!searchQuery ? (
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-            Documents
-          </p>
+          <p className={sectionHeadingClassName}>Documents</p>
         ) : null}
         {documents.length === 0 && (searchQuery || folders.length === 0) ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
@@ -264,6 +291,7 @@ export function DocumentNavigation({
                 workspaceSlug={workspaceSlug}
                 document={document}
                 isFavorite={favoriteDocumentIds.has(document.id)}
+                selected={document.id === selectedDocumentId}
                 searchQuery={searchQuery}
                 openMenuId={openMenuId}
                 onOpenMenu={setOpenMenuId}
@@ -273,6 +301,7 @@ export function DocumentNavigation({
             ))
           : renderTreeItems(null)}
       </nav>
+      </div>
       {isSwitcherOpen ? (
         <div className="fixed inset-0 z-50 bg-slate-950/20 p-6" role="dialog" aria-modal="true">
           <div className="mx-auto mt-20 max-w-xl overflow-hidden rounded-md border border-border bg-white shadow-xl">
@@ -317,6 +346,7 @@ function FavoriteSection({
   folders,
   documents,
   favoriteDocumentIds,
+  selectedDocumentId,
   searchQuery,
   openMenuId,
   onOpenMenu,
@@ -327,6 +357,7 @@ function FavoriteSection({
   folders: FolderListItem[];
   documents: DocumentListItem[];
   favoriteDocumentIds: Set<string>;
+  selectedDocumentId: string | null;
   searchQuery: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
@@ -335,17 +366,17 @@ function FavoriteSection({
 }) {
   return (
     <section className="mb-4">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">Favorites</p>
+      <p className={sectionHeadingClassName}>Favorites</p>
       <div className="space-y-1">
         {folders.map((folder) => (
           <Link
             key={`Favorites-folder-${folder.id}`}
             href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
             onClick={() => onOpenMenu(null)}
-            className="block rounded-md px-2 py-2 text-sm hover:bg-muted"
+            className="block rounded-md px-2 py-1.5 text-[13px] hover:bg-muted"
           >
             <span className="block truncate">{folder.name}</span>
-            <span className="mt-1 block truncate text-xs text-slate-500">{folder.path}</span>
+            <span className="mt-1 block truncate text-[11px] text-slate-500">{folder.path}</span>
           </Link>
         ))}
         {documents.map((document) => (
@@ -355,6 +386,7 @@ function FavoriteSection({
             workspaceSlug={workspaceSlug}
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
+            selected={document.id === selectedDocumentId}
             searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
@@ -373,6 +405,7 @@ function DocumentSection({
   documents,
   menuScope,
   favoriteDocumentIds,
+  selectedDocumentId,
   searchQuery,
   openMenuId,
   onOpenMenu,
@@ -384,6 +417,7 @@ function DocumentSection({
   documents: DocumentListItem[];
   menuScope: string;
   favoriteDocumentIds: Set<string>;
+  selectedDocumentId: string | null;
   searchQuery: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
@@ -392,7 +426,7 @@ function DocumentSection({
 }) {
   return (
     <section className="mb-4">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{title}</p>
+      <p className={sectionHeadingClassName}>{title}</p>
       <div className="space-y-1">
         {documents.map((document) => (
           <DocumentLinkRow
@@ -401,6 +435,7 @@ function DocumentSection({
             workspaceSlug={workspaceSlug}
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
+            selected={document.id === selectedDocumentId}
             searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
@@ -418,6 +453,7 @@ function DocumentLinkRow({
   workspaceSlug,
   document,
   isFavorite,
+  selected,
   searchQuery,
   openMenuId,
   onOpenMenu,
@@ -428,6 +464,7 @@ function DocumentLinkRow({
   workspaceSlug: string;
   document: DocumentListItem;
   isFavorite: boolean;
+  selected: boolean;
   searchQuery: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
@@ -437,19 +474,22 @@ function DocumentLinkRow({
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
   const displayLabel = documentDisplayLabel(document);
+  const rowClassName = selected
+    ? "group relative flex items-start gap-1 rounded-md bg-white shadow-sm focus-within:bg-white"
+    : "group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted";
 
   return (
-    <div className="group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted">
+    <div className={rowClassName}>
       <Link
         href={`/workspaces/${workspaceSlug}?document=${document.id}${
           searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
         }`}
         onClick={() => onOpenMenu(null)}
-        className="min-w-0 flex-1 px-2 py-2 text-sm"
+        className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
         <span className="block truncate">{documentDisplayLabel(document)}</span>
         {searchQuery ? (
-          <span className="mt-1 block truncate text-xs text-slate-500">{document.path}</span>
+          <span className="mt-1 block truncate text-[11px] text-slate-500">{document.path}</span>
         ) : null}
       </Link>
       <button
@@ -457,6 +497,7 @@ function DocumentLinkRow({
         aria-label={`Open actions for ${displayLabel}`}
         aria-expanded={isMenuOpen}
         onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+        data-row-action-menu
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
           isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
         }`}
@@ -466,7 +507,8 @@ function DocumentLinkRow({
       {isMenuOpen ? (
         <div
           role="menu"
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg"
+          data-row-action-menu
+          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
         >
           <button
             type="button"
@@ -530,8 +572,8 @@ function FolderToggleRow({
   const isMenuOpen = openMenuId === menuId;
   const displayLabel = folderDisplayLabel(folder);
   const rowClassName = selected
-    ? "group relative flex w-full items-center gap-1 rounded-md bg-white px-2 py-1.5 text-left text-sm font-medium shadow-sm focus-within:bg-white"
-    : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted focus-within:bg-muted";
+    ? "group relative flex w-full items-center gap-1 rounded-md bg-white px-2 py-1.5 text-left text-[13px] font-medium shadow-sm focus-within:bg-white"
+    : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-muted focus-within:bg-muted";
 
   if (isRenaming) {
     const renameInputId = `rename-folder-${folder.id}`;
@@ -543,6 +585,7 @@ function FolderToggleRow({
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancelRename();
         }}
+        data-row-action-menu
       >
         <input type="hidden" name="folderId" value={folder.id} />
         <label className="sr-only" htmlFor={renameInputId}>
@@ -554,7 +597,7 @@ function FolderToggleRow({
           defaultValue={folder.name}
           required
           autoFocus
-          className="min-w-0 flex-1 rounded border border-border bg-white px-2 py-1 text-sm outline-none focus:border-ink"
+          className="min-w-0 flex-1 rounded border border-border bg-white px-2 py-1 text-[13px] outline-none focus:border-ink"
         />
         <button
           type="submit"
@@ -599,6 +642,7 @@ function FolderToggleRow({
           aria-label={`Open actions for ${displayLabel}`}
           aria-expanded={isMenuOpen}
           onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+          data-row-action-menu
           className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink"
         >
           <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
@@ -607,7 +651,8 @@ function FolderToggleRow({
       {isMenuOpen ? (
         <div
           role="menu"
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-sm shadow-lg"
+          data-row-action-menu
+          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
         >
           <button
             type="button"

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-08
-source_count: 36
+updated: 2026-05-10
+source_count: 37
 tags:
   - log
   - munjib
@@ -19,10 +19,10 @@ links:
 
 # Wiki Log
 
-## 2026-05-08T00:00:00+09:00 - review
+## 2026-05-10T00:00:00+09:00 - review
 
-- Result: Issue #26 folder/document row action menu를 보강했다.
-- Coverage: `FOLDER_NOT_EMPTY` user feedback은 shadcn Sonner toast로 유지하고, document row `...` menu에는 `archiveDocumentAction()`에 연결된 Move to trash를 추가했다. 삭제된 문서는 active list에서 빠지고 workspace root로 redirect된다.
+- Result: Issue #26 folder/document row navigation polish를 보강했다.
+- Coverage: `FOLDER_NOT_EMPTY` user feedback은 shadcn Sonner toast로 유지하되 `folderError` query를 history에서 제거해 반복 깜빡임을 줄였다. Row action menu는 외부 클릭 시 닫히고, document row hover/selected highlight와 sidebar section/row font-size 조정을 추가했다.
 - Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: 사용자 피드백, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
 

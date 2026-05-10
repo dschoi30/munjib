@@ -29,6 +29,7 @@ export function DocumentList({
   archiveDocumentAction,
   folderError,
   selectedFolderId,
+  selectedDocumentId,
   searchQuery,
 }: {
   workspaceSlug: string;
@@ -42,6 +43,7 @@ export function DocumentList({
   archiveDocumentAction: (formData: FormData) => Promise<void>;
   folderError: string;
   selectedFolderId: string | null;
+  selectedDocumentId: string | null;
   searchQuery: string;
 }) {
   return (
@@ -94,7 +96,7 @@ export function DocumentList({
         />
       </form>
       {searchQuery ? (
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
           Search results
         </p>
       ) : null}
@@ -110,6 +112,7 @@ export function DocumentList({
         archiveFolderAction={archiveFolderAction}
         archiveDocumentAction={archiveDocumentAction}
         folderError={folderError}
+        selectedDocumentId={selectedDocumentId}
       />
     </div>
   );

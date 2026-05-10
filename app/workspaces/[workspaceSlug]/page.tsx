@@ -215,6 +215,7 @@ export default async function WorkspacePage({
           archiveDocumentAction={archiveDocument}
           folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
+          selectedDocumentId={selectedDocument?.id ?? null}
           searchQuery={searchQuery}
         />
       }
