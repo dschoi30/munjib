@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-10
-source_count: 40
+source_count: 48
 tags:
   - log
   - munjib
@@ -19,12 +19,52 @@ links:
 
 # Wiki Log
 
+## 2026-05-10T17:55:00+09:00 - review
+
+- Result: PR #27 review를 반영해 heading folding의 CRLF preview scan, no-heading preview rendering, live editor fold persistence를 보강했다.
+- Coverage: Preview helper는 original offset을 보존하는 CRLF-safe line scan을 사용하고, shared definition scan은 CRLF fenced code block 종료를 인식한다. Heading 없는 preview는 definition을 재첨부하지 않으며, edit mode fold 저장은 stale React state 대신 CodeMirror live document text에서 fold tree를 계산한다. Fold key validation은 stable sorted output을 반환한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #27 review comments, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-10T17:40:00+09:00 - review
+
+- Result: Preview heading folding follow-up으로 chevron hover/focus 배경과 border/ring 제거, heading level별 section spacing, CRLF fenced code block 뒤 heading 인식 문제를 보정했다.
+- Coverage: Preview chevron은 content flow를 밀지 않는 absolute 배치를 유지하면서 hover background와 focus border/ring을 쓰지 않는다. `#`, `##`, `###` section에는 level별 margin을 적용하고, CRLF 문서의 backtick code fence 종료도 parser가 인식한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-10T00:00:00+09:00 - review
 
 - Result: Issue #26 folder/document row navigation polish를 보강했다.
 - Coverage: `FOLDER_NOT_EMPTY` user feedback은 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 표시한다. PR review에 따라 favorite folder row menu, folder trash confirmation, write-permitted document trash action, row-level document trash conditional navigation, folder rename/archive context preservation, create action server redirect preservation을 반영했다. Row action menu는 외부 클릭 시 닫히고, document row hover/selected highlight와 sidebar section/row font-size 조정을 유지한다.
 - Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: 사용자 피드백, `components/document-create-controls.tsx`, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
+
+## 2026-05-08T01:00:00+09:00 - review
+
+- Result: Preview heading chevron이 heading content를 밀어내지 않도록 absolute overlay 배치로 조정했다.
+- Coverage: 접힘/펼침 button은 heading 왼쪽 flow 바깥에 배치하고, expanded hover/focus 노출과 folded 상시 노출 behavior는 유지한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-06T01:05:00+09:00 - review
+
+- Result: Issue #25 final review blocker를 반영해 edit mode CodeMirror folding도 preview와 같은 문서별 fold state를 저장하고, preview chunk의 multi-line reference/footnote definition 공유를 보강했다.
+- Coverage: CodeMirror `foldedRanges`를 heading body line range와 CodeMirror heading fold range 모두에 matching해 `munjib:heading-folds:<documentId>`에 raw heading key를 저장한다. Preview chunk 공유 definition은 empty marker line과 definition line 뒤의 indented/blank continuation line까지 포함한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: final review blockers, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`, GitHub issue #25.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-06T00:45:00+09:00 - review
+
+- Result: Issue #25 final review blocker를 반영해 heading-folded preview chunk에서도 문서 전체 Markdown reference definition을 공유하고, stale planned wording을 현재 구현 상태로 정리했다.
+- Coverage: `[ref][x]`와 `[x]: https://example.com`이 서로 다른 heading section에 있어도 preview link가 resolve되며, Munjib/PRD/index 상태판이 edit/preview와 heading folding 구현 완료 상태를 말한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: final review blockers, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`, GitHub issue #25.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-06T00:43:00+09:00 - implementation
 
@@ -48,6 +88,30 @@ links:
 - Pages: [[designs/index|UI Design Excalidraw Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #26, `docs/superpowers/specs/2026-05-05-folder-row-hover-actions-menu-design.md`, `wiki/designs/notion1.png`.
 
+## 2026-05-05T23:50:00+09:00 - implementation
+
+- Result: Issue #25에서 markdown heading folding을 구현하고 split mode를 제거했다.
+- Coverage: Preview heading chevron folding, edit mode CodeMirror fold gutter/restoration, 문서별 `localStorage` fold state, wiki-link preview regression.
+- Pages: [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #25, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/wiki-links/preview.test.ts`.
+- Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-05T23:45:00+09:00 - planning
+
+- Result: Issue #25 Markdown heading folding 구현 계획을 작성했다.
+- Coverage: markdown folding pure model, preview chevron UI와 localStorage, CodeMirror fold restoration, split mode 제거, regression/wiki verification tasks.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-05-markdown-heading-folding.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-05T23:35:00+09:00 - maintenance
+
+- Result: 기존 feature branch에 다른 issue 작업이 있으면 `git worktree` 또는 clean `main` checkout으로 새 작업공간을 분리해야 한다는 운영 규칙을 추가했다.
+- Coverage: `wiki:feature-start`가 이미 feature branch에서는 새 branch를 만들지 않는 동작의 전제, worktree 사용 예시, issue #25 branch separation recovery.
+- Pages: [[Local Development Workflow]], [[Wiki Maintenance Automation]], [[log|Wiki Log]].
+- Source evidence: Issue #25 설계 커밋을 `issue-23-centralize-service-error-codes`에서 `issue-25-markdown-heading-folding`으로 분리한 작업.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
 ## 2026-05-05T23:10:00+09:00 - review
 
 - Result: PR #24 리뷰를 반영해 document service에 남아 있던 document 관련 error code literal을 `SERVICE_ERROR_CODES`에 추가했다.
@@ -63,6 +127,14 @@ links:
 - Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
 - Source evidence: PR #22 review comments, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/preview.test.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T18:20:00+09:00 - design
+
+- Result: Issue #25 Markdown heading folding 설계를 기록했다.
+- Coverage: Obsidian-style heading hierarchy folding, Preview chevron hover/focus behavior, Edit mode CodeMirror heading folding, 문서별 `localStorage` fold state, split mode 제거 계획.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #25, `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-05T15:25:00+09:00 - review
 

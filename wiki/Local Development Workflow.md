@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 7
+updated: 2026-05-11
+source_count: 9
 tags:
   - munjib
   - workflow
@@ -31,6 +31,7 @@ pnpm run dev
 pnpm run build
 pnpm test
 pnpm run test:e2e
+pnpm run test:e2e:ui
 ```
 
 DB 관련 명령:
@@ -66,7 +67,7 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 
 ## Seed와 로그인
 
-`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다.
+`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
 
 ## Feature start
 
@@ -79,6 +80,16 @@ pnpm wiki:feature-start "<feature title>"
 성공 시 issue URL을 출력한다. 현재 branch가 `main`이면 `issue-<number>-<slug>` branch를 생성하고 전환한다. 이미 feature branch이면 branch를 새로 만들지 않는다.
 
 `gh issue create`가 실패하면 issue template을 출력한다. 이 경우 구현을 시작하기 전에 출력된 template으로 GitHub issue를 수동 생성한다.
+
+기존 feature branch에 다른 작업이 있으면 같은 checkout에서 새 feature를 이어서 구현하지 않는다. 먼저 issue를 만든 뒤 `git worktree`로 별도 작업공간을 만들거나, clean `main` checkout에서 issue branch를 생성한다. 이렇게 하면 `wiki:feature-start`가 "이미 feature branch"로 판단해 현재 branch에 머무르는 상황에서도 서로 다른 issue의 커밋이 섞이지 않는다.
+
+예시:
+
+```bash
+git worktree add .worktrees/issue-25-markdown-heading-folding main
+cd .worktrees/issue-25-markdown-heading-folding
+pnpm wiki:feature-start "Markdown heading folding"
+```
 
 ## Test coverage
 
@@ -109,3 +120,4 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 - `lib/wiki/feature-start.ts`
 - `lib/service-errors.ts`
 - `.githooks/pre-commit`
+- GitHub issue #25 branch separation recovery
