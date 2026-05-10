@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
-updated: 2026-05-04
-source_count: 9
+updated: 2026-05-05
+source_count: 10
 tags:
   - munjib
   - wiki
@@ -53,6 +53,8 @@ pnpm wiki:feature-start "<feature title>"
 `gh issue create` 성공 출력은 GitHub Enterprise 같은 custom host에서도 `/issues/<number>` URL을 읽어 issue 번호와 URL을 보존한다. `gh` 또는 `git` command가 실패하면 가능한 경우 stderr를 사용자 메시지에 우선 표시해 인증 실패나 branch 생성 실패 이유를 바로 확인하게 한다.
 
 현재 branch가 `main`이면 issue 번호 기반 `issue-<number>-<slug>` branch를 만들고 전환한다. 이미 feature branch나 worktree branch에 있으면 현재 branch를 유지한다. 이렇게 하면 기존 격리 작업공간을 방해하지 않으면서 `main`에서 바로 기능을 구현하는 실수를 줄인다.
+
+현재 feature branch에 이미 다른 issue 작업이 있으면 새 기능을 그 branch에 섞지 않는다. `wiki:feature-start` 실행 전에 `git status --short --branch`와 `git worktree list`로 현재 작업공간을 확인하고, 필요한 경우 `git worktree add .worktrees/issue-<number>-<slug> main`으로 독립 checkout을 만든다. Issue #25 설계 작업에서 기존 issue #23 branch에 spec commit이 올라갔다가 `issue-25-markdown-heading-folding` branch로 분리한 사례처럼, feature branch 유지 규칙은 격리된 작업공간이 이미 있다는 전제에서만 안전하다.
 
 ## Ingest 루프
 
@@ -145,3 +147,4 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - `package.json`
 - `wiki/Wiki Schema.md`
 - `wiki/log.md`
+- GitHub issue #25 branch separation recovery
