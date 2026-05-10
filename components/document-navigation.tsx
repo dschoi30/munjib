@@ -18,6 +18,7 @@ const sectionHeadingClassName =
   "mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500";
 type ArchiveFolderResult = { error?: string };
 type CreateDocumentResult = { documentId: string };
+type ArchiveDocumentResult = { documentId: string };
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -42,7 +43,7 @@ export function DocumentNavigation({
   createAction: (formData: FormData) => Promise<CreateDocumentResult>;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
-  archiveDocumentAction: (formData: FormData) => Promise<void>;
+  archiveDocumentAction: (formData: FormData) => Promise<ArchiveDocumentResult>;
   folderError: string;
   selectedDocumentId: string | null;
 }) {
@@ -202,6 +203,18 @@ export function DocumentNavigation({
     });
   }
 
+  async function archiveDocumentFromMenu(formData: FormData) {
+    const result = await archiveDocumentAction(formData);
+    setOpenMenuId(null);
+    startTransition(() => {
+      if (result.documentId === selectedDocumentId) {
+        router.push(`/workspaces/${workspaceSlug}`);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   function renderTreeItems(parentFolderId: string | null) {
     const items = buildTreeItems(folders, documents, parentFolderId);
 
@@ -219,7 +232,7 @@ export function DocumentNavigation({
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}
-            archiveDocumentAction={archiveDocumentAction}
+            archiveDocumentAction={archiveDocumentFromMenu}
           />
         );
       }
@@ -287,7 +300,8 @@ export function DocumentNavigation({
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
-          archiveDocumentAction={archiveDocumentAction}
+          onToggleFavoriteFolder={toggleFavoriteFolder}
+          archiveDocumentAction={archiveDocumentFromMenu}
         />
       ) : null}
       {!searchQuery ? (
@@ -302,7 +316,7 @@ export function DocumentNavigation({
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
-          archiveDocumentAction={archiveDocumentAction}
+          archiveDocumentAction={archiveDocumentFromMenu}
         />
       ) : null}
       <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
@@ -327,7 +341,7 @@ export function DocumentNavigation({
                 openMenuId={openMenuId}
                 onOpenMenu={setOpenMenuId}
                 onToggleFavorite={toggleFavoriteDocument}
-                archiveDocumentAction={archiveDocumentAction}
+                archiveDocumentAction={archiveDocumentFromMenu}
               />
             ))
           : renderTreeItems(null)}
@@ -382,6 +396,7 @@ function FavoriteSection({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  onToggleFavoriteFolder,
   archiveDocumentAction,
 }: {
   workspaceSlug: string;
@@ -393,6 +408,7 @@ function FavoriteSection({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  onToggleFavoriteFolder: (folderId: string) => void;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
@@ -400,15 +416,15 @@ function FavoriteSection({
       <p className={sectionHeadingClassName}>Favorites</p>
       <div className="space-y-1">
         {folders.map((folder) => (
-          <Link
+          <FavoriteFolderRow
             key={`Favorites-folder-${folder.id}`}
-            href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
-            onClick={() => onOpenMenu(null)}
-            className="block rounded-md px-2 py-1.5 text-[13px] hover:bg-muted"
-          >
-            <span className="block truncate">{folder.name}</span>
-            <span className="mt-1 block truncate text-[11px] text-slate-500">{folder.path}</span>
-          </Link>
+            rowId={`favorite-folder:${folder.id}`}
+            workspaceSlug={workspaceSlug}
+            folder={folder}
+            openMenuId={openMenuId}
+            onOpenMenu={onOpenMenu}
+            onToggleFavorite={onToggleFavoriteFolder}
+          />
         ))}
         {documents.map((document) => (
           <DocumentLinkRow
@@ -554,11 +570,72 @@ function DocumentLinkRow({
             <button
               type="submit"
               role="menuitem"
+              hidden={!document.canWrite}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50"
             >
               Move to trash
             </button>
           </form>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FavoriteFolderRow({
+  rowId,
+  workspaceSlug,
+  folder,
+  openMenuId,
+  onOpenMenu,
+  onToggleFavorite,
+}: {
+  rowId: string;
+  workspaceSlug: string;
+  folder: FolderListItem;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
+  onToggleFavorite: (folderId: string) => void;
+}) {
+  const isMenuOpen = openMenuId === rowId;
+  const displayLabel = folderDisplayLabel(folder);
+
+  return (
+    <div className="group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted">
+      <Link
+        href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+        onClick={() => onOpenMenu(null)}
+        className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
+      >
+        <span className="block truncate">{folder.name}</span>
+        <span className="mt-1 block truncate text-[11px] text-slate-500">{folder.path}</span>
+      </Link>
+      <button
+        type="button"
+        aria-label={`Open actions for ${displayLabel}`}
+        aria-expanded={isMenuOpen}
+        onClick={() => onOpenMenu(isMenuOpen ? null : rowId)}
+        data-row-action-menu
+        className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
+          isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
+        }`}
+      >
+        <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+      </button>
+      {isMenuOpen ? (
+        <div
+          role="menu"
+          data-row-action-menu
+          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onToggleFavorite(folder.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
+          >
+            Remove from favorites
+          </button>
         </div>
       ) : null}
     </div>
@@ -700,6 +777,11 @@ function FolderToggleRow({
               type="submit"
               role="menuitem"
               disabled={!canWrite}
+              onClick={(event) => {
+                if (!window.confirm("Move this folder to trash?")) {
+                  event.preventDefault();
+                }
+              }}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
             >
               Move to trash

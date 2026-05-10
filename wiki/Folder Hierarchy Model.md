@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-05-10
-source_count: 29
+source_count: 30
 tags:
   - munjib
   - data-model
@@ -97,7 +97,7 @@ Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chev
 
 Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
 
-Issue #26은 folder/document row interaction을 보강한다. Folder row와 document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다. Folder row는 `...`와 `+` control을 드러내며, row-level `+` control은 해당 folder 안에 blank document를 생성한다. Folder `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공하고, document `...` menu는 Add/Remove favorites와 Move to trash를 제공한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다. Rename과 trash는 기존 folder/document service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다. Duplicate title/path 환경에서 action control을 구분할 수 있도록 document/folder row action label은 path context를 포함한다. 비어 있지 않은 folder trash 실패는 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 화면 중앙 하단에 표시하고 3초 뒤 자동으로 사라진다. Sidebar top-level document/folder creation도 server-action redirect 대신 returned id와 client navigation을 사용해 remount flicker를 줄인다. Sidebar section label과 row text는 더 조밀한 탐색을 위해 기존보다 작은 font size를 사용한다.
+Issue #26은 folder/document row interaction을 보강한다. Folder row와 document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다. Folder row는 `...`와 `+` control을 드러내며, row-level `+` control은 해당 folder 안에 blank document를 생성한다. Folder `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공하고, favorite folder row도 Remove from favorites menu를 제공한다. Folder Move to trash는 destructive action이므로 confirm 후 실행한다. Document `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, document write 권한이 있을 때만 trash action을 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다. Rename과 trash는 기존 folder/document service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다. Duplicate title/path 환경에서 action control을 구분할 수 있도록 document/folder row action label은 path context를 포함한다. 비어 있지 않은 folder trash 실패는 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 화면 중앙 하단에 표시하고 3초 뒤 자동으로 사라진다. Sidebar top-level document/folder creation도 server-action redirect 대신 returned id와 client navigation을 사용해 remount flicker를 줄인다. Sidebar section label과 row text는 더 조밀한 탐색을 위해 기존보다 작은 font size를 사용한다.
 
 ## 근거
 

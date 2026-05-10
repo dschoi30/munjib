@@ -114,12 +114,13 @@ export async function archiveFolderAction(workspaceSlug: string, formData: FormD
 
 export async function archiveDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
+  const documentId = String(formData.get("documentId"));
   await archiveDocument({
     actorId: user.id,
-    documentId: String(formData.get("documentId")),
+    documentId,
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}`);
+  return { documentId };
 }
 
 export async function createDocumentFromBrokenLinkAction(

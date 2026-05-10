@@ -7,6 +7,7 @@ export type DocumentListItem = {
   title: string;
   path: string;
   contentText: string;
+  canWrite: boolean;
 };
 
 export type FolderListItem = {
@@ -39,7 +40,7 @@ export function DocumentList({
   createFolderAction: (formData: FormData) => Promise<{ folderId: string }>;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<{ error?: string }>;
-  archiveDocumentAction: (formData: FormData) => Promise<void>;
+  archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;

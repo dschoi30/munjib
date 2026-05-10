@@ -206,6 +206,11 @@ export default async function WorkspacePage({
             title: document.title,
             path: document.path,
             contentText: document.contentText,
+            canWrite: canWriteDocument({
+              workspaceRole: role,
+              explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
+              userPermission: userPermissionByDocumentId.get(document.id),
+            }),
           }))}
           canWrite={canWrite}
           createAction={createAction}
