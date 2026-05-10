@@ -105,7 +105,9 @@ export function getValidFoldedHeadingKeys(
   foldedKeys: Iterable<string>,
   validKeys: Set<string>,
 ): string[] {
-  return Array.from(foldedKeys).filter((key) => validKeys.has(key));
+  return Array.from(foldedKeys)
+    .filter((key) => validKeys.has(key))
+    .sort();
 }
 
 export function createHeadingFoldStorageValue(foldedKeys: Set<string>): string {

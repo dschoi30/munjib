@@ -93,18 +93,10 @@ export function DocumentEditor({
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
   const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${document.id}` : null;
-  const editorFoldTree = useMemo(
-    () => (document?.id ? buildHeadingFoldTree(contentMarkdown) : null),
-    [contentMarkdown, document?.id],
-  );
   const editorFoldContextRef = useRef<{
     storageKey: string;
-    foldTree: HeadingFoldTree;
   } | null>(null);
-  editorFoldContextRef.current =
-    editorFoldStorageKey && editorFoldTree
-      ? { storageKey: editorFoldStorageKey, foldTree: editorFoldTree }
-      : null;
+  editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -115,7 +107,7 @@ export function DocumentEditor({
           return;
         }
 
-        persistEditorFoldState(update.view, context.storageKey, context.foldTree);
+        persistEditorFoldState(update.view, context.storageKey);
       }),
     ],
     [],
@@ -440,10 +432,9 @@ function MarkdownPreview({
         </>
       ) : (
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-          {renderPreviewChunk(
+          {renderPreviewMarkdownWithWikiLinks(
             strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
             candidateBySlug,
-            sharedDefinitions,
           )}
         </ReactMarkdown>
       )}
@@ -555,15 +546,12 @@ function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string
   }
 }
 
-function persistEditorFoldState(
-  view: EditorView,
-  storageKey: string,
-  foldTree: HeadingFoldTree,
-) {
+function persistEditorFoldState(view: EditorView, storageKey: string) {
   if (typeof window === "undefined") {
     return;
   }
 
+  const foldTree = buildHeadingFoldTree(view.state.doc.toString());
   const foldedKeys = getEditorFoldedHeadingKeys(view, foldTree);
 
   if (!foldedKeys) {
@@ -634,72 +622,35 @@ function markdownInlineToPlainText(markdown: string) {
 }
 
 function getMarkdownBeforeFirstHeading(markdown: string) {
-  const lines = markdown.match(/^.*(?:\n|$)/gm) ?? [];
-  let offset = 0;
   let inFence: { marker: "`" | "~"; length: number } | null = null;
 
-  for (const line of lines) {
-    const content = line.endsWith("\n") ? line.slice(0, -1) : line;
+  for (const line of tokenizeMarkdownLines(markdown)) {
+    inFence = getNextFenceState(line.content, inFence);
 
-    if (inFence) {
-      const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
-
-      if (closingFence) {
-        const marker = closingFence[1][0] as "`" | "~";
-        const length = closingFence[1].length;
-
-        if (inFence.marker === marker && length >= inFence.length) {
-          inFence = null;
-        }
-      }
-    } else {
-      const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
-
-      if (openingFence) {
-        inFence = {
-          marker: openingFence[1][0] as "`" | "~",
-          length: openingFence[1].length,
-        };
-      } else if (/^ {0,3}#{1,6}(?:[ \t]+|$)/.test(content)) {
-        return markdown.slice(0, offset);
-      }
+    if (!inFence && /^ {0,3}#{1,6}(?:[ \t]+|$)/.test(line.content)) {
+      return markdown.slice(0, line.startOffset);
     }
-
-    offset += line.length;
   }
 
   return markdown;
 }
 
 function getSharedMarkdownDefinitions(markdown: string) {
-  const lines = markdown.split("\n");
   const definitions: string[] = [];
   let inFence: { marker: "`" | "~"; length: number } | null = null;
 
+  const lines = tokenizeMarkdownLines(markdown);
   for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
+    const line = lines[index].content;
 
     if (inFence) {
-      const closingFence = line.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
-
-      if (closingFence) {
-        const marker = closingFence[1][0] as "`" | "~";
-        const length = closingFence[1].length;
-
-        if (inFence.marker === marker && length >= inFence.length) {
-          inFence = null;
-        }
-      }
-
+      inFence = getNextFenceState(line, inFence);
       continue;
     }
 
-    const openingFence = line.match(/^ {0,3}(`{3,}|~{3,})/);
-    if (openingFence) {
-      inFence = {
-        marker: openingFence[1][0] as "`" | "~",
-        length: openingFence[1].length,
-      };
+    const nextFenceState = getNextFenceState(line, inFence);
+    if (nextFenceState) {
+      inFence = nextFenceState;
       continue;
     }
 
@@ -707,7 +658,7 @@ function getSharedMarkdownDefinitions(markdown: string) {
       definitions.push(line);
 
       for (index += 1; index < lines.length; index += 1) {
-        const continuationLine = lines[index];
+        const continuationLine = lines[index].content;
 
         if (!isMarkdownDefinitionContinuationLine(continuationLine)) {
           index -= 1;
@@ -720,6 +671,58 @@ function getSharedMarkdownDefinitions(markdown: string) {
   }
 
   return definitions.join("\n");
+}
+
+function tokenizeMarkdownLines(markdown: string) {
+  const lines: Array<{ content: string; startOffset: number }> = [];
+  let startOffset = 0;
+
+  for (let index = 0; index <= markdown.length; index += 1) {
+    if (index !== markdown.length && markdown[index] !== "\n") {
+      continue;
+    }
+
+    const hasNewline = index < markdown.length;
+    const rawContent = markdown.slice(startOffset, index);
+
+    if (rawContent.length > 0 || hasNewline || markdown.length === 0) {
+      lines.push({
+        content: rawContent.endsWith("\r") ? rawContent.slice(0, -1) : rawContent,
+        startOffset,
+      });
+    }
+
+    startOffset = index + 1;
+  }
+
+  return lines;
+}
+
+function getNextFenceState(
+  content: string,
+  inFence: { marker: "`" | "~"; length: number } | null,
+) {
+  if (inFence) {
+    const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+    if (!closingFence) {
+      return inFence;
+    }
+
+    const marker = closingFence[1][0] as "`" | "~";
+    const length = closingFence[1].length;
+
+    return inFence.marker === marker && length >= inFence.length ? null : inFence;
+  }
+
+  const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
+
+  return openingFence
+    ? {
+        marker: openingFence[1][0] as "`" | "~",
+        length: openingFence[1].length,
+      }
+    : null;
 }
 
 function renderPreviewChunk(

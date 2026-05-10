@@ -119,6 +119,15 @@ describe("folded heading storage helpers", () => {
     expect(getValidFoldedHeadingKeys(["1-a-0", "missing"], result.headingKeys)).toEqual(["1-a-0"]);
   });
 
+  it("returns valid folded keys in sorted order", () => {
+    const result = buildHeadingFoldTree("# B\nBody\n# A\nBody");
+
+    expect(getValidFoldedHeadingKeys(["1-a-0", "1-b-0"], result.headingKeys)).toEqual([
+      "1-a-0",
+      "1-b-0",
+    ]);
+  });
+
   it("serializes folded keys as a stable JSON array", () => {
     expect(createHeadingFoldStorageValue(new Set(["b", "a"]))).toBe("[\"a\",\"b\"]");
   });
