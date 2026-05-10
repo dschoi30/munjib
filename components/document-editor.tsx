@@ -1,15 +1,34 @@
 "use client";
 
 import { markdown } from "@codemirror/lang-markdown";
+import { foldEffect, foldedRanges } from "@codemirror/language";
+import { EditorView } from "@codemirror/view";
 import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Columns2, Eye, MessageSquare, Paperclip, Pencil, Save, Upload } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import {
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  MessageSquare,
+  Paperclip,
+  Pencil,
+  Save,
+  Upload,
+} from "lucide-react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  buildHeadingFoldTree,
+  createHeadingFoldStorageValue,
+  getValidFoldedHeadingKeys,
+  parseHeadingFoldStorageValue,
+  type HeadingFoldTree,
+  type HeadingFoldSection,
+} from "@/lib/markdown/folding";
 import {
   buildWikiLinkPreviewCandidateMap,
   renderPreviewMarkdownWithWikiLinks,
@@ -26,7 +45,7 @@ import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
-type EditorMode = "edit" | "split" | "preview";
+type EditorMode = "edit" | "preview";
 type EditableDocument = {
   id: string;
   title: string;
@@ -68,11 +87,31 @@ export function DocumentEditor({
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   createCommentAction: (formData: FormData) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<EditorMode>("split");
+  const [mode, setMode] = useState<EditorMode>("preview");
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
+  const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
-  const extensions = useMemo(() => [markdown()], []);
+  const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${document.id}` : null;
+  const editorFoldContextRef = useRef<{
+    storageKey: string;
+  } | null>(null);
+  editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
+  const extensions = useMemo(
+    () => [
+      markdown(),
+      EditorView.updateListener.of((update) => {
+        const context = editorFoldContextRef.current;
+
+        if (!context) {
+          return;
+        }
+
+        persistEditorFoldState(update.view, context.storageKey);
+      }),
+    ],
+    [],
+  );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
     return getWikiLinkCompletionOptions(
@@ -84,11 +123,13 @@ export function DocumentEditor({
   useEffect(() => {
     setTitle(document?.title ?? "");
     setContentMarkdown(document?.contentMarkdown ?? "");
+    setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);
 
   function updateMarkdown(value: string, cursorPosition?: number) {
     setContentMarkdown(value);
+    setContentDocumentId(document?.id ?? null);
     setActiveCompletion(
       typeof cursorPosition === "number" ? getActiveWikiLinkCompletion(value, cursorPosition) : null,
     );
@@ -101,6 +142,40 @@ export function DocumentEditor({
     )}`;
     updateMarkdown(nextMarkdown);
   }
+
+  const restoreEditorFolds = useCallback(
+    (view: EditorView) => {
+      if (!document?.id || typeof window === "undefined") {
+        return;
+      }
+
+      const foldTree = buildHeadingFoldTree(contentMarkdown);
+      const storageKey = `munjib:heading-folds:${document.id}`;
+      const foldedKeys = readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys);
+      const effects = foldedKeys.flatMap((key) => {
+        const editorRange = foldTree.sectionByKey.get(key)?.editorRange;
+
+        if (!editorRange) {
+          return [];
+        }
+
+        try {
+          const from = view.state.doc.line(editorRange.fromLine).from;
+          const to = view.state.doc.line(editorRange.toLine).to;
+
+          return from < to ? [foldEffect.of({ from, to })] : [];
+        } catch {
+          return [];
+        }
+      });
+
+      if (effects.length > 0) {
+        view.dispatch({ effects });
+      }
+    },
+    [contentMarkdown, document?.id],
+  );
+  const editorMarkdownReady = contentDocumentId === document?.id;
 
   if (!document) {
     return (
@@ -129,10 +204,6 @@ export function DocumentEditor({
           <ModeButton active={mode === "edit"} onClick={() => setMode("edit")}>
             <Pencil className="h-4 w-4" aria-hidden="true" />
             <span>Edit</span>
-          </ModeButton>
-          <ModeButton active={mode === "split"} onClick={() => setMode("split")}>
-            <Columns2 className="h-4 w-4" aria-hidden="true" />
-            <span>Split</span>
           </ModeButton>
           <ModeButton active={mode === "preview"} onClick={() => setMode("preview")}>
             <Eye className="h-4 w-4" aria-hidden="true" />
@@ -172,50 +243,37 @@ export function DocumentEditor({
           Upload
         </Button>
       </form>
-      <div
-        className={
-          mode === "split"
-            ? "grid grid-cols-2 overflow-hidden rounded-md border border-border bg-white"
-            : "overflow-hidden rounded-md border border-border bg-white"
-        }
-      >
-        {mode !== "preview" ? (
-          <div className="relative min-w-0 border-r border-border">
+      <div className="overflow-hidden rounded-md border border-border bg-white">
+        {mode === "edit" && editorMarkdownReady ? (
+          <div className="relative min-w-0">
             <CodeMirror
               value={contentMarkdown}
               basicSetup={{
-                foldGutter: false,
+                foldGutter: true,
                 highlightActiveLine: false,
                 highlightActiveLineGutter: false,
               }}
               editable={canWrite}
               extensions={extensions}
+              onCreateEditor={restoreEditorFolds}
               onChange={(value, viewUpdate) =>
                 updateMarkdown(value, viewUpdate.state.selection.main.head)
               }
               aria-label="Markdown editor"
             />
-            {canWrite && suggestions.length > 0 ? (
-              <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
-                <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-                  Wiki links
-                </div>
-                {suggestions.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => insertWikiLink(option)}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+            <WikiLinkSuggestions
+              canWrite={canWrite}
+              suggestions={suggestions}
+              onSelect={insertWikiLink}
+            />
           </div>
         ) : null}
-        {mode !== "edit" ? (
-          <MarkdownPreview markdown={contentMarkdown} linkCandidates={linkCandidates} />
+        {mode === "preview" ? (
+          <MarkdownPreview
+            markdown={contentMarkdown}
+            documentId={document.id}
+            linkCandidates={linkCandidates}
+          />
         ) : null}
       </div>
       <div className="flex items-center justify-between">
@@ -227,6 +285,38 @@ export function DocumentEditor({
           Save
         </Button>
       </div>
+    </div>
+  );
+}
+
+function WikiLinkSuggestions({
+  canWrite,
+  suggestions,
+  onSelect,
+}: {
+  canWrite: boolean;
+  suggestions: WikiLinkCompletionOption[];
+  onSelect: (option: WikiLinkCompletionOption) => void;
+}) {
+  if (!canWrite || suggestions.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
+      <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        Wiki links
+      </div>
+      {suggestions.map((option) => (
+        <button
+          key={option.id}
+          type="button"
+          onClick={() => onSelect(option)}
+          className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
+        >
+          {option.label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -258,18 +348,20 @@ function ModeButton({
 
 function MarkdownPreview({
   markdown,
+  documentId,
   linkCandidates,
 }: {
   markdown: string;
+  documentId: string;
   linkCandidates: LinkCandidate[];
 }) {
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
-  const markdownComponents = useMemo(
+  const markdownComponents = useMemo<Components>(
     () => ({
-      a: ({ href, children }: { href?: string; children?: React.ReactNode }) => {
+      a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
         return href?.startsWith("?document=") ? (
           <Link href={href} className={className}>
@@ -284,18 +376,371 @@ function MarkdownPreview({
     }),
     [],
   );
-  const previewMarkdown = useMemo(
-    () => renderPreviewMarkdownWithWikiLinks(stripDocumentFrontmatter(markdown), candidateBySlug),
-    [markdown, candidateBySlug],
+  const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
+  const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
+  const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(strippedMarkdown), [strippedMarkdown]);
+  const sharedDefinitions = useMemo(() => getSharedMarkdownDefinitions(strippedMarkdown), [strippedMarkdown]);
+  const storageKey = `munjib:heading-folds:${documentId}`;
+  const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
+    new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
+  );
+
+  useEffect(() => {
+    setFoldedKeys(new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)));
+  }, [storageKey, foldTree]);
+
+  const toggleSection = useCallback(
+    (key: string) => {
+      setFoldedKeys((current) => {
+        const next = new Set(current);
+
+        if (next.has(key)) {
+          next.delete(key);
+        } else {
+          next.add(key);
+        }
+
+        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
+        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
+
+        return validKeySet;
+      });
+    },
+    [foldTree.headingKeys, storageKey],
   );
 
   return (
     <div className="markdown-preview min-w-0 p-5">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {previewMarkdown || "_Nothing to preview._"}
-      </ReactMarkdown>
+      {foldTree.sections.length > 0 ? (
+        <>
+          {leadingMarkdown.trim().length > 0 ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
+            </ReactMarkdown>
+          ) : null}
+          {foldTree.sections.map((section) => (
+            <MarkdownPreviewSection
+              key={section.key}
+              section={section}
+              foldedKeys={foldedKeys}
+              markdownComponents={markdownComponents}
+              candidateBySlug={candidateBySlug}
+              sharedDefinitions={sharedDefinitions}
+              onToggle={toggleSection}
+            />
+          ))}
+        </>
+      ) : (
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {renderPreviewMarkdownWithWikiLinks(
+            strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
+            candidateBySlug,
+          )}
+        </ReactMarkdown>
+      )}
     </div>
   );
+}
+
+function MarkdownPreviewSection({
+  section,
+  foldedKeys,
+  markdownComponents,
+  candidateBySlug,
+  sharedDefinitions,
+  onToggle,
+}: {
+  section: HeadingFoldSection;
+  foldedKeys: Set<string>;
+  markdownComponents: Components;
+  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>;
+  sharedDefinitions: string;
+  onToggle: (key: string) => void;
+}) {
+  const folded = foldedKeys.has(section.key);
+  const headingLabel = markdownInlineToPlainText(section.title);
+  const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
+  const previewHeadingMarkdown = renderPreviewChunk(headingMarkdown, candidateBySlug, sharedDefinitions);
+  const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
+
+  return (
+    <section className={getPreviewHeadingSectionClassName(section.level)}>
+      <div className="group relative">
+        <button
+          type="button"
+          aria-expanded={!folded}
+          aria-label={`${folded ? "Expand" : "Collapse"} section ${headingLabel}`}
+          onClick={() => onToggle(section.key)}
+          className={
+            folded
+              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-ink focus:outline-none"
+              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:text-ink focus:opacity-100 focus:outline-none group-hover:opacity-100 group-focus-within:opacity-100"
+          }
+        >
+          {folded ? (
+            <ChevronRight className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
+          )}
+        </button>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+          {previewHeadingMarkdown}
+        </ReactMarkdown>
+      </div>
+      {folded ? null : (
+        <>
+          {section.bodyMarkdown.trim().length > 0 ? (
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+              {previewBodyMarkdown}
+            </ReactMarkdown>
+          ) : null}
+          {section.children.map((child) => (
+            <MarkdownPreviewSection
+              key={child.key}
+              section={child}
+              foldedKeys={foldedKeys}
+              markdownComponents={markdownComponents}
+              candidateBySlug={candidateBySlug}
+              sharedDefinitions={sharedDefinitions}
+              onToggle={onToggle}
+            />
+          ))}
+        </>
+      )}
+    </section>
+  );
+}
+
+function getPreviewHeadingSectionClassName(level: number) {
+  if (level <= 1) {
+    return "mt-8 first:mt-0";
+  }
+
+  if (level === 2) {
+    return "mt-6";
+  }
+
+  if (level === 3) {
+    return "mt-4";
+  }
+
+  return "mt-3";
+}
+
+function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {
+  try {
+    return getValidFoldedHeadingKeys(
+      parseHeadingFoldStorageValue(window.localStorage.getItem(storageKey)),
+      validKeys,
+    );
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string>) {
+  try {
+    window.localStorage.setItem(storageKey, createHeadingFoldStorageValue(foldedKeys));
+  } catch {
+    // Folding remains usable in memory when browser storage is unavailable.
+  }
+}
+
+function persistEditorFoldState(view: EditorView, storageKey: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const foldTree = buildHeadingFoldTree(view.state.doc.toString());
+  const foldedKeys = getEditorFoldedHeadingKeys(view, foldTree);
+
+  if (!foldedKeys) {
+    return;
+  }
+
+  writeStoredFoldedHeadingKeys(storageKey, foldedKeys);
+}
+
+function getEditorFoldedHeadingKeys(view: EditorView, foldTree: HeadingFoldTree) {
+  const sectionKeyByEditorRange = new Map<string, string>();
+
+  for (const section of foldTree.sectionByKey.values()) {
+    const editorRange = section.editorRange;
+
+    if (editorRange && editorRange.fromLine <= editorRange.toLine) {
+      const headingLine = editorRange.fromLine - 1;
+
+      sectionKeyByEditorRange.set(
+        createEditorRangeKey(editorRange.fromLine, editorRange.toLine),
+        section.key,
+      );
+
+      if (headingLine >= 1 && headingLine <= editorRange.toLine) {
+        sectionKeyByEditorRange.set(createEditorRangeKey(headingLine, editorRange.toLine), section.key);
+      }
+    }
+  }
+
+  try {
+    const foldedKeys = new Set<string>();
+
+    foldedRanges(view.state).between(0, view.state.doc.length, (from, to) => {
+      try {
+        const fromLine = view.state.doc.lineAt(from).number;
+        const toLine = view.state.doc.lineAt(to).number;
+        const sectionKey = sectionKeyByEditorRange.get(createEditorRangeKey(fromLine, toLine));
+
+        if (sectionKey) {
+          foldedKeys.add(sectionKey);
+        }
+      } catch {
+        // Ignore a range that cannot be mapped back to a document line.
+      }
+    });
+
+    return new Set(getValidFoldedHeadingKeys(foldedKeys, foldTree.headingKeys));
+  } catch {
+    return null;
+  }
+}
+
+function createEditorRangeKey(fromLine: number, toLine: number) {
+  return `${fromLine}:${toLine}`;
+}
+
+function markdownInlineToPlainText(markdown: string) {
+  return markdown
+    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target: string, alias: string | undefined) =>
+      alias ?? target,
+    )
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/[*_~]+/g, "")
+    .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, "$1")
+    .trim();
+}
+
+function getMarkdownBeforeFirstHeading(markdown: string) {
+  let inFence: { marker: "`" | "~"; length: number } | null = null;
+
+  for (const line of tokenizeMarkdownLines(markdown)) {
+    inFence = getNextFenceState(line.content, inFence);
+
+    if (!inFence && /^ {0,3}#{1,6}(?:[ \t]+|$)/.test(line.content)) {
+      return markdown.slice(0, line.startOffset);
+    }
+  }
+
+  return markdown;
+}
+
+function getSharedMarkdownDefinitions(markdown: string) {
+  const definitions: string[] = [];
+  let inFence: { marker: "`" | "~"; length: number } | null = null;
+
+  const lines = tokenizeMarkdownLines(markdown);
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].content;
+
+    if (inFence) {
+      inFence = getNextFenceState(line, inFence);
+      continue;
+    }
+
+    const nextFenceState = getNextFenceState(line, inFence);
+    if (nextFenceState) {
+      inFence = nextFenceState;
+      continue;
+    }
+
+    if (isMarkdownDefinitionLine(line)) {
+      definitions.push(line);
+
+      for (index += 1; index < lines.length; index += 1) {
+        const continuationLine = lines[index].content;
+
+        if (!isMarkdownDefinitionContinuationLine(continuationLine)) {
+          index -= 1;
+          break;
+        }
+
+        definitions.push(continuationLine);
+      }
+    }
+  }
+
+  return definitions.join("\n");
+}
+
+function tokenizeMarkdownLines(markdown: string) {
+  const lines: Array<{ content: string; startOffset: number }> = [];
+  let startOffset = 0;
+
+  for (let index = 0; index <= markdown.length; index += 1) {
+    if (index !== markdown.length && markdown[index] !== "\n") {
+      continue;
+    }
+
+    const hasNewline = index < markdown.length;
+    const rawContent = markdown.slice(startOffset, index);
+
+    if (rawContent.length > 0 || hasNewline || markdown.length === 0) {
+      lines.push({
+        content: rawContent.endsWith("\r") ? rawContent.slice(0, -1) : rawContent,
+        startOffset,
+      });
+    }
+
+    startOffset = index + 1;
+  }
+
+  return lines;
+}
+
+function getNextFenceState(
+  content: string,
+  inFence: { marker: "`" | "~"; length: number } | null,
+) {
+  if (inFence) {
+    const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
+
+    if (!closingFence) {
+      return inFence;
+    }
+
+    const marker = closingFence[1][0] as "`" | "~";
+    const length = closingFence[1].length;
+
+    return inFence.marker === marker && length >= inFence.length ? null : inFence;
+  }
+
+  const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
+
+  return openingFence
+    ? {
+        marker: openingFence[1][0] as "`" | "~",
+        length: openingFence[1].length,
+      }
+    : null;
+}
+
+function renderPreviewChunk(
+  markdown: string,
+  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>,
+  sharedDefinitions: string,
+) {
+  const markdownWithDefinitions = sharedDefinitions ? `${markdown}\n\n${sharedDefinitions}` : markdown;
+
+  return renderPreviewMarkdownWithWikiLinks(markdownWithDefinitions, candidateBySlug);
+}
+
+function isMarkdownDefinitionLine(line: string) {
+  return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*(?:\S.*)?$/.test(line);
+}
+
+function isMarkdownDefinitionContinuationLine(line: string) {
+  return line.trim().length === 0 || /^[ \t]/.test(line);
 }
 
 function DocumentProperties({

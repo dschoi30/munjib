@@ -21,6 +21,12 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     );
   });
 
+  it("preserves heading markdown while converting wiki links", () => {
+    expect(renderPreviewMarkdownWithWikiLinks("# Runbook\nSee [[Welcome]].", candidateBySlug)).toBe(
+      "# Runbook\nSee [Welcome](?document=doc-welcome).",
+    );
+  });
+
   it("uses aliases for link labels while resolving by target title", () => {
     expect(
       renderPreviewMarkdownWithWikiLinks("See [[Engineering Runbook|the runbook]].", candidateBySlug),
