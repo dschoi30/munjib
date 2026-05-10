@@ -55,7 +55,7 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
     contentMarkdown: template.contentMarkdown,
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  return { documentId: document.id };
+  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
 
 export async function createFolderAction(workspaceSlug: string, formData: FormData) {
@@ -68,7 +68,7 @@ export async function createFolderAction(workspaceSlug: string, formData: FormDa
     name: "Untitled folder",
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  return { folderId: folder.id };
+  redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
 }
 
 export async function renameFolderAction(workspaceSlug: string, formData: FormData) {
@@ -76,11 +76,7 @@ export async function renameFolderAction(workspaceSlug: string, formData: FormDa
   const folderId = String(formData.get("folderId"));
   const name = String(formData.get("name") ?? "").trim();
   if (!name) {
-    redirect(
-      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(
-        "FOLDER_NAME_REQUIRED",
-      )}`,
-    );
+    return { folderId, error: "FOLDER_NAME_REQUIRED" };
   }
   const folder = await renameFolder({
     folderId,
@@ -88,7 +84,7 @@ export async function renameFolderAction(workspaceSlug: string, formData: FormDa
     name,
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
+  return { folderId: folder.id };
 }
 
 export async function archiveFolderAction(workspaceSlug: string, formData: FormData) {
@@ -105,11 +101,11 @@ export async function archiveFolderAction(workspaceSlug: string, formData: FormD
       throw error;
     }
 
-    return { error: error.message };
+    return { folderId, error: error.message };
   }
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  return {};
+  return { folderId };
 }
 
 export async function archiveDocumentAction(workspaceSlug: string, formData: FormData) {

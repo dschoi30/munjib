@@ -36,10 +36,10 @@ export function DocumentList({
   folders: FolderListItem[];
   documents: DocumentListItem[];
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<{ documentId: string }>;
-  createFolderAction: (formData: FormData) => Promise<{ folderId: string }>;
-  renameFolderAction: (formData: FormData) => Promise<void>;
-  archiveFolderAction: (formData: FormData) => Promise<{ error?: string }>;
+  createAction: (formData: FormData) => Promise<void>;
+  createFolderAction: (formData: FormData) => Promise<void>;
+  renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
+  archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
   folderError: string;
   selectedFolderId: string | null;
@@ -53,7 +53,6 @@ export function DocumentList({
         <h1 className="text-lg font-semibold">Company Handbook</h1>
       </div>
       <DocumentCreateControls
-        workspaceSlug={workspaceSlug}
         selectedFolderId={selectedFolderId}
         canWrite={canWrite}
         createAction={createAction}
