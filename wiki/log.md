@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-10
-source_count: 35
+source_count: 36
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-10T17:55:00+09:00 - review
+
+- Result: PR #27 review를 반영해 heading folding의 CRLF preview scan, no-heading preview rendering, live editor fold persistence를 보강했다.
+- Coverage: Preview helper는 original offset을 보존하는 CRLF-safe line scan을 사용하고, shared definition scan은 CRLF fenced code block 종료를 인식한다. Heading 없는 preview는 definition을 재첨부하지 않으며, edit mode fold 저장은 stale React state 대신 CodeMirror live document text에서 fold tree를 계산한다. Fold key validation은 stable sorted output을 반환한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #27 review comments, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-10T17:40:00+09:00 - review
 
