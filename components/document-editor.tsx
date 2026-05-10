@@ -482,8 +482,8 @@ function MarkdownPreviewSection({
           onClick={() => onToggle(section.key)}
           className={
             folded
-              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-ink focus:outline-none focus:ring-2 focus:ring-violet-500"
-              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:text-ink focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-violet-500 group-hover:opacity-100 group-focus-within:opacity-100"
+              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-ink focus:outline-none"
+              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:text-ink focus:opacity-100 focus:outline-none group-hover:opacity-100 group-focus-within:opacity-100"
           }
         >
           {folded ? (
