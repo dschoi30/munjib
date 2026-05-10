@@ -16,8 +16,8 @@ const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
 const sectionHeadingClassName =
   "mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500";
-type ArchiveFolderResult = { error?: string };
-type CreateDocumentResult = { documentId: string };
+type RenameFolderResult = { folderId: string; error?: string };
+type ArchiveFolderResult = { folderId: string; error?: string };
 type ArchiveDocumentResult = { documentId: string };
 
 export function DocumentNavigation({
@@ -40,8 +40,8 @@ export function DocumentNavigation({
   selectedFolderId: string | null;
   searchQuery: string;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<CreateDocumentResult>;
-  renameFolderAction: (formData: FormData) => Promise<void>;
+  createAction: (formData: FormData) => Promise<void>;
+  renameFolderAction: (formData: FormData) => Promise<RenameFolderResult>;
   archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
   archiveDocumentAction: (formData: FormData) => Promise<ArchiveDocumentResult>;
   folderError: string;
@@ -177,14 +177,6 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
-  async function createDocumentInFolder(formData: FormData) {
-    const result = await createAction(formData);
-    setOpenMenuId(null);
-    startTransition(() => {
-      router.push(`/workspaces/${workspaceSlug}?document=${result.documentId}`);
-    });
-  }
-
   async function archiveFolderFromMenu(formData: FormData) {
     const result = await archiveFolderAction(formData);
     if (result.error) {
@@ -199,7 +191,28 @@ export function DocumentNavigation({
 
     setOpenMenuId(null);
     startTransition(() => {
-      router.push(`/workspaces/${workspaceSlug}`);
+      if (result.folderId === selectedFolderId) {
+        router.push(`/workspaces/${workspaceSlug}`);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  async function renameFolderFromMenu(formData: FormData) {
+    const result = await renameFolderAction(formData);
+    if (result.error) {
+      toast(folderErrorMessage(result.error), {
+        id: folderErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
+      });
+      return;
+    }
+
+    setRenamingFolderId(null);
+    startTransition(() => {
+      router.refresh();
     });
   }
 
@@ -247,8 +260,8 @@ export function DocumentNavigation({
             expanded={isExpanded}
             selected={item.folder.id === selectedFolderId}
             canWrite={canWrite}
-            createAction={createDocumentInFolder}
-            renameFolderAction={renameFolderAction}
+            createAction={createAction}
+            renameFolderAction={renameFolderFromMenu}
             archiveFolderAction={archiveFolderFromMenu}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
             isRenaming={renamingFolderId === item.folder.id}
