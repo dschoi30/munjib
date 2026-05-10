@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-10
-source_count: 25
+source_count: 26
 tags:
   - munjib
   - workflow
@@ -49,7 +49,7 @@ Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu�
 
 `createDocumentAction()`은 현재 user를 확인한 뒤 `createDocument()`를 호출한다.
 
-`createDocumentAction()`은 `blank`, `runbook`, `policy` template을 지원한다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다.
+`createDocumentAction()`은 `blank`, `runbook`, `policy` template을 지원한다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다. Sidebar top-level create controls call these server actions from a client component and navigate with the returned id instead of relying on a server-action redirect, reducing sidebar remount flicker during creation.
 
 Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다.
 

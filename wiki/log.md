@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-10
-source_count: 37
+source_count: 38
 tags:
   - log
   - munjib
@@ -22,9 +22,9 @@ links:
 ## 2026-05-10T00:00:00+09:00 - review
 
 - Result: Issue #26 folder/document row navigation polish를 보강했다.
-- Coverage: `FOLDER_NOT_EMPTY` user feedback은 shadcn Sonner toast로 유지하되 `folderError` query를 history에서 제거해 반복 깜빡임을 줄였다. Row action menu는 외부 클릭 시 닫히고, document row hover/selected highlight와 sidebar section/row font-size 조정을 추가했다.
+- Coverage: `FOLDER_NOT_EMPTY` user feedback은 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 표시한다. Top-level document/folder creation도 returned id와 client navigation을 사용해 sidebar remount flicker를 줄였다. Row action menu는 외부 클릭 시 닫히고, document row hover/selected highlight와 sidebar section/row font-size 조정을 유지한다.
 - Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
-- Source evidence: 사용자 피드백, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
+- Source evidence: 사용자 피드백, `components/document-create-controls.tsx`, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
 
 ## 2026-05-06T00:43:00+09:00 - implementation
 
