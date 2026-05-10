@@ -15,9 +15,12 @@ import { countFolderChildren, filterReadableDocuments } from "@/lib/workspace-tr
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createFolderAction,
+  archiveDocumentAction,
+  archiveFolderAction,
   createDocumentAction,
   createCommentAction,
   createDocumentFromBrokenLinkAction,
+  renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
   uploadDocumentAttachmentAction,
@@ -28,11 +31,16 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string; folder?: string; q?: string }>;
+  searchParams: Promise<{ document?: string; folder?: string; q?: string; folderError?: string }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
-  const { document: selectedDocumentId, folder: selectedFolderIdParam, q } = await searchParams;
+  const {
+    document: selectedDocumentId,
+    folder: selectedFolderIdParam,
+    q,
+    folderError,
+  } = await searchParams;
   const searchQuery = q?.trim() ?? "";
 
   const workspace = await prisma.workspace.findFirst({
@@ -169,6 +177,9 @@ export default async function WorkspacePage({
     : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
   const createFolder = createFolderAction.bind(null, workspaceSlug);
+  const renameFolder = renameFolderAction.bind(null, workspaceSlug);
+  const archiveFolder = archiveFolderAction.bind(null, workspaceSlug);
+  const archiveDocument = archiveDocumentAction.bind(null, workspaceSlug);
   const updateAction = updateDocumentAction.bind(null, workspaceSlug);
   const createFromBrokenLinkAction = createDocumentFromBrokenLinkAction.bind(
     null,
@@ -195,11 +206,21 @@ export default async function WorkspacePage({
             title: document.title,
             path: document.path,
             contentText: document.contentText,
+            canWrite: canWriteDocument({
+              workspaceRole: role,
+              explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
+              userPermission: userPermissionByDocumentId.get(document.id),
+            }),
           }))}
           canWrite={canWrite}
           createAction={createAction}
           createFolderAction={createFolder}
+          renameFolderAction={renameFolder}
+          archiveFolderAction={archiveFolder}
+          archiveDocumentAction={archiveDocument}
+          folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
+          selectedDocumentId={selectedDocument?.id ?? null}
           searchQuery={searchQuery}
         />
       }

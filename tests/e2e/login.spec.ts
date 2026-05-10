@@ -9,6 +9,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
       consoleErrors.push(message.text());
     }
   });
+  page.on("dialog", (dialog) => dialog.accept());
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Development login" })).toBeVisible();
@@ -20,12 +21,30 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Company Handbook" })).toBeVisible();
   const documentList = page.getByRole("navigation");
   await expect(documentList.getByRole("link", { name: "Welcome" })).toBeVisible();
+  await documentList.getByRole("link", { name: "Welcome" }).first().click();
+  await expect(page).toHaveURL(/document=/);
+  await page.waitForLoadState("networkidle");
+  await expect(page.locator("[name='title']")).toHaveValue("Welcome");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
   await expect(page.locator(".cm-content").first()).toBeVisible();
   await page.getByRole("button", { name: /Quick switcher/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Add Welcome to favorites" }).first().click();
+  await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
+  await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
+  await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
   await expect(page.getByText("Favorites")).toBeVisible();
+  await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
+  await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
+  await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
+  await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toBeVisible();
+  await page.getByRole("heading", { name: "Company Handbook" }).click();
+  await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toHaveCount(0);
 
   await page.getByLabel("Search documents").fill("Backlinked");
   await page.keyboard.press("Enter");
@@ -34,14 +53,23 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
   await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
+  await expect(
+    documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
+  ).toHaveClass(/bg-white/);
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
   await page.locator("[name='title']").fill("Draft title that was not saved");
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   const editor = page.locator(".cm-content").first();
+  await expect(editor).toBeVisible();
   await editor.fill("# Welcome\n\nSee [[Eng");
   await page.getByRole("button", { name: "Engineering Runbook", exact: true }).click();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("# Welcome\n\nSee [[Engineering Runbook]]");
@@ -75,10 +103,99 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue("");
   await page.getByRole("button", { name: "New folder" }).click();
   await expect(page.getByRole("heading", { name: "Untitled folder" })).toBeVisible();
-  await expect(page.getByText(/^\/untitled-folder(?:-\d+)?$/)).toBeVisible();
-  await page.getByRole("button", { name: "New document" }).click();
+  const folderPathLocator = page.getByText(/^\/untitled-folder(?:-\d+)?$/);
+  await expect(folderPathLocator).toBeVisible();
+  const folderPath = await folderPathLocator.textContent();
+  expect(folderPath).toBeTruthy();
+  const folderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
+  expect(folderName).toBeTruthy();
+  const folderLabel = folderName ?? "Untitled folder";
+  const folderDisplayLabel = `${folderLabel} ${folderPath ?? ""}`;
+  const folderAction = documentList
+    .getByRole("button", { name: `Open actions for ${folderDisplayLabel}` })
+    .last();
+  const folderRow = folderAction.locator("..").locator("..");
+  await folderAction.click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  const favoritesSection = page.locator("section").filter({ has: page.getByText("Favorites", { exact: true }) });
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
+  await favoritesSection
+    .getByRole("button", { name: `Open actions for ${folderDisplayLabel}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Remove from favorites" }).click();
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toHaveCount(0);
+  await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
+
+  await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+  await page.getByLabel(`Rename ${folderDisplayLabel}`).fill("Product Notes");
+  await page.getByRole("button", { name: "Rename" }).click();
+  await expect(page.getByRole("heading", { name: "Product Notes" })).toBeVisible();
+  const productNotesPathLocator = page.getByText(/^\/product-notes(?:-\d+)?$/).first();
+  await expect(productNotesPathLocator).toBeVisible();
+  const productNotesPath = await productNotesPathLocator.textContent();
+  expect(productNotesPath).toBeTruthy();
+  const productNotesDisplayLabel = `Product Notes ${productNotesPath ?? ""}`;
+  const productNotesAction = documentList
+    .getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` })
+    .last();
+  const productNotesRow = productNotesAction.locator("..").locator("..");
+
+  await page.getByRole("button", { name: "New folder" }).click();
+  await expect(page.getByRole("heading", { name: /^Untitled folder/ })).toBeVisible();
+  const emptyFolderPathLocator = page
+    .getByText(/^\/product-notes(?:-\d+)?\/untitled-folder(?:-\d+)?$/)
+    .first();
+  await expect(emptyFolderPathLocator).toBeVisible();
+  const emptyFolderPath = await emptyFolderPathLocator.textContent();
+  expect(emptyFolderPath).toBeTruthy();
+  const emptyFolderName = await page.getByRole("heading", { name: /^Untitled folder/ }).textContent();
+  const emptyFolderDisplayLabel = `${emptyFolderName ?? "Untitled folder"} ${emptyFolderPath ?? ""}`;
+  const emptyFolderAction = documentList
+    .getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` })
+    .last();
+  await emptyFolderAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(
+    documentList.getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` }),
+  ).toHaveCount(0);
+
+  await productNotesRow.getByRole("button", { name: `New document in ${productNotesDisplayLabel}` }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
-  await page.getByRole("button", { name: "Edit" }).click();
+  const productNotesDocumentId = new URL(page.url()).searchParams.get("document");
+  expect(productNotesDocumentId).toBeTruthy();
+  await productNotesRow.getByRole("button", { name: "Product Notes", exact: true }).click();
+
+  await productNotesAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  const folderTrashToast = page.getByText("Empty this folder before moving it to trash.", {
+    exact: true,
+  });
+  await expect(folderTrashToast).toBeVisible();
+  await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
+  await expect(page).not.toHaveURL(/folderError=/);
+  const productNotesDocumentLink = page.locator(
+    `a[href*="document=${productNotesDocumentId}"]`,
+  );
+  const productNotesDocumentRow = productNotesDocumentLink.locator("..");
+  const productNotesDocumentAction = productNotesDocumentRow.getByRole("button", {
+    name: /^Open actions for Untitled · \/product-notes(?:-\d+)?\/untitled(?:-\d+)?$/,
+  });
+  await productNotesDocumentAction.click();
+  await productNotesDocumentRow.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(productNotesDocumentLink).toHaveCount(0);
+  await productNotesAction.click();
+  await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await expect(
+    documentList.getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` }),
+  ).toHaveCount(0);
+  const childDocumentUrl = page.url();
+  await page.getByRole("button", { name: "New document", exact: true }).click();
+  await expect(page).not.toHaveURL(childDocumentUrl);
+  await expect(page.locator("[name='title']")).toHaveValue("Untitled");
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
   await page.keyboard.press("Control+K");
   await page.getByLabel("Quick switcher search").fill("Engineering");

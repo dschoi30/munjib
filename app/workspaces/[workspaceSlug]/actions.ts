@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { uploadDocumentAttachment } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
-import { createFolder } from "@/lib/folders/service";
+import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import {
   archiveDocument,
   createDocument,
@@ -53,6 +54,7 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
     title: template.title,
     contentMarkdown: template.contentMarkdown,
   });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
 
@@ -69,12 +71,52 @@ export async function createFolderAction(workspaceSlug: string, formData: FormDa
   redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
 }
 
-export async function archiveDocumentAction(formData: FormData) {
+export async function renameFolderAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
+  const folderId = String(formData.get("folderId"));
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { folderId, error: "FOLDER_NAME_REQUIRED" };
+  }
+  const folder = await renameFolder({
+    folderId,
+    actorId: user.id,
+    name,
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { folderId: folder.id };
+}
+
+export async function archiveFolderAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const folderId = String(formData.get("folderId"));
+
+  try {
+    await archiveFolder({
+      folderId,
+      actorId: user.id,
+    });
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY) {
+      throw error;
+    }
+
+    return { folderId, error: error.message };
+  }
+
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { folderId };
+}
+
+export async function archiveDocumentAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const documentId = String(formData.get("documentId"));
   await archiveDocument({
     actorId: user.id,
-    documentId: String(formData.get("documentId")),
+    documentId,
   });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { documentId };
 }
 
 export async function createDocumentFromBrokenLinkAction(

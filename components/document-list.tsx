@@ -1,6 +1,5 @@
 import { DocumentNavigation } from "@/components/document-navigation";
-import { Button } from "@/components/ui/button";
-import { FilePlus2, FolderPlus } from "lucide-react";
+import { DocumentCreateControls } from "@/components/document-create-controls";
 
 export type DocumentListItem = {
   id: string;
@@ -8,6 +7,7 @@ export type DocumentListItem = {
   title: string;
   path: string;
   contentText: string;
+  canWrite: boolean;
 };
 
 export type FolderListItem = {
@@ -24,7 +24,12 @@ export function DocumentList({
   canWrite,
   createAction,
   createFolderAction,
+  renameFolderAction,
+  archiveFolderAction,
+  archiveDocumentAction,
+  folderError,
   selectedFolderId,
+  selectedDocumentId,
   searchQuery,
 }: {
   workspaceSlug: string;
@@ -33,7 +38,12 @@ export function DocumentList({
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
   createFolderAction: (formData: FormData) => Promise<void>;
+  renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
+  archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
+  archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
+  folderError: string;
   selectedFolderId: string | null;
+  selectedDocumentId: string | null;
   searchQuery: string;
 }) {
   return (
@@ -42,36 +52,12 @@ export function DocumentList({
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Workspace</p>
         <h1 className="text-lg font-semibold">Company Handbook</h1>
       </div>
-      <div className="mb-4 space-y-2">
-        <form action={createAction} className="space-y-2">
-          <input type="hidden" name="folderId" value={selectedFolderId ?? ""} />
-          <select
-            name="template"
-            disabled={!canWrite}
-            className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-ink"
-            defaultValue="blank"
-          >
-            <option value="blank">Blank document</option>
-            <option value="runbook">Runbook template</option>
-            <option value="policy">Policy template</option>
-          </select>
-          <Button type="submit" disabled={!canWrite} className="w-full">
-            <FilePlus2 className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            New document
-          </Button>
-        </form>
-        <form action={createFolderAction}>
-          <input type="hidden" name="parentFolderId" value={selectedFolderId ?? ""} />
-          <Button
-            type="submit"
-            disabled={!canWrite}
-            className="w-full bg-white text-ink ring-1 ring-border hover:bg-muted"
-          >
-            <FolderPlus className="mr-1.5 h-4 w-4" aria-hidden="true" />
-            New folder
-          </Button>
-        </form>
-      </div>
+      <DocumentCreateControls
+        selectedFolderId={selectedFolderId}
+        canWrite={canWrite}
+        createAction={createAction}
+        createFolderAction={createFolderAction}
+      />
       <form action={`/workspaces/${workspaceSlug}`} className="mb-4">
         <label className="sr-only" htmlFor="document-search">
           Search documents
@@ -86,7 +72,7 @@ export function DocumentList({
         />
       </form>
       {searchQuery ? (
-        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
           Search results
         </p>
       ) : null}
@@ -96,6 +82,13 @@ export function DocumentList({
         documents={documents}
         selectedFolderId={selectedFolderId}
         searchQuery={searchQuery}
+        canWrite={canWrite}
+        createAction={createAction}
+        renameFolderAction={renameFolderAction}
+        archiveFolderAction={archiveFolderAction}
+        archiveDocumentAction={archiveDocumentAction}
+        folderError={folderError}
+        selectedDocumentId={selectedDocumentId}
       />
     </div>
   );
