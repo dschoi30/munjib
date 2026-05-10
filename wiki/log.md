@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-10
-source_count: 36
+source_count: 48
 tags:
   - log
   - munjib
@@ -35,6 +35,13 @@ links:
 - Source evidence: 사용자 요청, `components/document-editor.tsx`, `lib/markdown/folding.ts`, `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`.
 - Verification: `pnpm exec vitest run tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
+## 2026-05-10T00:00:00+09:00 - review
+
+- Result: Issue #26 folder/document row navigation polish를 보강했다.
+- Coverage: `FOLDER_NOT_EMPTY` user feedback은 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 표시한다. PR review에 따라 favorite folder row menu, folder trash confirmation, write-permitted document trash action, row-level document trash conditional navigation, folder rename/archive context preservation, create action server redirect preservation을 반영했다. Row action menu는 외부 클릭 시 닫히고, document row hover/selected highlight와 sidebar section/row font-size 조정을 유지한다.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 피드백, `components/document-create-controls.tsx`, `components/ui/sonner.tsx`, `app/layout.tsx`, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `package.json`, `tests/e2e/login.spec.ts`.
+
 ## 2026-05-08T01:00:00+09:00 - review
 
 - Result: Preview heading chevron이 heading content를 밀어내지 않도록 absolute overlay 배치로 조정했다.
@@ -58,6 +65,28 @@ links:
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: final review blockers, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`, GitHub issue #25.
 - Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-06T00:43:00+09:00 - implementation
+
+- Result: Issue #26 folder row hover actions menu를 구현했다.
+- Coverage: folder row hover/focus highlight, path-qualified action labels, `...` menu, row-level `+` document creation, inline folder rename, empty folder trash, non-empty folder trash guard feedback, folder favorites, document favorite menu migration, always-visible star icon removal.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #26, `components/document-navigation.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm run test:e2e`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-05T23:58:00+09:00 - plan
+
+- Result: Issue #26 folder row hover actions menu implementation plan을 추가했다.
+- Coverage: folder mutation actions, sidebar action prop threading, document/folder row menus, folder favorite/error UI, Playwright smoke, wiki maintenance 순서.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-05-folder-row-hover-actions-menu.md`.
+
+## 2026-05-05T23:55:00+09:00 - design
+
+- Result: Issue #26 folder row hover actions menu 설계를 추가하고 Notion-style 참고 이미지 `wiki/designs/notion1.png`를 design evidence로 등록했다.
+- Coverage: folder row hover highlight, `...` menu, row-level `+` child document creation, folder rename/archive/favorite actions, existing star icon removal and document favorite menu migration.
+- Pages: [[designs/index|UI Design Excalidraw Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #26, `docs/superpowers/specs/2026-05-05-folder-row-hover-actions-menu-design.md`, `wiki/designs/notion1.png`.
 
 ## 2026-05-05T23:50:00+09:00 - implementation
 
@@ -83,14 +112,6 @@ links:
 - Source evidence: Issue #25 설계 커밋을 `issue-23-centralize-service-error-codes`에서 `issue-25-markdown-heading-folding`으로 분리한 작업.
 - Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
-## 2026-05-05T18:20:00+09:00 - design
-
-- Result: Issue #25 Markdown heading folding 설계를 기록했다.
-- Coverage: Obsidian-style heading hierarchy folding, Preview chevron hover/focus behavior, Edit mode CodeMirror heading folding, 문서별 `localStorage` fold state, split mode 제거 계획.
-- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #25, `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`.
-- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
-
 ## 2026-05-05T23:10:00+09:00 - review
 
 - Result: PR #24 리뷰를 반영해 document service에 남아 있던 document 관련 error code literal을 `SERVICE_ERROR_CODES`에 추가했다.
@@ -106,6 +127,14 @@ links:
 - Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
 - Source evidence: PR #22 review comments, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/preview.test.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/reconcile.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-05T18:20:00+09:00 - design
+
+- Result: Issue #25 Markdown heading folding 설계를 기록했다.
+- Coverage: Obsidian-style heading hierarchy folding, Preview chevron hover/focus behavior, Edit mode CodeMirror heading folding, 문서별 `localStorage` fold state, split mode 제거 계획.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #25, `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-05T15:25:00+09:00 - review
 

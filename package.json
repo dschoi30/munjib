@@ -10,6 +10,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:e2e": "pnpm run db:seed && playwright test",
+    "test:e2e:ui": "pnpm run db:seed && playwright test --ui",
     "test:watch": "vitest",
     "wiki:find": "tsx scripts/wiki/find.ts",
     "wiki:log": "tsx scripts/wiki/log.ts",
@@ -40,6 +41,7 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.5",
     "yaml": "^2.8.4"
   },

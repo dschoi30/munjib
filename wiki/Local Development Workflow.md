@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 8
+updated: 2026-05-11
+source_count: 9
 tags:
   - munjib
   - workflow
@@ -31,6 +31,7 @@ pnpm run dev
 pnpm run build
 pnpm test
 pnpm run test:e2e
+pnpm run test:e2e:ui
 ```
 
 DB 관련 명령:
@@ -66,7 +67,7 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 
 ## Seed와 로그인
 
-`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다.
+`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
 
 ## Feature start
 
