@@ -54,7 +54,8 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
     title: template.title,
     contentMarkdown: template.contentMarkdown,
   });
-  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { documentId: document.id };
 }
 
 export async function createFolderAction(workspaceSlug: string, formData: FormData) {
@@ -67,7 +68,7 @@ export async function createFolderAction(workspaceSlug: string, formData: FormDa
     name: "Untitled folder",
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
+  return { folderId: folder.id };
 }
 
 export async function renameFolderAction(workspaceSlug: string, formData: FormData) {
@@ -104,16 +105,11 @@ export async function archiveFolderAction(workspaceSlug: string, formData: FormD
       throw error;
     }
 
-    revalidatePath(`/workspaces/${workspaceSlug}`);
-    redirect(
-      `/workspaces/${workspaceSlug}?folder=${folderId}&folderError=${encodeURIComponent(
-        error.message,
-      )}`,
-    );
+    return { error: error.message };
   }
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}`);
+  return {};
 }
 
 export async function archiveDocumentAction(workspaceSlug: string, formData: FormData) {

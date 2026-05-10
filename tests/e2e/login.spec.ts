@@ -152,7 +152,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(folderTrashToast).toBeVisible();
   await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
   await expect(page).not.toHaveURL(/folderError=/);
-  const productNotesDocumentLink = documentList.locator(
+  const productNotesDocumentLink = page.locator(
     `a[href*="document=${productNotesDocumentId}"]`,
   );
   const productNotesDocumentRow = productNotesDocumentLink.locator("..");

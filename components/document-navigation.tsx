@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
 
@@ -15,6 +16,8 @@ const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
 const sectionHeadingClassName =
   "mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500";
+type ArchiveFolderResult = { error?: string };
+type CreateDocumentResult = { documentId: string };
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -36,13 +39,15 @@ export function DocumentNavigation({
   selectedFolderId: string | null;
   searchQuery: string;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
+  createAction: (formData: FormData) => Promise<CreateDocumentResult>;
   renameFolderAction: (formData: FormData) => Promise<void>;
-  archiveFolderAction: (formData: FormData) => Promise<void>;
+  archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
   folderError: string;
   selectedDocumentId: string | null;
 }) {
+  const router = useRouter();
+  const [, startTransition] = useTransition();
   const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
   const [switcherQuery, setSwitcherQuery] = useState("");
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
@@ -171,6 +176,32 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
+  async function createDocumentInFolder(formData: FormData) {
+    const result = await createAction(formData);
+    setOpenMenuId(null);
+    startTransition(() => {
+      router.push(`/workspaces/${workspaceSlug}?document=${result.documentId}`);
+    });
+  }
+
+  async function archiveFolderFromMenu(formData: FormData) {
+    const result = await archiveFolderAction(formData);
+    if (result.error) {
+      setOpenMenuId(null);
+      toast(folderErrorMessage(result.error), {
+        id: folderErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
+      });
+      return;
+    }
+
+    setOpenMenuId(null);
+    startTransition(() => {
+      router.push(`/workspaces/${workspaceSlug}`);
+    });
+  }
+
   function renderTreeItems(parentFolderId: string | null) {
     const items = buildTreeItems(folders, documents, parentFolderId);
 
@@ -203,9 +234,9 @@ export function DocumentNavigation({
             expanded={isExpanded}
             selected={item.folder.id === selectedFolderId}
             canWrite={canWrite}
-            createAction={createAction}
+            createAction={createDocumentInFolder}
             renameFolderAction={renameFolderAction}
-            archiveFolderAction={archiveFolderAction}
+            archiveFolderAction={archiveFolderFromMenu}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
             isRenaming={renamingFolderId === item.folder.id}
             openMenuId={openMenuId}
