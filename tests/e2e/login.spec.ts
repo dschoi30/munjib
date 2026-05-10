@@ -9,6 +9,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
       consoleErrors.push(message.text());
     }
   });
+  page.on("dialog", (dialog) => dialog.accept());
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Development login" })).toBeVisible();
@@ -102,6 +103,14 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await folderAction.click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
   const favoritesSection = page.locator("section").filter({ has: page.getByText("Favorites", { exact: true }) });
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
+  await favoritesSection
+    .getByRole("button", { name: `Open actions for ${folderDisplayLabel}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Remove from favorites" }).click();
+  await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toHaveCount(0);
+  await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
+  await page.getByRole("menuitem", { name: "Add to favorites" }).click();
   await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
 
   await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
