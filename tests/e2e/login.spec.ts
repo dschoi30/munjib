@@ -31,6 +31,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByText("Favorites")).toBeVisible();
   await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
   await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
+  await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
+  await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toBeVisible();
+  await page.getByRole("heading", { name: "Company Handbook" }).click();
+  await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toHaveCount(0);
 
   await page.getByLabel("Search documents").fill("Backlinked");
   await page.keyboard.press("Enter");
@@ -39,6 +43,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
   await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
+  await expect(
+    documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
+  ).toHaveClass(/bg-white/);
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
@@ -144,6 +151,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   });
   await expect(folderTrashToast).toBeVisible();
   await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
+  await expect(page).not.toHaveURL(/folderError=/);
   const productNotesDocumentLink = documentList.locator(
     `a[href*="document=${productNotesDocumentId}"]`,
   );
@@ -163,7 +171,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "New document", exact: true }).click();
   await expect(page).not.toHaveURL(childDocumentUrl);
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
-  await page.getByRole("button", { name: "Edit" }).click();
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
   await page.keyboard.press("Control+K");
   await page.getByLabel("Quick switcher search").fill("Engineering");

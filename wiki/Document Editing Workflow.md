@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-08
-source_count: 24
+updated: 2026-05-10
+source_count: 25
 tags:
   - munjib
   - workflow
@@ -41,9 +41,9 @@ links:
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
-Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Quick switcher는 document title과 path를 함께 표시해 folder별 duplicate title을 구분한다.
+Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Quick switcher는 document title과 path를 함께 표시해 folder별 duplicate title을 구분한다. Document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다.
 
-Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공한다.
+Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
 
 ## 생성 흐름
 
