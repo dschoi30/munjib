@@ -84,6 +84,14 @@ Body`);
     expect(result.sections[1]?.bodyMarkdown).toBe("Body");
   });
 
+  it("recognizes headings after CRLF fenced code blocks", () => {
+    const result = buildHeadingFoldTree("```ts\r\nconst value = 1;\r\n```\r\n# Real\r\nBody");
+
+    expect(result.sections).toHaveLength(1);
+    expect(result.sections[0]?.title).toBe("Real");
+    expect(result.sections[0]?.bodyMarkdown).toBe("Body");
+  });
+
   it("returns editor line ranges for heading bodies", () => {
     const result = buildHeadingFoldTree(`# A
 Intro

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-07",
+  "updated": "2026-05-10",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -65,7 +65,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 27,
+      "source_count": 28,
       "searchPriority": 50
     },
     {
@@ -180,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 34,
+      "source_count": 35,
       "searchPriority": 1
     },
     {
