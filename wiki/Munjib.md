@@ -60,7 +60,7 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/preview mode로 단순화되었다. Preview mode는 heading 왼쪽 chevron으로 section을 접고 펼치며, Edit mode는 CodeMirror heading fold gutter와 저장된 fold state 복원/저장을 제공한다. 접힘 상태는 문서별 `munjib:heading-folds:<documentId>` `localStorage` key에 저장되어 preview와 edit mode가 공유한다.
 
-Issue #29는 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 workspace center 상단에 문서 탭 strip과 navigation toolbar를 추가하는 설계다. 아직 구현 전 단계이며, 계획된 방향은 기존 `?document=<id>` 라우팅을 active document source of truth로 유지하고 열린 탭 목록만 workspace-scoped `localStorage` UI state로 관리하는 것이다. Toolbar는 browser history 기반 back/forward와 현재 document 또는 folder path 표시를 제공한다.
+Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. Toolbar는 browser history 기반 back/forward와 현재 document 또는 folder path 표시를 제공한다.
 
 ## 빠른 진입점
 

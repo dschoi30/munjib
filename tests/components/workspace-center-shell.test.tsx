@@ -102,6 +102,30 @@ describe("WorkspaceCenterShell", () => {
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 
+  it("closes an inactive tab without leaving the selected folder view", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([documents[0], documents[1]]),
+    );
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={{ path: "/operations" }}
+      >
+        <div>Folder content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close Welcome" }));
+
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.getByText("operations")).toBeTruthy();
+    expect(screen.getByText("Folder content")).toBeTruthy();
+  });
+
   it("uses browser history for toolbar navigation", () => {
     renderShell(documents[0]);
 
