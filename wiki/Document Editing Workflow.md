@@ -110,13 +110,13 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
 
-## Planned document tabs and navigation toolbar
+## Document tabs and navigation toolbar
 
-Issue #29 설계는 workspace center 상단에 Obsidian 참고 이미지와 유사한 문서 탭 strip과 navigation toolbar를 추가한다. 이 기능은 아직 구현 전 계획이다.
+Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, quick switcher link, preview wikilink는 계속 `?document=<id>`로 route한다.
 
-계획된 active document source of truth는 기존 `?document=<id>` query다. 탭 목록은 DB나 markdown에 저장하지 않고 workspace-scoped browser `localStorage` key로 관리한다. Sidebar, quick switcher, preview wikilink 등 기존 문서 이동 경로로 selected document가 바뀌면 클라이언트 탭 상태에 해당 document id/title/path를 upsert한다. 같은 문서를 다시 열면 중복 탭을 만들지 않고 active 탭만 전환한다.
+Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. Selected document가 바뀌면 readable document list에서 stale metadata를 refresh하고 id/title/path를 open tabs에 upsert한다. 같은 문서를 다시 열면 중복 탭을 만들지 않고 active tab만 전환한다.
 
-탭 닫기 규칙은 active 탭이 아니면 목록에서만 제거하고, active 탭이면 오른쪽 탭, 왼쪽 탭, workspace root 순서로 다음 target을 고르는 것이다. Toolbar의 back/forward는 1차 구현에서 browser history를 사용하고, 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다. 여러 editor instance를 동시에 mount하거나 문서별 unsaved edit buffer를 보존하는 동작은 Issue #29 첫 구현 범위가 아니다.
+Tab close는 active tab이 아니면 목록에서만 제거한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 browser history를 사용하고, 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
 
 ## Heading folding
 

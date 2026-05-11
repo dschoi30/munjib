@@ -89,7 +89,7 @@ Wiki link reconciliation은 path-qualified target을 document `path`로 우선 r
 
 Workspace 화면은 active folder와 readable active document를 함께 읽어 경로 기준 tree row로 표시한다. Sidebar의 folder row는 document처럼 editor target을 바꾸는 link가 아니라 accordion toggle button이다. Folder row를 열고 닫아도 현재 editor document는 유지된다.
 
-Issue #29의 planned navigation toolbar는 이 path model을 center 상단에도 노출한다. Document가 선택된 경우 toolbar path는 `Document.path`를 사용하고, Folder detail view에서는 `Folder.path`를 사용한다. 이 표시는 사용자가 folder별 duplicate title을 탭 전환 중에도 구분하도록 돕는 UI state이며, folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
+Issue #29 구현은 path model을 center navigation toolbar에 노출한다. Document view는 `Document.path`, folder detail view는 `Folder.path`, workspace root는 `/`를 표시한다. 이 toolbar path는 display-only UI이며, folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
 
 Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chevron icon을 사용한다. 펼쳐진 folder의 하위 row group은 chevron 아래로 이어지는 왼쪽 세로선을 표시해 folder/document 관계를 시각적으로 묶는다.
 
