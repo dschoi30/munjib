@@ -60,9 +60,23 @@ export function reconcileDocumentTabs({
   selectedDocument,
 }: ReconcileDocumentTabsInput): DocumentTab[] {
   const readableById = new Map(readableDocuments.map((document) => [document.id, document]));
-  const reconciled = storedTabs
-    .map((tab) => readableById.get(tab.id))
-    .filter((tab): tab is DocumentTab => Boolean(tab));
+  const reconciled: DocumentTab[] = [];
+  const seenTabIds = new Set<string>();
+
+  for (const storedTab of storedTabs) {
+    if (seenTabIds.has(storedTab.id)) {
+      continue;
+    }
+
+    const readableDocument = readableById.get(storedTab.id);
+
+    if (!readableDocument) {
+      continue;
+    }
+
+    seenTabIds.add(storedTab.id);
+    reconciled.push(readableDocument);
+  }
 
   if (!selectedDocument || !readableById.has(selectedDocument.id)) {
     return reconciled;
