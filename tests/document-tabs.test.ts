@@ -23,6 +23,12 @@ describe("parseStoredDocumentTabs", () => {
     );
   });
 
+  it("returns an empty list for non-array JSON", () => {
+    expect(parseStoredDocumentTabs(JSON.stringify({ id: "doc-1", title: "Welcome", path: "/" }))).toEqual(
+      [],
+    );
+  });
+
   it("keeps only valid tab records", () => {
     expect(
       parseStoredDocumentTabs(
@@ -61,6 +67,23 @@ describe("reconcileDocumentTabs", () => {
     });
 
     expect(result).toEqual([{ id: "doc-1", title: "Welcome", path: "/welcome" }]);
+  });
+
+  it("dedupes stored tabs and refreshes metadata from readable documents", () => {
+    const result = reconcileDocumentTabs({
+      storedTabs: [
+        { id: "doc-1", title: "Old title", path: "/old" },
+        { id: "doc-1", title: "Older title", path: "/older" },
+        { id: "doc-2", title: "Stale title", path: "/stale" },
+      ],
+      readableDocuments: readable,
+      selectedDocument: null,
+    });
+
+    expect(result).toEqual([
+      { id: "doc-1", title: "Welcome", path: "/welcome" },
+      { id: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+    ]);
   });
 
   it("appends a newly selected document to existing tabs", () => {
