@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-10
-source_count: 48
+updated: 2026-05-11
+source_count: 49
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-11T00:00:00+09:00 - design
+
+- Result: Issue #29 document tabs and navigation toolbar 설계를 추가했다.
+- Coverage: Obsidian 참고 이미지 `wiki/designs/obsidian1.png` 기준의 상단 문서 탭 strip, 탭 하단 browser history 기반 back/forward toolbar, 현재 document/folder path 표시, workspace-scoped `localStorage` 탭 상태, 기존 `?document=<id>` active routing 유지, multi-editor unsaved buffer 보존 제외 범위를 정리했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #29, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `wiki/designs/obsidian1.png`.
 
 ## 2026-05-10T17:55:00+09:00 - review
 
