@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-11
-source_count: 49
+source_count: 50
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-11T00:15:00+09:00 - plan
+
+- Result: Issue #29 document tabs and navigation toolbar implementation plan을 추가했다.
+- Coverage: pure tab state model, workspace center chrome components, App Router page wiring, Playwright smoke, browser visual check, wiki maintenance 순서.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-11-document-tabs-navigation-toolbar.md`.
 
 ## 2026-05-11T00:00:00+09:00 - design
 
