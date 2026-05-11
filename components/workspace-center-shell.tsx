@@ -38,7 +38,10 @@ export function WorkspaceCenterShell({
   }
 
   function handleClose(documentId: string) {
-    openDocument(closeTab(documentId));
+    const nextDocumentId = closeTab(documentId);
+    if (documentId === activeDocumentId) {
+      openDocument(nextDocumentId);
+    }
   }
 
   return (
