@@ -98,6 +98,14 @@ export function closeDocumentTab({
   activeDocumentId,
 }: CloseDocumentTabInput): { tabs: DocumentTab[]; nextDocumentId: string | null } {
   const closedIndex = tabs.findIndex((tab) => tab.id === closedTabId);
+
+  if (closedIndex < 0) {
+    return {
+      tabs,
+      nextDocumentId: activeDocumentId,
+    };
+  }
+
   const nextTabs = tabs.filter((tab) => tab.id !== closedTabId);
 
   if (closedTabId !== activeDocumentId) {
