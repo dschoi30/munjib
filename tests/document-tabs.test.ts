@@ -111,6 +111,19 @@ describe("closeDocumentTab", () => {
     });
   });
 
+  it("keeps tabs and active target unchanged when the closed tab is missing", () => {
+    expect(
+      closeDocumentTab({
+        tabs: readable,
+        closedTabId: "missing",
+        activeDocumentId: "missing",
+      }),
+    ).toEqual({
+      tabs: readable,
+      nextDocumentId: "missing",
+    });
+  });
+
   it("selects the right tab, then left tab, then root when closing the active tab", () => {
     expect(
       closeDocumentTab({
