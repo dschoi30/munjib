@@ -64,7 +64,7 @@ links:
 ## 상태판
 
 - 최신 구현 현황: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]]
-- 현재 편집 경험: Issue #25 heading folding 구현과 edit/preview fold state 동기화는 [[Document Editing Workflow]]와 [[Project PRD]]에 기록되어 있다. Issue #29 문서 탭과 navigation toolbar는 아직 설계 단계이며, 기존 `?document=<id>` 라우팅과 `Document.path` 기반 path 표시를 유지하는 방향이다.
+- 현재 편집 경험: Issue #25 heading folding 구현과 edit/preview fold state 동기화는 [[Document Editing Workflow]]와 [[Project PRD]]에 기록되어 있다. Issue #29 문서 탭과 navigation toolbar는 workspace center 상단에 구현되었으며, 기존 `?document=<id>` 라우팅과 `Document.path` path 표시를 유지한다.
 - 데이터/권한/링크 모델: [[Document Knowledge Model]], [[Folder Hierarchy Model]], [[Auth And Permissions Workflow]], [[Wiki Links And Backlinks]]
 - wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]; 신규 기능 시작은 `pnpm wiki:feature-start "<feature title>"`로 GitHub issue를 먼저 만든다.
 - 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
