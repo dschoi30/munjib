@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { calculateDocumentTabWidth } from "@/components/document-tabs";
 import {
   addDocumentTab,
   addEmptyDocumentTab,
@@ -184,5 +185,13 @@ describe("document tab storage and path display", () => {
     expect(formatWorkspacePath("/operations/runbook")).toBe("operations / runbook");
     expect(formatWorkspacePath("/")).toBe("/");
     expect(formatWorkspacePath("")).toBe("/");
+  });
+});
+
+describe("calculateDocumentTabWidth", () => {
+  it("keeps fixed-width tabs until the row fills, then shrinks them in bounded steps", () => {
+    expect(calculateDocumentTabWidth(760, 3)).toBe(224);
+    expect(calculateDocumentTabWidth(760, 4)).toBe(179);
+    expect(calculateDocumentTabWidth(760, 6)).toBe(120);
   });
 });

@@ -29,6 +29,15 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect
     .poll(() => page.evaluate(() => getComputedStyle(document.body).overflowY))
     .toBe("hidden");
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        bodyFitsViewport: document.body.scrollHeight <= document.body.clientHeight,
+        documentFitsViewport: document.documentElement.scrollHeight <= document.documentElement.clientHeight,
+      })),
+    )
+    .toEqual({ bodyFitsViewport: true, documentFitsViewport: true });
+  await expect(page.getByRole("button", { name: "Navigate forward" })).toBeDisabled();
   const documentList = page.getByRole("navigation");
   await expect(documentList.getByRole("link", { name: "Welcome" })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
@@ -70,6 +79,16 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Engineering Runbook", exact: true })).toHaveAttribute(
     "aria-current",
     "page",
+  );
+  const engineeringTabBox = await page
+    .getByRole("button", { name: "Engineering Runbook", exact: true })
+    .locator("..")
+    .boundingBox();
+  const addTabBox = await page.getByRole("button", { name: "Add tab" }).boundingBox();
+  expect(engineeringTabBox).toBeTruthy();
+  expect(addTabBox).toBeTruthy();
+  expect(Math.abs((engineeringTabBox?.x ?? 0) + (engineeringTabBox?.width ?? 0) - (addTabBox?.x ?? 0))).toBeLessThan(
+    4,
   );
   await expect(page.getByText("engineering-runbook", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Welcome", exact: true }).click();
