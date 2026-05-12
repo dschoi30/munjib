@@ -44,7 +44,8 @@ export function WorkspaceCenterShell({
         return current;
       }
 
-      const nextIds = [...current.ids.slice(0, current.index + 1), selectedDocument.id];
+      const retainedIds = current.index >= 0 ? current.ids.slice(0, current.index + 1) : current.ids;
+      const nextIds = [...retainedIds, selectedDocument.id];
       return { ids: nextIds, index: nextIds.length - 1 };
     });
   }, [selectedDocument]);

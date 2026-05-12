@@ -145,13 +145,18 @@ export function reconcileDocumentTabs({
   const activeIndex = tabs.findIndex((tab) => tab.id === currentActiveTabId);
 
   if (activeIndex >= 0) {
-    const nextActiveTabId = tabs[activeIndex]?.id ?? currentActiveTabId;
+    const activeTab = tabs[activeIndex];
+    if (!activeTab) {
+      return { tabs, activeTabId: currentActiveTabId };
+    }
+
+    const nextActiveTabId = activeTab.id;
     const nextTabs = tabs.map((tab, index) =>
       index === activeIndex ? createDocumentTab(selectedDocument, tab.id) : tab,
     );
 
     return {
-      tabs: nextActiveTabId ? dedupeDocumentTabs(nextTabs, nextActiveTabId) : nextTabs,
+      tabs: dedupeDocumentTabs(nextTabs, nextActiveTabId),
       activeTabId: nextActiveTabId,
     };
   }
