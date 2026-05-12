@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DocumentTabs } from "@/components/document-tabs";
 import { DocumentToolbar } from "@/components/document-toolbar";
@@ -27,6 +28,25 @@ export function WorkspaceCenterShell({
     documents,
     selectedDocument,
   });
+  const [documentHistory, setDocumentHistory] = useState(() => ({
+    ids: selectedDocument ? [selectedDocument.id] : [],
+    index: selectedDocument ? 0 : -1,
+  }));
+
+  useEffect(() => {
+    if (!selectedDocument) {
+      return;
+    }
+
+    setDocumentHistory((current) => {
+      if (current.index >= 0 && current.ids[current.index] === selectedDocument.id) {
+        return current;
+      }
+
+      const nextIds = [...current.ids.slice(0, current.index + 1), selectedDocument.id];
+      return { ids: nextIds, index: nextIds.length - 1 };
+    });
+  }, [selectedDocument]);
 
   function openDocument(documentId: string | null) {
     if (!documentId) {
@@ -53,6 +73,34 @@ export function WorkspaceCenterShell({
     openDocument(null);
   }
 
+  function handleNavigateBack() {
+    if (documentHistory.index <= 0) {
+      return;
+    }
+
+    const nextIndex = documentHistory.index - 1;
+    const targetDocumentId = documentHistory.ids[nextIndex] ?? null;
+    setDocumentHistory((current) => ({ ...current, index: nextIndex }));
+
+    if (targetDocumentId) {
+      openDocument(targetDocumentId);
+    }
+  }
+
+  function handleNavigateForward() {
+    if (documentHistory.index < 0 || documentHistory.index >= documentHistory.ids.length - 1) {
+      return;
+    }
+
+    const nextIndex = documentHistory.index + 1;
+    const targetDocumentId = documentHistory.ids[nextIndex] ?? null;
+    setDocumentHistory((current) => ({ ...current, index: nextIndex }));
+
+    if (targetDocumentId) {
+      openDocument(targetDocumentId);
+    }
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <DocumentTabs
@@ -62,7 +110,13 @@ export function WorkspaceCenterShell({
         onClose={handleClose}
         onAdd={handleAdd}
       />
-      <DocumentToolbar path={selectedDocument?.path ?? selectedFolder?.path ?? "/"} />
+      <DocumentToolbar
+        path={selectedDocument?.path ?? selectedFolder?.path ?? "/"}
+        canNavigateBack={documentHistory.index > 0}
+        canNavigateForward={documentHistory.index >= 0 && documentHistory.index < documentHistory.ids.length - 1}
+        onNavigateBack={handleNavigateBack}
+        onNavigateForward={handleNavigateForward}
+      />
       <div className="min-h-0 flex-1 overflow-auto p-5">{children}</div>
     </div>
   );

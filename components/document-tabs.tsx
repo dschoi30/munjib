@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DocumentTab } from "@/lib/document-tabs";
@@ -12,19 +13,63 @@ type DocumentTabsProps = {
   onAdd: () => void;
 };
 
+const ADD_BUTTON_WIDTH = 44;
+const MAX_TAB_WIDTH = 224;
+const MIN_TAB_WIDTH = 120;
+const TAB_WIDTH_STEP = 16;
+
+export function calculateDocumentTabWidth(containerWidth: number, tabCount: number) {
+  if (tabCount <= 0 || containerWidth <= ADD_BUTTON_WIDTH) {
+    return MAX_TAB_WIDTH;
+  }
+
+  const availableWidth = containerWidth - ADD_BUTTON_WIDTH;
+  const fullWidthTabCount = Math.max(1, Math.floor(availableWidth / MAX_TAB_WIDTH));
+  const overflowSteps = Math.max(0, tabCount - fullWidthTabCount);
+  const steppedWidth = Math.max(MIN_TAB_WIDTH, MAX_TAB_WIDTH - overflowSteps * TAB_WIDTH_STEP);
+  const fittedWidth = Math.max(MIN_TAB_WIDTH, Math.floor(availableWidth / tabCount));
+
+  return Math.min(steppedWidth, fittedWidth);
+}
+
 export function DocumentTabs({ tabs, activeTabId, onSelect, onClose, onAdd }: DocumentTabsProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const tabWidth = calculateDocumentTabWidth(containerWidth, tabs.length);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateWidth = () => setContainerWidth(element.clientWidth);
+    updateWidth();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateWidth);
+      return () => window.removeEventListener("resize", updateWidth);
+    }
+
+    const resizeObserver = new ResizeObserver(updateWidth);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, []);
+
   return (
     <nav aria-label="Open documents" className="h-11 border-b border-border bg-muted">
-      <div className="flex h-full min-w-0">
-        <ul className="flex h-full min-w-0 flex-1 overflow-x-auto">
+      <div ref={containerRef} className="flex h-full min-w-0 overflow-hidden">
+        <ul className="flex h-full min-w-0 shrink-0 overflow-hidden">
           {tabs.map((tab) => {
             const selected = tab.id === activeTabId;
 
             return (
               <li
                 key={tab.id}
+                style={{ width: tabWidth }}
                 className={cn(
-                  "group flex h-11 max-w-56 shrink-0 items-center border-r border-border",
+                  "group flex h-11 shrink-0 items-center border-r border-border",
                   selected ? "bg-white text-ink" : "bg-muted text-slate-600 hover:bg-white/70",
                 )}
               >

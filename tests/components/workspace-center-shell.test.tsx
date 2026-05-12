@@ -191,14 +191,36 @@ describe("WorkspaceCenterShell", () => {
     );
   });
 
-  it("uses browser history for toolbar navigation", () => {
-    renderShell(documents[0]);
+  it("disables forward navigation when there is no target document", () => {
+    const { rerender } = renderShell(documents[0]);
+    const backButton = screen.getByRole("button", { name: "Navigate back" }) as HTMLButtonElement;
+    const forwardButton = screen.getByRole("button", { name: "Navigate forward" }) as HTMLButtonElement;
 
-    fireEvent.click(screen.getByRole("button", { name: "Navigate back" }));
-    fireEvent.click(screen.getByRole("button", { name: "Navigate forward" }));
+    expect(backButton.disabled).toBe(true);
+    expect(forwardButton.disabled).toBe(true);
 
-    expect(window.history.back).toHaveBeenCalledOnce();
-    expect(window.history.forward).toHaveBeenCalledOnce();
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={documents[1]}
+        selectedFolder={null}
+      >
+        <div>Editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(backButton.disabled).toBe(false);
+    expect(forwardButton.disabled).toBe(true);
+
+    fireEvent.click(backButton);
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(forwardButton.disabled).toBe(false);
+
+    fireEvent.click(forwardButton);
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
   });
 
   it("does not write stale tabs when switching workspace storage keys", () => {
