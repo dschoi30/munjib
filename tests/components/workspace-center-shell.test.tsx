@@ -84,8 +84,12 @@ describe("WorkspaceCenterShell", () => {
   it("closes the active tab and routes to the next tab", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
-      JSON.stringify([documents[0], documents[1]]),
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
     );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-1");
 
     renderShell(documents[0]);
 
@@ -105,8 +109,12 @@ describe("WorkspaceCenterShell", () => {
   it("closes an inactive tab without leaving the selected folder view", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
-      JSON.stringify([documents[0], documents[1]]),
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
     );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
 
     render(
       <WorkspaceCenterShell
@@ -126,6 +134,63 @@ describe("WorkspaceCenterShell", () => {
     expect(screen.getByText("Folder content")).toBeTruthy();
   });
 
+  it("replaces the current tab when a different document is selected", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([{ id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" }]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-1");
+
+    const { rerender } = renderShell(documents[0]);
+
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={documents[1]}
+        selectedFolder={null}
+      >
+        <div>Editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.queryByRole("button", { name: "Welcome" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Engineering Runbook" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+  });
+
+  it("creates an empty tab with the plus button and fills it with the next selected document", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([{ id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" }]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-1");
+
+    const { rerender } = renderShell(documents[0]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tab" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(screen.getByRole("button", { name: "New tab" }).getAttribute("aria-current")).toBe("page");
+
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={documents[1]}
+        selectedFolder={null}
+      >
+        <div>Editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Welcome" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Engineering Runbook" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+  });
+
   it("uses browser history for toolbar navigation", () => {
     renderShell(documents[0]);
 
@@ -139,9 +204,15 @@ describe("WorkspaceCenterShell", () => {
   it("does not write stale tabs when switching workspace storage keys", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
-      JSON.stringify([documents[0], documents[1]]),
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
     );
-    window.localStorage.setItem("munjib:open-tabs:team-handbook", JSON.stringify([documents[2]]));
+    window.localStorage.setItem(
+      "munjib:open-tabs:team-handbook",
+      JSON.stringify([{ id: "tab-3", documentId: "doc-3", title: "Operations Runbook", path: "/operations/runbook" }]),
+    );
 
     const { rerender } = renderShell(documents[0]);
     const setItem = vi.mocked(window.localStorage.setItem);
@@ -160,7 +231,12 @@ describe("WorkspaceCenterShell", () => {
 
     const staleWrite = setItem.mock.calls.find(
       ([key, value]) =>
-        key === "munjib:open-tabs:team-handbook" && value === JSON.stringify([documents[0], documents[1]]),
+        key === "munjib:open-tabs:team-handbook" &&
+        value ===
+          JSON.stringify([
+            { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+            { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+          ]),
     );
 
     expect(staleWrite).toBeUndefined();

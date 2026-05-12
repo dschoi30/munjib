@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-12T00:00:00+09:00 - review
+
+- Result: Issue #29 document tabs behavior를 사용자 피드백에 맞춰 조정했다.
+- Coverage: 일반 document 선택은 현재 active tab을 교체하고, tab strip 오른쪽 `+` button과 sidebar document row `...` menu의 Open in new tab만 새 tab instance를 추가한다. Inactive tab close는 현재 folder/root context를 유지한다. Root body vertical scroll은 app shell 안쪽 scroll container로 한정했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 피드백, `lib/document-tabs.ts`, `components/use-document-tabs.ts`, `components/document-tabs.tsx`, `components/document-navigation.tsx`, `components/workspace-center-shell.tsx`, `app/globals.css`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
+
 ## 2026-05-11T00:30:00+09:00 - implementation
 
 - Result: Issue #29 document tabs and navigation toolbar를 구현했다.

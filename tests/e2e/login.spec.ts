@@ -26,6 +26,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/workspaces\/company-handbook/);
   await expect(page.getByRole("heading", { name: "Company Handbook" })).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => getComputedStyle(document.body).overflowY))
+    .toBe("hidden");
   const documentList = page.getByRole("navigation");
   await expect(documentList.getByRole("link", { name: "Welcome" })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
@@ -56,6 +59,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ })).toBeVisible();
   await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
+  await page.getByRole("button", { name: "Add tab" }).click();
   await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
   await expect(
     documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
@@ -74,13 +78,17 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await page.getByRole("button", { name: "Close Engineering Runbook" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
-  await documentList.getByRole("link", { name: "Engineering Runbook" }).first().click();
+  await documentList.getByRole("button", { name: "Open actions for Engineering Runbook" }).first().click();
+  await page.getByRole("menuitem", { name: "Open in new tab" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
+  await expect(page.getByRole("button", { name: "Welcome", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Engineering Runbook", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
   await page.locator("[name='title']").fill("Draft title that was not saved");
-  await page.getByRole("button", { name: "Welcome", exact: true }).click();
-  await expect(page.locator("[name='title']")).toHaveValue("Welcome");
-  await page.getByRole("button", { name: "Close Engineering Runbook" }).click();
+  await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
   await openEditMode();
 
