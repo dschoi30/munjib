@@ -27,9 +27,6 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page).toHaveURL(/\/workspaces\/company-handbook/);
   await expect(page.getByRole("heading", { name: "Company Handbook" })).toBeVisible();
   await expect
-    .poll(() => page.evaluate(() => getComputedStyle(document.body).overflowY))
-    .toBe("hidden");
-  await expect
     .poll(() =>
       page.evaluate(() => ({
         bodyFitsViewport: document.body.scrollHeight <= document.body.clientHeight,

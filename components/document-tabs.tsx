@@ -23,7 +23,7 @@ export function calculateDocumentTabWidth(containerWidth: number, tabCount: numb
     return MAX_TAB_WIDTH;
   }
 
-  const availableWidth = containerWidth - ADD_BUTTON_WIDTH;
+  const availableWidth = Math.max(0, containerWidth - ADD_BUTTON_WIDTH);
   const fullWidthTabCount = Math.max(1, Math.floor(availableWidth / MAX_TAB_WIDTH));
   const overflowSteps = Math.max(0, tabCount - fullWidthTabCount);
   const steppedWidth = Math.max(MIN_TAB_WIDTH, MAX_TAB_WIDTH - overflowSteps * TAB_WIDTH_STEP);

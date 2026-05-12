@@ -31,9 +31,9 @@ beforeEach(() => {
       setItem: vi.fn((key: string, value: string) => {
         store[key] = value;
       }),
-      removeItem: (key: string) => {
+      removeItem: vi.fn((key: string) => {
         delete store[key];
-      },
+      }),
       clear: () => {
         store = {};
       },
@@ -71,7 +71,10 @@ describe("WorkspaceCenterShell", () => {
   it("renders stored readable tabs and switches by router push", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
-      JSON.stringify([documents[0], documents[1]]),
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
     );
 
     renderShell(documents[0]);
@@ -223,6 +226,40 @@ describe("WorkspaceCenterShell", () => {
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
   });
 
+  it("keeps forward navigation disabled when the next history document is no longer readable", () => {
+    const { rerender } = renderShell(documents[0]);
+
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={documents[1]}
+        selectedFolder={null}
+      >
+        <div>Editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Navigate back" }));
+
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={[documents[0], documents[2]]}
+        selectedDocument={documents[0]}
+        selectedFolder={null}
+      >
+        <div>Editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    const forwardButton = screen.getByRole("button", { name: "Navigate forward" }) as HTMLButtonElement;
+    expect(forwardButton.disabled).toBe(true);
+    fireEvent.click(forwardButton);
+
+    expect(router.push).not.toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
   it("does not write stale tabs when switching workspace storage keys", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
@@ -231,14 +268,18 @@ describe("WorkspaceCenterShell", () => {
         { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
       ]),
     );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-1");
     window.localStorage.setItem(
       "munjib:open-tabs:team-handbook",
       JSON.stringify([{ id: "tab-3", documentId: "doc-3", title: "Operations Runbook", path: "/operations/runbook" }]),
     );
+    window.localStorage.setItem("munjib:open-tabs-active:team-handbook", "tab-3");
 
     const { rerender } = renderShell(documents[0]);
     const setItem = vi.mocked(window.localStorage.setItem);
+    const removeItem = vi.mocked(window.localStorage.removeItem);
     setItem.mockClear();
+    removeItem.mockClear();
 
     rerender(
       <WorkspaceCenterShell
@@ -262,5 +303,6 @@ describe("WorkspaceCenterShell", () => {
     );
 
     expect(staleWrite).toBeUndefined();
+    expect(removeItem).not.toHaveBeenCalledWith("munjib:open-tabs-active:team-handbook");
   });
 });

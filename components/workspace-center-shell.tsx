@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DocumentTabs } from "@/components/document-tabs";
 import { DocumentToolbar } from "@/components/document-toolbar";
@@ -32,6 +32,7 @@ export function WorkspaceCenterShell({
     ids: selectedDocument ? [selectedDocument.id] : [],
     index: selectedDocument ? 0 : -1,
   }));
+  const readableDocumentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents]);
 
   useEffect(() => {
     if (!selectedDocument) {
@@ -47,6 +48,14 @@ export function WorkspaceCenterShell({
       return { ids: nextIds, index: nextIds.length - 1 };
     });
   }, [selectedDocument]);
+
+  const canNavigateBack =
+    documentHistory.index > 0 &&
+    readableDocumentIds.has(documentHistory.ids[documentHistory.index - 1] ?? "");
+  const canNavigateForward =
+    documentHistory.index >= 0 &&
+    documentHistory.index < documentHistory.ids.length - 1 &&
+    readableDocumentIds.has(documentHistory.ids[documentHistory.index + 1] ?? "");
 
   function openDocument(documentId: string | null) {
     if (!documentId) {
@@ -74,7 +83,7 @@ export function WorkspaceCenterShell({
   }
 
   function handleNavigateBack() {
-    if (documentHistory.index <= 0) {
+    if (!canNavigateBack) {
       return;
     }
 
@@ -88,7 +97,7 @@ export function WorkspaceCenterShell({
   }
 
   function handleNavigateForward() {
-    if (documentHistory.index < 0 || documentHistory.index >= documentHistory.ids.length - 1) {
+    if (!canNavigateForward) {
       return;
     }
 
@@ -112,8 +121,8 @@ export function WorkspaceCenterShell({
       />
       <DocumentToolbar
         path={selectedDocument?.path ?? selectedFolder?.path ?? "/"}
-        canNavigateBack={documentHistory.index > 0}
-        canNavigateForward={documentHistory.index >= 0 && documentHistory.index < documentHistory.ids.length - 1}
+        canNavigateBack={canNavigateBack}
+        canNavigateForward={canNavigateForward}
         onNavigateBack={handleNavigateBack}
         onNavigateForward={handleNavigateForward}
       />

@@ -22,9 +22,9 @@ links:
 ## 2026-05-13T00:20:00+09:00 - refinement
 
 - Result: Issue #29 document tabs와 navigation toolbar의 후속 UI 피드백을 반영했다.
-- Coverage: App shell과 body를 viewport height에 고정해 root vertical scroll을 제거했다. Tab strip `+` button은 마지막 tab 바로 오른쪽에 배치하고, row 폭이 부족하면 tab width를 함께 줄인다. Toolbar forward button은 document forward target이 있을 때만 활성화한다.
+- Coverage: App shell을 viewport height에 고정해 workspace root vertical scroll을 제거하되, 다른 routes의 document root scroll은 막지 않는다. Tab strip `+` button은 마지막 tab 바로 오른쪽에 배치하고, row 폭이 부족하면 tab width를 함께 줄인다. Toolbar forward button은 readable document forward target이 있을 때만 활성화한다.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[log|Wiki Log]].
-- Source evidence: 사용자 피드백, `components/app-shell.tsx`, `app/globals.css`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Source evidence: 사용자 피드백, PR #30 review feedback, `components/app-shell.tsx`, `app/globals.css`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
 - Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
 
 ## 2026-05-12T00:00:00+09:00 - review
