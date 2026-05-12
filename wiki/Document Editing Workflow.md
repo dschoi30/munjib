@@ -116,7 +116,7 @@ Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과
 
 Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다.
 
-Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
+Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없거나 더 이상 readable하지 않으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
 
 ## Heading folding
 

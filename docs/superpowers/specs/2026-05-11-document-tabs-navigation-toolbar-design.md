@@ -86,12 +86,12 @@ type SelectedFolderContext = {
 
 ## Navigation Toolbar
 
-Back/forward 버튼은 1차 구현에서 브라우저 history를 사용한다.
+Back/forward 버튼은 workspace center가 유지하는 document-local history를 사용한다.
 
-- Back: `window.history.back()`
-- Forward: `window.history.forward()`
+- Back: 이전 readable document id가 있으면 해당 `?document=<id>`로 이동한다.
+- Forward: 이후 readable document id가 있으면 해당 `?document=<id>`로 이동한다.
 
-브라우저 history API는 앱이 신뢰할 수 있는 forward/back 가능 여부를 직접 제공하지 않는다. 따라서 MVP에서는 버튼을 항상 렌더링하고, disabled 상태는 도입하지 않는다. 정확한 disabled 상태와 Obsidian식 document-local history stack은 후속 기능으로 분리한다.
+Forward target document가 없거나 더 이상 readable document 목록에 없으면 forward button은 비활성화한다. Back도 이전 readable document target이 없으면 비활성화한다.
 
 Path 표시는 다음 규칙을 사용한다.
 

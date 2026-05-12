@@ -13,8 +13,8 @@ type DocumentToolbarProps = {
 
 export function DocumentToolbar({
   path,
-  canNavigateBack = true,
-  canNavigateForward = true,
+  canNavigateBack = false,
+  canNavigateForward = false,
   onNavigateBack = () => window.history.back(),
   onNavigateForward = () => window.history.forward(),
 }: DocumentToolbarProps) {
