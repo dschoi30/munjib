@@ -8,6 +8,12 @@
   color: #1c2230;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   min-height: 100vh;
 }

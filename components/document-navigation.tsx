@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-
 import { toast } from "sonner";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
 
 type FavoriteState = { documents: string[]; folders: string[] };
@@ -155,6 +156,16 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
+  function openDocumentRowInNewTab(document: DocumentListItem) {
+    openDocumentInNewTab(workspaceSlug, {
+      id: document.id,
+      title: document.title,
+      path: document.path,
+    });
+    setOpenMenuId(null);
+    router.push(`/workspaces/${workspaceSlug}?document=${document.id}`);
+  }
+
   function toggleFavoriteFolder(folderId: string) {
     setFavorites((current) => ({
       ...current,
@@ -245,6 +256,7 @@ export function DocumentNavigation({
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}
+            onOpenInNewTab={openDocumentRowInNewTab}
             archiveDocumentAction={archiveDocumentFromMenu}
           />
         );
@@ -314,6 +326,7 @@ export function DocumentNavigation({
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
           onToggleFavoriteFolder={toggleFavoriteFolder}
+          onOpenInNewTab={openDocumentRowInNewTab}
           archiveDocumentAction={archiveDocumentFromMenu}
         />
       ) : null}
@@ -329,6 +342,7 @@ export function DocumentNavigation({
           openMenuId={openMenuId}
           onOpenMenu={setOpenMenuId}
           onToggleFavorite={toggleFavoriteDocument}
+          onOpenInNewTab={openDocumentRowInNewTab}
           archiveDocumentAction={archiveDocumentFromMenu}
         />
       ) : null}
@@ -354,6 +368,7 @@ export function DocumentNavigation({
                 openMenuId={openMenuId}
                 onOpenMenu={setOpenMenuId}
                 onToggleFavorite={toggleFavoriteDocument}
+                onOpenInNewTab={openDocumentRowInNewTab}
                 archiveDocumentAction={archiveDocumentFromMenu}
               />
             ))
@@ -410,6 +425,7 @@ function FavoriteSection({
   onOpenMenu,
   onToggleFavorite,
   onToggleFavoriteFolder,
+  onOpenInNewTab,
   archiveDocumentAction,
 }: {
   workspaceSlug: string;
@@ -422,6 +438,7 @@ function FavoriteSection({
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
   onToggleFavoriteFolder: (folderId: string) => void;
+  onOpenInNewTab: (document: DocumentListItem) => void;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
@@ -451,6 +468,7 @@ function FavoriteSection({
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
+            onOpenInNewTab={onOpenInNewTab}
             archiveDocumentAction={archiveDocumentAction}
           />
         ))}
@@ -470,6 +488,7 @@ function DocumentSection({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  onOpenInNewTab,
   archiveDocumentAction,
 }: {
   title: string;
@@ -482,6 +501,7 @@ function DocumentSection({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  onOpenInNewTab: (document: DocumentListItem) => void;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   return (
@@ -500,6 +520,7 @@ function DocumentSection({
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
+            onOpenInNewTab={onOpenInNewTab}
             archiveDocumentAction={archiveDocumentAction}
           />
         ))}
@@ -518,6 +539,7 @@ function DocumentLinkRow({
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
+  onOpenInNewTab,
   archiveDocumentAction,
 }: {
   rowId: string;
@@ -529,6 +551,7 @@ function DocumentLinkRow({
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
+  onOpenInNewTab: (document: DocumentListItem) => void;
   archiveDocumentAction: (formData: FormData) => Promise<void>;
 }) {
   const menuId = rowId;
@@ -577,6 +600,14 @@ function DocumentLinkRow({
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
             {isFavorite ? "Remove from favorites" : "Add to favorites"}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => onOpenInNewTab(document)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
+          >
+            Open in new tab
           </button>
           <form action={archiveDocumentAction}>
             <input type="hidden" name="documentId" value={document.id} />
