@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
 import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
+import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type FavoriteState = { documents: string[]; folders: string[] };
 
@@ -120,15 +121,15 @@ export function DocumentNavigation({
   }, [folderErrorText]);
 
   useEffect(() => {
-    function onPointerDown(event: PointerEvent) {
+    function onClick(event: MouseEvent) {
       const target = event.target;
       if (!(target instanceof Element)) return;
       if (target.closest("[data-row-action-menu]")) return;
       setOpenMenuId(null);
     }
 
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("click", onClick);
+    return () => document.removeEventListener("click", onClick);
   }, []);
 
   useEffect(() => {
@@ -163,7 +164,7 @@ export function DocumentNavigation({
       path: document.path,
     });
     setOpenMenuId(null);
-    router.push(`/workspaces/${workspaceSlug}?document=${document.id}`);
+    router.push(workspaceDocumentHref({ workspaceSlug, documentId: document.id, searchQuery }));
   }
 
   function toggleFavoriteFolder(folderId: string) {
@@ -564,9 +565,7 @@ function DocumentLinkRow({
   return (
     <div className={rowClassName}>
       <Link
-        href={`/workspaces/${workspaceSlug}?document=${document.id}${
-          searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""
-        }`}
+        href={workspaceDocumentHref({ workspaceSlug, documentId: document.id, searchQuery })}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
@@ -579,7 +578,10 @@ function DocumentLinkRow({
         type="button"
         aria-label={`Open actions for ${displayLabel}`}
         aria-expanded={isMenuOpen}
-        onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpenMenu(isMenuOpen ? null : menuId);
+        }}
         data-row-action-menu
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
           isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"

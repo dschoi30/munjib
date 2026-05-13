@@ -22,9 +22,9 @@ links:
 ## 2026-05-13T00:20:00+09:00 - refinement
 
 - Result: Issue #29 document tabs와 navigation toolbar의 후속 UI 피드백을 반영했다.
-- Coverage: App shell을 viewport height에 고정해 workspace root vertical scroll을 제거하되, 다른 routes의 document root scroll은 막지 않는다. Tab strip `+` button은 마지막 tab 바로 오른쪽에 배치하고, row 폭이 부족하면 tab width를 함께 줄인다. Minimum width 이후 overflow tab은 horizontal scroll로 접근 가능하게 했다. Toolbar forward button은 readable document forward target이 있을 때만 활성화한다. Review follow-up으로 tab reconciliation과 document history edge-case 표현을 명확히 했다.
+- Coverage: App shell을 viewport height에 고정해 workspace root vertical scroll을 제거하되, 다른 routes의 document root scroll은 막지 않는다. Tab strip `+` button은 마지막 tab 바로 오른쪽에 배치하고, row 폭이 부족하면 tab width를 함께 줄인다. Minimum width 이후 overflow tab은 horizontal scroll로 접근 가능하게 했다. Sidebar Open in new tab은 search result context의 `q` query를 유지한다. Toolbar forward button은 readable document forward target이 있을 때만 활성화한다. Review follow-up으로 tab reconciliation과 document history edge-case 표현을 명확히 했다.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[log|Wiki Log]].
-- Source evidence: 사용자 피드백, PR #30 review feedback, `components/app-shell.tsx`, `app/globals.css`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `lib/document-tabs.ts`, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Source evidence: 사용자 피드백, PR #30 review feedback, `components/app-shell.tsx`, `app/globals.css`, `components/document-tabs.tsx`, `components/document-navigation.tsx`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `lib/document-tabs.ts`, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
 - Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
 
 ## 2026-05-12T00:00:00+09:00 - review
