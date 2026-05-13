@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { DocumentEditor } from "@/components/document-editor";
+import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 
 const codeMirrorHarness = vi.hoisted(() => ({
   updateListeners: [] as Array<(update: unknown) => void>,
@@ -65,11 +66,29 @@ const baseProps = {
 
 function renderEditor(markdown: string, props: Partial<Parameters<typeof DocumentEditor>[0]> = {}) {
   return render(
-    <DocumentEditor
-      {...baseProps}
-      {...props}
-      document={{ id: "doc-1", title: "Foldable", contentMarkdown: markdown }}
-    />,
+    <DocumentViewModeProvider>
+      <TestModeControls />
+      <DocumentEditor
+        {...baseProps}
+        {...props}
+        document={{ id: "doc-1", title: "Foldable", contentMarkdown: markdown }}
+      />
+    </DocumentViewModeProvider>,
+  );
+}
+
+function TestModeControls() {
+  const { mode, setMode } = useDocumentViewMode();
+
+  return (
+    <div>
+      <button type="button" aria-pressed={mode === "edit"} onClick={() => setMode("edit")}>
+        Edit
+      </button>
+      <button type="button" aria-pressed={mode === "preview"} onClick={() => setMode("preview")}>
+        Preview
+      </button>
+    </div>
   );
 }
 
@@ -165,6 +184,15 @@ describe("DocumentEditor heading preview folding", () => {
 
     expect(screen.queryByRole("button", { name: /split/i })).toBeNull();
     expect(screen.getByRole("heading", { name: "A" })).toBeTruthy();
+  });
+
+  it("renders the document title as a borderless heading-sized control", () => {
+    renderEditor("# A\nBody");
+
+    const titleInput = screen.getByDisplayValue("Foldable");
+
+    expect(titleInput.className).toContain("border-0");
+    expect(titleInput.className).toContain("text-[1.75rem]");
   });
 
   it("folds and unfolds a preview heading section", () => {

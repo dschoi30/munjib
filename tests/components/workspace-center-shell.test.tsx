@@ -68,6 +68,22 @@ describe("WorkspaceCenterShell", () => {
     expect(screen.getByText("Editor content")).toBeTruthy();
   });
 
+  it("shows a single toolbar mode toggle for the next document mode", () => {
+    renderShell();
+
+    const scrollContainer = screen.getByTestId("workspace-scroll-container");
+    scrollContainer.scrollTop = 180;
+
+    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+
+    expect(scrollContainer.scrollTop).toBe(180);
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Preview" })).toBeTruthy();
+  });
+
   it("renders stored readable tabs and switches by router push", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",

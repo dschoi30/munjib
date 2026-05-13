@@ -100,9 +100,9 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 ## UI 세부 사항
 
-`DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다.
+`DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다. Title input은 Obsidian-style reading surface에 맞춰 borderless heading-size control로 렌더링한다.
 
-Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
+Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. Issue #31에서 edit/preview control은 editor 내부 segmented text buttons가 아니라 navigation toolbar 오른쪽의 single icon toggle로 이동했다. Preview 상태에서는 edit icon만 보이고, edit 상태에서는 preview icon만 보여 두 mode가 교대로 전환된다. Mode 전환은 workspace center scroll container의 현재 `scrollTop`을 복원해 문서 중간에서 edit/preview를 오가도 화면이 맨 위로 점프하지 않는다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
 
@@ -112,7 +112,7 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 ## Document tabs and navigation toolbar
 
-Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, quick switcher link, preview wikilink는 계속 `?document=<id>`로 route한다.
+Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, quick switcher link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
 
 Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Sidebar Open in new tab은 검색 결과에서 실행해도 기존 `q` query를 유지해 filtered sidebar context를 보존한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
 

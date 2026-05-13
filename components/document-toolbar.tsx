@@ -1,12 +1,15 @@
 "use client";
 
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, Pencil } from "lucide-react";
+import { useDocumentViewMode, type DocumentViewMode } from "@/components/document-view-mode";
 import { formatWorkspacePath } from "@/lib/document-tabs";
 
 type DocumentToolbarProps = {
   path: string;
   canNavigateBack?: boolean;
   canNavigateForward?: boolean;
+  showModeToggle?: boolean;
+  onModeChange?: (mode: DocumentViewMode) => void;
   onNavigateBack?: () => void;
   onNavigateForward?: () => void;
 };
@@ -15,30 +18,55 @@ export function DocumentToolbar({
   path,
   canNavigateBack = false,
   canNavigateForward = false,
+  showModeToggle = false,
+  onModeChange,
   onNavigateBack = () => window.history.back(),
   onNavigateForward = () => window.history.forward(),
 }: DocumentToolbarProps) {
+  const { mode, setMode } = useDocumentViewMode();
+  const nextMode = mode === "preview" ? "edit" : "preview";
+  const modeLabel = mode === "preview" ? "Edit" : "Preview";
+  const ModeIcon = mode === "preview" ? Pencil : Eye;
+
   return (
-    <div className="flex h-11 items-center gap-2 border-b border-border bg-white px-3">
-      <button
-        type="button"
-        aria-label="Navigate back"
-        disabled={!canNavigateBack}
-        className="inline-flex size-8 items-center justify-center rounded text-slate-600 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600"
-        onClick={onNavigateBack}
-      >
-        <ArrowLeft className="size-4" aria-hidden="true" />
-      </button>
-      <button
-        type="button"
-        aria-label="Navigate forward"
-        disabled={!canNavigateForward}
-        className="inline-flex size-8 items-center justify-center rounded text-slate-600 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600"
-        onClick={onNavigateForward}
-      >
-        <ArrowRight className="size-4" aria-hidden="true" />
-      </button>
-      <div className="min-w-0 truncate pl-1 text-sm text-slate-500">{formatWorkspacePath(path)}</div>
+    <div className="grid h-11 grid-cols-[1fr_auto_1fr] items-center border-b border-border bg-white px-3">
+      <div className="flex items-center gap-2 justify-self-start">
+        <button
+          type="button"
+          aria-label="Navigate back"
+          disabled={!canNavigateBack}
+          className="inline-flex size-8 items-center justify-center rounded text-slate-600 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600"
+          onClick={onNavigateBack}
+        >
+          <ArrowLeft className="size-4" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          aria-label="Navigate forward"
+          disabled={!canNavigateForward}
+          className="inline-flex size-8 items-center justify-center rounded text-slate-600 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-slate-600"
+          onClick={onNavigateForward}
+        >
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </button>
+      </div>
+      <div className="max-w-[42vw] min-w-0 truncate text-center text-sm font-medium text-slate-500">
+        {formatWorkspacePath(path)}
+      </div>
+      <div className="flex items-center justify-self-end">
+        {showModeToggle ? (
+          <button
+            type="button"
+            aria-label={modeLabel}
+            aria-pressed={mode === "edit"}
+            title={modeLabel}
+            className="inline-flex size-8 items-center justify-center rounded text-slate-600 hover:bg-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+            onClick={() => (onModeChange ?? setMode)(nextMode)}
+          >
+            <ModeIcon className="size-4" aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

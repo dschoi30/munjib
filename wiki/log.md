@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-13
+updated: 2026-05-14
 source_count: 50
 tags:
   - log
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-14T00:55:00+09:00 - implementation
+
+- Result: Issue #31 Obsidian-style document title and mode toolbar UI를 구현했다.
+- Coverage: Document title input을 borderless heading-size control로 변경했다. Edit/preview text controls는 editor 내부에서 제거하고 navigation toolbar 오른쪽 single icon toggle로 이동했다. Toolbar path는 left navigation buttons와 right mode toggle 사이의 centered column에 표시된다. Mode 전환 시 workspace center scroll position을 보존한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #31, 사용자 제공 Obsidian screenshot, `components/document-editor.tsx`, `components/document-toolbar.tsx`, `components/document-view-mode.tsx`, `components/workspace-center-shell.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
 
 ## 2026-05-13T00:20:00+09:00 - refinement
 

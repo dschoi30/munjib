@@ -9,18 +9,16 @@ import Link from "next/link";
 import {
   ChevronDown,
   ChevronRight,
-  Eye,
   MessageSquare,
   Paperclip,
-  Pencil,
   Save,
   Upload,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   buildHeadingFoldTree,
   createHeadingFoldStorageValue,
@@ -45,7 +43,6 @@ import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
-type EditorMode = "edit" | "preview";
 type EditableDocument = {
   id: string;
   title: string;
@@ -87,7 +84,7 @@ export function DocumentEditor({
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   createCommentAction: (formData: FormData) => Promise<void>;
 }) {
-  const [mode, setMode] = useState<EditorMode>("preview");
+  const { mode } = useDocumentViewMode();
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
@@ -191,25 +188,15 @@ export function DocumentEditor({
         <input type="hidden" name="documentId" value={document.id} />
         <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
       </form>
-      <div className="flex flex-wrap items-center gap-3">
-        <Input
+      <div>
+        <input
           form={`document-save-${document.id}`}
           name="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           disabled={!canWrite}
-          className="min-w-[240px] flex-1"
+          className="w-full border-0 bg-transparent px-0 py-1 text-[1.75rem] font-bold leading-tight text-ink outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70"
         />
-        <div className="inline-flex rounded-md border border-border bg-white p-1">
-          <ModeButton active={mode === "edit"} onClick={() => setMode("edit")}>
-            <Pencil className="h-4 w-4" aria-hidden="true" />
-            <span>Edit</span>
-          </ModeButton>
-          <ModeButton active={mode === "preview"} onClick={() => setMode("preview")}>
-            <Eye className="h-4 w-4" aria-hidden="true" />
-            <span>Preview</span>
-          </ModeButton>
-        </div>
       </div>
       <DocumentProperties
         document={document}
@@ -318,31 +305,6 @@ function WikiLinkSuggestions({
         </button>
       ))}
     </div>
-  );
-}
-
-function ModeButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={
-        active
-          ? "inline-flex h-8 items-center gap-2 rounded px-3 text-sm font-medium text-ink shadow-sm"
-          : "inline-flex h-8 items-center gap-2 rounded px-3 text-sm text-slate-600 hover:bg-muted"
-      }
-    >
-      {children}
-    </button>
   );
 }
 
