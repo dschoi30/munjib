@@ -59,7 +59,7 @@ export function DocumentTabs({ tabs, activeTabId, onSelect, onClose, onAdd }: Do
 
   return (
     <nav aria-label="Open documents" className="h-11 border-b border-border bg-muted">
-      <div ref={containerRef} className="flex h-full min-w-0 overflow-hidden">
+      <div ref={containerRef} className="flex h-full min-w-0 overflow-x-auto overflow-y-hidden">
         <ul className="flex h-full min-w-0 shrink-0 overflow-hidden">
           {tabs.map((tab) => {
             const selected = tab.id === activeTabId;
