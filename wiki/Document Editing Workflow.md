@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-10
-source_count: 28
+updated: 2026-05-11
+source_count: 30
 tags:
   - munjib
   - workflow
@@ -110,6 +110,14 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 우측 metadata panel은 local graph, attachments, versions, audit log를 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다.
 
+## Document tabs and navigation toolbar
+
+Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, quick switcher link, preview wikilink는 계속 `?document=<id>`로 route한다.
+
+Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Sidebar Open in new tab은 검색 결과에서 실행해도 기존 `q` query를 유지해 filtered sidebar context를 보존한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
+
+Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없거나 더 이상 readable하지 않으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
+
 ## Heading folding
 
 Issue #25 구현은 Obsidian-style markdown heading folding을 document editor의 edit/preview mode에 추가했다. CodeMirror edit mode는 heading fold gutter를 제공하고, 문서 진입 시 저장된 heading fold state를 editor range로 복원한다. Editor update listener는 CodeMirror의 live document text에서 fold tree를 다시 만들고 folded range state를 heading body line range 또는 CodeMirror heading fold range와 matching해, 접기/펼치기 결과를 preview와 같은 raw heading key로 저장한다. Preview mode는 YAML frontmatter block을 계속 숨기고 wiki link preview rendering을 유지하면서 heading 왼쪽 chevron button으로 section을 접고 펼친다.
@@ -143,5 +151,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
 - GitHub issue #25
+- GitHub issue #29
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
+- `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - Issue #25 final review blocker fix

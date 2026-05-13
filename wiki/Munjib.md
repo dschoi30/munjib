@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-05-06
-source_count: 22
+updated: 2026-05-11
+source_count: 24
 tags:
   - munjib
   - product
@@ -60,6 +60,8 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/preview mode로 단순화되었다. Preview mode는 heading 왼쪽 chevron으로 section을 접고 펼치며, Edit mode는 CodeMirror heading fold gutter와 저장된 fold state 복원/저장을 제공한다. 접힘 상태는 문서별 `munjib:heading-folds:<documentId>` `localStorage` key에 저장되어 preview와 edit mode가 공유한다.
 
+Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. 일반 문서 선택은 현재 탭을 교체하고, 마지막 tab 바로 오른쪽의 `+` button 또는 sidebar row `...` menu의 Open in new tab만 새 탭을 만든다. Tab width는 row 공간이 부족해질 때 함께 줄어든다. Toolbar는 document navigation history 기반 back/forward와 현재 document 또는 folder path 표시를 제공하며, forward 대상 document가 없거나 readable하지 않으면 forward button을 비활성화한다.
+
 ## 빠른 진입점
 
 - 데이터 모델은 [[Document Knowledge Model]]에서 본다.
@@ -91,7 +93,9 @@ Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/p
 - `components/metadata-panel.tsx`
 - GitHub issue #20
 - GitHub issue #25
+- GitHub issue #29
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
+- `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - `lib/markdown/folding.ts`
 - `tests/markdown/folding.test.ts`
 - `tests/components/document-editor-preview.test.tsx`
