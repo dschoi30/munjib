@@ -10,6 +10,13 @@ test("development credentials login opens the workspace", async ({ page }) => {
     }
   });
   page.on("dialog", (dialog) => dialog.accept());
+  const openEditMode = async () => {
+    const editButton = page.getByRole("button", { name: "Edit", exact: true });
+    await expect(async () => {
+      await editButton.click();
+      await expect(editButton).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
+    }).toPass();
+  };
 
   await page.goto("/login");
   await expect(page.getByRole("heading", { name: "Development login" })).toBeVisible();
@@ -19,17 +26,23 @@ test("development credentials login opens the workspace", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/workspaces\/company-handbook/);
   await expect(page.getByRole("heading", { name: "Company Handbook" })).toBeVisible();
+  await expect
+    .poll(() =>
+      page.evaluate(() => ({
+        bodyFitsViewport: document.body.scrollHeight <= document.body.clientHeight,
+        documentFitsViewport: document.documentElement.scrollHeight <= document.documentElement.clientHeight,
+      })),
+    )
+    .toEqual({ bodyFitsViewport: true, documentFitsViewport: true });
+  await expect(page.getByRole("button", { name: "Navigate forward" })).toBeDisabled();
   const documentList = page.getByRole("navigation");
   await expect(documentList.getByRole("link", { name: "Welcome" })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page).toHaveURL(/document=/);
-  await page.waitForLoadState("networkidle");
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await expect(page.getByRole("button", { name: "Welcome", exact: true })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("welcome", { exact: true })).toBeVisible();
+  await openEditMode();
   await expect(page.locator(".cm-content").first()).toBeVisible();
   await page.getByRole("button", { name: /Quick switcher/ }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -52,21 +65,48 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ })).toBeVisible();
   await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
+  await page.getByRole("button", { name: "Add tab" }).click();
   await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
   await expect(
     documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
   ).toHaveClass(/bg-white/);
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
+  await expect(page.getByRole("button", { name: "Welcome", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Engineering Runbook", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  const engineeringTabBox = await page
+    .getByRole("button", { name: "Engineering Runbook", exact: true })
+    .locator("..")
+    .boundingBox();
+  const addTabBox = await page.getByRole("button", { name: "Add tab" }).boundingBox();
+  expect(engineeringTabBox).toBeTruthy();
+  expect(addTabBox).toBeTruthy();
+  expect(Math.abs((engineeringTabBox?.x ?? 0) + (engineeringTabBox?.width ?? 0) - (addTabBox?.x ?? 0))).toBeLessThan(
+    4,
+  );
+  await expect(page.getByText("engineering-runbook", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Welcome", exact: true }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Welcome");
+  await page.getByRole("button", { name: "Engineering Runbook", exact: true }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
+  await page.getByRole("button", { name: "Close Engineering Runbook" }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Welcome");
+  await documentList.getByRole("button", { name: "Open actions for Engineering Runbook" }).first().click();
+  await page.getByRole("menuitem", { name: "Open in new tab" }).click();
+  await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
+  await expect(page.getByRole("button", { name: "Welcome", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Engineering Runbook", exact: true })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
   await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
   await page.locator("[name='title']").fill("Draft title that was not saved");
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
+  await openEditMode();
 
   const editor = page.locator(".cm-content").first();
   await expect(editor).toBeVisible();
@@ -195,7 +235,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "New document", exact: true }).click();
   await expect(page).not.toHaveURL(childDocumentUrl);
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
-  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await openEditMode();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
   await page.keyboard.press("Control+K");
   await page.getByLabel("Quick switcher search").fill("Engineering");

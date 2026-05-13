@@ -4,6 +4,7 @@ import { DocumentEditor } from "@/components/document-editor";
 import { DocumentList } from "@/components/document-list";
 import { FolderDetail } from "@/components/folder-detail";
 import { MetadataPanel } from "@/components/metadata-panel";
+import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import {
@@ -117,10 +118,7 @@ export default async function WorkspacePage({
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
   const selectedDocument = selectedFolder
     ? null
-    : (readableDocuments.find((document) => document.id === selectedDocumentId) ??
-      visibleDocuments[0] ??
-      readableDocuments[0] ??
-      null);
+    : (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null);
 
   const versions = selectedDocument
     ? await prisma.documentVersion.findMany({
@@ -188,6 +186,13 @@ export default async function WorkspacePage({
   const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
+  const selectedCenterFolder = selectedFolder
+    ? {
+        id: selectedFolder.id,
+        name: selectedFolder.name,
+        path: selectedFolder.path,
+      }
+    : null;
 
   return (
     <AppShell
@@ -225,52 +230,71 @@ export default async function WorkspacePage({
         />
       }
       center={
-        selectedFolder ? (
-          <FolderDetail
-            folder={{
-              id: selectedFolder.id,
-              name: selectedFolder.name,
-              path: selectedFolder.path,
-              childCount: countFolderChildren({
-                folderId: selectedFolder.id,
-                folders: workspace.folders,
-                documents: readableDocuments,
-              }),
-            }}
-            canWrite={canWrite}
-          />
-        ) : (
-          <DocumentEditor
-            document={
-              selectedDocument
-                ? {
-                    id: selectedDocument.id,
-                    title: selectedDocument.title,
-                    contentMarkdown: selectedDocument.contentMarkdown,
-                  }
-                : null
-            }
-            canWrite={canWriteSelectedDocument}
-            action={updateAction}
-            uploadAttachmentAction={uploadAttachmentAction}
-            linkCandidates={readableDocuments.map((document) => ({
-              id: document.id,
-              slug: document.slug,
-              title: document.title,
-              path: document.path,
-            }))}
-            tags={documentTags.map((documentTag) => documentTag.tag)}
-            properties={documentProperties}
-            comments={comments.map((comment) => ({
-              id: comment.id,
-              body: comment.body,
-              user: comment.user,
-            }))}
-            linkPanels={linkPanels}
-            createFromBrokenLinkAction={createFromBrokenLinkAction}
-            createCommentAction={commentAction}
-          />
-        )
+        <WorkspaceCenterShell
+          workspaceSlug={workspaceSlug}
+          documents={readableDocuments.map((document) => ({
+            id: document.id,
+            title: document.title,
+            path: document.path,
+          }))}
+          selectedDocument={
+            selectedDocument
+              ? {
+                  id: selectedDocument.id,
+                  title: selectedDocument.title,
+                  path: selectedDocument.path,
+                }
+              : null
+          }
+          selectedFolder={selectedCenterFolder}
+        >
+          {selectedFolder ? (
+            <FolderDetail
+              folder={{
+                id: selectedFolder.id,
+                name: selectedFolder.name,
+                path: selectedFolder.path,
+                childCount: countFolderChildren({
+                  folderId: selectedFolder.id,
+                  folders: workspace.folders,
+                  documents: readableDocuments,
+                }),
+              }}
+              canWrite={canWrite}
+            />
+          ) : (
+            <DocumentEditor
+              document={
+                selectedDocument
+                  ? {
+                      id: selectedDocument.id,
+                      title: selectedDocument.title,
+                      contentMarkdown: selectedDocument.contentMarkdown,
+                    }
+                  : null
+              }
+              canWrite={canWriteSelectedDocument}
+              action={updateAction}
+              uploadAttachmentAction={uploadAttachmentAction}
+              linkCandidates={readableDocuments.map((document) => ({
+                id: document.id,
+                slug: document.slug,
+                title: document.title,
+                path: document.path,
+              }))}
+              tags={documentTags.map((documentTag) => documentTag.tag)}
+              properties={documentProperties}
+              comments={comments.map((comment) => ({
+                id: comment.id,
+                body: comment.body,
+                user: comment.user,
+              }))}
+              linkPanels={linkPanels}
+              createFromBrokenLinkAction={createFromBrokenLinkAction}
+              createCommentAction={commentAction}
+            />
+          )}
+        </WorkspaceCenterShell>
       }
       right={
         <MetadataPanel

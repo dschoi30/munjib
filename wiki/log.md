@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-10
-source_count: 48
+updated: 2026-05-13
+source_count: 50
 tags:
   - log
   - munjib
@@ -18,6 +18,44 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-13T00:20:00+09:00 - refinement
+
+- Result: Issue #29 document tabs와 navigation toolbar의 후속 UI 피드백을 반영했다.
+- Coverage: App shell을 viewport height에 고정해 workspace root vertical scroll을 제거하되, 다른 routes의 document root scroll은 막지 않는다. Tab strip `+` button은 마지막 tab 바로 오른쪽에 배치하고, row 폭이 부족하면 tab width를 함께 줄인다. Minimum width 이후 overflow tab은 horizontal scroll로 접근 가능하게 했다. Sidebar Open in new tab은 search result context의 `q` query를 유지한다. Toolbar forward button은 readable document forward target이 있을 때만 활성화한다. Review follow-up으로 tab reconciliation과 document history edge-case 표현을 명확히 했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 피드백, PR #30 review feedback, `components/app-shell.tsx`, `app/globals.css`, `components/document-tabs.tsx`, `components/document-navigation.tsx`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `lib/document-tabs.ts`, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
+
+## 2026-05-12T00:00:00+09:00 - review
+
+- Result: Issue #29 document tabs behavior를 사용자 피드백에 맞춰 조정했다.
+- Coverage: 일반 document 선택은 현재 active tab을 교체하고, tab strip 오른쪽 `+` button과 sidebar document row `...` menu의 Open in new tab만 새 tab instance를 추가한다. Inactive tab close는 현재 folder/root context를 유지한다. Root body vertical scroll은 app shell 안쪽 scroll container로 한정했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 피드백, `lib/document-tabs.ts`, `components/use-document-tabs.ts`, `components/document-tabs.tsx`, `components/document-navigation.tsx`, `components/workspace-center-shell.tsx`, `app/globals.css`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
+
+## 2026-05-11T00:30:00+09:00 - implementation
+
+- Result: Issue #29 document tabs and navigation toolbar를 구현했다.
+- Coverage: workspace center 상단 tab strip, workspace-scoped `localStorage` tab state, active `?document=<id>` routing, tab close target selection, browser history back/forward toolbar, current document/folder path display, unit/component/e2e coverage.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #29, `lib/document-tabs.ts`, `components/workspace-center-shell.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/use-document-tabs.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/document-tabs.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`, browser visual check.
+
+## 2026-05-11T00:15:00+09:00 - plan
+
+- Result: Issue #29 document tabs and navigation toolbar implementation plan을 추가했다.
+- Coverage: pure tab state model, workspace center chrome components, App Router page wiring, Playwright smoke, browser visual check, wiki maintenance 순서.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-11-document-tabs-navigation-toolbar.md`.
+
+## 2026-05-11T00:00:00+09:00 - design
+
+- Result: Issue #29 document tabs and navigation toolbar 설계를 추가했다.
+- Coverage: Obsidian 참고 이미지 `wiki/designs/obsidian1.png` 기준의 상단 문서 탭 strip, 탭 하단 browser history 기반 back/forward toolbar, 현재 document/folder path 표시, workspace-scoped `localStorage` 탭 상태, 기존 `?document=<id>` active routing 유지, multi-editor unsaved buffer 보존 제외 범위를 정리했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #29, `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`, `wiki/designs/obsidian1.png`.
 
 ## 2026-05-10T17:55:00+09:00 - review
 

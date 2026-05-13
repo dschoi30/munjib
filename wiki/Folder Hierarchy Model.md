@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-05-10
-source_count: 31
+updated: 2026-05-11
+source_count: 32
 tags:
   - munjib
   - data-model
@@ -89,6 +89,8 @@ Wiki link reconciliation은 path-qualified target을 document `path`로 우선 r
 
 Workspace 화면은 active folder와 readable active document를 함께 읽어 경로 기준 tree row로 표시한다. Sidebar의 folder row는 document처럼 editor target을 바꾸는 link가 아니라 accordion toggle button이다. Folder row를 열고 닫아도 현재 editor document는 유지된다.
 
+Issue #29 구현은 path model을 center navigation toolbar에 노출한다. Document view는 `Document.path`, folder detail view는 `Folder.path`, workspace root는 `/`를 표시한다. 이 toolbar path는 display-only UI이며, folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
+
 Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chevron icon을 사용한다. 펼쳐진 folder의 하위 row group은 chevron 아래로 이어지는 왼쪽 세로선을 표시해 folder/document 관계를 시각적으로 묶는다.
 
 `New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. `New document`는 현재 선택된 folder id를 hidden input으로 넘기며, folder 선택 상태에서는 새 문서가 해당 folder 아래에 생성된다.
@@ -103,6 +105,7 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 
 - GitHub issue #20
 - GitHub issue #26
+- GitHub issue #29
 - `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`
 - `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`
 - `lib/folders/path.ts`
@@ -123,6 +126,7 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
 - `wiki/designs/obsidian1.png`
+- `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - `app/workspaces/[workspaceSlug]/actions.ts`
 - `app/workspaces/[workspaceSlug]/page.tsx`
 - `tests/workspace-tree.test.ts`
