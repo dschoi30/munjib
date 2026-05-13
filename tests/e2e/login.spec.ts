@@ -14,8 +14,17 @@ test("development credentials login opens the workspace", async ({ page }) => {
     const editButton = page.getByRole("button", { name: "Edit", exact: true });
     await expect(async () => {
       await editButton.click();
-      await expect(editButton).toHaveAttribute("aria-pressed", "true", { timeout: 1000 });
+      await expect(page.getByRole("button", { name: "Preview", exact: true })).toBeVisible({
+        timeout: 1000,
+      });
+      await expect(page.locator(".cm-content").first()).toBeVisible({ timeout: 1000 });
     }).toPass();
+  };
+  const openPreviewMode = async () => {
+    const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+    if ((await previewButton.count()) > 0) {
+      await previewButton.click();
+    }
   };
 
   await page.goto("/login");
@@ -134,7 +143,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByLabel("Add comment").fill(commentBody);
   await page.getByRole("button", { name: "Comment" }).click();
   await expect(properties.getByText(commentBody)).toBeVisible();
-  await page.getByRole("button", { name: "Preview" }).click();
+  await openPreviewMode();
   await expect(page.getByRole("heading", { name: "Welcome" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Engineering Runbook" }).first()).toBeVisible();
   await expect(page.getByText(`and ${missingRunbookTitle} #review`)).toBeVisible();

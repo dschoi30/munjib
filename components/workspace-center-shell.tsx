@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { DocumentTabs } from "@/components/document-tabs";
 import { DocumentToolbar } from "@/components/document-toolbar";
+import {
+  DocumentViewModeProvider,
+  useDocumentViewMode,
+  type DocumentViewMode,
+} from "@/components/document-view-mode";
 import { useDocumentTabs } from "@/components/use-document-tabs";
 import type { DocumentTabDocument } from "@/lib/document-tabs";
 
@@ -22,7 +27,31 @@ export function WorkspaceCenterShell({
   selectedFolder,
   children,
 }: WorkspaceCenterShellProps) {
+  return (
+    <DocumentViewModeProvider>
+      <WorkspaceCenterShellContent
+        workspaceSlug={workspaceSlug}
+        documents={documents}
+        selectedDocument={selectedDocument}
+        selectedFolder={selectedFolder}
+      >
+        {children}
+      </WorkspaceCenterShellContent>
+    </DocumentViewModeProvider>
+  );
+}
+
+function WorkspaceCenterShellContent({
+  workspaceSlug,
+  documents,
+  selectedDocument,
+  selectedFolder,
+  children,
+}: WorkspaceCenterShellProps) {
   const router = useRouter();
+  const { setMode } = useDocumentViewMode();
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTopBeforeModeChangeRef = useRef<number | null>(null);
   const { tabs, activeTabId, closeTab, selectTab, createNewTab } = useDocumentTabs({
     workspaceSlug,
     documents,
@@ -33,6 +62,14 @@ export function WorkspaceCenterShell({
     index: selectedDocument ? 0 : -1,
   }));
   const readableDocumentIds = useMemo(() => new Set(documents.map((document) => document.id)), [documents]);
+
+  useEffect(() => {
+    if (!selectedDocument) {
+      return;
+    }
+
+    setMode("preview");
+  }, [selectedDocument?.id, setMode]);
 
   useEffect(() => {
     if (!selectedDocument) {
@@ -57,6 +94,25 @@ export function WorkspaceCenterShell({
     documentHistory.index >= 0 &&
     documentHistory.index < documentHistory.ids.length - 1 &&
     readableDocumentIds.has(documentHistory.ids[documentHistory.index + 1] ?? "");
+
+  useLayoutEffect(() => {
+    const scrollTop = scrollTopBeforeModeChangeRef.current;
+    const element = scrollContainerRef.current;
+
+    if (scrollTop === null || !element) {
+      return;
+    }
+
+    const restoreScroll = () => {
+      element.scrollTop = scrollTop;
+    };
+
+    restoreScroll();
+    const animationFrame = window.requestAnimationFrame(restoreScroll);
+    scrollTopBeforeModeChangeRef.current = null;
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  });
 
   function openDocument(documentId: string | null) {
     if (!documentId) {
@@ -111,6 +167,11 @@ export function WorkspaceCenterShell({
     }
   }
 
+  function handleModeChange(nextMode: DocumentViewMode) {
+    scrollTopBeforeModeChangeRef.current = scrollContainerRef.current?.scrollTop ?? null;
+    setMode(nextMode);
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <DocumentTabs
@@ -124,10 +185,14 @@ export function WorkspaceCenterShell({
         path={selectedDocument?.path ?? selectedFolder?.path ?? "/"}
         canNavigateBack={canNavigateBack}
         canNavigateForward={canNavigateForward}
+        showModeToggle={Boolean(selectedDocument)}
+        onModeChange={handleModeChange}
         onNavigateBack={handleNavigateBack}
         onNavigateForward={handleNavigateForward}
       />
-      <div className="min-h-0 flex-1 overflow-auto p-5">{children}</div>
+      <div ref={scrollContainerRef} data-testid="workspace-scroll-container" className="min-h-0 flex-1 overflow-auto p-5">
+        {children}
+      </div>
     </div>
   );
 }
