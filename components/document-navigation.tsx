@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus, Search } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
@@ -26,8 +26,12 @@ export function DocumentNavigation({
   workspaceSlug,
   folders,
   documents,
-  selectedFolderId,
+  activePanel,
   searchQuery,
+  onOpenSearch,
+  onOpenDocuments,
+  onSearchQueryChange,
+  selectedFolderId,
   canWrite,
   createAction,
   renameFolderAction,
@@ -39,8 +43,12 @@ export function DocumentNavigation({
   workspaceSlug: string;
   folders: FolderListItem[];
   documents: DocumentListItem[];
-  selectedFolderId: string | null;
+  activePanel: "documents" | "search" | "favorites";
   searchQuery: string;
+  onOpenSearch: () => void;
+  onOpenDocuments: () => void;
+  onSearchQueryChange: (query: string) => void;
+  selectedFolderId: string | null;
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
   renameFolderAction: (formData: FormData) => Promise<RenameFolderResult>;
@@ -51,8 +59,6 @@ export function DocumentNavigation({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [isSwitcherOpen, setIsSwitcherOpen] = useState(false);
-  const [switcherQuery, setSwitcherQuery] = useState("");
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
@@ -70,19 +76,17 @@ export function DocumentNavigation({
   const recentDocuments = documents
     .filter((document) => !favoriteDocumentIds.has(document.id))
     .slice(0, 5);
+  const searchResults = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return documents;
+    return documents.filter(
+      (document) =>
+        document.title.toLowerCase().includes(query) ||
+        document.path.toLowerCase().includes(query) ||
+        document.contentText.toLowerCase().includes(query),
+    );
+  }, [documents, searchQuery]);
   const folderErrorText = folderErrorMessage(folderError);
-  const switcherResults = useMemo(() => {
-    const query = switcherQuery.toLowerCase().trim();
-    if (!query) return documents.slice(0, 8);
-    return documents
-      .filter(
-        (document) =>
-          document.title.toLowerCase().includes(query) ||
-          document.contentText.toLowerCase().includes(query),
-      )
-      .slice(0, 8);
-  }, [documents, switcherQuery]);
-
   useEffect(() => {
     const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);
     setFavorites(parseFavorites(raw));
@@ -136,18 +140,20 @@ export function DocumentNavigation({
     function onKeyDown(event: KeyboardEvent) {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        setIsSwitcherOpen(true);
+        onOpenSearch();
       }
       if (event.key === "Escape") {
-        setIsSwitcherOpen(false);
         setOpenMenuId(null);
         setRenamingFolderId(null);
+        if (activePanel !== "documents") {
+          onOpenDocuments();
+        }
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [activePanel, onOpenDocuments, onOpenSearch]);
 
   function toggleFavoriteDocument(documentId: string) {
     setFavorites((current) => ({
@@ -164,7 +170,7 @@ export function DocumentNavigation({
       path: document.path,
     });
     setOpenMenuId(null);
-    router.push(workspaceDocumentHref({ workspaceSlug, documentId: document.id, searchQuery }));
+    router.push(workspaceDocumentHref({ workspaceSlug, documentId: document.id }));
   }
 
   function toggleFavoriteFolder(folderId: string) {
@@ -253,7 +259,6 @@ export function DocumentNavigation({
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
             selected={item.document.id === selectedDocumentId}
-            searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}
@@ -301,117 +306,174 @@ export function DocumentNavigation({
   return (
     <>
       <div>
-        <button
-          type="button"
-          onClick={() => {
-            setOpenMenuId(null);
-            setIsSwitcherOpen(true);
-          }}
-          className="mb-4 flex h-9 w-full items-center justify-between rounded-md border border-border bg-white px-3 text-sm text-slate-500 hover:bg-muted"
-        >
-          <span className="inline-flex items-center gap-2">
-            <Search className="h-4 w-4" aria-hidden="true" />
-            Quick switcher
-          </span>
-          <span className="text-xs">Ctrl K</span>
-        </button>
-      {favoriteDocuments.length > 0 || favoriteFolders.length > 0 ? (
-        <FavoriteSection
-          workspaceSlug={workspaceSlug}
-          folders={favoriteFolders}
-          documents={favoriteDocuments}
-          favoriteDocumentIds={favoriteDocumentIds}
-          selectedDocumentId={selectedDocumentId}
-          searchQuery={searchQuery}
-          openMenuId={openMenuId}
-          onOpenMenu={setOpenMenuId}
-          onToggleFavorite={toggleFavoriteDocument}
-          onToggleFavoriteFolder={toggleFavoriteFolder}
-          onOpenInNewTab={openDocumentRowInNewTab}
-          archiveDocumentAction={archiveDocumentFromMenu}
-        />
-      ) : null}
-      {!searchQuery ? (
-        <DocumentSection
-          title="Recents"
-          workspaceSlug={workspaceSlug}
-          documents={recentDocuments}
-          menuScope="recent-document"
-          favoriteDocumentIds={favoriteDocumentIds}
-          selectedDocumentId={selectedDocumentId}
-          searchQuery={searchQuery}
-          openMenuId={openMenuId}
-          onOpenMenu={setOpenMenuId}
-          onToggleFavorite={toggleFavoriteDocument}
-          onOpenInNewTab={openDocumentRowInNewTab}
-          archiveDocumentAction={archiveDocumentFromMenu}
-        />
-      ) : null}
-      <nav className="space-y-1" aria-label={searchQuery ? "Search results" : "All documents"}>
-        {!searchQuery ? (
-          <p className={sectionHeadingClassName}>Documents</p>
+        {activePanel === "search" ? (
+          <SearchPanel
+            workspaceSlug={workspaceSlug}
+            documents={searchResults}
+            query={searchQuery}
+            onQueryChange={onSearchQueryChange}
+            selectedDocumentId={selectedDocumentId}
+            favoriteDocumentIds={favoriteDocumentIds}
+            openMenuId={openMenuId}
+            onOpenMenu={setOpenMenuId}
+            onToggleFavorite={toggleFavoriteDocument}
+            onOpenInNewTab={openDocumentRowInNewTab}
+            archiveDocumentAction={archiveDocumentFromMenu}
+          />
         ) : null}
-        {documents.length === 0 && (searchQuery || folders.length === 0) ? (
+        {activePanel === "favorites" ? (
+          <FavoriteSection
+            workspaceSlug={workspaceSlug}
+            folders={favoriteFolders}
+            documents={favoriteDocuments}
+            favoriteDocumentIds={favoriteDocumentIds}
+            selectedDocumentId={selectedDocumentId}
+            openMenuId={openMenuId}
+            onOpenMenu={setOpenMenuId}
+            onToggleFavorite={toggleFavoriteDocument}
+            onToggleFavoriteFolder={toggleFavoriteFolder}
+            onOpenInNewTab={openDocumentRowInNewTab}
+            archiveDocumentAction={archiveDocumentFromMenu}
+          />
+        ) : null}
+        {activePanel === "documents" ? (
+          <>
+            <DocumentSection
+              title="Recents"
+              workspaceSlug={workspaceSlug}
+              documents={recentDocuments}
+              menuScope="recent-document"
+              favoriteDocumentIds={favoriteDocumentIds}
+              selectedDocumentId={selectedDocumentId}
+              openMenuId={openMenuId}
+              onOpenMenu={setOpenMenuId}
+              onToggleFavorite={toggleFavoriteDocument}
+              onOpenInNewTab={openDocumentRowInNewTab}
+              archiveDocumentAction={archiveDocumentFromMenu}
+            />
+            <nav className="space-y-1" aria-label="All documents">
+              <p className={sectionHeadingClassName}>Documents</p>
+              {documents.length === 0 && folders.length === 0 ? (
+                <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
+                  No documents found.
+                </p>
+              ) : null}
+              {renderTreeItems(null)}
+            </nav>
+          </>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function SearchPanel({
+  workspaceSlug,
+  documents,
+  query,
+  onQueryChange,
+  selectedDocumentId,
+  favoriteDocumentIds,
+  openMenuId,
+  onOpenMenu,
+  onToggleFavorite,
+  onOpenInNewTab,
+  archiveDocumentAction,
+}: {
+  workspaceSlug: string;
+  documents: DocumentListItem[];
+  query: string;
+  onQueryChange: (query: string) => void;
+  selectedDocumentId: string | null;
+  favoriteDocumentIds: Set<string>;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
+  onToggleFavorite: (documentId: string) => void;
+  onOpenInNewTab: (document: DocumentListItem) => void;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
+}) {
+  const resultLabel = `${documents.length} ${documents.length === 1 ? "result" : "results"}`;
+
+  return (
+    <section className="space-y-3" aria-label="Search results">
+      <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 shadow-sm focus-within:border-ink">
+        <label className="sr-only" htmlFor="document-list-search">
+          Search documents
+        </label>
+        <input
+          id="document-list-search"
+          autoFocus
+          type="search"
+          value={query}
+          onChange={(event) => onQueryChange(event.target.value)}
+          placeholder="Search documents"
+          className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
+        />
+      </div>
+      <p className="text-[0.68rem] font-medium text-slate-400">{resultLabel}</p>
+      <div className="space-y-1">
+        {documents.map((document) => (
+          <SearchResultRow
+            key={`search-${document.id}`}
+            rowId={`search-document:${document.id}`}
+            workspaceSlug={workspaceSlug}
+            document={document}
+            isFavorite={favoriteDocumentIds.has(document.id)}
+            selected={document.id === selectedDocumentId}
+            openMenuId={openMenuId}
+            onOpenMenu={onOpenMenu}
+            onToggleFavorite={onToggleFavorite}
+            onOpenInNewTab={onOpenInNewTab}
+            archiveDocumentAction={archiveDocumentAction}
+          />
+        ))}
+        {documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
             No documents found.
           </p>
         ) : null}
-        {searchQuery
-          ? documents.map((document) => (
-              <DocumentLinkRow
-                key={document.id}
-                rowId={`search-document:${document.id}`}
-                workspaceSlug={workspaceSlug}
-                document={document}
-                isFavorite={favoriteDocumentIds.has(document.id)}
-                selected={document.id === selectedDocumentId}
-                searchQuery={searchQuery}
-                openMenuId={openMenuId}
-                onOpenMenu={setOpenMenuId}
-                onToggleFavorite={toggleFavoriteDocument}
-                onOpenInNewTab={openDocumentRowInNewTab}
-                archiveDocumentAction={archiveDocumentFromMenu}
-              />
-            ))
-          : renderTreeItems(null)}
-      </nav>
       </div>
-      {isSwitcherOpen ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/20 p-6" role="dialog" aria-modal="true">
-          <div className="mx-auto mt-20 max-w-xl overflow-hidden rounded-md border border-border bg-white shadow-xl">
-            <div className="border-b border-border p-3">
-              <label className="sr-only" htmlFor="quick-switcher-input">
-                Quick switcher search
-              </label>
-              <input
-                id="quick-switcher-input"
-                autoFocus
-                value={switcherQuery}
-                onChange={(event) => setSwitcherQuery(event.target.value)}
-                placeholder="Jump to document"
-                className="h-10 w-full rounded-md border border-border px-3 text-sm outline-none focus:border-ink"
-              />
-            </div>
-            <div className="max-h-80 overflow-auto p-2">
-              {switcherResults.map((document) => (
-                <Link
-                  key={document.id}
-                  href={`/workspaces/${workspaceSlug}?document=${document.id}`}
-                  onClick={() => setIsSwitcherOpen(false)}
-                  className="block rounded-md px-3 py-2 text-sm hover:bg-muted"
-                >
-                  <span className="block truncate">{document.title}</span>
-                  <span className="block truncate text-xs text-slate-500">{document.path}</span>
-                </Link>
-              ))}
-              {switcherResults.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-slate-500">No documents found.</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : null}
-    </>
+    </section>
+  );
+}
+
+function SearchResultRow({
+  rowId,
+  workspaceSlug,
+  document,
+  isFavorite,
+  selected,
+  openMenuId,
+  onOpenMenu,
+  onToggleFavorite,
+  onOpenInNewTab,
+  archiveDocumentAction,
+}: {
+  rowId: string;
+  workspaceSlug: string;
+  document: DocumentListItem;
+  isFavorite: boolean;
+  selected: boolean;
+  openMenuId: string | null;
+  onOpenMenu: (menuId: string | null) => void;
+  onToggleFavorite: (documentId: string) => void;
+  onOpenInNewTab: (document: DocumentListItem) => void;
+  archiveDocumentAction: (formData: FormData) => Promise<void>;
+}) {
+  return (
+    <DocumentLinkRow
+      rowId={rowId}
+      workspaceSlug={workspaceSlug}
+      document={document}
+      isFavorite={isFavorite}
+      selected={selected}
+      description={document.path}
+      openMenuId={openMenuId}
+      onOpenMenu={onOpenMenu}
+      onToggleFavorite={onToggleFavorite}
+      onOpenInNewTab={onOpenInNewTab}
+      archiveDocumentAction={archiveDocumentAction}
+    />
   );
 }
 
@@ -421,7 +483,6 @@ function FavoriteSection({
   documents,
   favoriteDocumentIds,
   selectedDocumentId,
-  searchQuery,
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
@@ -434,7 +495,6 @@ function FavoriteSection({
   documents: DocumentListItem[];
   favoriteDocumentIds: Set<string>;
   selectedDocumentId: string | null;
-  searchQuery: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
@@ -446,6 +506,11 @@ function FavoriteSection({
     <section className="mb-4">
       <p className={sectionHeadingClassName}>Favorites</p>
       <div className="space-y-1">
+        {folders.length === 0 && documents.length === 0 ? (
+          <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
+            No favorites yet.
+          </p>
+        ) : null}
         {folders.map((folder) => (
           <FavoriteFolderRow
             key={`Favorites-folder-${folder.id}`}
@@ -465,7 +530,6 @@ function FavoriteSection({
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
             selected={document.id === selectedDocumentId}
-            searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
@@ -485,7 +549,6 @@ function DocumentSection({
   menuScope,
   favoriteDocumentIds,
   selectedDocumentId,
-  searchQuery,
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
@@ -498,7 +561,6 @@ function DocumentSection({
   menuScope: string;
   favoriteDocumentIds: Set<string>;
   selectedDocumentId: string | null;
-  searchQuery: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
@@ -517,7 +579,6 @@ function DocumentSection({
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
             selected={document.id === selectedDocumentId}
-            searchQuery={searchQuery}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
@@ -536,7 +597,7 @@ function DocumentLinkRow({
   document,
   isFavorite,
   selected,
-  searchQuery,
+  description,
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
@@ -548,7 +609,7 @@ function DocumentLinkRow({
   document: DocumentListItem;
   isFavorite: boolean;
   selected: boolean;
-  searchQuery: string;
+  description?: string;
   openMenuId: string | null;
   onOpenMenu: (menuId: string | null) => void;
   onToggleFavorite: (documentId: string) => void;
@@ -559,19 +620,19 @@ function DocumentLinkRow({
   const isMenuOpen = openMenuId === menuId;
   const displayLabel = documentDisplayLabel(document);
   const rowClassName = selected
-    ? "group relative flex items-start gap-1 rounded-md bg-white shadow-sm focus-within:bg-white"
-    : "group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted";
+    ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
+    : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
 
   return (
     <div className={rowClassName}>
       <Link
-        href={workspaceDocumentHref({ workspaceSlug, documentId: document.id, searchQuery })}
+        href={workspaceDocumentHref({ workspaceSlug, documentId: document.id })}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
         <span className="block truncate">{documentDisplayLabel(document)}</span>
-        {searchQuery ? (
-          <span className="mt-1 block truncate text-[11px] text-slate-500">{document.path}</span>
+        {description ? (
+          <span className="mt-0.5 block truncate text-[11px] text-slate-500">{description}</span>
         ) : null}
       </Link>
       <button
@@ -647,7 +708,7 @@ function FavoriteFolderRow({
   const displayLabel = folderDisplayLabel(folder);
 
   return (
-    <div className="group relative flex items-start gap-1 rounded-md hover:bg-muted focus-within:bg-muted">
+    <div className="group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200">
       <Link
         href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
         onClick={() => onOpenMenu(null)}
@@ -726,8 +787,8 @@ function FolderToggleRow({
   const isMenuOpen = openMenuId === menuId;
   const displayLabel = folderDisplayLabel(folder);
   const rowClassName = selected
-    ? "group relative flex w-full items-center gap-1 rounded-md bg-white px-2 py-1.5 text-left text-[13px] font-medium shadow-sm focus-within:bg-white"
-    : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-muted focus-within:bg-muted";
+    ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
+    : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-slate-200 focus-within:bg-slate-200";
 
   if (isRenaming) {
     const renameInputId = `rename-folder-${folder.id}`;
@@ -781,7 +842,6 @@ function FolderToggleRow({
       >
         <form action={createAction}>
           <input type="hidden" name="folderId" value={folder.id} />
-          <input type="hidden" name="template" value="blank" />
           <button
             type="submit"
             disabled={!canWrite}

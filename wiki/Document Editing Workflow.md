@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-11
-source_count: 30
+updated: 2026-05-14
+source_count: 31
 tags:
   - munjib
   - workflow
@@ -37,21 +37,21 @@ links:
 - outgoing links, backlinks, broken links
 - tags, frontmatter properties, comments
 
-좌측 navigation은 title/body search, quick switcher, recent documents, localStorage favorites를 제공한다. 검색 결과는 permission filter를 통과한 문서 안에서 title 또는 `contentText` 기준으로 좁힌다.
+좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
-Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Quick switcher는 document title과 path를 함께 표시해 folder별 duplicate title을 구분한다. Document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다.
+Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Document row는 hover/focus 상태에서 더 진한 `bg-slate-200` highlight를 보여주고, 선택된 document row도 같은 고정 highlight를 유지한다.
 
-Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
+Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. `Favorites` icon button은 document list 영역을 favorites-only panel로 전환하며, favorite section은 더 이상 `Recents` 위에 상시 노출되지 않는다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
 
 ## 생성 흐름
 
 `createDocumentAction()`은 현재 user를 확인한 뒤 `createDocument()`를 호출한다.
 
-`createDocumentAction()`은 `blank`, `runbook`, `policy` template을 지원한다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다. Sidebar top-level create control과 folder row `+` creation은 server-action redirect path를 유지해 hydration 전 form submission도 생성된 document/folder URL로 이동한다.
+Issue #32 이후 `createDocumentAction()`은 template key를 받지 않고 항상 blank document를 만든다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다. Sidebar top-level create control과 folder row `+` creation은 server-action redirect path를 유지해 hydration 전 form submission도 생성된 document/folder URL로 이동한다.
 
-Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 document를 생성한다. 문서 template은 유지하되 `folderId`를 입력으로 받는다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다.
+Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 `Untitled` blank document를 생성한다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다. Sidebar top-level `Documents`, `New document`, `New folder`, `Search`, `Favorites` controls는 `Company Handbook` 제목 아래의 icon-only toolbar로 표시한다. `Company Handbook` row는 center `DocumentTabs` row와, icon toolbar row는 center `DocumentToolbar` row와 같은 vertical origin/height에 맞춘다. 각 icon button은 shadcn/Radix Tooltip으로 hover 설명을 표시한다.
 
 `createDocument()`는 다음을 수행한다.
 
@@ -112,9 +112,9 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 ## Document tabs and navigation toolbar
 
-Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, quick switcher link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
+Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, sidebar search result link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
 
-Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Sidebar Open in new tab은 검색 결과에서 실행해도 기존 `q` query를 유지해 filtered sidebar context를 보존한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
+Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
 
 Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없거나 더 이상 readable하지 않으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
 
