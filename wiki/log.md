@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-14
-source_count: 50
+source_count: 51
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-14T22:44:00+09:00 - implementation
+
+- Result: Issue #32 document list sidebar를 Obsidian 참고 이미지에 맞춰 단순화했다.
+- Coverage: WORKSPACE label과 always-visible title/body search form, quick switcher, template selection을 제거했다. `Company Handbook` 제목 아래에 icon-only `Documents`, `New document`, `New folder`, `Search`, `Favorites` toolbar를 배치했고, left sidebar top padding을 제거해 `Company Handbook` row는 `DocumentTabs`, icon toolbar row는 `DocumentToolbar`와 vertical alignment를 맞춘다. Document creation은 항상 blank `Untitled` 문서로 시작한다. `Search` button과 `Ctrl+K`는 document list 영역을 검색 결과 panel로 전환하고, `Favorites` button은 favorites-only panel로 전환하며, folder-shaped `Documents` button은 기본 document list로 되돌린다. 각 toolbar icon은 shadcn/Radix Tooltip hover 설명을 제공한다. 기존에 `Recents` 위로 favorites section을 상시 노출하던 코드는 제거했다. `Recents` / `Documents` section label은 기존 uppercase/tracking style로 복구하고, document/folder row hover 및 selected highlight를 `bg-slate-200`으로 강화했다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #32, 사용자 제공 Obsidian screenshot, `components/document-list.tsx`, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/components/document-list.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
 
 ## 2026-05-14T00:55:00+09:00 - implementation
 

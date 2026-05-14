@@ -32,17 +32,15 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string; folder?: string; q?: string; folderError?: string }>;
+  searchParams: Promise<{ document?: string; folder?: string; folderError?: string }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
   const {
     document: selectedDocumentId,
     folder: selectedFolderIdParam,
-    q,
     folderError,
   } = await searchParams;
-  const searchQuery = q?.trim() ?? "";
 
   const workspace = await prisma.workspace.findFirst({
     where: { slug: workspaceSlug },
@@ -105,15 +103,6 @@ export default async function WorkspacePage({
     explicitDocumentIds,
     userPermissionsByDocumentId: userPermissionByDocumentId,
   });
-  const visibleDocuments = searchQuery
-    ? readableDocuments.filter((document) => {
-        const normalizedQuery = searchQuery.toLowerCase();
-        return (
-          document.title.toLowerCase().includes(normalizedQuery) ||
-          document.contentText.toLowerCase().includes(normalizedQuery)
-        );
-      })
-    : readableDocuments;
   const selectedFolder =
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
   const selectedDocument = selectedFolder
@@ -205,7 +194,7 @@ export default async function WorkspacePage({
             name: folder.name,
             path: folder.path,
           }))}
-          documents={visibleDocuments.map((document) => ({
+          documents={readableDocuments.map((document) => ({
             id: document.id,
             folderId: document.folderId,
             title: document.title,
@@ -226,7 +215,6 @@ export default async function WorkspacePage({
           folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           selectedDocumentId={selectedDocument?.id ?? null}
-          searchQuery={searchQuery}
         />
       }
       center={
