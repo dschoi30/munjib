@@ -1,5 +1,8 @@
+"use client";
+
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
+import { useCallback, useState } from "react";
 
 export type DocumentListItem = {
   id: string;
@@ -30,7 +33,6 @@ export function DocumentList({
   folderError,
   selectedFolderId,
   selectedDocumentId,
-  searchQuery,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
@@ -44,44 +46,49 @@ export function DocumentList({
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
-  searchQuery: string;
 }) {
+  const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
+    "documents",
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const openSearch = useCallback(() => {
+    setActivePanel("search");
+  }, []);
+
+  const openDocuments = useCallback(() => {
+    setActivePanel("documents");
+  }, []);
+
+  const openFavorites = useCallback(() => {
+    setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
+  }, []);
+
   return (
     <div>
-      <div className="mb-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Workspace</p>
-        <h1 className="text-lg font-semibold">Company Handbook</h1>
+      <div className="flex h-11 items-center">
+        <h1 className="truncate text-sm font-medium">Company Handbook</h1>
       </div>
       <DocumentCreateControls
         selectedFolderId={selectedFolderId}
         canWrite={canWrite}
         createAction={createAction}
         createFolderAction={createFolderAction}
+        activePanel={activePanel}
+        onOpenDocuments={openDocuments}
+        onOpenSearch={openSearch}
+        onOpenFavorites={openFavorites}
       />
-      <form action={`/workspaces/${workspaceSlug}`} className="mb-4">
-        <label className="sr-only" htmlFor="document-search">
-          Search documents
-        </label>
-        <input
-          id="document-search"
-          name="q"
-          type="search"
-          defaultValue={searchQuery}
-          placeholder="Search title or body"
-          className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-ink"
-        />
-      </form>
-      {searchQuery ? (
-        <p className="mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
-          Search results
-        </p>
-      ) : null}
       <DocumentNavigation
         workspaceSlug={workspaceSlug}
         folders={folders}
         documents={documents}
-        selectedFolderId={selectedFolderId}
+        activePanel={activePanel}
         searchQuery={searchQuery}
+        onOpenSearch={openSearch}
+        onOpenDocuments={openDocuments}
+        onSearchQueryChange={setSearchQuery}
+        selectedFolderId={selectedFolderId}
         canWrite={canWrite}
         createAction={createAction}
         renameFolderAction={renameFolderAction}

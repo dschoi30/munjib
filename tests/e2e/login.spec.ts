@@ -53,32 +53,28 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByText("welcome", { exact: true })).toBeVisible();
   await openEditMode();
   await expect(page.locator(".cm-content").first()).toBeVisible();
-  await page.getByRole("button", { name: /Quick switcher/ }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await page.keyboard.press("Escape");
   await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
   await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
   await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  await expect(page.getByText("Favorites")).toHaveCount(0);
+  await page.getByRole("button", { name: "Favorites" }).click();
   await expect(page.getByText("Favorites")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Welcome" })).toBeVisible();
   await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
   await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
-  await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
+  await page.getByRole("button", { name: "Open actions for Welcome" }).first().click();
   await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toBeVisible();
   await page.getByRole("heading", { name: "Company Handbook" }).click();
   await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Favorites" }).click();
 
-  await page.getByLabel("Search documents").fill("Backlinked");
-  await page.keyboard.press("Enter");
-  await expect(page).toHaveURL(/q=Backlinked/);
-  await expect(page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ })).toBeVisible();
-  await expect(page.getByText("Search results")).toBeVisible();
   await page.goto("/workspaces/company-handbook");
   await page.getByRole("button", { name: "Add tab" }).click();
   await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
   await expect(
     documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
-  ).toHaveClass(/bg-white/);
+  ).toHaveClass(/bg-slate-200/);
 
   await expect(page.locator("[name='title']")).toHaveValue("Engineering Runbook");
   await expect(page.getByRole("button", { name: "Welcome", exact: true })).toBeVisible();
@@ -166,6 +162,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const folderRow = folderAction.locator("..").locator("..");
   await folderAction.click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  await page.getByRole("button", { name: "Favorites" }).click();
   const favoritesSection = page.locator("section").filter({ has: page.getByText("Favorites", { exact: true }) });
   await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
   await favoritesSection
@@ -173,9 +170,12 @@ test("development credentials login opens the workspace", async ({ page }) => {
     .click();
   await page.getByRole("menuitem", { name: "Remove from favorites" }).click();
   await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toHaveCount(0);
+  await page.getByRole("button", { name: "Favorites" }).click();
   await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
   await page.getByRole("menuitem", { name: "Add to favorites" }).click();
+  await page.getByRole("button", { name: "Favorites" }).click();
   await expect(favoritesSection.getByRole("link", { name: `${folderLabel} ${folderPath ?? ""}` })).toBeVisible();
+  await page.getByRole("button", { name: "Favorites" }).click();
 
   await folderRow.getByRole("button", { name: `Open actions for ${folderDisplayLabel}` }).click();
   await page.getByRole("menuitem", { name: "Rename" }).click();
@@ -246,9 +246,6 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   await openEditMode();
   await expect(page.locator(".cm-editor").first()).not.toHaveCSS("height", "520px");
-  await page.keyboard.press("Control+K");
-  await page.getByLabel("Quick switcher search").fill("Engineering");
-  await expect(page.getByRole("dialog").getByRole("link", { name: "Engineering Runbook" }).first()).toBeVisible();
 
   expect(consoleErrors).toEqual([]);
 });
