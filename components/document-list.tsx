@@ -2,7 +2,7 @@
 
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export type DocumentListItem = {
   id: string;
@@ -52,17 +52,17 @@ export function DocumentList({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
-  function openSearch() {
+  const openSearch = useCallback(() => {
     setActivePanel("search");
-  }
+  }, []);
 
-  function openDocuments() {
+  const openDocuments = useCallback(() => {
     setActivePanel("documents");
-  }
+  }, []);
 
-  function openFavorites() {
+  const openFavorites = useCallback(() => {
     setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
-  }
+  }, []);
 
   return (
     <div>
@@ -86,6 +86,7 @@ export function DocumentList({
         activePanel={activePanel}
         searchQuery={searchQuery}
         onOpenSearch={openSearch}
+        onOpenDocuments={openDocuments}
         onSearchQueryChange={setSearchQuery}
         selectedFolderId={selectedFolderId}
         canWrite={canWrite}

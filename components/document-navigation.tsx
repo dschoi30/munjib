@@ -29,6 +29,7 @@ export function DocumentNavigation({
   activePanel,
   searchQuery,
   onOpenSearch,
+  onOpenDocuments,
   onSearchQueryChange,
   selectedFolderId,
   canWrite,
@@ -45,6 +46,7 @@ export function DocumentNavigation({
   activePanel: "documents" | "search" | "favorites";
   searchQuery: string;
   onOpenSearch: () => void;
+  onOpenDocuments: () => void;
   onSearchQueryChange: (query: string) => void;
   selectedFolderId: string | null;
   canWrite: boolean;
@@ -143,12 +145,15 @@ export function DocumentNavigation({
       if (event.key === "Escape") {
         setOpenMenuId(null);
         setRenamingFolderId(null);
+        if (activePanel !== "documents") {
+          onOpenDocuments();
+        }
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onOpenSearch]);
+  }, [activePanel, onOpenDocuments, onOpenSearch]);
 
   function toggleFavoriteDocument(documentId: string) {
     setFavorites((current) => ({

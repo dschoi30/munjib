@@ -37,7 +37,7 @@ links:
 - outgoing links, backlinks, broken links
 - tags, frontmatter properties, comments
 
-좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button은 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
+좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 

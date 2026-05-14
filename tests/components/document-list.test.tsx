@@ -151,6 +151,24 @@ describe("DocumentList", () => {
     expect(screen.queryByText("Favorites")).toBeNull();
   });
 
+  it("returns to the document list from search and favorites with Escape", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByText("Recents")).toBeTruthy();
+    expect(screen.queryByLabelText("Search documents")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+    expect(screen.getByText("Favorites")).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.getByText("Documents")).toBeTruthy();
+    expect(screen.queryByText("Favorites")).toBeNull();
+  });
+
   it("shows tooltips for sidebar toolbar icons on hover", async () => {
     renderList();
 

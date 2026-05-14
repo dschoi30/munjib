@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-14T23:52:00+09:00 - review follow-up
+
+- Result: PR #33 review에서 지적된 sidebar panel 전환 안정성과 Escape UX 회귀를 정리했다.
+- Coverage: `DocumentList`의 panel switching handlers를 memoized callback으로 고정해 keyboard shortcut effect가 불필요하게 재등록되지 않도록 했고, search/favorites panel 활성 상태에서 `Escape`가 기본 document list로 되돌아가도록 했다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #33 Gemini review comments, `components/document-list.tsx`, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/app-shell.test.tsx tests/components/workspace-center-shell.test.tsx tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`, `pnpm run test:e2e`.
+
 ## 2026-05-14T22:44:00+09:00 - implementation
 
 - Result: Issue #32 document list sidebar를 Obsidian 참고 이미지에 맞춰 단순화했다.
