@@ -2,6 +2,8 @@
 
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
+import { workspaceGraphHref } from "@/lib/workspace-routes";
+import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 export type DocumentListItem = {
@@ -33,6 +35,7 @@ export function DocumentList({
   folderError,
   selectedFolderId,
   selectedDocumentId,
+  isGraphView = false,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
@@ -46,7 +49,9 @@ export function DocumentList({
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
+  isGraphView?: boolean;
 }) {
+  const router = useRouter();
   const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
     "documents",
   );
@@ -64,6 +69,10 @@ export function DocumentList({
     setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
   }, []);
 
+  const openGraph = useCallback(() => {
+    router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
+  }, [router, selectedDocumentId, workspaceSlug]);
+
   return (
     <div>
       <div className="flex h-11 items-center">
@@ -74,10 +83,11 @@ export function DocumentList({
         canWrite={canWrite}
         createAction={createAction}
         createFolderAction={createFolderAction}
-        activePanel={activePanel}
+        activeView={isGraphView ? "graph" : activePanel}
         onOpenDocuments={openDocuments}
         onOpenSearch={openSearch}
         onOpenFavorites={openFavorites}
+        onOpenGraph={openGraph}
       />
       <DocumentNavigation
         workspaceSlug={workspaceSlug}
