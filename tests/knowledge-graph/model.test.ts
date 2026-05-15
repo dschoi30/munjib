@@ -57,6 +57,14 @@ describe("knowledge graph model", () => {
       "tag:design": "#Design",
       "wiki:broken:missing-runbook": "Missing Runbook",
     });
+    expect(graph.nodes.find((node) => node.id === "document:doc-1")).toMatchObject({
+      id: "document:doc-1",
+      kind: "document",
+      label: "Welcome",
+      documentId: "doc-1",
+      title: "Welcome",
+      path: "/welcome",
+    });
   });
 
   it("builds typed graph links from resolved links, broken links, tags, and scalar properties", () => {

@@ -40,7 +40,7 @@ export type KnowledgeGraphInput = {
   properties: KnowledgeGraphPropertyInput[];
 };
 
-export type KnowledgeGraphDocumentNode = KnowledgeGraphDocumentInput & {
+export type KnowledgeGraphDocumentNode = Omit<KnowledgeGraphDocumentInput, "id"> & {
   id: string;
   kind: "document";
   label: string;
@@ -108,11 +108,12 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
 
   for (const document of input.documents) {
     nodesById.set(documentNodeId(document.id), {
-      ...document,
       id: documentNodeId(document.id),
       kind: "document",
       label: document.title,
       documentId: document.id,
+      title: document.title,
+      path: document.path,
     });
   }
 
