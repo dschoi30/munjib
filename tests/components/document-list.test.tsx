@@ -4,11 +4,10 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
+const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({
-    push: vi.fn(),
-    refresh: vi.fn(),
-  }),
+  useRouter: () => router,
 }));
 
 const baseProps = {
@@ -50,6 +49,9 @@ const baseProps = {
 };
 
 beforeEach(() => {
+  router.push.mockReset();
+  router.refresh.mockReset();
+
   let store: Record<string, string> = {};
 
   Object.defineProperty(window, "localStorage", {
@@ -131,6 +133,65 @@ describe("DocumentList", () => {
     expect(screen.getByRole("link", { name: "Engineering Runbook" })).toBeTruthy();
     expect(screen.queryByText("Recents")).toBeNull();
     expect(screen.queryByText("Documents")).toBeNull();
+  });
+
+  it("opens graph view from the toolbar with focus on the selected document", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+
+    expect(router.push).toHaveBeenCalledWith(
+      "/workspaces/company-handbook?document=doc-1&graph=1",
+    );
+  });
+
+  it("marks the graph toolbar button active in graph view", () => {
+    renderList({ isGraphView: true });
+
+    expect(screen.getByRole("button", { name: "Graph" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  it("clears graph route when opening documents from graph view", () => {
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByText("Recents")).toBeTruthy();
+  });
+
+  it("clears graph route and opens search from graph view", () => {
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+  });
+
+  it("clears graph route and opens favorites from graph view", () => {
+    window.localStorage.setItem(
+      "munjib:favorites:company-handbook",
+      JSON.stringify({ documents: ["doc-2"], folders: [] }),
+    );
+
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByText("Favorites")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Engineering Runbook" })).toBeTruthy();
+  });
+
+  it("clears graph route to workspace root when no document is selected", () => {
+    renderList({ isGraphView: true, selectedDocumentId: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 
   it("returns to the document list from search and favorites with the Documents toolbar button", () => {

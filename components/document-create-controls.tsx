@@ -1,4 +1,4 @@
-import { FilePlus2, Folder, FolderPlus, Search, Star } from "lucide-react";
+import { FilePlus2, Folder, FolderPlus, Network, Search, Star } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,19 +13,21 @@ export function DocumentCreateControls({
   canWrite,
   createAction,
   createFolderAction,
-  activePanel,
+  activeView,
   onOpenDocuments,
   onOpenSearch,
   onOpenFavorites,
+  onOpenGraph,
 }: {
   selectedFolderId: string | null;
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
   createFolderAction: (formData: FormData) => Promise<void>;
-  activePanel: "documents" | "search" | "favorites";
+  activeView: "documents" | "search" | "favorites" | "graph";
   onOpenDocuments: () => void;
   onOpenSearch: () => void;
   onOpenFavorites: () => void;
+  onOpenGraph: () => void;
 }) {
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
@@ -38,9 +40,9 @@ export function DocumentCreateControls({
           <Button
             type="button"
             aria-label="Documents"
-            aria-pressed={activePanel === "documents"}
+            aria-pressed={activeView === "documents"}
             onClick={onOpenDocuments}
-            className={activePanel === "documents" ? activeIconButtonClassName : iconButtonClassName}
+            className={activeView === "documents" ? activeIconButtonClassName : iconButtonClassName}
           >
             <Folder className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -75,9 +77,9 @@ export function DocumentCreateControls({
           <Button
             type="button"
             aria-label="Search"
-            aria-pressed={activePanel === "search"}
+            aria-pressed={activeView === "search"}
             onClick={onOpenSearch}
-            className={activePanel === "search" ? activeIconButtonClassName : iconButtonClassName}
+            className={activeView === "search" ? activeIconButtonClassName : iconButtonClassName}
           >
             <Search className="h-4 w-4" aria-hidden="true" />
           </Button>
@@ -86,11 +88,22 @@ export function DocumentCreateControls({
           <Button
             type="button"
             aria-label="Favorites"
-            aria-pressed={activePanel === "favorites"}
+            aria-pressed={activeView === "favorites"}
             onClick={onOpenFavorites}
-            className={activePanel === "favorites" ? activeIconButtonClassName : iconButtonClassName}
+            className={activeView === "favorites" ? activeIconButtonClassName : iconButtonClassName}
           >
             <Star className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Graph">
+          <Button
+            type="button"
+            aria-label="Graph"
+            aria-pressed={activeView === "graph"}
+            onClick={onOpenGraph}
+            className={activeView === "graph" ? activeIconButtonClassName : iconButtonClassName}
+          >
+            <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
       </div>

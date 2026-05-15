@@ -53,6 +53,16 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.getByText("welcome", { exact: true })).toBeVisible();
   await openEditMode();
   await expect(page.locator(".cm-content").first()).toBeVisible();
+  await page.getByRole("button", { name: "Graph" }).click();
+  await expect(page.getByText("Graph view")).toBeVisible();
+  await expect(page.getByText("Filters", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close filters" }).click();
+  await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Open filters" }).click();
+  await expect(page.getByText("Wiki links", { exact: true })).toBeVisible();
+  await documentList.getByRole("link", { name: "Welcome" }).first().click();
+  await expect(page.locator("[name='title']")).toHaveValue("Welcome");
+  await expect(page.locator(".cm-content").first()).toBeVisible();
   await expect(documentList.getByRole("button", { name: "Add Welcome to favorites" })).toHaveCount(0);
   await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
   await documentList.getByRole("button", { name: "Open actions for Welcome" }).first().click();
