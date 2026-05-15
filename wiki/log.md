@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-15T23:07:00+09:00 - plan
+
+- Result: Issue #34 workspace knowledge graph view 구현 계획을 작성했다.
+- Coverage: Route helper, graph model, sidebar graph button, workspace shell graph mode, `react-force-graph-2d` graph component, page data wiring, e2e/wiki finalization을 TDD task 단위로 분해했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-15-workspace-knowledge-graph-view.md`, `docs/superpowers/specs/2026-05-15-workspace-knowledge-graph-view-design.md`.
+- Verification: plan self-review, `pnpm wiki:sync-check --staged`, `pnpm wiki:lint`.
+
 ## 2026-05-15T22:53:00+09:00 - design
 
 - Result: Issue #34 workspace knowledge graph view 설계를 정리했다.
