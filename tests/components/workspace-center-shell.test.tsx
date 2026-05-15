@@ -153,6 +153,41 @@ describe("WorkspaceCenterShell", () => {
     expect(screen.getByText("Folder content")).toBeTruthy();
   });
 
+  it("shows graph toolbar state without document mode controls", () => {
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={documents[0]}
+        selectedFolder={null}
+        isGraphView={true}
+      >
+        <div>Graph content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByText("Graph view")).toBeTruthy();
+    expect(screen.getByText("Graph content")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Preview" })).toBeNull();
+  });
+
+  it("keeps graph content mounted in the workspace scroll container", () => {
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+        isGraphView={true}
+      >
+        <div data-testid="graph-view">Graph content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByTestId("workspace-scroll-container").contains(screen.getByTestId("graph-view"))).toBe(true);
+  });
+
   it("replaces the current tab when a different document is selected", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
