@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-16T00:54:25+09:00 - review follow-up
+
+- Result: PR #35 workspace knowledge graph view review feedback를 반영했다.
+- Coverage: `react-force-graph-2d`가 renderer node/link 객체에 붙이는 layout state를 유지하기 위해 renderer 전용 graph 객체 cache를 추가하되, source `KnowledgeGraphData`는 mutation되지 않게 분리했다. 선택 문서가 있을 때는 1-hop 이웃 node/link만 원래 색상으로 유지하고 나머지는 alpha 색상으로 dim 처리한다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: PR #35 Gemini review comments, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec vitest run tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-16T00:16:54+09:00 - implementation
 
 - Result: Issue #34 workspace knowledge graph view의 e2e smoke와 durable wiki 문서를 마무리했다.

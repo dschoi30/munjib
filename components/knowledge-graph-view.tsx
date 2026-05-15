@@ -18,6 +18,24 @@ import { cn } from "@/lib/utils";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type ForceGraph2DProps = Record<string, unknown>;
+type ForceGraphNode = KnowledgeGraphNode & {
+  fx?: number;
+  fy?: number;
+  vx?: number;
+  vy?: number;
+  x?: number;
+  y?: number;
+};
+type ForceGraphLink = Omit<KnowledgeGraphLink, "source" | "target"> & {
+  source: ForceGraphNode | string;
+  sourceId: string;
+  target: ForceGraphNode | string;
+  targetId: string;
+};
+type ForceGraphData = {
+  nodes: ForceGraphNode[];
+  links: ForceGraphLink[];
+};
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
@@ -41,6 +59,9 @@ const LINK_COLORS: Record<KnowledgeGraphLinkKind, string> = {
   tag: "#f59e0b",
   property: "#38bdf8",
 };
+const SELECTED_DOCUMENT_COLOR = "#a78bfa";
+const DIMMED_NODE_ALPHA = "88";
+const DIMMED_LINK_ALPHA = "44";
 
 const FILTER_OPTIONS: Array<{
   key: KnowledgeGraphLinkKind;
@@ -62,6 +83,8 @@ export function KnowledgeGraphView({
 }) {
   const router = useRouter();
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
+  const renderedNodesRef = useRef(new Map<string, ForceGraphNode>());
+  const renderedLinksRef = useRef(new Map<string, ForceGraphLink>());
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -71,13 +94,51 @@ export function KnowledgeGraphView({
     [graph, selectedDocumentId],
   );
   const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
-  const renderedGraph = useMemo(
-    () => ({
-      nodes: visibleGraph.nodes.map((node) => ({ ...node })),
-      links: visibleGraph.links.map((link) => ({ ...link })),
-    }),
-    [visibleGraph],
-  );
+  const renderedGraph = useMemo<ForceGraphData>(() => {
+    const nodes = visibleGraph.nodes.map((node) => {
+      const existing = renderedNodesRef.current.get(node.id);
+
+      if (existing) {
+        Object.assign(existing, node);
+        return existing;
+      }
+
+      const created = { ...node };
+      renderedNodesRef.current.set(node.id, created);
+      return created;
+    });
+
+    const links = visibleGraph.links.map((link) => {
+      const existing = renderedLinksRef.current.get(link.id);
+
+      if (existing) {
+        const endpointsChanged =
+          existing.sourceId !== link.source || existing.targetId !== link.target;
+
+        existing.kind = link.kind;
+        existing.sourceId = link.source;
+        existing.targetId = link.target;
+
+        if (endpointsChanged) {
+          existing.source = link.source;
+          existing.target = link.target;
+        }
+
+        return existing;
+      }
+
+      const created: ForceGraphLink = {
+        ...link,
+        sourceId: link.source,
+        targetId: link.target,
+      };
+      renderedLinksRef.current.set(link.id, created);
+      return created;
+    });
+
+    return { nodes, links };
+  }, [visibleGraph]);
+  const hasFocus = focus.focusedNodeIds.size > 0;
 
   useEffect(() => {
     const element = graphContainerRef.current;
@@ -121,7 +182,7 @@ export function KnowledgeGraphView({
   }, []);
 
   const routeDocumentNode = useCallback(
-    (node: KnowledgeGraphNode) => {
+    (node: ForceGraphNode) => {
       if (node.kind !== "document") {
         return;
       }
@@ -147,16 +208,24 @@ export function KnowledgeGraphView({
           width={dimensions.width}
           height={dimensions.height}
           backgroundColor="#18181b"
-          nodeLabel={(node: KnowledgeGraphNode) => node.label}
-          nodeColor={(node: KnowledgeGraphNode) =>
-            node.kind === "document" && node.documentId === selectedDocumentId
-              ? "#a78bfa"
-              : NODE_COLORS[node.kind]
-          }
-          linkColor={(link: KnowledgeGraphLink) => LINK_COLORS[link.kind]}
-          linkWidth={(link: KnowledgeGraphLink) =>
-            focus.focusedLinkIds.has(link.id) ? 2.5 : 1
-          }
+          nodeLabel={(node: ForceGraphNode) => node.label}
+          nodeColor={(node: ForceGraphNode) => {
+            if (node.kind === "document" && node.documentId === selectedDocumentId) {
+              return SELECTED_DOCUMENT_COLOR;
+            }
+
+            const color = NODE_COLORS[node.kind];
+            return hasFocus && !focus.focusedNodeIds.has(node.id)
+              ? `${color}${DIMMED_NODE_ALPHA}`
+              : color;
+          }}
+          linkColor={(link: ForceGraphLink) => {
+            const color = LINK_COLORS[link.kind];
+            return hasFocus && !focus.focusedLinkIds.has(link.id)
+              ? `${color}${DIMMED_LINK_ALPHA}`
+              : color;
+          }}
+          linkWidth={(link: ForceGraphLink) => (focus.focusedLinkIds.has(link.id) ? 2.5 : 1)}
           onNodeClick={routeDocumentNode}
           enableNodeDrag
           cooldownTicks={80}

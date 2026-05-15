@@ -135,7 +135,10 @@ describe("KnowledgeGraphView", () => {
     const graph = createGraph();
     renderGraph(graph);
 
-    const renderedGraph = forceGraphMock.state.latestProps?.graphData as KnowledgeGraphData;
+    const renderedGraph = forceGraphMock.state.latestProps?.graphData as {
+      nodes: Array<KnowledgeGraphData["nodes"][number]>;
+      links: Array<KnowledgeGraphData["links"][number]>;
+    };
     renderedGraph.links[0].source = graph.nodes[0] as never;
     renderedGraph.links[0].target = graph.nodes[1] as never;
 
@@ -147,6 +150,95 @@ describe("KnowledgeGraphView", () => {
     });
     expect(graph.links[0].source).toBe("document:doc-1");
     expect(graph.links[0].target).toBe("tag:design");
+  });
+
+  it("preserves renderer object identity across filter toggles", () => {
+    const graph = createGraph();
+    renderGraph(graph);
+
+    const initialRenderedGraph = forceGraphMock.state.latestProps?.graphData as {
+      nodes: Array<KnowledgeGraphData["nodes"][number]>;
+      links: Array<KnowledgeGraphData["links"][number]>;
+    };
+    const initialDocumentNode = initialRenderedGraph.nodes[0];
+    const initialLink = initialRenderedGraph.links[0];
+
+    initialLink.source = initialRenderedGraph.nodes[0] as never;
+    initialLink.target = initialRenderedGraph.nodes[1] as never;
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    const restoredRenderedGraph = forceGraphMock.state.latestProps?.graphData as {
+      nodes: Array<KnowledgeGraphData["nodes"][number]>;
+      links: Array<KnowledgeGraphData["links"][number]>;
+    };
+
+    expect(restoredRenderedGraph.nodes[0]).toBe(initialDocumentNode);
+    expect(restoredRenderedGraph.links[0]).toBe(initialLink);
+    expect(restoredRenderedGraph.links[0].source).toBe(initialRenderedGraph.nodes[0]);
+    expect(graph.links[0].source).toBe("document:doc-1");
+    expect(graph.links[0].target).toBe("tag:design");
+  });
+
+  it("dims nodes and links outside the selected document neighborhood", () => {
+    const graph: KnowledgeGraphData = {
+      nodes: [
+        ...createGraph().nodes,
+        {
+          id: "document:doc-2",
+          kind: "document",
+          label: "Unrelated",
+          documentId: "doc-2",
+          title: "Unrelated",
+          path: "/unrelated",
+        },
+      ],
+      links: createGraph().links,
+    };
+    renderGraph(graph);
+
+    const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
+      | ((node: KnowledgeGraphData["nodes"][number]) => string)
+      | undefined;
+    const linkColor = forceGraphMock.state.latestProps?.linkColor as
+      | ((link: KnowledgeGraphData["links"][number]) => string)
+      | undefined;
+
+    expect(nodeColor?.(graph.nodes[0])).toBe("#a78bfa");
+    expect(nodeColor?.(graph.nodes[1])).toBe("#f59e0b");
+    expect(nodeColor?.(graph.nodes[2])).toBe("#e5e7eb88");
+    expect(linkColor?.(graph.links[0])).toBe("#f59e0b");
+    expect(
+      linkColor?.({
+        id: "property:doc-2:status:active",
+        source: "document:doc-2",
+        target: "property:status:active",
+        kind: "property",
+      }),
+    ).toBe("#38bdf844");
+  });
+
+  it("does not dim the graph when no document is selected", () => {
+    const graph = createGraph();
+    render(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={graph}
+        selectedDocumentId={null}
+      />,
+    );
+
+    const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
+      | ((node: KnowledgeGraphData["nodes"][number]) => string)
+      | undefined;
+    const linkColor = forceGraphMock.state.latestProps?.linkColor as
+      | ((link: KnowledgeGraphData["links"][number]) => string)
+      | undefined;
+
+    expect(nodeColor?.(graph.nodes[0])).toBe("#e5e7eb");
+    expect(nodeColor?.(graph.nodes[1])).toBe("#f59e0b");
+    expect(linkColor?.(graph.links[0])).toBe("#f59e0b");
   });
 
   it("routes document node clicks to the selected workspace document", () => {
