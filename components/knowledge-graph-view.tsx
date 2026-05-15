@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   filterKnowledgeGraph,
@@ -61,14 +61,60 @@ export function KnowledgeGraphView({
   selectedDocumentId: string | null;
 }) {
   const router = useRouter();
+  const graphContainerRef = useRef<HTMLDivElement | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
   const focus = useMemo(
     () => getKnowledgeGraphFocus(graph, selectedDocumentId),
     [graph, selectedDocumentId],
   );
   const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
+  const renderedGraph = useMemo(
+    () => ({
+      nodes: visibleGraph.nodes.map((node) => ({ ...node })),
+      links: visibleGraph.links.map((link) => ({ ...link })),
+    }),
+    [visibleGraph],
+  );
+
+  useEffect(() => {
+    const element = graphContainerRef.current;
+    if (!element) {
+      return;
+    }
+
+    const measure = () => {
+      setDimensions({
+        width: element.clientWidth,
+        height: element.clientHeight,
+      });
+    };
+
+    measure();
+
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) {
+          measure();
+          return;
+        }
+
+        setDimensions({
+          width: Math.round(entry.contentRect.width),
+          height: Math.round(entry.contentRect.height),
+        });
+      });
+      observer.observe(element);
+
+      return () => observer.disconnect();
+    }
+
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
 
   const toggleFilter = useCallback((key: KnowledgeGraphLinkKind) => {
     setFilters((current) => ({ ...current, [key]: !current[key] }));
@@ -95,9 +141,11 @@ export function KnowledgeGraphView({
 
   return (
     <section className="relative min-h-[32rem] overflow-hidden bg-zinc-950 text-zinc-100">
-      <div className="absolute inset-0">
+      <div ref={graphContainerRef} className="absolute inset-0 h-full min-h-[32rem] w-full">
         <ForceGraph2D
-          graphData={visibleGraph}
+          graphData={renderedGraph}
+          width={dimensions.width}
+          height={dimensions.height}
           backgroundColor="#18181b"
           nodeLabel={(node: KnowledgeGraphNode) => node.label}
           nodeColor={(node: KnowledgeGraphNode) =>

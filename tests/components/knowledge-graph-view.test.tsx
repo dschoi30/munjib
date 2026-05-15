@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import type { KnowledgeGraphData } from "@/lib/knowledge-graph/model";
@@ -31,35 +31,37 @@ vi.mock("react-force-graph-2d", () => ({
   default: forceGraphMock.Component,
 }));
 
-const graph: KnowledgeGraphData = {
-  nodes: [
-    {
-      id: "document:doc-1",
-      kind: "document",
-      label: "Welcome",
-      documentId: "doc-1",
-      title: "Welcome",
-      path: "/welcome",
-    },
-    {
-      id: "tag:design",
-      kind: "tag",
-      label: "#Design",
-      name: "Design",
-      normalizedName: "design",
-    },
-  ],
-  links: [
-    {
-      id: "tag:doc-1:design",
-      source: "document:doc-1",
-      target: "tag:design",
-      kind: "tag",
-    },
-  ],
-};
+function createGraph(): KnowledgeGraphData {
+  return {
+    nodes: [
+      {
+        id: "document:doc-1",
+        kind: "document",
+        label: "Welcome",
+        documentId: "doc-1",
+        title: "Welcome",
+        path: "/welcome",
+      },
+      {
+        id: "tag:design",
+        kind: "tag",
+        label: "#Design",
+        name: "Design",
+        normalizedName: "design",
+      },
+    ],
+    links: [
+      {
+        id: "tag:doc-1:design",
+        source: "document:doc-1",
+        target: "tag:design",
+        kind: "tag",
+      },
+    ],
+  };
+}
 
-function renderGraph() {
+function renderGraph(graph = createGraph()) {
   return render(
     <KnowledgeGraphView
       workspaceSlug="company-handbook"
@@ -72,6 +74,11 @@ function renderGraph() {
 beforeEach(() => {
   router.push.mockReset();
   forceGraphMock.state.latestProps = null;
+
+  Object.defineProperties(HTMLElement.prototype, {
+    clientWidth: { configurable: true, get: () => 720 },
+    clientHeight: { configurable: true, get: () => 480 },
+  });
 });
 
 afterEach(() => {
@@ -102,6 +109,7 @@ describe("KnowledgeGraphView", () => {
   });
 
   it("filters tag links and leaves only document nodes when Tags is unchecked", () => {
+    const graph = createGraph();
     renderGraph();
 
     fireEvent.click(screen.getByLabelText("Tags"));
@@ -112,7 +120,37 @@ describe("KnowledgeGraphView", () => {
     });
   });
 
+  it("passes explicit force graph dimensions from the container", async () => {
+    renderGraph();
+
+    await waitFor(() => {
+      expect(forceGraphMock.state.latestProps).toMatchObject({
+        width: 720,
+        height: 480,
+      });
+    });
+  });
+
+  it("keeps app graph data immutable when force graph mutates rendered links", () => {
+    const graph = createGraph();
+    renderGraph(graph);
+
+    const renderedGraph = forceGraphMock.state.latestProps?.graphData as KnowledgeGraphData;
+    renderedGraph.links[0].source = graph.nodes[0] as never;
+    renderedGraph.links[0].target = graph.nodes[1] as never;
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [graph.nodes[0]],
+      links: [],
+    });
+    expect(graph.links[0].source).toBe("document:doc-1");
+    expect(graph.links[0].target).toBe("tag:design");
+  });
+
   it("routes document node clicks to the selected workspace document", () => {
+    const graph = createGraph();
     renderGraph();
 
     const onNodeClick = forceGraphMock.state.latestProps?.onNodeClick as
