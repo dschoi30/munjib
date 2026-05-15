@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-15T22:53:00+09:00 - design
+
+- Result: Issue #34 workspace knowledge graph view 설계를 정리했다.
+- Coverage: Sidebar `Graph` icon button, `?graph=1` route state, center graph view, document/tag/wiki/property node model, `react-force-graph-2d` 기반 zoom/pan graph renderer, filter panel, selected document focus behavior를 설계 범위로 확정했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #34, `docs/superpowers/specs/2026-05-15-workspace-knowledge-graph-view-design.md`, 사용자 제공 Obsidian graph screenshot.
+- Verification: design only.
+
 ## 2026-05-14T23:52:00+09:00 - review follow-up
 
 - Result: PR #33 review에서 지적된 sidebar panel 전환 안정성과 Escape UX 회귀를 정리했다.
