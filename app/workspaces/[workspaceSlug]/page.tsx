@@ -116,9 +116,10 @@ export default async function WorkspacePage({
   const readableDocumentIdList = Array.from(readableDocumentIds);
   const selectedFolder =
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
-  const selectedDocument = selectedFolder
-    ? null
-    : (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null);
+  const selectedDocument =
+    isGraphView || !selectedFolder
+      ? (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null)
+      : null;
 
   const [graphLinks, graphTags, graphProperties] = isGraphView
     ? await Promise.all([
@@ -192,14 +193,14 @@ export default async function WorkspacePage({
         take: 10,
       })
     : [];
-  const documentTags = selectedDocument
+  const documentTags = selectedDocument && !isGraphView
     ? await prisma.documentTag.findMany({
         where: { documentId: selectedDocument.id },
         include: { tag: true },
         orderBy: { tag: { name: "asc" } },
       })
     : [];
-  const documentProperties = selectedDocument
+  const documentProperties = selectedDocument && !isGraphView
     ? await prisma.documentProperty.findMany({
         where: { documentId: selectedDocument.id },
         orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
@@ -211,7 +212,7 @@ export default async function WorkspacePage({
         orderBy: { createdAt: "desc" },
       })
     : [];
-  const comments = selectedDocument
+  const comments = selectedDocument && !isGraphView
     ? await prisma.comment.findMany({
         where: { documentId: selectedDocument.id },
         orderBy: { createdAt: "asc" },
