@@ -43,12 +43,14 @@ export type KnowledgeGraphInput = {
 export type KnowledgeGraphDocumentNode = KnowledgeGraphDocumentInput & {
   id: string;
   kind: "document";
+  label: string;
   documentId: string;
 };
 
 export type KnowledgeGraphTagNode = {
   id: string;
   kind: "tag";
+  label: string;
   name: string;
   normalizedName: string;
 };
@@ -56,6 +58,7 @@ export type KnowledgeGraphTagNode = {
 export type KnowledgeGraphWikiNode = {
   id: string;
   kind: "wiki";
+  label: string;
   targetTitleRaw: string;
   state: "broken" | "ambiguous";
 };
@@ -63,6 +66,7 @@ export type KnowledgeGraphWikiNode = {
 export type KnowledgeGraphPropertyNode = {
   id: string;
   kind: "property";
+  label: string;
   key: string;
   value: string | number | boolean;
   valueType: string;
@@ -107,6 +111,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
       ...document,
       id: documentNodeId(document.id),
       kind: "document",
+      label: document.title,
       documentId: document.id,
     });
   }
@@ -133,6 +138,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     addNode(nodesById, {
       id: target,
       kind: "wiki",
+      label: link.targetTitleRaw,
       targetTitleRaw: link.targetTitleRaw,
       state,
     });
@@ -153,6 +159,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     addNode(nodesById, {
       id: target,
       kind: "tag",
+      label: `#${tag.tag.name}`,
       name: tag.tag.name,
       normalizedName: tag.tag.normalizedName,
     });
@@ -178,6 +185,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     addNode(nodesById, {
       id: target,
       kind: "property",
+      label: `${property.key}: ${value}`,
       key: property.key,
       value,
       valueType: property.valueType,

@@ -50,6 +50,13 @@ describe("knowledge graph model", () => {
       "tag:design",
       "wiki:broken:missing-runbook",
     ]);
+    expect(graph.nodes.every((node) => typeof node.label === "string")).toBe(true);
+    expect(Object.fromEntries(graph.nodes.map((node) => [node.id, node.label]))).toMatchObject({
+      "document:doc-1": "Welcome",
+      "property:status:active": "status: active",
+      "tag:design": "#Design",
+      "wiki:broken:missing-runbook": "Missing Runbook",
+    });
   });
 
   it("builds typed graph links from resolved links, broken links, tags, and scalar properties", () => {
