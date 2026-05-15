@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-14
-source_count: 51
+updated: 2026-05-16
+source_count: 52
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T00:16:54+09:00 - implementation
+
+- Result: Issue #34 workspace knowledge graph view의 e2e smoke와 durable wiki 문서를 마무리했다.
+- Coverage: Sidebar `Graph` 진입, `?graph=1` graph mode, toolbar `Graph view` path, filter panel open/close, graph DTO의 document/tag/wiki/property node와 wiki/tag/property edge semantics, frontmatter wiki link의 graph rendering을 기록했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #34, `tests/e2e/login.spec.ts`, `components/document-list.tsx`, `components/knowledge-graph-view.tsx`, `components/workspace-center-shell.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/workspace-routes.ts`, `lib/knowledge-graph/model.ts`, `tests/components/knowledge-graph-view.test.tsx`, `tests/knowledge-graph/model.test.ts`.
+- Verification: `pnpm run test:e2e`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm exec vitest run tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-15T23:07:00+09:00 - plan
 
