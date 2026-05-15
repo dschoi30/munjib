@@ -1,10 +1,10 @@
 "use client";
 
-import { DocumentNavigation } from "@/components/document-navigation";
-import { DocumentCreateControls } from "@/components/document-create-controls";
-import { workspaceGraphHref } from "@/lib/workspace-routes";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { DocumentNavigation } from "@/components/document-navigation";
+import { DocumentCreateControls } from "@/components/document-create-controls";
+import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
 
 export type DocumentListItem = {
   id: string;
@@ -57,17 +57,30 @@ export function DocumentList({
   );
   const [searchQuery, setSearchQuery] = useState("");
 
+  const clearGraphRoute = useCallback(() => {
+    if (!isGraphView) return;
+
+    router.push(
+      selectedDocumentId
+        ? workspaceDocumentHref({ workspaceSlug, documentId: selectedDocumentId })
+        : `/workspaces/${workspaceSlug}`,
+    );
+  }, [isGraphView, router, selectedDocumentId, workspaceSlug]);
+
   const openSearch = useCallback(() => {
     setActivePanel("search");
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
 
   const openDocuments = useCallback(() => {
     setActivePanel("documents");
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
 
   const openFavorites = useCallback(() => {
     setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
 
   const openGraph = useCallback(() => {
     router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));

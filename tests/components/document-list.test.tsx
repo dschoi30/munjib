@@ -153,6 +153,47 @@ describe("DocumentList", () => {
     );
   });
 
+  it("clears graph route when opening documents from graph view", () => {
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByText("Recents")).toBeTruthy();
+  });
+
+  it("clears graph route and opens search from graph view", () => {
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+  });
+
+  it("clears graph route and opens favorites from graph view", () => {
+    window.localStorage.setItem(
+      "munjib:favorites:company-handbook",
+      JSON.stringify({ documents: ["doc-2"], folders: [] }),
+    );
+
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+    expect(screen.getByText("Favorites")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Engineering Runbook" })).toBeTruthy();
+  });
+
+  it("clears graph route to workspace root when no document is selected", () => {
+    renderList({ isGraphView: true, selectedDocumentId: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
   it("returns to the document list from search and favorites with the Documents toolbar button", () => {
     renderList();
 
