@@ -191,7 +191,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
       valueType: property.valueType,
     });
     links.push({
-      id: `property:${property.documentId}:${slugifyTitle(property.key)}:${slugifyTitle(String(value))}`,
+      id: `property:${property.documentId}:${idComponent(property.key)}:${idComponent(String(value))}`,
       source: documentNodeId(property.documentId),
       target,
       kind: "property",
@@ -199,8 +199,8 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   }
 
   return {
-    nodes: Array.from(nodesById.values()),
-    links,
+    nodes: Array.from(nodesById.values()).sort(compareNodes),
+    links: links.sort(compareLinks),
   };
 }
 
@@ -260,11 +260,11 @@ function tagNodeId(normalizedName: string) {
 }
 
 function wikiNodeId(state: "broken" | "ambiguous", targetTitleRaw: string) {
-  return `wiki:${state}:${slugifyTitle(targetTitleRaw)}`;
+  return `wiki:${state}:${idComponent(targetTitleRaw)}`;
 }
 
 function propertyNodeId(key: string, value: string | number | boolean) {
-  return `property:${slugifyTitle(key)}:${slugifyTitle(String(value))}`;
+  return `property:${idComponent(key)}:${idComponent(String(value))}`;
 }
 
 function isCanonicalPropertyKey(key: string) {
@@ -277,4 +277,33 @@ function scalarPropertyValue(value: unknown): string | number | boolean | null {
   }
 
   return null;
+}
+
+function idComponent(value: string) {
+  const slug = slugifyTitle(value);
+  const normalizedAsciiValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  if (slug !== "untitled" && slug === normalizedAsciiValue) {
+    return slug;
+  }
+
+  return `raw:${encodeURIComponent(value)}`;
+}
+
+function compareNodes(a: KnowledgeGraphNode, b: KnowledgeGraphNode) {
+  return a.id.localeCompare(b.id);
+}
+
+function compareLinks(a: KnowledgeGraphLink, b: KnowledgeGraphLink) {
+  return (
+    a.id.localeCompare(b.id) ||
+    a.source.localeCompare(b.source) ||
+    a.target.localeCompare(b.target) ||
+    a.kind.localeCompare(b.kind)
+  );
 }
