@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useCallback, useState } from "react";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
-import { useCallback, useState } from "react";
+import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
 
 export type DocumentListItem = {
   id: string;
@@ -33,6 +35,7 @@ export function DocumentList({
   folderError,
   selectedFolderId,
   selectedDocumentId,
+  isGraphView = false,
 }: {
   workspaceSlug: string;
   folders: FolderListItem[];
@@ -46,23 +49,42 @@ export function DocumentList({
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
+  isGraphView?: boolean;
 }) {
+  const router = useRouter();
   const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
     "documents",
   );
   const [searchQuery, setSearchQuery] = useState("");
 
+  const clearGraphRoute = useCallback(() => {
+    if (!isGraphView) return;
+
+    router.push(
+      selectedDocumentId
+        ? workspaceDocumentHref({ workspaceSlug, documentId: selectedDocumentId })
+        : `/workspaces/${workspaceSlug}`,
+    );
+  }, [isGraphView, router, selectedDocumentId, workspaceSlug]);
+
   const openSearch = useCallback(() => {
     setActivePanel("search");
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
 
   const openDocuments = useCallback(() => {
     setActivePanel("documents");
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
 
   const openFavorites = useCallback(() => {
     setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
-  }, []);
+    clearGraphRoute();
+  }, [clearGraphRoute]);
+
+  const openGraph = useCallback(() => {
+    router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
+  }, [router, selectedDocumentId, workspaceSlug]);
 
   return (
     <div>
@@ -74,10 +96,11 @@ export function DocumentList({
         canWrite={canWrite}
         createAction={createAction}
         createFolderAction={createFolderAction}
-        activePanel={activePanel}
+        activeView={isGraphView ? "graph" : activePanel}
         onOpenDocuments={openDocuments}
         onOpenSearch={openSearch}
         onOpenFavorites={openFavorites}
+        onOpenGraph={openGraph}
       />
       <DocumentNavigation
         workspaceSlug={workspaceSlug}

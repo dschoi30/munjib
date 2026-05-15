@@ -17,6 +17,7 @@ type WorkspaceCenterShellProps = {
   documents: DocumentTabDocument[];
   selectedDocument: DocumentTabDocument | null;
   selectedFolder: { path: string } | null;
+  isGraphView?: boolean;
   children: React.ReactNode;
 };
 
@@ -25,6 +26,7 @@ export function WorkspaceCenterShell({
   documents,
   selectedDocument,
   selectedFolder,
+  isGraphView = false,
   children,
 }: WorkspaceCenterShellProps) {
   return (
@@ -34,6 +36,7 @@ export function WorkspaceCenterShell({
         documents={documents}
         selectedDocument={selectedDocument}
         selectedFolder={selectedFolder}
+        isGraphView={isGraphView}
       >
         {children}
       </WorkspaceCenterShellContent>
@@ -46,6 +49,7 @@ function WorkspaceCenterShellContent({
   documents,
   selectedDocument,
   selectedFolder,
+  isGraphView = false,
   children,
 }: WorkspaceCenterShellProps) {
   const router = useRouter();
@@ -182,10 +186,10 @@ function WorkspaceCenterShellContent({
         onAdd={handleAdd}
       />
       <DocumentToolbar
-        path={selectedDocument?.path ?? selectedFolder?.path ?? "/"}
+        path={isGraphView ? "Graph view" : selectedDocument?.path ?? selectedFolder?.path ?? "/"}
         canNavigateBack={canNavigateBack}
         canNavigateForward={canNavigateForward}
-        showModeToggle={Boolean(selectedDocument)}
+        showModeToggle={Boolean(selectedDocument) && !isGraphView}
         onModeChange={handleModeChange}
         onNavigateBack={handleNavigateBack}
         onNavigateForward={handleNavigateForward}

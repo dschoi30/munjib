@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-14
-source_count: 31
+updated: 2026-05-16
+source_count: 36
 tags:
   - munjib
   - workflow
@@ -40,6 +40,8 @@ links:
 좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
+
+Issue #34 workspace knowledge graph view는 sidebar `Graph` icon으로 진입한다. 이 button은 URL을 `?graph=1`로 바꾸고, center 영역은 editor/folder detail 대신 workspace knowledge graph를 렌더링하며, toolbar path는 `Graph view`로 표시한다. Graph의 document node를 클릭하면 `?document=<id>` route로 이동해 graph mode를 종료하고 해당 document editor를 연다.
 
 Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Document row는 hover/focus 상태에서 더 진한 `bg-slate-200` highlight를 보여주고, 선택된 document row도 같은 고정 highlight를 유지한다.
 
@@ -134,9 +136,12 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `components/document-editor.tsx`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/knowledge-graph-view.tsx`
 - `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
 - `lib/workspace-tree.ts`
+- `lib/workspace-routes.ts`
+- `lib/knowledge-graph/model.ts`
 - `lib/documents/service.ts`
 - `lib/markdown/folding.ts`
 - `lib/wiki-links/preview.ts`
@@ -148,10 +153,12 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `prisma/schema.prisma`
 - `tests/markdown/folding.test.ts`
 - `tests/components/document-editor-preview.test.tsx`
+- `tests/components/knowledge-graph-view.test.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
 - GitHub issue #25
 - GitHub issue #29
+- GitHub issue #34
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - Issue #25 final review blocker fix

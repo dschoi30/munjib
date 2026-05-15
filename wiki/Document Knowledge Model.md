@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 11
+updated: 2026-05-16
+source_count: 16
 tags:
   - munjib
   - data-model
@@ -260,6 +260,10 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 
 `lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `DocumentProperty.sortOrder`는 YAML frontmatter에 적힌 key 순서를 보존해 Properties UI가 markdown 파일의 속성 순서와 일치하도록 한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
 
+## Workspace knowledge graph DTO
+
+Issue #34 graph view는 새 storage model을 추가하지 않는다. Workspace page가 readable active `Document`를 source of truth로 삼고, 기존 `DocumentLink`, `DocumentTag`, `DocumentProperty` row를 읽어 document/tag/wiki/property node와 wiki/tag/property typed edge DTO로 변환한다. 이 DTO는 `lib/knowledge-graph/model.ts`에서 구성되고, UI filter와 selected document focus도 저장 상태가 아니라 같은 graph DTO의 파생값이다.
+
 ## 첨부와 댓글
 
 - `Attachment`: 문서에 업로드된 file metadata다. 실제 bytes는 `storage/attachments/<workspaceId>/<uuid>-<safeFileName>` 아래 저장되고 DB에는 fileName, mimeType, size, storageKey, uploadedById를 둔다.
@@ -279,7 +283,12 @@ Attachment upload는 markdown link를 문서 본문 끝에 append하고 새 docu
 - `lib/documents/service.ts`
 - `lib/document-metadata/parser.ts`
 - `lib/document-metadata/reconcile.ts`
+- `lib/knowledge-graph/model.ts`
+- `app/workspaces/[workspaceSlug]/page.tsx`
+- `components/knowledge-graph-view.tsx`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
 - `lib/permissions/document.ts`
 - `tests/documents/service.test.ts`
+- `tests/knowledge-graph/model.test.ts`
+- GitHub issue #34

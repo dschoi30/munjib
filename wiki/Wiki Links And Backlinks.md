@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-06
-source_count: 20
+updated: 2026-05-16
+source_count: 24
 tags:
   - munjib
   - wiki-links
@@ -86,6 +86,8 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
+Issue #34 workspace graph view도 같은 frontmatter link source를 사용한다. Resolved frontmatter wiki link는 source document node에서 readable target document node로 향하는 `wiki` edge로 렌더링하고, broken 또는 ambiguous link는 readable target document를 임의 선택하지 않고 raw wiki value node로 연결한다.
+
 ## Broken link에서 문서 생성
 
 `createDocumentFromBrokenLink()`는 broken link row를 기준으로 새 문서를 만든다. 새 문서 title은 `targetTitleRaw`이고 초기 markdown은 빈 문자열이다. 생성 후 `repairBrokenLinksForTarget()`이 같은 workspace 안에서 같은 `targetTitleRaw`를 가진 broken links를 새 문서로 연결한다.
@@ -107,9 +109,11 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `lib/wiki-links/reconcile.ts`
 - `lib/wiki-links/targets.ts`
 - `lib/wiki-links/service.ts`
+- `lib/knowledge-graph/model.ts`
 - `lib/wiki-links/autocomplete.ts`
 - `lib/wiki-links/preview.ts`
 - `lib/wiki-links/types.ts`
+- `components/knowledge-graph-view.tsx`
 - `lib/markdown/folding.ts`
 - `lib/documents/service.ts`
 - `components/document-editor.tsx`
@@ -117,4 +121,6 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `tests/wiki-links/preview.test.ts`
 - `tests/wiki-links/reconcile.test.ts`
 - `tests/wiki-links/autocomplete.test.ts`
+- `tests/knowledge-graph/model.test.ts`
+- GitHub issue #34
 - Issue #25 final review blocker fix

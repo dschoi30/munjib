@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-14
-source_count: 51
+updated: 2026-05-16
+source_count: 52
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T00:54:25+09:00 - review follow-up
+
+- Result: PR #35 workspace knowledge graph view review feedback를 반영했다.
+- Coverage: `react-force-graph-2d`가 renderer node/link 객체에 붙이는 layout state를 유지하기 위해 renderer 전용 graph 객체 cache를 추가하되, source `KnowledgeGraphData`는 mutation되지 않게 분리했다. 선택 문서가 있을 때는 1-hop 이웃 node/link만 원래 색상으로 유지하고 나머지는 alpha 색상으로 dim 처리한다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[log|Wiki Log]].
+- Source evidence: PR #35 Gemini review comments, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec vitest run tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-16T00:16:54+09:00 - implementation
+
+- Result: Issue #34 workspace knowledge graph view의 e2e smoke와 durable wiki 문서를 마무리했다.
+- Coverage: Sidebar `Graph` 진입, `?graph=1` graph mode, toolbar `Graph view` path, filter panel open/close, graph DTO의 document/tag/wiki/property node와 wiki/tag/property edge semantics, frontmatter wiki link의 graph rendering을 기록했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #34, `tests/e2e/login.spec.ts`, `components/document-list.tsx`, `components/knowledge-graph-view.tsx`, `components/workspace-center-shell.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/workspace-routes.ts`, `lib/knowledge-graph/model.ts`, `tests/components/knowledge-graph-view.test.tsx`, `tests/knowledge-graph/model.test.ts`.
+- Verification: `pnpm run test:e2e`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm exec vitest run tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-15T23:07:00+09:00 - plan
+
+- Result: Issue #34 workspace knowledge graph view 구현 계획을 작성했다.
+- Coverage: Route helper, graph model, sidebar graph button, workspace shell graph mode, `react-force-graph-2d` graph component, page data wiring, e2e/wiki finalization을 TDD task 단위로 분해했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-15-workspace-knowledge-graph-view.md`, `docs/superpowers/specs/2026-05-15-workspace-knowledge-graph-view-design.md`.
+- Verification: plan self-review, `pnpm wiki:sync-check --staged`, `pnpm wiki:lint`.
+
+## 2026-05-15T22:53:00+09:00 - design
+
+- Result: Issue #34 workspace knowledge graph view 설계를 정리했다.
+- Coverage: Sidebar `Graph` icon button, `?graph=1` route state, center graph view, document/tag/wiki/property node model, `react-force-graph-2d` 기반 zoom/pan graph renderer, filter panel, selected document focus behavior를 설계 범위로 확정했다.
+- Pages: [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #34, `docs/superpowers/specs/2026-05-15-workspace-knowledge-graph-view-design.md`, 사용자 제공 Obsidian graph screenshot.
+- Verification: design only.
 
 ## 2026-05-14T23:52:00+09:00 - review follow-up
 

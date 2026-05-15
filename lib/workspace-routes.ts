@@ -14,3 +14,16 @@ export function workspaceDocumentHref({
 
   return `/workspaces/${workspaceSlug}?${params.toString()}`;
 }
+
+export function workspaceGraphHref({
+  workspaceSlug,
+  documentId,
+}: {
+  workspaceSlug: string;
+  documentId?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (documentId) params.set("document", documentId);
+  params.set("graph", "1");
+  return `/workspaces/${workspaceSlug}?${params.toString()}`;
+}

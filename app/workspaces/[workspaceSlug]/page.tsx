@@ -3,10 +3,12 @@ import { AppShell } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentList } from "@/components/document-list";
 import { FolderDetail } from "@/components/folder-detail";
+import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
 import {
   canWriteDocument,
   highestPermissionLevel,
@@ -32,7 +34,12 @@ export default async function WorkspacePage({
   searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string; folder?: string; folderError?: string }>;
+  searchParams: Promise<{
+    document?: string;
+    folder?: string;
+    folderError?: string;
+    graph?: string;
+  }>;
 }) {
   const user = await requireCurrentUser();
   const { workspaceSlug } = await params;
@@ -40,7 +47,9 @@ export default async function WorkspacePage({
     document: selectedDocumentId,
     folder: selectedFolderIdParam,
     folderError,
+    graph,
   } = await searchParams;
+  const isGraphView = graph === "1";
 
   const workspace = await prisma.workspace.findFirst({
     where: { slug: workspaceSlug },
@@ -103,11 +112,72 @@ export default async function WorkspacePage({
     explicitDocumentIds,
     userPermissionsByDocumentId: userPermissionByDocumentId,
   });
+  const readableDocumentIds = new Set(readableDocuments.map((document) => document.id));
+  const readableDocumentIdList = Array.from(readableDocumentIds);
   const selectedFolder =
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
-  const selectedDocument = selectedFolder
-    ? null
-    : (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null);
+  const selectedDocument =
+    isGraphView || !selectedFolder
+      ? (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null)
+      : null;
+
+  const [graphLinks, graphTags, graphProperties] = isGraphView
+    ? await Promise.all([
+        prisma.documentLink.findMany({
+          where: {
+            workspaceId: workspace.id,
+            sourceDocumentId: { in: readableDocumentIdList },
+          },
+          select: {
+            id: true,
+            sourceDocumentId: true,
+            targetDocumentId: true,
+            targetTitleRaw: true,
+            isBroken: true,
+            isAmbiguous: true,
+          },
+          orderBy: [
+            { sourceDocumentId: "asc" },
+            { sortOrder: "asc" },
+            { id: "asc" },
+          ],
+        }),
+        prisma.documentTag.findMany({
+          where: { documentId: { in: readableDocumentIdList } },
+          select: {
+            documentId: true,
+            tag: { select: { name: true, normalizedName: true } },
+          },
+          orderBy: [{ documentId: "asc" }, { id: "asc" }],
+        }),
+        prisma.documentProperty.findMany({
+          where: { documentId: { in: readableDocumentIdList } },
+          select: {
+            documentId: true,
+            key: true,
+            valueJson: true,
+            valueType: true,
+          },
+          orderBy: [
+            { documentId: "asc" },
+            { sortOrder: "asc" },
+            { key: "asc" },
+          ],
+        }),
+      ])
+    : [[], [], []];
+  const graphData = isGraphView
+    ? buildKnowledgeGraph({
+        documents: readableDocuments.map((document) => ({
+          id: document.id,
+          title: document.title,
+          path: document.path,
+        })),
+        links: graphLinks,
+        tags: graphTags,
+        properties: graphProperties,
+      })
+    : { nodes: [], links: [] };
 
   const versions = selectedDocument
     ? await prisma.documentVersion.findMany({
@@ -123,14 +193,14 @@ export default async function WorkspacePage({
         take: 10,
       })
     : [];
-  const documentTags = selectedDocument
+  const documentTags = selectedDocument && !isGraphView
     ? await prisma.documentTag.findMany({
         where: { documentId: selectedDocument.id },
         include: { tag: true },
         orderBy: { tag: { name: "asc" } },
       })
     : [];
-  const documentProperties = selectedDocument
+  const documentProperties = selectedDocument && !isGraphView
     ? await prisma.documentProperty.findMany({
         where: { documentId: selectedDocument.id },
         orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
@@ -142,7 +212,7 @@ export default async function WorkspacePage({
         orderBy: { createdAt: "desc" },
       })
     : [];
-  const comments = selectedDocument
+  const comments = selectedDocument && !isGraphView
     ? await prisma.comment.findMany({
         where: { documentId: selectedDocument.id },
         orderBy: { createdAt: "asc" },
@@ -215,6 +285,7 @@ export default async function WorkspacePage({
           folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           selectedDocumentId={selectedDocument?.id ?? null}
+          isGraphView={isGraphView}
         />
       }
       center={
@@ -235,8 +306,15 @@ export default async function WorkspacePage({
               : null
           }
           selectedFolder={selectedCenterFolder}
+          isGraphView={isGraphView}
         >
-          {selectedFolder ? (
+          {isGraphView ? (
+            <KnowledgeGraphView
+              workspaceSlug={workspaceSlug}
+              graph={graphData}
+              selectedDocumentId={selectedDocument?.id ?? null}
+            />
+          ) : selectedFolder ? (
             <FolderDetail
               folder={{
                 id: selectedFolder.id,
