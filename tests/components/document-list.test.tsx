@@ -34,6 +34,7 @@ const baseProps = {
   canWrite: true,
   createAction: async () => {},
   createFolderAction: async () => {},
+  importMarkdownAction: async () => {},
   renameFolderAction: async (formData: FormData) => ({
     folderId: String(formData.get("folderId")),
   }),
@@ -85,9 +86,75 @@ describe("DocumentList", () => {
 
     expect(screen.queryByText("Workspace")).toBeNull();
     expect(screen.getByRole("heading", { name: "Company Handbook" }).parentElement?.className).toContain("h-11");
+    expect(screen.getByRole("button", { name: "Workspace settings" }).parentElement?.className).toContain("ml-auto");
     expect(screen.getByRole("button", { name: "New document" }).textContent).toBe("");
     expect(screen.getByRole("button", { name: "New folder" }).textContent).toBe("");
     expect(screen.queryByRole("combobox", { name: /template/i })).toBeNull();
+  });
+
+  it("spaces the toolbar groups apart and places graph second", () => {
+    renderList();
+
+    const toolbar = screen.getByTestId("document-create-toolbar");
+    expect(toolbar.className).toContain("justify-between");
+
+    const buttonNames = screen
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label") ?? button.textContent?.trim())
+      .filter(Boolean);
+    const documentsIndex = buttonNames.indexOf("Documents");
+
+    expect(documentsIndex).toBeGreaterThan(-1);
+    expect(buttonNames[documentsIndex + 1]).toBe("Graph");
+  });
+
+  it("opens the workspace settings panel with import selected by default", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Import" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "Import your contents" })).toBeTruthy();
+    expect(screen.getByLabelText("Markdown file").getAttribute("accept")).toBe(
+      ".md,.markdown,text/markdown,text/x-markdown",
+    );
+    expect(screen.getByRole("button", { name: "Import Markdown" })).toBeTruthy();
+  });
+
+  it("keeps the document list visible behind the workspace settings dialog", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByText("Recents")).toBeTruthy();
+    expect(screen.getByText("Documents")).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
+  });
+
+  it("closes the workspace settings panel", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
+    expect(screen.getByText("Recents")).toBeTruthy();
+  });
+
+  it("disables markdown import when the workspace is read-only", () => {
+    renderList({ canWrite: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("button", { name: "Import Markdown" })).toHaveProperty(
+      "disabled",
+      true,
+    );
   });
 
   it("opens search from the toolbar and replaces the document list with matching results", () => {

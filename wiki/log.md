@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 59
+source_count: 60
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T17:30:00+09:00 - implementation
+
+- Result: Issue #40 Markdown document import 1차 기능을 추가했다.
+- Coverage: `Company Handbook` title row 우측에 toolbar icon과 오른쪽 edge를 맞춘 workspace settings button을 추가했다. Settings button은 document list를 교체하지 않고 modal dialog를 띄우며, dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성된다. 현재는 `Import` menu를 기본 선택한다. Import content는 Markdown 전용 file form만 제공하고, import validation error는 `lib/service-errors.ts`의 `SERVICE_ERROR_CODES`로 전역 관리한다. Server action은 Markdown file을 읽어 `title` frontmatter, 첫 `# Heading`, file name 순서로 문서 제목을 정한 뒤 기존 `createDocument()` 흐름으로 document, initial version, wiki link/document metadata reconciliation, audit log를 만든다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #40, 사용자 제공 Notion import screenshots, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/documents/import-markdown.ts`, `tests/components/document-list.test.tsx`, `tests/documents/import-markdown.test.ts`, `docs/superpowers/specs/2026-05-16-markdown-document-import-design.md`, `docs/superpowers/plans/2026-05-16-markdown-document-import.md`.
+- Verification: `pnpm exec vitest run tests/documents/import-markdown.test.ts tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-16T16:55:00+09:00 - review follow-up
 

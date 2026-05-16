@@ -35,7 +35,10 @@ export function DocumentCreateControls({
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="mb-4 flex h-11 items-center gap-1">
+      <div
+        data-testid="document-create-toolbar"
+        className="mb-4 flex h-11 items-center justify-between"
+      >
         <ToolbarTooltip label="Documents">
           <Button
             type="button"
@@ -45,6 +48,17 @@ export function DocumentCreateControls({
             className={activeView === "documents" ? activeIconButtonClassName : iconButtonClassName}
           >
             <Folder className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label="Graph">
+          <Button
+            type="button"
+            aria-label="Graph"
+            aria-pressed={activeView === "graph"}
+            onClick={onOpenGraph}
+            className={activeView === "graph" ? activeIconButtonClassName : iconButtonClassName}
+          >
+            <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
         <form action={createAction}>
@@ -93,17 +107,6 @@ export function DocumentCreateControls({
             className={activeView === "favorites" ? activeIconButtonClassName : iconButtonClassName}
           >
             <Star className="h-4 w-4" aria-hidden="true" />
-          </Button>
-        </ToolbarTooltip>
-        <ToolbarTooltip label="Graph">
-          <Button
-            type="button"
-            aria-label="Graph"
-            aria-pressed={activeView === "graph"}
-            onClick={onOpenGraph}
-            className={activeView === "graph" ? activeIconButtonClassName : iconButtonClassName}
-          >
-            <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
       </div>

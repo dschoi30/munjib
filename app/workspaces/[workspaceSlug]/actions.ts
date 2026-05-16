@@ -7,6 +7,7 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
 import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
+import { deriveMarkdownImportTitle } from "@/lib/documents/import-markdown";
 import {
   archiveDocument,
   createDocument,
@@ -38,6 +39,30 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
     title: "Untitled",
     contentMarkdown: "",
   });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+}
+
+export async function importMarkdownDocumentAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const file = formData.get("markdownFile");
+
+  if (!(file instanceof File)) {
+    throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED);
+  }
+
+  if (!isMarkdownFile(file)) {
+    throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE);
+  }
+
+  const contentMarkdown = await file.text();
+  const document = await createDocument({
+    workspaceSlug,
+    actorId: user.id,
+    title: deriveMarkdownImportTitle({ fileName: file.name, contentMarkdown }),
+    contentMarkdown,
+  });
+
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
@@ -163,4 +188,16 @@ export async function createCommentAction(workspaceSlug: string, formData: FormD
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
+}
+
+function isMarkdownFile(file: File) {
+  const name = file.name.toLowerCase();
+  const type = file.type.toLowerCase();
+
+  return (
+    name.endsWith(".md") ||
+    name.endsWith(".markdown") ||
+    type === "text/markdown" ||
+    type === "text/x-markdown"
+  );
 }
