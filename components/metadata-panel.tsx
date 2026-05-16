@@ -4,8 +4,8 @@ import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { useRightPanel } from "@/components/app-shell";
+import { useCallback, useMemo, useState } from "react";
+import { useHeadingNavigation, useRightPanel } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -46,8 +46,28 @@ export function MetadataPanel({
 }) {
   const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
   const rightPanel = useRightPanel();
+  const headingNavigation = useHeadingNavigation();
   const collapsePanel = onTogglePanel ?? rightPanel?.collapse;
-  const outlineItems = buildMarkdownOutline(document?.contentMarkdown ?? "");
+  const outlineItems = useMemo(
+    () => buildMarkdownOutline(document?.contentMarkdown ?? ""),
+    [document?.contentMarkdown],
+  );
+  const handleNavigateToHeading = useCallback(
+    (target: { id: string; lineNumber: number }) => {
+      if (onNavigateToHeading) {
+        onNavigateToHeading(target);
+        return;
+      }
+
+      if (headingNavigation) {
+        headingNavigation.navigateToHeading(target);
+        return;
+      }
+
+      scrollToOutlineTarget(target.id);
+    },
+    [headingNavigation, onNavigateToHeading],
+  );
 
   return (
     <div className="space-y-4">
@@ -94,7 +114,7 @@ export function MetadataPanel({
         </div>
       </TooltipProvider>
       {activeTab === "outline" ? (
-        <OutlineList items={outlineItems} onNavigateToHeading={onNavigateToHeading} />
+        <OutlineList items={outlineItems} onNavigateToHeading={handleNavigateToHeading} />
       ) : null}
       {activeTab === "attachments" ? <AttachmentsList attachments={attachments} /> : null}
       {activeTab === "versions" ? (
@@ -282,4 +302,20 @@ function formatBytes(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function scrollToOutlineTarget(id: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const target = window.document.querySelector<HTMLElement>(
+    `[data-outline-heading-id="${escapeAttributeSelectorValue(id)}"]`,
+  );
+
+  target?.scrollIntoView({ block: "start", behavior: "smooth" });
+}
+
+function escapeAttributeSelectorValue(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

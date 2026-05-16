@@ -232,6 +232,13 @@ describe("DocumentEditor heading preview folding", () => {
     );
   });
 
+  it("marks preview headings with outline target attributes", () => {
+    renderEditor("# Welcome\n\n## Setup");
+
+    expect(document.querySelector('[data-outline-heading-id="1-welcome-0"]')).toBeTruthy();
+    expect(document.querySelector('[data-outline-heading-id="1-welcome-0/2-setup-0"]')).toBeTruthy();
+  });
+
   it("shows preview fold controls after CRLF fenced code blocks", () => {
     renderEditor("```ts\r\nconst value = 1;\r\n```\r\n# After code\r\nBody");
 

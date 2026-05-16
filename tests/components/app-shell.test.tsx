@@ -1,12 +1,30 @@
 // @vitest-environment jsdom
-import React from "react";
+import React, { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
-import { AppShell } from "@/components/app-shell";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useHeadingNavigation } from "@/components/app-shell";
 
 afterEach(() => {
   cleanup();
 });
+
+function HeadingNavigationProbe({ onNavigate }: { onNavigate: () => void }) {
+  const headingNavigation = useHeadingNavigation();
+
+  useEffect(() => {
+    headingNavigation?.setHeadingNavigator(() => onNavigate);
+    return () => headingNavigation?.setHeadingNavigator(null);
+  }, [headingNavigation, onNavigate]);
+
+  return (
+    <button
+      type="button"
+      onClick={() => headingNavigation?.navigateToHeading({ id: "heading", lineNumber: 1 })}
+    >
+      Navigate heading
+    </button>
+  );
+}
 
 describe("AppShell", () => {
   it("starts the left sidebar at the same vertical origin as the center chrome", () => {
@@ -59,5 +77,21 @@ describe("AppShell", () => {
     fireEvent.pointerMove(screen.getByRole("button", { name: "Open metadata panel" }));
 
     expect(await screen.findByRole("tooltip", { name: "Open metadata panel" })).toBeTruthy();
+  });
+
+  it("shares heading navigation between center content and the metadata panel area", () => {
+    const onNavigate = vi.fn();
+
+    render(
+      <AppShell
+        left={<div>Left</div>}
+        center={<HeadingNavigationProbe onNavigate={onNavigate} />}
+        right={<div>Right</div>}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Navigate heading" }));
+
+    expect(onNavigate).toHaveBeenCalledOnce();
   });
 });

@@ -17,6 +17,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
 import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,6 +94,9 @@ export function DocumentEditor({
   const editorFoldContextRef = useRef<{
     storageKey: string;
   } | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const headingNavigation = useHeadingNavigation();
+  const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const extensions = useMemo(
     () => [
@@ -172,6 +176,51 @@ export function DocumentEditor({
     },
     [contentMarkdown, document?.id],
   );
+  const handleCreateEditor = useCallback(
+    (view: EditorView) => {
+      editorViewRef.current = view;
+      restoreEditorFolds(view);
+    },
+    [restoreEditorFolds],
+  );
+
+  useEffect(() => {
+    editorViewRef.current = null;
+  }, [document?.id]);
+
+  useEffect(() => {
+    if (!document?.id || !registerHeadingNavigator) {
+      return;
+    }
+
+    const navigateToHeading = (target: HeadingNavigationTarget) => {
+      const previewTarget = getOutlineHeadingTarget(target.id);
+
+      if (previewTarget) {
+        previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+        return;
+      }
+
+      const view = editorViewRef.current;
+
+      if (!view || target.lineNumber < 1) {
+        return;
+      }
+
+      try {
+        const line = view.state.doc.line(target.lineNumber);
+
+        view.dispatch({
+          effects: EditorView.scrollIntoView(line.from, { y: "start" }),
+        });
+      } catch {
+        // Ignore outline targets whose source line is no longer present.
+      }
+    };
+
+    registerHeadingNavigator(() => navigateToHeading);
+    return () => registerHeadingNavigator(null);
+  }, [document?.id, registerHeadingNavigator]);
   const editorMarkdownReady = contentDocumentId === document?.id;
 
   if (!document) {
@@ -242,7 +291,7 @@ export function DocumentEditor({
               }}
               editable={canWrite}
               extensions={extensions}
-              onCreateEditor={restoreEditorFolds}
+              onCreateEditor={handleCreateEditor}
               onChange={(value, viewUpdate) =>
                 updateMarkdown(value, viewUpdate.state.selection.main.head)
               }
@@ -426,7 +475,10 @@ function MarkdownPreviewSection({
   const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
 
   return (
-    <section className={getPreviewHeadingSectionClassName(section.level)}>
+    <section
+      data-outline-heading-id={section.key}
+      className={getPreviewHeadingSectionClassName(section.level)}
+    >
       <div className="group relative">
         <button
           type="button"
@@ -487,6 +539,20 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
+}
+
+function getOutlineHeadingTarget(id: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return window.document.querySelector<HTMLElement>(
+    `[data-outline-heading-id="${escapeAttributeSelectorValue(id)}"]`,
+  );
+}
+
+function escapeAttributeSelectorValue(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {

@@ -111,6 +111,20 @@ describe("MetadataPanel", () => {
     });
   });
 
+  it("scrolls to a matching outline target when no navigation callback is provided", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    renderPanel({ onNavigateToHeading: undefined });
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
   it("shows an empty state when the document has no outline headings", () => {
     renderPanel({ document: { id: "doc-1", contentMarkdown: "Body only" } });
 
