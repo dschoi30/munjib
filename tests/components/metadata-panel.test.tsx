@@ -48,27 +48,40 @@ const attachments: Attachment[] = [
   },
 ];
 
+const outlineDocument = {
+  id: "doc-1",
+  contentMarkdown: "# Welcome\n\n## Setup\n\n### Install\n\n#### Env\n\n##### Hidden",
+};
+
 function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
   return render(
     <MetadataPanel
+      document={outlineDocument}
       versions={versions}
       auditLogs={auditLogs}
       attachments={attachments}
       canWrite
       restoreVersionAction={async () => {}}
       onTogglePanel={vi.fn()}
+      onNavigateToHeading={vi.fn()}
       {...props}
     />,
   );
 }
 
 describe("MetadataPanel", () => {
-  it("opens attachments by default and switches metadata lists from the tab toolbar", () => {
+  it("opens outline by default and switches metadata lists from the tab toolbar", () => {
     renderPanel();
 
     expect(screen.queryByText("Local graph")).toBeNull();
     expect(screen.queryByRole("img", { name: /Local graph/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "notes.txt" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Outline" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Go to heading Welcome" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to heading Setup" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go to heading Hidden" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "notes.txt" })).toBeNull();
     expect(screen.queryByText("v2")).toBeNull();
     expect(screen.queryByText("document.updated")).toBeNull();
 
@@ -83,6 +96,25 @@ describe("MetadataPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Audit log" }));
     expect(screen.getByText("document.updated")).toBeTruthy();
     expect(screen.queryByText("v2")).toBeNull();
+  });
+
+  it("navigates to outline headings", () => {
+    const onNavigateToHeading = vi.fn();
+
+    renderPanel({ onNavigateToHeading });
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Install" }));
+
+    expect(onNavigateToHeading).toHaveBeenCalledWith({
+      id: "1-welcome-0/2-setup-0/3-install-0",
+      lineNumber: 5,
+    });
+  });
+
+  it("shows an empty state when the document has no outline headings", () => {
+    renderPanel({ document: { id: "doc-1", contentMarkdown: "Body only" } });
+
+    expect(screen.getByText("No outline headings")).toBeTruthy();
   });
 
   it("shows empty states for versions and audit log tabs", () => {
