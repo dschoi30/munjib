@@ -118,7 +118,7 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 
-Issue #44 이후 metadata panel의 첫 번째 tab은 `Outline`이다. Outline은 현재 선택 문서 markdown 원문에서 `#`, `##`, `###`, `####` ATX heading을 추출하되 YAML frontmatter와 fenced code block 내부 heading-like line은 제외한다. Empty heading과 closing marker만 남는 heading도 outline에서 제외한다. Heading tree는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 level을 구분한다. Row click은 `AppShell` heading navigation context를 통해 preview mode의 `data-outline-heading-id` target을 먼저 찾고, edit mode에서는 CodeMirror source line으로 스크롤하며, 등록된 navigator가 없을 때는 같은 outline target DOM fallback으로 스크롤한다.
+Issue #44 이후 metadata panel의 첫 번째 tab은 `Outline`이다. Outline은 현재 선택 문서 markdown 원문에서 `#`, `##`, `###`, `####` ATX heading을 추출하되 YAML frontmatter와 fenced code block 내부 heading-like line은 제외한다. Empty heading과 closing marker만 남는 heading도 outline에서 제외한다. `DocumentEditor`는 저장 전 `contentMarkdown` state도 `AppShell` heading navigation context에 등록하므로 outline은 server snapshot이 아니라 현재 편집 중인 live markdown을 우선 사용한다. Heading tree는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 level을 구분한다. Row click은 `AppShell` heading navigation context를 통해 preview mode의 `data-outline-heading-id` target을 먼저 찾고, edit mode에서는 CodeMirror source line으로 스크롤하며, 등록된 navigator가 없을 때는 같은 outline target DOM fallback으로 스크롤한다.
 
 ## Document tabs and navigation toolbar
 

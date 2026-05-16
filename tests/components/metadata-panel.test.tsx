@@ -97,13 +97,26 @@ function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0
 
 function UnhandledHeadingNavigator() {
   const headingNavigation = useHeadingNavigation();
+  const setHeadingNavigator = headingNavigation?.setHeadingNavigator;
 
   useEffect(() => {
-    headingNavigation?.setHeadingNavigator(() => false);
-    return () => headingNavigation?.setHeadingNavigator(null);
-  }, [headingNavigation]);
+    setHeadingNavigator?.(() => false);
+    return () => setHeadingNavigator?.(null);
+  }, [setHeadingNavigator]);
 
   return <div>Unhandled navigator</div>;
+}
+
+function LiveOutlineDocumentProbe({ contentMarkdown }: { contentMarkdown: string }) {
+  const headingNavigation = useHeadingNavigation();
+  const setOutlineDocument = headingNavigation?.setOutlineDocument;
+
+  useEffect(() => {
+    setOutlineDocument?.({ id: "doc-1", contentMarkdown });
+    return () => setOutlineDocument?.(null);
+  }, [contentMarkdown, setOutlineDocument]);
+
+  return <div>Live outline document</div>;
 }
 
 describe("MetadataPanel", () => {
@@ -204,6 +217,34 @@ describe("MetadataPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
 
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("uses the live outline document from AppShell when it matches the selected document", () => {
+    render(
+      <AppShell
+        left={<div>Left</div>}
+        center={
+          <LiveOutlineDocumentProbe
+            contentMarkdown={"# Live Draft\n\n## Unsaved Heading"}
+          />
+        }
+        right={
+          <MetadataPanel
+            document={{ id: "doc-1", contentMarkdown: "# Saved Heading" }}
+            versions={versions}
+            auditLogs={auditLogs}
+            attachments={attachments}
+            canWrite
+            restoreVersionAction={async () => {}}
+            onTogglePanel={vi.fn()}
+          />
+        }
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Go to heading Live Draft" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to heading Unsaved Heading" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go to heading Saved Heading" })).toBeNull();
   });
 
   it("shows an empty state when the document has no outline headings", () => {

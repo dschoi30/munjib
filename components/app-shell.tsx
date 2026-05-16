@@ -19,10 +19,17 @@ export type HeadingNavigationTarget = {
   lineNumber: number;
 };
 
+export type HeadingNavigationDocument = {
+  id: string;
+  contentMarkdown: string;
+};
+
 type HeadingNavigator = ((target: HeadingNavigationTarget) => boolean) | null;
 
 type HeadingNavigationControls = {
+  outlineDocument: HeadingNavigationDocument | null;
   navigateToHeading: (target: HeadingNavigationTarget) => boolean;
+  setOutlineDocument: (document: HeadingNavigationDocument | null) => void;
   setHeadingNavigator: (navigator: HeadingNavigator) => void;
 };
 
@@ -47,6 +54,7 @@ export function AppShell({
   right: React.ReactNode | ((controls: RightPanelControls) => React.ReactNode);
 }) {
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [outlineDocument, setOutlineDocument] = useState<HeadingNavigationDocument | null>(null);
   const headingNavigatorRef = useRef<HeadingNavigator>(null);
   const rightPanelControls = useMemo(
     () => ({
@@ -66,8 +74,10 @@ export function AppShell({
       setHeadingNavigator: (navigator) => {
         headingNavigatorRef.current = navigator;
       },
+      setOutlineDocument,
+      outlineDocument,
     }),
-    [],
+    [outlineDocument],
   );
   const rightContent =
     typeof right === "function" ? right(rightPanelControls) : right;

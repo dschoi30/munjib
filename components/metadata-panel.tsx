@@ -5,7 +5,11 @@ import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useCallback, useMemo, useState } from "react";
-import { useHeadingNavigation, useRightPanel } from "@/components/app-shell";
+import {
+  useHeadingNavigation,
+  useRightPanel,
+  type HeadingNavigationTarget,
+} from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -17,6 +21,7 @@ import {
   buildMarkdownOutline,
   type MarkdownOutlineItem,
 } from "@/lib/markdown/folding";
+import { scrollToOutlineHeading } from "@/lib/outline-targets";
 
 type MetadataTab = "outline" | "attachments" | "versions" | "audit";
 
@@ -42,30 +47,36 @@ export function MetadataPanel({
   canWrite: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
   onTogglePanel?: () => void;
-  onNavigateToHeading?: (target: { id: string; lineNumber: number }) => void;
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
   const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
   const rightPanel = useRightPanel();
   const headingNavigation = useHeadingNavigation();
+  const liveOutlineDocument = headingNavigation?.outlineDocument;
+  const navigateToHeading = headingNavigation?.navigateToHeading;
   const collapsePanel = onTogglePanel ?? rightPanel?.collapse;
+  const outlineDocument =
+    liveOutlineDocument?.id === document?.id
+      ? liveOutlineDocument
+      : document;
   const outlineItems = useMemo(
-    () => buildMarkdownOutline(document?.contentMarkdown ?? ""),
-    [document?.contentMarkdown],
+    () => buildMarkdownOutline(outlineDocument?.contentMarkdown ?? ""),
+    [outlineDocument?.contentMarkdown],
   );
   const handleNavigateToHeading = useCallback(
-    (target: { id: string; lineNumber: number }) => {
+    (target: HeadingNavigationTarget) => {
       if (onNavigateToHeading) {
         onNavigateToHeading(target);
         return;
       }
 
-      if (headingNavigation?.navigateToHeading(target)) {
+      if (navigateToHeading?.(target)) {
         return;
       }
 
-      scrollToOutlineTarget(target.id);
+      scrollToOutlineHeading(target.id);
     },
-    [headingNavigation, onNavigateToHeading],
+    [navigateToHeading, onNavigateToHeading],
   );
 
   return (
@@ -133,7 +144,7 @@ function OutlineList({
   onNavigateToHeading,
 }: {
   items: MarkdownOutlineItem[];
-  onNavigateToHeading?: (target: { id: string; lineNumber: number }) => void;
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
   return (
     <section>
@@ -160,7 +171,7 @@ function OutlineItemRow({
   onNavigateToHeading,
 }: {
   item: MarkdownOutlineItem;
-  onNavigateToHeading?: (target: { id: string; lineNumber: number }) => void;
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
   return (
     <li>
@@ -301,20 +312,4 @@ function formatBytes(size: number) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function scrollToOutlineTarget(id: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const target = window.document.querySelector<HTMLElement>(
-    `[data-outline-heading-id="${escapeAttributeSelectorValue(id)}"]`,
-  );
-
-  target?.scrollIntoView({ block: "start", behavior: "smooth" });
-}
-
-function escapeAttributeSelectorValue(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }

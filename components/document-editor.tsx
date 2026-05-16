@@ -41,6 +41,7 @@ import {
 } from "@/lib/wiki-links/autocomplete";
 import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
+import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -97,6 +98,7 @@ export function DocumentEditor({
   const editorViewRef = useRef<EditorView | null>(null);
   const headingNavigation = useHeadingNavigation();
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
+  const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const extensions = useMemo(
     () => [
@@ -224,6 +226,24 @@ export function DocumentEditor({
     registerHeadingNavigator(navigateToHeading);
     return () => registerHeadingNavigator(null);
   }, [document?.id, registerHeadingNavigator]);
+
+  useEffect(() => {
+    if (!setOutlineDocument) {
+      return;
+    }
+
+    setOutlineDocument(
+      document?.id ? { id: document.id, contentMarkdown } : null,
+    );
+  }, [contentMarkdown, document?.id, setOutlineDocument]);
+
+  useEffect(() => {
+    if (!setOutlineDocument) {
+      return;
+    }
+
+    return () => setOutlineDocument(null);
+  }, [document?.id, setOutlineDocument]);
   const editorMarkdownReady = contentDocumentId === document?.id;
 
   if (!document) {
@@ -542,20 +562,6 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
-}
-
-function getOutlineHeadingTarget(id: string) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  return window.document.querySelector<HTMLElement>(
-    `[data-outline-heading-id="${escapeAttributeSelectorValue(id)}"]`,
-  );
-}
-
-function escapeAttributeSelectorValue(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
 function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {
