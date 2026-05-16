@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 61
+source_count: 62
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T19:05:00+09:00 - implementation
+
+- Result: Issue #42 metadata panel tab UI와 오른쪽 panel collapse control을 추가했다.
+- Coverage: `MetadataPanel` 상단에 `document-list.tsx` toolbar와 같은 icon tab 영역을 두고 `Attachments`, `Versions`, `Audit log`를 버튼 클릭 시 해당 목록만 표시하도록 바꿨다. Metadata panel toolbar와 reopen icon은 sidebar toolbar와 같은 tooltip pattern을 사용한다. 기존 metadata panel의 local graph UI와 기능은 제거했다. `AppShell`은 오른쪽 panel open/collapse state를 소유하며, metadata panel close button은 오른쪽 sidebar를 제거하고 화면 우측 상단 reopen icon 하나만 남긴다. 오른쪽 sidebar는 좌측 sidebar와 같은 `pt-0` alignment를 사용한다.
+- Pages: [[Document Editing Workflow]], [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #42, 사용자 제공 Obsidian metadata panel screenshot, `components/metadata-panel.tsx`, `components/app-shell.tsx`, `tests/components/metadata-panel.test.tsx`, `tests/components/app-shell.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-16T18:40:49+09:00 - review follow-up
 

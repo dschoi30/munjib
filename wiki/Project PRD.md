@@ -51,7 +51,7 @@ links:
 - broken link 클릭 기반 blank document 생성과 기존 broken links repair.
 - title 아래 Properties 영역: tags, links, frontmatter properties, comments.
 - 좌측 navigation: folder/document tree, 검색, quick switcher, recent, localStorage favorites.
-- 우측 metadata panel: local graph, attachments, versions restore, audit log.
+- 우측 metadata panel: tabbed attachments, versions restore, audit log, icon-only reopen control.
 - attachment upload/download, 5MB 제한, 허용 MIME type, upload 시 markdown link append.
 - comment 생성과 audit log.
 - wiki maintenance CLI와 commit-time sync hook.
