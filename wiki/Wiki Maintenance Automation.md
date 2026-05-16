@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
-updated: 2026-05-05
-source_count: 10
+updated: 2026-05-16
+source_count: 13
 tags:
   - munjib
   - wiki
@@ -109,6 +109,12 @@ Semantic lint 결과는 바로 고치거나 `question` page/open question으로 
 4. 필요하면 관련 wiki page, `wiki/index.md`, `wiki/log.md`를 갱신한다.
 5. `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`를 실행한다.
 
+## Task 종료와 PR review 루프
+
+작업자가 task를 완료할 때는 local verification과 commit-time wiki sync를 끝낸 뒤 자동으로 draft PR을 작성한다. Draft PR은 작업 결과의 기본 handoff artifact이며, 사용자가 명시적으로 리뷰 요청 완료 또는 ready-for-review를 요구한 경우에만 draft가 아닌 PR로 전환하거나 생성한다.
+
+PR 리뷰 요청 완료 후에는 최소 5분을 기다린 뒤 PR 상태를 다시 확인한다. 확인 대상은 review submission, unresolved review thread, inline comment, CI/check 결과다. Actionable feedback이나 실패 check가 있으면 같은 branch에서 수정하고, 검증과 wiki sync를 다시 수행한 뒤 추가 commit/push로 PR을 갱신한다. 리뷰가 아직 도착하지 않았거나 check가 대기 중이면 그 사실을 최종 상태에 명시한다.
+
 ## 판단 기준
 
 Wiki 갱신이 필요한 변경:
@@ -148,3 +154,5 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - `wiki/Wiki Schema.md`
 - `wiki/log.md`
 - GitHub issue #25 branch separation recovery
+- User workflow decision on automatic draft PR creation after every task
+- User workflow decision to wait 5 minutes after PR review request and inspect review feedback

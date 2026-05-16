@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { ChevronDown, ChevronRight, Settings2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -81,7 +82,11 @@ const NODE_COLORS: Record<KnowledgeGraphNode["kind"], string> = {
 
 const SELECTED_DOCUMENT_COLOR = "#a78bfa";
 const DIMMED_NODE_ALPHA = "88";
+const HOVER_DIMMED_NODE_ALPHA = "33";
 const DIMMED_LINK_ALPHA = "44";
+const HOVER_DIMMED_LABEL_ALPHA = 0.2;
+const LABEL_VERTICAL_OFFSET = 8;
+const MIN_LABEL_GLOBAL_SCALE = 0.75;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
 
@@ -103,10 +108,10 @@ const FILTER_OPTIONS: Array<{
   key: KnowledgeGraphLinkKind;
   label: string;
 }> = [
-  { key: "wiki", label: "Wiki links" },
-  { key: "tag", label: "Tags" },
-  { key: "property", label: "Properties" },
-];
+    { key: "wiki", label: "Wiki links" },
+    { key: "tag", label: "Tags" },
+    { key: "property", label: "Properties" },
+  ];
 
 export function KnowledgeGraphView({
   workspaceSlug,
@@ -122,6 +127,7 @@ export function KnowledgeGraphView({
   const forceGraphRef = useRef<ForceGraphApi | null>(null);
   const renderedNodesRef = useRef(new Map<string, ForceGraphNode>());
   const renderedLinksRef = useRef(new Map<string, ForceGraphLink>());
+  const [settingsOpen, setSettingsOpen] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [displayOpen, setDisplayOpen] = useState(true);
   const [forcesOpen, setForcesOpen] = useState(true);
@@ -147,7 +153,8 @@ export function KnowledgeGraphView({
     () => getKnowledgeGraphNodeFocus(graph, hoveredNodeId),
     [graph, hoveredNodeId],
   );
-  const activeFocus = hoveredFocus.focusedNodeIds.size > 0 ? hoveredFocus : selectedFocus;
+  const hasHoverFocus = hoveredFocus.focusedNodeIds.size > 0;
+  const activeFocus = hasHoverFocus ? hoveredFocus : selectedFocus;
   const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
   const renderedGraph = useMemo<ForceGraphData>(() => {
     const nodes = visibleGraph.nodes.map((node) => {
@@ -322,9 +329,11 @@ export function KnowledgeGraphView({
             }
 
             const color = NODE_COLORS[node.kind];
-            return hasFocus && !activeFocus.focusedNodeIds.has(node.id)
-              ? `${color}${DIMMED_NODE_ALPHA}`
-              : color;
+            if (!hasFocus || activeFocus.focusedNodeIds.has(node.id)) {
+              return color;
+            }
+
+            return `${color}${hasHoverFocus ? HOVER_DIMMED_NODE_ALPHA : DIMMED_NODE_ALPHA}`;
           }}
           nodeCanvasObjectMode={() => "after"}
           nodeCanvasObject={(
@@ -339,7 +348,7 @@ export function KnowledgeGraphView({
             const label = node.label;
             const fontSize = 12 / globalScale;
             const alpha = globalScale / display.textFadeThreshold;
-            if (alpha < 0.1) {
+            if (globalScale < MIN_LABEL_GLOBAL_SCALE || alpha < 0.1) {
               return;
             }
 
@@ -348,8 +357,14 @@ export function KnowledgeGraphView({
             context.font = `${fontSize}px sans-serif`;
             context.textAlign = "center";
             context.textBaseline = "middle";
-            context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Math.min(1, alpha).toFixed(2)})`;
-            context.fillText(label, node.x, node.y);
+            const labelAlpha =
+              hasHoverFocus && !activeFocus.focusedNodeIds.has(node.id)
+                ? Math.min(1, alpha) * HOVER_DIMMED_LABEL_ALPHA
+                : Math.min(1, alpha);
+
+            context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${labelAlpha.toFixed(2)})`;
+            const labelY = node.y + (display.nodeSize + LABEL_VERTICAL_OFFSET) / globalScale;
+            context.fillText(label, node.x, labelY);
           }}
           linkColor={(link: ForceGraphLink) => {
             if (!hasFocus) {
@@ -374,120 +389,138 @@ export function KnowledgeGraphView({
         />
       </div>
 
-      <div className="pointer-events-none absolute left-4 top-4 w-56">
-        <div className="pointer-events-auto rounded-md border border-zinc-800 bg-zinc-900/95 p-3 shadow-lg">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-sm font-medium">Filters</h2>
-            <Button
-              type="button"
-              className="h-7 bg-zinc-800 px-2 text-xs text-zinc-100 hover:bg-zinc-700"
-              onClick={() => setFiltersOpen((current) => !current)}
-            >
-              {filtersOpen ? "Close filters" : "Open filters"}
-            </Button>
-          </div>
-
-          {filtersOpen ? (
-            <div className="mt-3 space-y-2">
-              {FILTER_OPTIONS.map((option) => (
-                <label
-                  key={option.key}
-                  className={cn(
-                    "flex items-center gap-2 text-sm text-zinc-300",
-                    "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
-                  )}
+      <div className="pointer-events-none absolute inset-0">
+        {settingsOpen ? (
+          <div
+            data-testid="knowledge-graph-controls"
+            className="pointer-events-auto absolute right-4 top-4 w-60 rounded-md border border-border bg-muted p-3 text-ink shadow-lg"
+          >
+            <GraphControlSection
+              title="Filters"
+              open={filtersOpen}
+              onToggle={() => setFiltersOpen((current) => !current)}
+              className="mt-0 border-t-0 pt-0"
+              trailingAction={
+                <Button
+                  type="button"
+                  aria-label="Close graph settings"
+                  className="size-7 bg-transparent p-0 text-slate-500 hover:bg-slate-200 hover:text-ink"
+                  onClick={() => setSettingsOpen(false)}
                 >
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 accent-violet-500"
-                    checked={filters[option.key]}
-                    onChange={() => toggleFilter(option.key)}
-                  />
-                  {option.label}
-                </label>
-              ))}
-            </div>
-          ) : null}
+                  <X className="size-4" aria-hidden="true" />
+                </Button>
+              }
+            >
+              <div className="space-y-2">
+                {FILTER_OPTIONS.map((option) => (
+                  <label
+                    key={option.key}
+                    className={cn(
+                      "flex items-center gap-2 text-sm text-slate-700",
+                      "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-50",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 accent-violet-500"
+                      checked={filters[option.key]}
+                      onChange={() => toggleFilter(option.key)}
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </GraphControlSection>
 
-          <GraphControlSection
-            title="Display"
-            open={displayOpen}
-            onToggle={() => setDisplayOpen((current) => !current)}
-          >
-            <label className="flex items-center justify-between gap-3 text-sm text-zinc-300">
-              <span>Arrows</span>
-              <input
-                type="checkbox"
-                className="h-4 w-4 accent-violet-500"
-                checked={display.arrows}
-                onChange={(event) => updateDisplay("arrows", event.currentTarget.checked)}
+            <GraphControlSection
+              title="Display"
+              open={displayOpen}
+              onToggle={() => setDisplayOpen((current) => !current)}
+            >
+              <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
+                <span>Arrows</span>
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-violet-500"
+                  checked={display.arrows}
+                  onChange={(event) => updateDisplay("arrows", event.currentTarget.checked)}
+                />
+              </label>
+              <RangeControl
+                label="Text fade threshold"
+                max={3}
+                min={0.5}
+                step={0.1}
+                value={display.textFadeThreshold}
+                onChange={(value) => updateDisplay("textFadeThreshold", value)}
               />
-            </label>
-            <RangeControl
-              label="Text fade threshold"
-              max={3}
-              min={0.5}
-              step={0.1}
-              value={display.textFadeThreshold}
-              onChange={(value) => updateDisplay("textFadeThreshold", value)}
-            />
-            <RangeControl
-              label="Node size"
-              max={12}
-              min={2}
-              step={1}
-              value={display.nodeSize}
-              onChange={(value) => updateDisplay("nodeSize", value)}
-            />
-            <RangeControl
-              label="Link thickness"
-              max={6}
-              min={0.5}
-              step={0.5}
-              value={display.linkThickness}
-              onChange={(value) => updateDisplay("linkThickness", value)}
-            />
-          </GraphControlSection>
+              <RangeControl
+                label="Node size"
+                max={12}
+                min={2}
+                step={1}
+                value={display.nodeSize}
+                onChange={(value) => updateDisplay("nodeSize", value)}
+              />
+              <RangeControl
+                label="Link thickness"
+                max={6}
+                min={0.5}
+                step={0.5}
+                value={display.linkThickness}
+                onChange={(value) => updateDisplay("linkThickness", value)}
+              />
+            </GraphControlSection>
 
-          <GraphControlSection
-            title="Forces"
-            open={forcesOpen}
-            onToggle={() => setForcesOpen((current) => !current)}
+            <GraphControlSection
+              title="Forces"
+              open={forcesOpen}
+              onToggle={() => setForcesOpen((current) => !current)}
+            >
+              <RangeControl
+                label="Center force"
+                max={1}
+                min={0}
+                step={0.1}
+                value={forces.center}
+                onChange={(value) => updateForce("center", value)}
+              />
+              <RangeControl
+                label="Repel force"
+                max={-20}
+                min={-300}
+                step={10}
+                value={forces.repel}
+                onChange={(value) => updateForce("repel", value)}
+              />
+              <RangeControl
+                label="Link force"
+                max={1}
+                min={0}
+                step={0.1}
+                value={forces.link}
+                onChange={(value) => updateForce("link", value)}
+              />
+              <RangeControl
+                label="Link distance"
+                max={180}
+                min={20}
+                step={10}
+                value={forces.linkDistance}
+                onChange={(value) => updateForce("linkDistance", value)}
+              />
+            </GraphControlSection>
+          </div>
+        ) : (
+          <Button
+            type="button"
+            aria-label="Open graph settings"
+            className="pointer-events-auto absolute right-4 top-4 size-9 bg-muted p-0 text-slate-600 shadow-lg hover:bg-slate-200 hover:text-ink"
+            onClick={() => setSettingsOpen(true)}
           >
-            <RangeControl
-              label="Center force"
-              max={1}
-              min={0}
-              step={0.1}
-              value={forces.center}
-              onChange={(value) => updateForce("center", value)}
-            />
-            <RangeControl
-              label="Repel force"
-              max={-20}
-              min={-300}
-              step={10}
-              value={forces.repel}
-              onChange={(value) => updateForce("repel", value)}
-            />
-            <RangeControl
-              label="Link force"
-              max={1}
-              min={0}
-              step={0.1}
-              value={forces.link}
-              onChange={(value) => updateForce("link", value)}
-            />
-            <RangeControl
-              label="Link distance"
-              max={180}
-              min={20}
-              step={10}
-              value={forces.linkDistance}
-              onChange={(value) => updateForce("linkDistance", value)}
-            />
-          </GraphControlSection>
-        </div>
+            <Settings2 className="size-4" aria-hidden="true" />
+          </Button>
+        )}
       </div>
     </section>
   );
@@ -495,29 +528,35 @@ export function KnowledgeGraphView({
 
 function GraphControlSection({
   children,
+  className,
   onToggle,
   open,
   title,
+  trailingAction,
 }: {
   children: React.ReactNode;
+  className?: string;
   onToggle: () => void;
   open: boolean;
   title: string;
+  trailingAction?: React.ReactNode;
 }) {
   const action = open ? "Collapse" : "Expand";
+  const ToggleIcon = open ? ChevronDown : ChevronRight;
 
   return (
-    <div className="mt-4 border-t border-zinc-800 pt-3">
+    <div className={cn("mt-4 border-t border-border pt-3", className)}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-medium">{title}</h2>
         <Button
           type="button"
           aria-label={`${action} ${title.toLowerCase()}`}
-          className="h-7 bg-zinc-800 px-2 text-xs text-zinc-100 hover:bg-zinc-700"
+          className="h-7 justify-start gap-1 bg-transparent px-0 text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
           onClick={onToggle}
         >
-          {open ? "Close" : "Open"}
+          <ToggleIcon className="size-4" aria-hidden="true" />
+          <span>{title}</span>
         </Button>
+        {trailingAction}
       </div>
       {open ? <div className="mt-3 space-y-3">{children}</div> : null}
     </div>
@@ -540,10 +579,10 @@ function RangeControl({
   value: number;
 }) {
   return (
-    <label className="block text-sm text-zinc-300">
+    <label className="block text-sm text-slate-700">
       <span className="flex items-center justify-between gap-3">
         <span>{label}</span>
-        <span className="tabular-nums text-xs text-zinc-500">{value}</span>
+        <span className="tabular-nums text-xs text-slate-500">{value}</span>
       </span>
       <input
         type="range"

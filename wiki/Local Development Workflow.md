@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-11
-source_count: 9
+updated: 2026-05-16
+source_count: 12
 tags:
   - munjib
   - workflow
@@ -111,6 +111,12 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 
 `wiki:sync-check --staged`는 staged source change가 있는데 staged wiki maintenance change가 없으면 실패한다. `.githooks/pre-commit`은 이 검사를 커밋마다 자동 실행하며, `pnpm wiki:install-hooks`로 현재 checkout에 연결한다.
 
+## Task completion and PR review
+
+모든 task 종료 시에는 검증, wiki sync, 커밋, push까지 마친 뒤 자동으로 draft PR을 작성한다. 사용자가 명시적으로 ready-for-review PR을 요청하지 않은 한 PR은 draft로 열고, branch/commit, validation command, 남은 risk를 PR body에 기록한다.
+
+PR 리뷰 요청을 완료한 뒤에는 바로 종료하지 않고 최소 5분 대기한다. 대기 후 PR review thread, review submission, CI/check 상태를 확인하고, actionable feedback이나 실패 check가 있으면 같은 branch에서 추가 수정, 검증, wiki update, commit, push까지 수행한다. 리뷰나 CI가 아직 없으면 그 상태를 명확히 남기고 다음 확인 시점을 잡는다.
+
 ## 근거
 
 - `package.json`
@@ -121,3 +127,5 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 - `lib/service-errors.ts`
 - `.githooks/pre-commit`
 - GitHub issue #25 branch separation recovery
+- User workflow decision on automatic draft PR creation after every task
+- User workflow decision to wait 5 minutes after PR review request and inspect review feedback
