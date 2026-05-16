@@ -278,8 +278,10 @@ function finalizeSection(
 
 function projectOutlineItems(sections: HeadingFoldSection[]): MarkdownOutlineItem[] {
   return sections.flatMap((section) => {
-    if (section.level > 4 || section.title.length === 0) {
-      return [];
+    const children = projectOutlineItems(section.children);
+
+    if (section.level > 4 || isHiddenOutlineTitle(section.title)) {
+      return children;
     }
 
     return [
@@ -288,10 +290,16 @@ function projectOutlineItems(sections: HeadingFoldSection[]): MarkdownOutlineIte
         level: section.level,
         title: section.title,
         lineNumber: section.headingLine,
-        children: projectOutlineItems(section.children),
+        children,
       },
     ];
   });
+}
+
+function isHiddenOutlineTitle(title: string): boolean {
+  const normalizedTitle = title.trim();
+
+  return normalizedTitle.length === 0 || /^#+$/.test(normalizedTitle);
 }
 
 function normalizeHeadingTitle(rawTitle: string): string {

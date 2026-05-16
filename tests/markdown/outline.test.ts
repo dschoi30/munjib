@@ -75,4 +75,24 @@ Body`);
 
     expect(outline.map((item) => item.title)).toEqual(["Real"]);
   });
+
+  it("excludes closing-marker-only root headings", () => {
+    const outline = buildMarkdownOutline(`## ##
+# Real`);
+
+    expect(outline.map((item) => item.title)).toEqual(["Real"]);
+  });
+
+  it("preserves visible descendants under the nearest visible outline parent", () => {
+    const outline = buildMarkdownOutline(`# Root
+##
+### Child`);
+
+    expect(outline).toMatchObject([
+      {
+        title: "Root",
+        children: [{ level: 3, title: "Child", lineNumber: 3, children: [] }],
+      },
+    ]);
+  });
 });
