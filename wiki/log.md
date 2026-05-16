@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 52
+source_count: 55
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T12:40:00+09:00 - implementation
+
+- Result: Issue #38 graph settings panel polish를 적용했다.
+- Coverage: `KnowledgeGraphView` settings panel을 graph canvas 우측 상단으로 옮기고 `bg-muted` surface로 맞췄다. Panel-level `X` close는 전체 설정창을 숨기고 같은 위치에 reopen icon만 남긴다. `Filters`, `Display`, `Forces` section toggle은 `DocumentNavigation`과 같은 chevron icon을 section text 좌측에 배치한 button을 사용하며, `X` close는 `Filters` header row 우측에 배치한다. Hover focus가 활성일 때 연결되지 않은 node circle과 label을 더 낮은 alpha로 흐리게 표시해 1-hop highlight가 더 두드러지게 했다. Node label은 circle 중심과 겹치지 않도록 node center보다 아래에 그리고, 일정 수준 이상 줌아웃하면 숨긴다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #38, 사용자 제공 Obsidian graph screenshot, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
 
 ## 2026-05-16T12:08:00+09:00 - review follow-up
 
