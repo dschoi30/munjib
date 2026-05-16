@@ -44,7 +44,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - tags와 YAML frontmatter properties extraction.
 - outgoing links, backlinks, broken links, comments를 title 아래 Properties 영역에 표시.
 - broken link 클릭 시 루트 경로에 blank document를 생성하고 link를 repair.
-- local graph, attachments, versions, audit log를 보여주는 metadata panel.
+- attachments, versions, audit log를 tab으로 전환하고 닫힘 상태에서는 reopen icon만 남기는 metadata panel.
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
 

@@ -367,13 +367,9 @@ export default async function WorkspacePage({
       }
       right={
         <MetadataPanel
-          currentDocument={
-            selectedDocument ? { id: selectedDocument.id, title: selectedDocument.title } : null
-          }
           versions={versions}
           auditLogs={auditLogs}
           attachments={attachments}
-          linkPanels={linkPanels}
           canWrite={canWriteSelectedDocument}
           restoreVersionAction={restoreVersionAction}
         />
