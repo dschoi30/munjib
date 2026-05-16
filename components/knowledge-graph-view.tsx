@@ -85,6 +85,7 @@ const DIMMED_NODE_ALPHA = "88";
 const HOVER_DIMMED_NODE_ALPHA = "33";
 const DIMMED_LINK_ALPHA = "44";
 const HOVER_DIMMED_LABEL_ALPHA = 0.2;
+const LABEL_VERTICAL_OFFSET = 8;
 const MIN_LABEL_GLOBAL_SCALE = 0.75;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
@@ -362,7 +363,7 @@ export function KnowledgeGraphView({
                 : Math.min(1, alpha);
 
             context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${labelAlpha.toFixed(2)})`;
-            const labelY = node.y + (display.nodeSize + 8) / globalScale;
+            const labelY = node.y + (display.nodeSize + LABEL_VERTICAL_OFFSET) / globalScale;
             context.fillText(label, node.x, labelY);
           }}
           linkColor={(link: ForceGraphLink) => {

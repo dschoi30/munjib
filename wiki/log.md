@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 58
+source_count: 59
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T16:55:00+09:00 - review follow-up
+
+- Result: PR #39 review feedback를 반영했다.
+- Coverage: graph node label Y offset 계산에 쓰이던 literal `8`을 `LABEL_VERTICAL_OFFSET` constant로 추출했다. 동작 변경 없이 readability만 보강한 review follow-up이다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #39 Gemini review comment, `components/knowledge-graph-view.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-16T13:16:00+09:00 - maintenance
 
