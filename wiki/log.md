@@ -19,6 +19,22 @@ links:
 
 # Wiki Log
 
+## 2026-05-16T12:08:00+09:00 - review follow-up
+
+- Result: PR #37 graph display control regression을 정리했다.
+- Coverage: `Text fade threshold`가 force controls 조작 이후 cooled graph canvas에서 다시 반영되지 않는 문제를 수정했다. Display state 변경 시 `react-force-graph-2d` graph ref의 animation loop를 재개해 custom label drawing이 다시 repaint되도록 했다. 추가 PR review에서 지적된 stale hovered node id도 방어해, graph refresh/removal 이후 존재하지 않는 hover target이 전체 graph를 dim 처리하지 않도록 했다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #37 review follow-up, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
+## 2026-05-16T01:22:05+09:00 - implementation
+
+- Result: Issue #36 workspace knowledge graph view에 Display와 Forces 설정을 추가했다.
+- Coverage: Graph panel은 `Filters` 아래에 `Display`와 `Forces` section을 표시한다. Display controls는 arrows, text fade threshold, node size, link thickness를 `react-force-graph-2d` props와 label drawing에 반영한다. Forces controls는 center force, repel force, link force, link distance를 graph ref의 `d3Force` API에 적용한다. Review follow-up으로 center force는 `forceCenter.strength()`가 아니라 custom `munjib-center` gravity force를 등록하도록 바꿨고, dynamic graph ref가 늦게 mount되어도 기본 force 설정이 적용되도록 했다. Graph link color는 relation-kind color 대신 neutral gray로 통일하고, selected document 또는 hovered node의 1-hop focus link만 더 밝게 표시한다. Graph mode는 normal editor padding 없이 center 영역 높이를 채우고, canvas background는 `DocumentToolbar`와 같은 흰색 surface를 사용한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #36, 사용자 제공 Obsidian graph screenshot, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/specs/2026-05-16-knowledge-graph-display-force-controls-design.md`, `docs/superpowers/plans/2026-05-16-knowledge-graph-display-force-controls.md`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx tests/workspace-routes.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`, `pnpm run test:e2e`.
+
 ## 2026-05-16T00:54:25+09:00 - review follow-up
 
 - Result: PR #35 workspace knowledge graph view review feedback를 반영했다.

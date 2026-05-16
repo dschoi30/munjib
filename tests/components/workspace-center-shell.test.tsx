@@ -188,6 +188,22 @@ describe("WorkspaceCenterShell", () => {
     expect(screen.getByTestId("workspace-scroll-container").contains(screen.getByTestId("graph-view"))).toBe(true);
   });
 
+  it("lets graph content fill the center area without scroll padding", () => {
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+        isGraphView={true}
+      >
+        <div data-testid="graph-view">Graph content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByTestId("workspace-scroll-container").className).toContain("overflow-hidden p-0");
+  });
+
   it("replaces the current tab when a different document is selected", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
