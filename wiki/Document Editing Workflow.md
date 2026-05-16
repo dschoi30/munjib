@@ -116,9 +116,9 @@ Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target T
 
 Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
-우측 metadata panel은 attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
+우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 
-2026-05-16 승인된 outline 설계는 metadata panel 첫 번째 tab에 `Outline`을 추가한다. Outline은 현재 선택 문서의 `#`, `##`, `###`, `####` ATX heading을 markdown 원문에서 추출하되 frontmatter와 fenced code block 내부 heading-like line은 제외한다. 표시 UI는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 heading level을 구분하고, row click은 현재 document editor/preview surface의 해당 heading으로 스크롤한다. 이 항목은 구현 전 설계 상태이며 근거는 `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`이다.
+Issue #44 이후 metadata panel의 첫 번째 tab은 `Outline`이다. Outline은 현재 선택 문서 markdown 원문에서 `#`, `##`, `###`, `####` ATX heading을 추출하되 YAML frontmatter와 fenced code block 내부 heading-like line은 제외한다. Empty heading과 closing marker만 남는 heading도 outline에서 제외한다. Heading tree는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 level을 구분한다. Row click은 `AppShell` heading navigation context를 통해 preview mode의 `data-outline-heading-id` target을 먼저 찾고, edit mode에서는 CodeMirror source line으로 스크롤하며, 등록된 navigator가 없을 때는 같은 outline target DOM fallback으로 스크롤한다.
 
 ## Document tabs and navigation toolbar
 
@@ -150,6 +150,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/workspace-tree.ts`
 - `lib/workspace-routes.ts`
 - `lib/knowledge-graph/model.ts`
+- `lib/markdown/folding.ts`
 - `lib/service-errors.ts`
 - `lib/documents/service.ts`
 - `lib/documents/import-markdown.ts`
@@ -162,6 +163,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/document-metadata/reconcile.ts`
 - `prisma/schema.prisma`
 - `tests/markdown/folding.test.ts`
+- `tests/markdown/outline.test.ts`
+- `tests/components/metadata-panel.test.tsx`
+- `tests/components/app-shell.test.tsx`
 - `tests/components/document-editor-preview.test.tsx`
 - `tests/components/document-list.test.tsx`
 - `tests/documents/import-markdown.test.ts`

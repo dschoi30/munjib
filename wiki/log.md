@@ -19,6 +19,15 @@ links:
 
 # Wiki Log
 
+## 2026-05-16T23:55:00+09:00 - implementation
+
+- Result: Issue #44 metadata panel outline navigation 구현 상태를 durable wiki에 반영했다.
+- Coverage: metadata panel 첫 번째 `Outline` tab, `#`-`####` ATX heading extraction, frontmatter/fenced-code/empty-heading exclusion, `DocumentNavigation`-style `border-l` guide lines, preview `data-outline-heading-id`, edit mode CodeMirror line scroll, DOM fallback navigation을 기록했다.
+- Changed files: `wiki/Document Editing Workflow.md`, `wiki/index.md`, `wiki/log.md`, `wiki/manifest.json`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #44, `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`, `lib/markdown/folding.ts`, `components/metadata-panel.tsx`, `components/document-editor.tsx`, `components/app-shell.tsx`, `tests/markdown/outline.test.ts`, `tests/components/metadata-panel.test.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/app-shell.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/metadata-panel.test.tsx tests/components/document-editor-preview.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-05-16T23:19:24+09:00 - design
 
 - Result: metadata panel outline 기능 설계를 승인하고 spec으로 기록했다.
