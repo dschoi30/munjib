@@ -136,7 +136,7 @@ afterEach(() => {
 });
 
 describe("KnowledgeGraphView", () => {
-  it("renders force graph and toggles the filter panel labels", () => {
+  it("renders force graph and closes the settings panel to a reopen icon", () => {
     renderGraph();
 
     expect(screen.getByTestId("force-graph")).toBeTruthy();
@@ -145,14 +145,28 @@ describe("KnowledgeGraphView", () => {
     expect(screen.getByLabelText("Tags")).toBeTruthy();
     expect(screen.getByLabelText("Properties")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Close filters" }));
+    const controls = screen.getByTestId("knowledge-graph-controls");
+    expect(controls.className).toContain("right-4");
+    expect(controls.className).toContain("bg-muted");
+    const filtersToggle = screen.getByRole("button", { name: "Collapse filters" });
+    expect(filtersToggle.textContent).toContain("Filters");
+    expect(screen.getByRole("button", { name: "Close graph settings" }).parentElement).toBe(
+      filtersToggle.parentElement,
+    );
 
+    fireEvent.click(screen.getByRole("button", { name: "Close graph settings" }));
+
+    expect(screen.queryByText("Filters")).toBeNull();
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
     expect(screen.queryByLabelText("Tags")).toBeNull();
     expect(screen.queryByLabelText("Properties")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Open filters" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open graph settings" }));
 
+    expect(screen.getByText("Filters")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Collapse display" }).textContent).toContain(
+      "Display",
+    );
     expect(screen.getByLabelText("Wiki links")).toBeTruthy();
     expect(screen.getByLabelText("Tags")).toBeTruthy();
     expect(screen.getByLabelText("Properties")).toBeTruthy();
@@ -349,11 +363,31 @@ describe("KnowledgeGraphView", () => {
     expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.50)");
     expect(context.textAlign).toBe("center");
     expect(context.textBaseline).toBe("middle");
-    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 30);
+    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 43);
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.1);
 
     expect(context.fillText).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides node labels when the graph is zoomed too far out", () => {
+    const graph = createGraph();
+    renderGraph(graph);
+
+    const context = {
+      fillStyle: "",
+      font: "",
+      textAlign: "",
+      textBaseline: "",
+      fillText: vi.fn(),
+    };
+    const nodeCanvasObject = forceGraphMock.state.latestProps?.nodeCanvasObject as
+      | ((node: KnowledgeGraphData["nodes"][number] & { x: number; y: number }, ctx: typeof context, globalScale: number) => void)
+      | undefined;
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.6);
+
+    expect(context.fillText).not.toHaveBeenCalled();
   });
 
   it("resumes graph rendering when text fade threshold changes after force controls update", async () => {
@@ -489,7 +523,7 @@ describe("KnowledgeGraphView", () => {
       const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
         | ((node: KnowledgeGraphData["nodes"][number]) => string)
         | undefined;
-      expect(nodeColor?.(graph.nodes[0])).toBe("#64748b88");
+      expect(nodeColor?.(graph.nodes[0])).toBe("#64748b33");
     });
 
     const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
@@ -498,11 +532,25 @@ describe("KnowledgeGraphView", () => {
     const linkColor = forceGraphMock.state.latestProps?.linkColor as
       | ((link: KnowledgeGraphData["links"][number]) => string)
       | undefined;
-    expect(nodeColor?.(graph.nodes[0])).toBe("#64748b88");
+    expect(nodeColor?.(graph.nodes[0])).toBe("#64748b33");
     expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
     expect(nodeColor?.(graph.nodes[3])).toBe("#38bdf8");
     expect(linkColor?.(graph.links[0])).toBe("#94a3b844");
     expect(linkColor?.(graph.links[1])).toBe("#64748b");
+
+    const context = {
+      fillStyle: "",
+      font: "",
+      textAlign: "",
+      textBaseline: "",
+      fillText: vi.fn(),
+    };
+    const nodeCanvasObject = forceGraphMock.state.latestProps?.nodeCanvasObject as
+      | ((node: KnowledgeGraphData["nodes"][number] & { x: number; y: number }, ctx: typeof context, globalScale: number) => void)
+      | undefined;
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 1);
+    expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.20)");
 
     onNodeHover?.(null);
 
