@@ -194,7 +194,15 @@ function WorkspaceCenterShellContent({
         onNavigateBack={handleNavigateBack}
         onNavigateForward={handleNavigateForward}
       />
-      <div ref={scrollContainerRef} data-testid="workspace-scroll-container" className="min-h-0 flex-1 overflow-auto p-5">
+      <div
+        ref={scrollContainerRef}
+        data-testid="workspace-scroll-container"
+        className={
+          isGraphView
+            ? "min-h-0 flex-1 overflow-hidden p-0"
+            : "min-h-0 flex-1 overflow-auto p-5"
+        }
+      >
         {children}
       </div>
     </div>
