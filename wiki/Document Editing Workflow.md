@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 45
+source_count: 46
 tags:
   - munjib
   - workflow
@@ -118,6 +118,8 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 우측 metadata panel은 attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 
+2026-05-16 승인된 outline 설계는 metadata panel 첫 번째 tab에 `Outline`을 추가한다. Outline은 현재 선택 문서의 `#`, `##`, `###`, `####` ATX heading을 markdown 원문에서 추출하되 frontmatter와 fenced code block 내부 heading-like line은 제외한다. 표시 UI는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 heading level을 구분하고, row click은 현재 document editor/preview surface의 해당 heading으로 스크롤한다. 이 항목은 구현 전 설계 상태이며 근거는 `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`이다.
+
 ## Document tabs and navigation toolbar
 
 Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, sidebar search result link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
@@ -171,4 +173,5 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - GitHub issue #34
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
+- `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`
 - Issue #25 final review blocker fix
