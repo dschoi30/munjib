@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 55
+source_count: 58
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T13:16:00+09:00 - maintenance
+
+- Result: task 종료와 PR review follow-up 운영 규칙을 wiki에 추가했다.
+- Coverage: 모든 task 종료 시 검증과 wiki sync 이후 draft PR을 자동 작성한다. PR 리뷰 요청 완료 후 최소 5분 대기하고, review submission, unresolved thread, inline comment, CI/check 결과를 확인해 actionable feedback이나 실패 check가 있으면 같은 branch에서 추가 수정, 검증, wiki update, commit, push까지 수행한다.
+- Pages: [[Local Development Workflow]], [[Wiki Maintenance Automation]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 workflow 결정.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-16T12:40:00+09:00 - implementation
 
