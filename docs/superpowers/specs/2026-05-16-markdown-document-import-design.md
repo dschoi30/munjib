@@ -37,14 +37,14 @@ After import, the action revalidates the workspace route and redirects to the im
 
 ## Error Handling
 
-- Missing file throws `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED`.
+- Missing file, including a zero-byte empty file selection, throws `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED`.
 - Non-Markdown file type/extension throws `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE`.
 - New reusable service error codes must be added to `lib/service-errors.ts` and referenced from actions/services instead of throwing ad hoc string literals.
-- Empty title candidates fall through to the next title source.
+- Empty title candidates and YAML block scalar markers such as `|`, `|-`, `>`, and `>-` fall through to the next title source.
 - Existing service errors for workspace and write permission continue to propagate.
 
 ## Testing
 
-- Component tests cover settings button alignment affordances, opening/closing the settings dialog, default `Import` selection, document-list preservation behind the dialog, Markdown-only import controls, and disabled import submit when the workspace is not writable.
-- Unit tests cover title derivation from frontmatter, heading, and filename.
+- Component tests cover settings button alignment affordances, opening/closing the settings dialog, backdrop close, default `Import` selection, document-list preservation behind the dialog, Markdown-only import controls, and disabled import submit when the workspace is not writable.
+- Unit tests cover title derivation from frontmatter, heading, and filename, including block-scalar frontmatter title fallback and fenced-code heading skips.
 - Existing document service tests remain responsible for version, metadata, link reconciliation, and audit behavior through `createDocument()`.

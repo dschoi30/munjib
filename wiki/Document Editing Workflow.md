@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 43
+source_count: 44
 tags:
   - munjib
   - workflow
@@ -47,7 +47,7 @@ Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 
 
 Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. `Favorites` icon button은 document list 영역을 favorites-only panel로 전환하며, favorite section은 더 이상 `Recents` 위에 상시 노출되지 않는다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
 
-Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다.
+Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 
 ## 생성 흐름
 
@@ -68,7 +68,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 7. `document.created` audit log를 남긴다.
 8. 생성 문서 URL로 redirect한다.
 
-`importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 `.md`, `.markdown`, `text/markdown`, `text/x-markdown` 파일만 허용한다. Missing file과 unsupported file error는 `lib/service-errors.ts`의 `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED`, `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE`로 전역 관리하며, action/service에서 ad hoc string literal을 직접 throw하지 않는다. 파일 text는 그대로 `contentMarkdown`에 저장하고, 문서 제목은 `lib/documents/import-markdown.ts`의 `deriveMarkdownImportTitle()`로 정한다. 제목 우선순위는 YAML frontmatter의 string `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name이다. 생성 자체는 `createDocument()`를 재사용하므로 workspace write permission, unique slug, initial version, wiki link reconciliation, document metadata reconciliation, `document.created` audit log 흐름이 blank document 생성과 같다. Import 완료 후 workspace route를 revalidate하고 imported document URL로 redirect한다.
+`importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 `.md`, `.markdown`, `text/markdown`, `text/x-markdown` 파일만 허용한다. Missing file과 zero-byte empty file selection은 `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED`, unsupported file은 `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE`로 전역 관리하며, action/service에서 ad hoc string literal을 직접 throw하지 않는다. 파일 text는 그대로 `contentMarkdown`에 저장하고, 문서 제목은 `lib/documents/import-markdown.ts`의 `deriveMarkdownImportTitle()`로 정한다. 제목 우선순위는 YAML frontmatter의 inline string `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name이다. YAML `title: |`, `title: >` 같은 block scalar marker는 title 후보로 쓰지 않고 fallback하며, 첫 ATX heading scan은 fenced code block 내부의 shell comment 같은 `# ...` line을 건너뛴다. 생성 자체는 `createDocument()`를 재사용하므로 workspace write permission, unique slug, initial version, wiki link reconciliation, document metadata reconciliation, `document.created` audit log 흐름이 blank document 생성과 같다. Import 완료 후 workspace route를 revalidate하고 imported document URL로 redirect한다.
 
 `moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다.
 

@@ -163,7 +163,13 @@ function WorkspaceSettingsPanel({
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 px-6 py-16">
+    <div
+      data-testid="workspace-settings-backdrop"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 px-6 py-16"
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
       <section
         role="dialog"
         aria-modal="true"

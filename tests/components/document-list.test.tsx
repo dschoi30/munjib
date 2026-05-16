@@ -146,6 +146,20 @@ describe("DocumentList", () => {
     expect(screen.getByText("Recents")).toBeTruthy();
   });
 
+  it("closes the workspace settings panel from the backdrop without closing on dialog clicks", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("dialog", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+
+    fireEvent.click(screen.getByTestId("workspace-settings-backdrop"));
+
+    expect(screen.queryByRole("dialog", { name: "Workspace settings" })).toBeNull();
+    expect(screen.getByText("Recents")).toBeTruthy();
+  });
+
   it("disables markdown import when the workspace is read-only", () => {
     renderList({ canWrite: false });
 

@@ -7,7 +7,10 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
 import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
-import { deriveMarkdownImportTitle } from "@/lib/documents/import-markdown";
+import {
+  deriveMarkdownImportTitle,
+  isSupportedMarkdownImportFile,
+} from "@/lib/documents/import-markdown";
 import {
   archiveDocument,
   createDocument,
@@ -47,11 +50,11 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
   const user = await requireCurrentUser();
   const file = formData.get("markdownFile");
 
-  if (!(file instanceof File)) {
+  if (!(file instanceof File) || file.size === 0) {
     throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED);
   }
 
-  if (!isMarkdownFile(file)) {
+  if (!isSupportedMarkdownImportFile(file)) {
     throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE);
   }
 
@@ -188,16 +191,4 @@ export async function createCommentAction(workspaceSlug: string, formData: FormD
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
-}
-
-function isMarkdownFile(file: File) {
-  const name = file.name.toLowerCase();
-  const type = file.type.toLowerCase();
-
-  return (
-    name.endsWith(".md") ||
-    name.endsWith(".markdown") ||
-    type === "text/markdown" ||
-    type === "text/x-markdown"
-  );
 }

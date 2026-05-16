@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 60
+source_count: 61
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T18:40:49+09:00 - review follow-up
+
+- Result: PR #41 review feedback를 반영했다.
+- Coverage: Markdown import는 zero-byte empty file selection을 required-file error로 처리하고, title derivation은 YAML block scalar marker를 fallback 대상으로 처리한다. 첫 ATX heading fallback은 fenced code block 내부의 `# ...` line을 건너뛰며, settings dialog는 backdrop click으로 닫힌다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #41 review threads, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-list.tsx`, `lib/documents/import-markdown.ts`, `tests/components/document-list.test.tsx`, `tests/documents/import-markdown.test.ts`.
+- Verification: `pnpm exec vitest run tests/documents/import-markdown.test.ts tests/components/document-list.test.tsx`.
 
 ## 2026-05-16T17:30:00+09:00 - implementation
 
