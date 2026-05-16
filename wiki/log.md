@@ -22,7 +22,7 @@ links:
 ## 2026-05-16T19:05:00+09:00 - implementation
 
 - Result: Issue #42 metadata panel tab UI와 오른쪽 panel collapse control을 추가했다.
-- Coverage: `MetadataPanel` 상단에 `document-list.tsx` toolbar와 같은 icon tab 영역을 두고 `Attachments`, `Versions`, `Audit log`를 버튼 클릭 시 해당 목록만 표시하도록 바꿨다. Attachments tab이 기본으로 열리고, Versions/Audit log tab은 빈 목록일 때 empty state를 표시한다. Metadata panel toolbar와 reopen icon은 sidebar toolbar와 같은 tooltip pattern을 사용한다. 기존 metadata panel의 local graph UI와 기능은 제거했다. `AppShell`은 오른쪽 panel open/collapse state를 소유하며, metadata panel close button은 오른쪽 sidebar를 제거하고 화면 우측 상단 reopen icon 하나만 남긴다. Reopen icon은 center toolbar와 겹치지 않도록 top toolbar 아래에 배치한다. 오른쪽 sidebar는 좌측 sidebar와 같은 `pt-0` alignment를 사용한다.
+- Coverage: `MetadataPanel` 상단에 `document-list.tsx` toolbar와 같은 icon tab 영역을 두고 `Attachments`, `Versions`, `Audit log`를 버튼 클릭 시 해당 목록만 표시하도록 바꿨다. Attachments tab이 기본으로 열리고, Versions/Audit log tab은 빈 목록일 때 empty state를 표시한다. Metadata panel toolbar와 reopen icon은 sidebar toolbar와 같은 tooltip pattern을 사용한다. 기존 metadata panel의 local graph UI와 기능은 제거했다. `AppShell`은 오른쪽 panel open/collapse state를 소유하며, metadata panel close button은 오른쪽 sidebar를 제거하고 화면 우측 상단 reopen icon 하나만 남긴다. 오른쪽 sidebar는 좌측 sidebar와 같은 `pt-0` alignment를 사용한다.
 - Pages: [[Document Editing Workflow]], [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #42, 사용자 제공 Obsidian metadata panel screenshot, `components/metadata-panel.tsx`, `components/app-shell.tsx`, `tests/components/metadata-panel.test.tsx`, `tests/components/app-shell.test.tsx`, `tests/e2e/login.spec.ts`.
 - Verification: `pnpm exec vitest run tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`.
