@@ -23,6 +23,7 @@ import {
   createDocumentAction,
   createCommentAction,
   createDocumentFromBrokenLinkAction,
+  importMarkdownDocumentAction,
   renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
@@ -234,6 +235,7 @@ export default async function WorkspacePage({
     : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
   const createFolder = createFolderAction.bind(null, workspaceSlug);
+  const importMarkdown = importMarkdownDocumentAction.bind(null, workspaceSlug);
   const renameFolder = renameFolderAction.bind(null, workspaceSlug);
   const archiveFolder = archiveFolderAction.bind(null, workspaceSlug);
   const archiveDocument = archiveDocumentAction.bind(null, workspaceSlug);
@@ -279,6 +281,7 @@ export default async function WorkspacePage({
           canWrite={canWrite}
           createAction={createAction}
           createFolderAction={createFolder}
+          importMarkdownAction={importMarkdown}
           renameFolderAction={renameFolder}
           archiveFolderAction={archiveFolder}
           archiveDocumentAction={archiveDocument}
