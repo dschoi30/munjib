@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-16T23:19:24+09:00 - design
+
+- Result: metadata panel outline 기능 설계를 승인하고 spec으로 기록했다.
+- Coverage: 오른쪽 metadata panel 첫 번째 icon tab으로 `Outline`을 추가하고, 현재 선택 문서의 `#`-`####` heading을 tree로 추출하며, `DocumentNavigation`과 같은 vertical guide line으로 level을 구분하고 row click으로 해당 heading에 스크롤하는 방향을 확정했다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 승인, visual companion mockup, `components/metadata-panel.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`.
+- Verification: spec self-review.
+
 ## 2026-05-16T19:35:00+09:00 - polish
 
 - Result: Issue #42 metadata panel reopen icon 위치를 조정했다.
