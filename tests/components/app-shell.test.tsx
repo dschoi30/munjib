@@ -34,7 +34,9 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Close metadata panel" }));
 
     expect(screen.queryByRole("button", { name: "Close metadata panel" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Open metadata panel" })).toBeTruthy();
+    const openButton = screen.getByRole("button", { name: "Open metadata panel" });
+    expect(openButton).toBeTruthy();
+    expect(openButton.className).toContain("top-14");
     expect(screen.getAllByRole("complementary")).toHaveLength(1);
 
     fireEvent.click(screen.getByRole("button", { name: "Open metadata panel" }));

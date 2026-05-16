@@ -63,7 +63,7 @@ export function AppShell({
                 type="button"
                 aria-label="Open metadata panel"
                 onClick={() => setRightPanelOpen(true)}
-                className="absolute right-2 top-2 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
+                className="absolute right-2 top-14 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
               >
                 <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
               </Button>

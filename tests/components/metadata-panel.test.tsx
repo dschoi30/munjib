@@ -63,12 +63,12 @@ function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
 }
 
 describe("MetadataPanel", () => {
-  it("opens metadata lists from the tab toolbar without rendering a local graph", () => {
+  it("opens attachments by default and switches metadata lists from the tab toolbar", () => {
     renderPanel();
 
     expect(screen.queryByText("Local graph")).toBeNull();
     expect(screen.queryByRole("img", { name: /Local graph/ })).toBeNull();
-    expect(screen.queryByRole("link", { name: "notes.txt" })).toBeNull();
+    expect(screen.getByRole("link", { name: "notes.txt" })).toBeTruthy();
     expect(screen.queryByText("v2")).toBeNull();
     expect(screen.queryByText("document.updated")).toBeNull();
 
@@ -83,6 +83,16 @@ describe("MetadataPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Audit log" }));
     expect(screen.getByText("document.updated")).toBeTruthy();
     expect(screen.queryByText("v2")).toBeNull();
+  });
+
+  it("shows empty states for versions and audit log tabs", () => {
+    renderPanel({ versions: [], auditLogs: [] });
+
+    fireEvent.click(screen.getByRole("button", { name: "Versions" }));
+    expect(screen.getByText("No versions")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Audit log" }));
+    expect(screen.getByText("No audit logs")).toBeTruthy();
   });
 
   it("exposes a right-side collapse control", () => {

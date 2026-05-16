@@ -31,7 +31,7 @@ export function MetadataPanel({
   restoreVersionAction: (formData: FormData) => Promise<void>;
   onTogglePanel?: () => void;
 }) {
-  const [activeTab, setActiveTab] = useState<MetadataTab | null>(null);
+  const [activeTab, setActiveTab] = useState<MetadataTab>("attachments");
   const rightPanel = useRightPanel();
   const collapsePanel = onTogglePanel ?? rightPanel?.collapse;
 
@@ -158,6 +158,7 @@ function VersionsList({
     <section>
       <h2 className="text-sm font-semibold">Versions</h2>
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
+        {versions.length === 0 ? <li>No versions</li> : null}
         {versions.map((version) => (
           <li key={version.id} className="rounded border border-border px-2 py-2">
             <div className="flex items-start justify-between gap-2">
@@ -185,6 +186,7 @@ function AuditLogList({ auditLogs }: { auditLogs: AuditLog[] }) {
     <section>
       <h2 className="text-sm font-semibold">Audit log</h2>
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
+        {auditLogs.length === 0 ? <li>No audit logs</li> : null}
         {auditLogs.map((log) => (
           <li key={log.id}>{log.action}</li>
         ))}
