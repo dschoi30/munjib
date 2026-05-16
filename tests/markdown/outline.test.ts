@@ -66,4 +66,13 @@ Body`);
     expect(outline[0]?.title).toBe("Real");
     expect(outline[0]?.children).toEqual([]);
   });
+
+  it("excludes empty and closing-marker-only ATX headings", () => {
+    const outline = buildMarkdownOutline(`#
+## ##
+###   ###
+# Real`);
+
+    expect(outline.map((item) => item.title)).toEqual(["Real"]);
+  });
 });

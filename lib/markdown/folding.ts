@@ -278,7 +278,7 @@ function finalizeSection(
 
 function projectOutlineItems(sections: HeadingFoldSection[]): MarkdownOutlineItem[] {
   return sections.flatMap((section) => {
-    if (section.level > 4) {
+    if (section.level > 4 || section.title.length === 0) {
       return [];
     }
 
