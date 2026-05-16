@@ -23,7 +23,7 @@ export type HeadingNavigationTarget = {
 type HeadingNavigator = ((target: HeadingNavigationTarget) => void) | null;
 
 type HeadingNavigationControls = {
-  navigateToHeading: (target: HeadingNavigationTarget) => void;
+  navigateToHeading: (target: HeadingNavigationTarget) => boolean;
   setHeadingNavigator: (navigator: SetStateAction<HeadingNavigator>) => void;
 };
 
@@ -58,7 +58,12 @@ export function AppShell({
   const headingNavigationControls = useMemo<HeadingNavigationControls>(
     () => ({
       navigateToHeading: (target) => {
-        headingNavigatorRef.current?.(target);
+        if (!headingNavigatorRef.current) {
+          return false;
+        }
+
+        headingNavigatorRef.current(target);
+        return true;
       },
       setHeadingNavigator: (navigator) => {
         headingNavigatorRef.current =

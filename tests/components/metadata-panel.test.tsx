@@ -3,9 +3,13 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppShell } from "@/components/app-shell";
 import { MetadataPanel } from "@/components/metadata-panel";
 
 afterEach(() => {
+  window.document.querySelectorAll("[data-outline-heading-id]").forEach((target) => {
+    target.remove();
+  });
   cleanup();
 });
 
@@ -69,6 +73,28 @@ function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
   );
 }
 
+function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
+  return render(
+    <AppShell
+      left={<div>Left</div>}
+      center={<div>Center</div>}
+      right={
+        <MetadataPanel
+          document={outlineDocument}
+          versions={versions}
+          auditLogs={auditLogs}
+          attachments={attachments}
+          canWrite
+          restoreVersionAction={async () => {}}
+          onTogglePanel={vi.fn()}
+          onNavigateToHeading={undefined}
+          {...props}
+        />
+      }
+    />,
+  );
+}
+
 describe("MetadataPanel", () => {
   it("opens outline by default and switches metadata lists from the tab toolbar", () => {
     renderPanel();
@@ -119,6 +145,20 @@ describe("MetadataPanel", () => {
     window.document.body.appendChild(target);
 
     renderPanel({ onNavigateToHeading: undefined });
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("scrolls to a matching outline target when AppShell has no registered navigator", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    renderPanelInAppShell();
 
     fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
 

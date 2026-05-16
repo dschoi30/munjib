@@ -59,8 +59,7 @@ export function MetadataPanel({
         return;
       }
 
-      if (headingNavigation) {
-        headingNavigation.navigateToHeading(target);
+      if (headingNavigation?.navigateToHeading(target)) {
         return;
       }
 
