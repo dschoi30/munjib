@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import React from "react";
+import React, { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppShell } from "@/components/app-shell";
+import { AppShell, useHeadingNavigation } from "@/components/app-shell";
 import { MetadataPanel } from "@/components/metadata-panel";
 
 afterEach(() => {
@@ -95,6 +95,17 @@ function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0
   );
 }
 
+function UnhandledHeadingNavigator() {
+  const headingNavigation = useHeadingNavigation();
+
+  useEffect(() => {
+    headingNavigation?.setHeadingNavigator(() => false);
+    return () => headingNavigation?.setHeadingNavigator(null);
+  }, [headingNavigation]);
+
+  return <div>Unhandled navigator</div>;
+}
+
 describe("MetadataPanel", () => {
   it("opens outline by default and switches metadata lists from the tab toolbar", () => {
     renderPanel();
@@ -159,6 +170,36 @@ describe("MetadataPanel", () => {
     window.document.body.appendChild(target);
 
     renderPanelInAppShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("falls back to a matching outline target when AppShell navigator does not handle it", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    render(
+      <AppShell
+        left={<div>Left</div>}
+        center={<UnhandledHeadingNavigator />}
+        right={
+          <MetadataPanel
+            document={outlineDocument}
+            versions={versions}
+            auditLogs={auditLogs}
+            attachments={attachments}
+            canWrite
+            restoreVersionAction={async () => {}}
+            onTogglePanel={vi.fn()}
+          />
+        }
+      />,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
 

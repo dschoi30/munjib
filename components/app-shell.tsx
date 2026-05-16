@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useMemo, useRef, useState } from "react";
-import type { SetStateAction } from "react";
 import { PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,11 +19,11 @@ export type HeadingNavigationTarget = {
   lineNumber: number;
 };
 
-type HeadingNavigator = ((target: HeadingNavigationTarget) => void) | null;
+type HeadingNavigator = ((target: HeadingNavigationTarget) => boolean) | null;
 
 type HeadingNavigationControls = {
   navigateToHeading: (target: HeadingNavigationTarget) => boolean;
-  setHeadingNavigator: (navigator: SetStateAction<HeadingNavigator>) => void;
+  setHeadingNavigator: (navigator: HeadingNavigator) => void;
 };
 
 const RightPanelContext = createContext<RightPanelControls | null>(null);
@@ -62,16 +61,10 @@ export function AppShell({
           return false;
         }
 
-        headingNavigatorRef.current(target);
-        return true;
+        return headingNavigatorRef.current(target);
       },
       setHeadingNavigator: (navigator) => {
-        headingNavigatorRef.current =
-          typeof navigator === "function"
-            ? (navigator as (previous: HeadingNavigator) => HeadingNavigator)(
-                headingNavigatorRef.current,
-              )
-            : navigator;
+        headingNavigatorRef.current = navigator;
       },
     }),
     [],

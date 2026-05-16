@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T00:18:00+09:00 - review follow-up
+
+- Result: Issue #44 final review에서 발견된 outline navigation fallback edge case를 수정했다.
+- Coverage: `AppShell` heading navigator는 실제 target 처리 여부를 boolean으로 반환하고, `DocumentEditor`는 preview target 또는 CodeMirror line scroll을 성공했을 때만 handled로 보고한다. `MetadataPanel`은 registered navigator가 target을 처리하지 못하면 DOM `data-outline-heading-id` fallback으로 스크롤한다. Plan의 final status checkbox도 구현 완료 상태에 맞춰 갱신했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: final code review, `components/app-shell.tsx`, `components/document-editor.tsx`, `components/metadata-panel.tsx`, `tests/components/app-shell.test.tsx`, `tests/components/metadata-panel.test.tsx`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`.
+- Verification: `pnpm exec vitest run tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/metadata-panel.test.tsx tests/components/document-editor-preview.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:lint`.
+
 ## 2026-05-16T23:55:00+09:00 - implementation
 
 - Result: Issue #44 metadata panel outline navigation 구현 상태를 durable wiki에 반영했다.

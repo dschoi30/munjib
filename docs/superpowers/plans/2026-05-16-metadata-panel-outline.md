@@ -870,13 +870,13 @@ pnpm wiki:sync-check --staged
 
 Expected: sync-check exits 0.
 
-- [ ] **Step 6: Commit final implementation state**
+- [x] **Step 6: Commit final implementation state**
 
 Run: `git commit -m "Add metadata panel outline navigation"`
 
 Expected: pre-commit `wiki:sync-check --staged` and `wiki:lint` pass, commit succeeds.
 
-- [ ] **Step 7: Final status check**
+- [x] **Step 7: Final status check**
 
 Run: `git status --short --branch`
 

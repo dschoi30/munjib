@@ -198,13 +198,13 @@ export function DocumentEditor({
 
       if (previewTarget) {
         previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
-        return;
+        return true;
       }
 
       const view = editorViewRef.current;
 
       if (!view || target.lineNumber < 1) {
-        return;
+        return false;
       }
 
       try {
@@ -213,12 +213,15 @@ export function DocumentEditor({
         view.dispatch({
           effects: EditorView.scrollIntoView(line.from, { y: "start" }),
         });
+
+        return true;
       } catch {
         // Ignore outline targets whose source line is no longer present.
+        return false;
       }
     };
 
-    registerHeadingNavigator(() => navigateToHeading);
+    registerHeadingNavigator(navigateToHeading);
     return () => registerHeadingNavigator(null);
   }, [document?.id, registerHeadingNavigator]);
   const editorMarkdownReady = contentDocumentId === document?.id;

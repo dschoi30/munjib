@@ -12,7 +12,10 @@ function HeadingNavigationProbe({ onNavigate }: { onNavigate: () => void }) {
   const headingNavigation = useHeadingNavigation();
 
   useEffect(() => {
-    headingNavigation?.setHeadingNavigator(() => onNavigate);
+    headingNavigation?.setHeadingNavigator(() => {
+      onNavigate();
+      return true;
+    });
     return () => headingNavigation?.setHeadingNavigator(null);
   }, [headingNavigation, onNavigate]);
 
