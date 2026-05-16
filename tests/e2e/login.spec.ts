@@ -56,9 +56,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Graph" }).click();
   await expect(page.getByText("Graph view")).toBeVisible();
   await expect(page.getByText("Filters", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Close filters" }).click();
+  await page.getByRole("button", { name: "Close graph settings" }).click();
   await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Open filters" }).click();
+  await page.getByRole("button", { name: "Open graph settings" }).click();
   await expect(page.getByText("Wiki links", { exact: true })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
@@ -117,7 +117,6 @@ test("development credentials login opens the workspace", async ({ page }) => {
     "aria-current",
     "page",
   );
-  await expect(page.getByRole("img", { name: "Local graph for Engineering Runbook" })).toBeVisible();
   await page.locator("[name='title']").fill("Draft title that was not saved");
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
@@ -144,6 +143,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   });
   await page.getByRole("button", { name: "Upload", exact: true }).click();
   const metadataPanel = page.locator("aside").last();
+  await metadataPanel.getByRole("button", { name: "Attachments" }).click();
   await expect(metadataPanel.getByRole("link", { name: "notes.txt" }).first()).toBeVisible();
   await expect(page.locator("[name='contentMarkdown']")).toHaveValue(/notes\.txt/);
   await page.getByLabel("Add comment").fill(commentBody);

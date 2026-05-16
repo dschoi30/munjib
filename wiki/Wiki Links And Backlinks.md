@@ -82,7 +82,7 @@ Heading folding 때문에 preview를 leading markdown, heading, body chunk로 �
 
 ## Backlinks
 
-Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 frontmatter link의 source document 목록은 local graph와 metadata panel 쪽 관계 정보에 사용하지만, Properties Links row에는 현재 문서의 YAML `links:` outgoing만 표시한다.
+Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`를 통해 계산된다. 현재 문서를 target으로 갖는 frontmatter link의 source document 목록은 graph view와 관계 정보에 사용하지만, Properties Links row에는 현재 문서의 YAML `links:` outgoing만 표시한다.
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
