@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-16
-source_count: 62
+source_count: 63
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-16T19:35:00+09:00 - polish
+
+- Result: Issue #42 metadata panel reopen icon 위치를 조정했다.
+- Coverage: 오른쪽 panel collapse 후 남는 `Open metadata panel` icon을 화면 우측 상단에 더 맞게 `right-4 top-1.5` 위치로 조정했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: 사용자 UI 조정, `components/app-shell.tsx`, `tests/components/app-shell.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/app-shell.test.tsx`.
 
 ## 2026-05-16T19:05:00+09:00 - implementation
 
