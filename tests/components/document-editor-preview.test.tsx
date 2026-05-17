@@ -791,6 +791,23 @@ describe("DocumentEditor heading preview folding", () => {
         "First ![first.png](/api/attachments/attachment-1)",
       );
     });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First server refresh" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
+        "First server refresh",
+      );
+    });
   });
 
   it("prefers clipboard image items over files when uploading pasted images", async () => {

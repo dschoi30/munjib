@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 73
+source_count: 74
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T03:06:00+09:00 - review follow-up
+
+- Result: PR #53 추가 review feedback에 따라 pasted image draft cache를 완료 후 stale server content보다 우선하지 않도록 보강했다.
+- Coverage: Pending image paste draft는 upload가 진행 중인 문서 상태 또는 비활성 source document에 완료 결과를 한 번 전달하기 위한 임시 값으로 제한된다. Upload가 끝난 활성 문서는 draft cache를 지우고, 비활성 문서에서 끝난 결과도 해당 문서를 다시 열 때 한 번 반영한 뒤 cache를 지워 이후 server-side content refresh를 stale draft가 덮지 않게 한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T02:54:00+09:00 - review follow-up
 

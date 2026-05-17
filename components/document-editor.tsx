@@ -206,6 +206,9 @@ export function DocumentEditor({
                     nextCounts[pasteDocumentId] = nextCount;
                   } else {
                     delete nextCounts[pasteDocumentId];
+                    if (activeDocumentIdRef.current === pasteDocumentId) {
+                      delete pendingImagePasteDraftsRef.current[pasteDocumentId];
+                    }
                   }
 
                   return nextCounts;
@@ -240,12 +243,16 @@ export function DocumentEditor({
   }, [activeCompletion, document?.id, linkCandidates]);
 
   useEffect(() => {
+    const pendingDraft = document?.id ? pendingImagePasteDraftsRef.current[document.id] : undefined;
     setTitle(document?.title ?? "");
-    setContentMarkdown(
-      document?.id
-        ? (pendingImagePasteDraftsRef.current[document.id] ?? document.contentMarkdown)
-        : "",
-    );
+    setContentMarkdown(document?.id ? (pendingDraft ?? document.contentMarkdown) : "");
+    if (
+      document?.id &&
+      pendingDraft !== undefined &&
+      (pendingImagePasteCountsRef.current[document.id] ?? 0) === 0
+    ) {
+      delete pendingImagePasteDraftsRef.current[document.id];
+    }
     setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);
