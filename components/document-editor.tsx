@@ -40,7 +40,6 @@ import {
   type ActiveWikiLinkCompletion,
   type WikiLinkCompletionOption,
 } from "@/lib/wiki-links/autocomplete";
-import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
 import { getOutlineHeadingTarget } from "@/lib/outline-targets";
@@ -894,15 +893,12 @@ function DocumentProperties({
     linkId: link.id,
     broken: link.isBroken,
   }));
-  const visibleProperties = visibleDocumentProperties(properties);
-  const hasFrontmatterTags = properties.some((property) => property.key === "tags");
   const hasFrontmatterLinks = properties.some((property) => property.key === "links");
 
   return (
     <section aria-label="Document properties" className="space-y-3 py-2">
       <h2 className="text-lg font-semibold">Properties</h2>
       <div className="space-y-2 text-sm">
-        {!hasFrontmatterTags ? <TagsPropertyRow tags={tags} /> : null}
         {!hasFrontmatterLinks && linkedItems.length > 0 ? (
           <LinksPropertyRow
             linkedItems={linkedItems}
@@ -912,7 +908,7 @@ function DocumentProperties({
         ) : null}
         {properties.map((property) => {
           if (property.key === "tags") {
-            return <TagsPropertyRow key={property.id} tags={tags} />;
+            return <TagsPropertyRow key={property.id} tags={propertyTags(property.valueJson)} />;
           }
           if (property.key === "links") {
             return (
@@ -930,11 +926,6 @@ function DocumentProperties({
             </PropertyRow>
           );
         })}
-        {visibleProperties.length === 0 && !hasFrontmatterTags && linkedItems.length === 0 ? (
-          <PropertyRow label="frontmatter">
-            <span className="text-slate-400">none</span>
-          </PropertyRow>
-        ) : null}
         <PropertyRow label="comments">
           <div className="flex min-w-0 flex-1 flex-col items-stretch gap-2">
             {comments.length === 0 ? <span className="text-slate-400">none</span> : null}
@@ -972,17 +963,32 @@ function DocumentProperties({
   );
 }
 
-function TagsPropertyRow({ tags }: { tags: Pick<Tag, "id" | "name">[] }) {
+function TagsPropertyRow({ tags }: { tags: string[] }) {
   return (
     <PropertyRow label="tags">
       {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
       {tags.map((tag) => (
-        <span key={tag.id} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
-          #{tag.name}
+        <span key={tag} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
+          #{tag}
         </span>
       ))}
     </PropertyRow>
   );
+}
+
+function propertyTags(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(/[,\s]+/)
+      .map((tag) => tag.replace(/^#/, "").trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(propertyTags);
+  }
+
+  return [];
 }
 
 function LinksPropertyRow({
