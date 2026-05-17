@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-16",
+  "updated": "2026-05-17",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -65,7 +65,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 45,
+      "source_count": 47,
       "searchPriority": 50
     },
     {
@@ -138,7 +138,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 33,
+      "source_count": 34,
       "searchPriority": 5
     },
     {
@@ -160,7 +160,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 12,
+      "source_count": 13,
       "searchPriority": 50
     },
     {
@@ -180,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 63,
+      "source_count": 64,
       "searchPriority": 1
     },
     {
@@ -204,7 +204,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 24,
+      "source_count": 25,
       "searchPriority": 50
     },
     {
@@ -248,7 +248,7 @@
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 27,
+      "source_count": 28,
       "searchPriority": 30
     },
     {
@@ -291,7 +291,7 @@
         "[[index|Wiki Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 13,
+      "source_count": 14,
       "searchPriority": 50
     },
     {

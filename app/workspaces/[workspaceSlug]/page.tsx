@@ -367,6 +367,11 @@ export default async function WorkspacePage({
       }
       right={
         <MetadataPanel
+          document={
+            selectedDocument
+              ? { id: selectedDocument.id, contentMarkdown: selectedDocument.contentMarkdown }
+              : null
+          }
           versions={versions}
           auditLogs={auditLogs}
           attachments={attachments}

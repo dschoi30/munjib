@@ -7,6 +7,7 @@ export type HeadingFoldSection = {
   key: string;
   level: number;
   title: string;
+  headingLine: number;
   bodyMarkdown: string;
   children: HeadingFoldSection[];
   editorRange: HeadingFoldEditorRange | null;
@@ -16,6 +17,14 @@ export type HeadingFoldTree = {
   sections: HeadingFoldSection[];
   sectionByKey: Map<string, HeadingFoldSection>;
   headingKeys: Set<string>;
+};
+
+export type MarkdownOutlineItem = {
+  id: string;
+  level: number;
+  title: string;
+  lineNumber: number;
+  children: MarkdownOutlineItem[];
 };
 
 type LineToken = {
@@ -99,6 +108,12 @@ export function buildHeadingFoldTree(markdown: string): HeadingFoldTree {
     sectionByKey,
     headingKeys,
   };
+}
+
+export function buildMarkdownOutline(markdown: string): MarkdownOutlineItem[] {
+  const tree = buildHeadingFoldTree(markdown);
+
+  return projectOutlineItems(tree.sections);
 }
 
 export function getValidFoldedHeadingKeys(
@@ -249,6 +264,7 @@ function finalizeSection(
     key: section.key,
     level: section.level,
     title: section.title,
+    headingLine: section.headingLine,
     bodyMarkdown,
     children: Object.freeze(finalizedChildren) as unknown as HeadingFoldSection[],
     editorRange,
@@ -258,6 +274,32 @@ function finalizeSection(
   headingKeys.add(finalized.key);
 
   return finalized;
+}
+
+function projectOutlineItems(sections: HeadingFoldSection[]): MarkdownOutlineItem[] {
+  return sections.flatMap((section) => {
+    const children = projectOutlineItems(section.children);
+
+    if (section.level > 4 || isHiddenOutlineTitle(section.title)) {
+      return children;
+    }
+
+    return [
+      {
+        id: section.key,
+        level: section.level,
+        title: section.title,
+        lineNumber: section.headingLine,
+        children,
+      },
+    ];
+  });
+}
+
+function isHiddenOutlineTitle(title: string): boolean {
+  const normalizedTitle = title.trim();
+
+  return normalizedTitle.length === 0 || /^#+$/.test(normalizedTitle);
 }
 
 function normalizeHeadingTitle(rawTitle: string): string {
