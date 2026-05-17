@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 66
+source_count: 67
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-17T23:58:00+09:00 - review follow-up
+
+- Result: PR #51 Docker review feedback를 반영했다.
+- Coverage: Production `runner` image는 `pnpm prune --prod`로 devDependencies를 제거하고, Prisma/seed 등 DB 관리 명령은 devDependencies가 있는 `tools` target/service에서 실행한다. `public` directory를 runtime image에 포함하기 위해 `public/.gitkeep`을 추가했다. Compose environment는 host `.env`의 `DATABASE_URL`과 충돌하지 않도록 `DOCKER_DATABASE_URL` placeholder default를 사용하며, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`도 placeholder default를 사용한다. Host port conflict 때는 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 override한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #51 review threads, `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.docker.example`, `public/.gitkeep`, `tests/docker/compose.test.ts`.
+- Verification: pending rerun after review follow-up.
 
 ## 2026-05-17T23:35:00+09:00 - implementation
 

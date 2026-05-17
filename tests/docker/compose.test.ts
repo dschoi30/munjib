@@ -12,10 +12,13 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("postgres:");
     expect(compose).toContain("web:");
     expect(compose).toContain("target: runner");
+    expect(compose).toContain("target: tools");
     expect(compose).toContain("condition: service_healthy");
     expect(compose).toContain(
-      "postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public",
+      "${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}",
     );
+    expect(compose).toContain("${NEXTAUTH_URL:-http://localhost:3000}");
+    expect(compose).toContain("${NEXTAUTH_SECRET:-obsidian-clone-development-secret}");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
   });
 
@@ -24,6 +27,10 @@ describe("Docker web service configuration", () => {
 
     expect(compose).toContain("target: dev");
     expect(compose).toContain("pnpm run dev");
+    expect(compose).toContain(
+      "${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}",
+    );
+    expect(compose).toContain("${NEXTAUTH_URL:-http://localhost:3000}");
     expect(compose).toContain(".:/app");
     expect(compose).toContain("/app/node_modules");
     expect(compose).toContain("/app/.next");
@@ -32,9 +39,12 @@ describe("Docker web service configuration", () => {
   test("Dockerfile exposes production and development targets", () => {
     const dockerfile = read("Dockerfile");
 
-    expect(dockerfile).toContain("FROM base AS runner");
-    expect(dockerfile).toContain("FROM base AS dev");
+    expect(dockerfile).toContain("FROM deps AS tools");
+    expect(dockerfile).toContain("FROM deps AS runner");
+    expect(dockerfile).toContain("FROM deps AS dev");
     expect(dockerfile).toContain("pnpm run build");
+    expect(dockerfile).toContain("COPY --from=builder /app/public ./public");
+    expect(dockerfile).toContain("pnpm prune --prod");
     expect(dockerfile).toContain('CMD ["pnpm", "start"]');
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
   });
