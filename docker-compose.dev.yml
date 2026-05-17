@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: .
+      target: dev
+    command: pnpm run dev
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: obsidian-clone-development-secret

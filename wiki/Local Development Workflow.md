@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 15
+source_count: 18
 tags:
   - munjib
   - workflow
@@ -67,7 +67,7 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 
 ## Docker web+DB 실행
 
-Issue #50부터 Docker는 기존 PostgreSQL container에 더해 Next.js web service도 함께 띄우는 경로를 제공한다.
+Issue #50부터 Docker는 기존 PostgreSQL container에 더해 Next.js web service도 함께 띄우는 경로를 제공한다. 기본 `docker-compose.yml`은 production-style `runner` image target을 사용하고, `docker-compose.dev.yml` override는 source-mounted `dev` target으로 `next dev`를 실행한다.
 
 Production-style container 실행:
 
@@ -82,6 +82,13 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속한다. Host machine에서 직접 Prisma/test를 실행할 때는 기존처럼 `localhost:55432` 또는 `127.0.0.1:55432`를 사용한다.
+
+기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`도 함께 바꾼다.
+
+```bash
+POSTGRES_PORT=55433 docker compose up --build
+POSTGRES_PORT=55433 WEB_PORT=3101 docker compose up --build
+```
 
 Docker web container에서 schema와 seed를 준비하는 명령:
 
@@ -152,6 +159,9 @@ PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 �
 - `Dockerfile`
 - `docker-compose.yml`
 - `docker-compose.dev.yml`
+- `.dockerignore`
+- `.env.docker.example`
+- `tests/docker/compose.test.ts`
 - `prisma/seed.ts`
 - `lib/wiki/sync.ts`
 - `lib/wiki/feature-start.ts`
