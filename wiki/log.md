@@ -30,7 +30,7 @@ links:
 ## 2026-05-17T12:10:00+09:00 - review follow-up
 
 - Result: Issue #46 branch를 최신 main과 merge한 뒤 Properties tags 정책에 맞춰 실패하던 DocumentEditor component tests를 수정했다.
-- Coverage: Properties tags row는 YAML frontmatter `tags:` 값만 렌더링하고, 본문 `#tag`는 Properties 영역에 표시하지 않는다. Frontmatter가 없는 문서의 `frontmatter none` placeholder row도 렌더링하지 않는다.
+- Coverage: Properties tags row는 YAML frontmatter `tags:` 값만 렌더링하고, 본문 `#tag`는 knowledge graph/tag extraction 용도로만 사용하며 Properties 영역에는 표시하지 않는다. Frontmatter가 없는 문서의 `frontmatter none` placeholder row도 렌더링하지 않는다.
 - Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: 사용자 정책 확인, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
 - Verification: `pnpm exec vitest run tests/markdown/html-to-markdown.test.ts tests/components/document-editor-preview.test.tsx tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx tests/markdown/outline.test.ts`, `pnpm exec tsc --noEmit`.

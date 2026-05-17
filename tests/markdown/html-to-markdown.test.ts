@@ -60,4 +60,10 @@ describe("htmlToMarkdown", () => {
       "````\n```md\n# Nested fence\n```\n````",
     );
   });
+
+  it("counts indented code fences when choosing pasted code block delimiters", () => {
+    expect(htmlToMarkdown("<pre>   ```md\n# Nested fence\n   ```</pre>")).toBe(
+      "````\n   ```md\n# Nested fence\n   ```\n````",
+    );
+  });
 });
