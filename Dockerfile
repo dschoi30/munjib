@@ -19,36 +19,35 @@ COPY . .
 RUN pnpm run db:generate
 RUN pnpm run build
 
-FROM base AS runner
+FROM deps AS tools
+
+COPY . .
+RUN pnpm run db:generate
+
+FROM deps AS runner
 
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
-
 COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/lib ./lib
+COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.ts ./next.config.ts
-COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
-RUN pnpm run db:generate
+RUN pnpm run db:generate \
+  && pnpm prune --prod
 
 EXPOSE 3000
 
 CMD ["pnpm", "start"]
 
-FROM base AS dev
+FROM deps AS dev
 
 ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-
-COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm run db:generate
