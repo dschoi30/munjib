@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 65
+source_count: 66
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-17T23:35:00+09:00 - implementation
+
+- Result: Issue #50 Docker web+DB 실행 구성을 추가했다.
+- Coverage: `Dockerfile`은 `runner` target에서 production dependency와 built `.next` output으로 `pnpm start`를 실행하고, `dev` target에서 source-mounted `pnpm run dev`를 지원한다. 기본 `docker-compose.yml`은 `postgres` healthcheck 이후 `web` service를 시작하며, `docker-compose.dev.yml`은 dev target, bind mount, anonymous dependency/build volumes를 적용한다. Docker contract test는 compose/Dockerfile/dockerignore의 핵심 계약을 검증한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #50, `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.docker.example`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`.
 
 ## 2026-05-17T23:20:00+09:00 - design
 
