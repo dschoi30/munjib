@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
+import { AppShell, useHeadingNavigation } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 
@@ -32,6 +33,10 @@ beforeEach(() => {
   let store: Record<string, string> = {};
   codeMirrorHarness.updateListeners = [];
   codeMirrorHarness.pasteHandlers = [];
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: vi.fn(),
+  });
 
   Object.defineProperty(window, "localStorage", {
     configurable: true,
@@ -109,6 +114,33 @@ function findPasteHandlers(extensions: unknown[]): Array<(event: ClipboardEvent,
   extensions.forEach(visit);
 
   return handlers;
+}
+
+function renderEditorInAppShell(markdown: string, target: { id: string; lineNumber: number }) {
+  return render(
+    <AppShell
+      left={<div>Documents</div>}
+      center={
+        <DocumentViewModeProvider>
+          <DocumentEditor
+            {...baseProps}
+            document={{ id: "doc-1", title: "Foldable", contentMarkdown: markdown }}
+          />
+        </DocumentViewModeProvider>
+      }
+      right={<NavigateHeadingButton target={target} />}
+    />,
+  );
+}
+
+function NavigateHeadingButton({ target }: { target: { id: string; lineNumber: number } }) {
+  const headingNavigation = useHeadingNavigation();
+
+  return (
+    <button type="button" onClick={() => headingNavigation?.navigateToHeading(target)}>
+      Navigate target heading
+    </button>
+  );
 }
 
 function TestModeControls() {
@@ -266,6 +298,13 @@ describe("DocumentEditor heading preview folding", () => {
     );
   });
 
+  it("marks preview headings with outline target attributes", () => {
+    renderEditor("# Welcome\n\n## Setup");
+
+    expect(document.querySelector('[data-outline-heading-id="1-welcome-0"]')).toBeTruthy();
+    expect(document.querySelector('[data-outline-heading-id="1-welcome-0/2-setup-0"]')).toBeTruthy();
+  });
+
   it("shows preview fold controls after CRLF fenced code blocks", () => {
     renderEditor("```ts\r\nconst value = 1;\r\n```\r\n# After code\r\nBody");
 
@@ -287,6 +326,25 @@ describe("DocumentEditor heading preview folding", () => {
 
     expect(screen.queryByText("Stored body")).toBeNull();
     expect(screen.getByRole("button", { name: "Expand section A" })).toBeTruthy();
+  });
+
+  it("unfolds collapsed preview ancestors before navigating to a child outline heading", () => {
+    window.localStorage.setItem("munjib:heading-folds:doc-1", "[\"1-parent-0\"]");
+
+    renderEditorInAppShell("# Parent\n## Child\nNested body", {
+      id: "1-parent-0/2-child-0",
+      lineNumber: 2,
+    });
+
+    expect(screen.queryByRole("heading", { name: "Child" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Navigate target heading" }));
+
+    expect(screen.getByRole("heading", { name: "Child" })).toBeTruthy();
+    expect(HTMLElement.prototype.scrollIntoView).toHaveBeenCalledWith({
+      block: "start",
+      behavior: "smooth",
+    });
   });
 
   it("restores folded wikilink headings using raw markdown keys", () => {
@@ -350,6 +408,17 @@ describe("DocumentEditor heading preview folding", () => {
     expect(container.textContent?.match(/first/g)).toHaveLength(1);
   });
 
+  it("keeps heading body content in a separate preview paragraph", () => {
+    const { container } = renderEditor("# Heading\nBody line");
+
+    const heading = screen.getByRole("heading", { name: "Heading" });
+    const paragraph = screen.getByText("Body line");
+
+    expect(heading.tagName).toBe("H1");
+    expect(paragraph.tagName).toBe("P");
+    expect(container.textContent).toContain("HeadingBody line");
+  });
+
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
     const markdown = "# A\nLine\n# B\nOther";
     renderEditor(markdown);
@@ -406,5 +475,38 @@ describe("DocumentEditor heading preview folding", () => {
     expect(preventDefault).toHaveBeenCalled();
     expect(replaceSelection).toHaveBeenCalledWith("# Pasted Title\n\n**Styled** text");
     expect(dispatch).toHaveBeenCalledWith({ changes: "# Pasted Title\n\n**Styled** text" });
+  });
+});
+
+describe("DocumentEditor properties", () => {
+  it("does not render a frontmatter none row when a document has no frontmatter", () => {
+    renderEditor("# Body tag\n\nUse #graph-only", {
+      tags: [{ id: "tag-graph", name: "graph-only" }],
+      properties: [],
+    });
+
+    const properties = screen.getByRole("region", { name: "Document properties" });
+
+    expect(within(properties).queryByText("frontmatter")).toBeNull();
+    expect(within(properties).queryByText("#graph-only")).toBeNull();
+  });
+
+  it("renders only frontmatter tags in the Properties tags row", () => {
+    renderEditor("---\ntags:\n  - platform\n  - review\n---\n\nUse #graph-only", {
+      tags: [
+        { id: "tag-platform", name: "platform" },
+        { id: "tag-review", name: "review" },
+        { id: "tag-graph", name: "graph-only" },
+      ],
+      properties: [
+        { id: "property-tags", key: "tags", valueJson: ["platform", "review"] },
+      ],
+    });
+
+    const properties = screen.getByRole("region", { name: "Document properties" });
+
+    expect(within(properties).getByText("#platform")).toBeTruthy();
+    expect(within(properties).getByText("#review")).toBeTruthy();
+    expect(within(properties).queryByText("#graph-only")).toBeNull();
   });
 });

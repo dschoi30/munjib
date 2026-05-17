@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 12
+updated: 2026-05-17
+source_count: 13
 tags:
   - munjib
   - workflow
@@ -113,9 +113,9 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 
 ## Task completion and PR review
 
-모든 task 종료 시에는 검증, wiki sync, 커밋, push까지 마친 뒤 자동으로 draft PR을 작성한다. 사용자가 명시적으로 ready-for-review PR을 요청하지 않은 한 PR은 draft로 열고, branch/commit, validation command, 남은 risk를 PR body에 기록한다.
+모든 task 종료 시에는 검증, wiki sync, 커밋, push까지 마친 뒤 자동으로 PR을 작성한다. 사용자가 별도 handoff를 지시하지 않은 상태에서 push/PR 생성을 선택하면 그 선택은 PR review workflow 시작으로 간주한다. PR body에는 branch/commit, validation command, 남은 risk를 기록한다.
 
-PR 리뷰 요청을 완료한 뒤에는 바로 종료하지 않고 최소 5분 대기한다. 대기 후 PR review thread, review submission, CI/check 상태를 확인하고, actionable feedback이나 실패 check가 있으면 같은 branch에서 추가 수정, 검증, wiki update, commit, push까지 수행한다. 리뷰나 CI가 아직 없으면 그 상태를 명확히 남기고 다음 확인 시점을 잡는다.
+PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 다음 바로 종료하지 않고 최소 5분 대기한다. 대기 후 PR review thread, review submission, inline comment, CI/check 상태를 확인하고, actionable feedback이나 실패 check가 있으면 같은 branch에서 추가 수정, 검증, wiki update, commit, push까지 수행한 뒤 review 상태를 다시 확인한다. 리뷰나 CI가 아직 없으면 그 상태를 명확히 남긴다. 인증, tooling, network 문제로 리뷰나 CI 확인이 막히면 누락하지 말고 blocker와 필요한 명령/권한을 최종 상태에 적는다.
 
 ## 근거
 
@@ -129,3 +129,4 @@ PR 리뷰 요청을 완료한 뒤에는 바로 종료하지 않고 최소 5분 �
 - GitHub issue #25 branch separation recovery
 - User workflow decision on automatic draft PR creation after every task
 - User workflow decision to wait 5 minutes after PR review request and inspect review feedback
+- `AGENTS.md` Task Completion and PR Review Workflow
