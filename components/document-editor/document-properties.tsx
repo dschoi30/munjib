@@ -63,7 +63,9 @@ export function DocumentProperties({
           }
           return (
             <PropertyRow key={property.id} label={property.key}>
-              <span className="break-words text-slate-700">{String(property.valueJson)}</span>
+              <span className="break-words text-slate-700">
+                {formatPropertyValue(property.valueJson)}
+              </span>
             </PropertyRow>
           );
         })}
@@ -130,6 +132,18 @@ function propertyTags(value: unknown): string[] {
   }
 
   return [];
+}
+
+function formatPropertyValue(value: unknown) {
+  if (value === null || typeof value === "undefined") {
+    return "";
+  }
+
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+
+  return String(value);
 }
 
 function LinksPropertyRow({

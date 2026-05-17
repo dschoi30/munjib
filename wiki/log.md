@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T23:08:00+09:00 - review follow-up
+
+- Result: PR #49 review에서 지적된 frontmatter property value 표시 edge case를 수정했다.
+- Coverage: 일반 property row가 object value를 `[object Object]`로 표시하지 않고 JSON string으로 표시하며, null/undefined value는 literal `null`/`undefined` text 대신 빈 값으로 둔다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #49 review thread, `components/document-editor/document-properties.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-17T22:49:00+09:00 - implementation
 
 - Result: Issue #48에서 `DocumentEditor`와 `DocumentNavigation`의 동작을 유지하면서 큰 component 파일을 feature-local module로 분리했다.
