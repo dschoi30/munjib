@@ -29,7 +29,6 @@ export async function updateDocumentAction(workspaceSlug: string, formData: Form
     contentMarkdown: String(formData.get("contentMarkdown") ?? ""),
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
 }
 
 export async function createDocumentAction(workspaceSlug: string, formData: FormData) {
@@ -190,5 +189,4 @@ export async function createCommentAction(workspaceSlug: string, formData: FormD
     body: String(formData.get("body") ?? ""),
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${documentId}`);
 }
