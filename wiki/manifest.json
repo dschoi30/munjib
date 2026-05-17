@@ -138,7 +138,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 34,
+      "source_count": 35,
       "searchPriority": 5
     },
     {
@@ -204,7 +204,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 25,
+      "source_count": 26,
       "searchPriority": 50
     },
     {
@@ -248,7 +248,7 @@
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 28,
+      "source_count": 29,
       "searchPriority": 30
     },
     {

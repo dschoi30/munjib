@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 28
+updated: 2026-05-17
+source_count: 29
 tags:
   - munjib
   - source
@@ -77,6 +77,8 @@ Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigatio
 
 2026-05-16 metadata panel outline 설계는 PRD의 Obsidian-style 문서 탐색 경험을 오른쪽 panel로 확장하는 계획이다. `Outline` tab은 현재 선택 문서의 `#`-`####` ATX heading을 추출해 tree로 보여주고, level별 vertical guide line과 click-to-scroll navigation을 제공한다. 설계 근거는 `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`이다.
 
+Issue #48 설계는 현재 구현된 document editor와 sidebar navigation 동작을 바꾸지 않고 큰 component 파일을 책임별 하위 모듈로 나누는 구조 리팩토링 계획이다. `DocumentEditor`와 `DocumentNavigation` export/API, route shape, localStorage key, server action contract는 유지하며, preview/folding/properties와 panel/row/tree/favorites 코드를 feature-local module로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`이다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -103,6 +105,7 @@ Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigatio
 - GitHub issue #25와 `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`: Markdown heading folding 설계.
 - GitHub issue #29와 `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`: 문서 탭과 navigation toolbar 설계.
 - `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`: metadata panel outline tab 설계.
+- GitHub issue #48와 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`: document editor/navigation 구조 리팩토링 설계.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 
