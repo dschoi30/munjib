@@ -6,21 +6,27 @@ import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import {
+  emptyFavorites,
+  parseFavorites,
+  toggleListValue,
+} from "@/components/document-navigation/favorites";
+import { buildTreeItems, hasTreeChildren } from "@/components/document-navigation/tree";
+import type {
+  ArchiveDocumentResult,
+  ArchiveFolderResult,
+  FavoriteState,
+  RenameFolderResult,
+} from "@/components/document-navigation/types";
 import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import { documentDisplayLabel } from "@/lib/workspace-tree";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
-type FavoriteState = { documents: string[]; folders: string[] };
-
-const emptyFavorites: FavoriteState = { documents: [], folders: [] };
 const folderErrorToastId = "folder-trash-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
 const sectionHeadingClassName =
   "mb-2 text-[0.68rem] font-medium uppercase tracking-wide text-slate-500";
-type RenameFolderResult = { folderId: string; error?: string };
-type ArchiveFolderResult = { folderId: string; error?: string };
-type ArchiveDocumentResult = { documentId: string };
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -907,68 +913,8 @@ function FolderToggleRow({
   );
 }
 
-type TreeRow =
-  | { kind: "folder"; folder: FolderListItem }
-  | { kind: "document"; document: DocumentListItem };
-
-function buildTreeItems(
-  folders: FolderListItem[],
-  documents: DocumentListItem[],
-  parentFolderId: string | null,
-): TreeRow[] {
-  return [
-    ...folders
-      .filter((folder) => folder.parentFolderId === parentFolderId)
-      .map((folder) => ({ kind: "folder" as const, folder })),
-    ...documents
-      .filter((document) => document.folderId === parentFolderId)
-      .map((document) => ({ kind: "document" as const, document })),
-  ].sort((left, right) => {
-    const leftPath = left.kind === "folder" ? left.folder.path : left.document.path;
-    const rightPath = right.kind === "folder" ? right.folder.path : right.document.path;
-    return leftPath.localeCompare(rightPath);
-  });
-}
-
-function hasTreeChildren(
-  folders: FolderListItem[],
-  documents: DocumentListItem[],
-  folderId: string,
-) {
-  return (
-    folders.some((folder) => folder.parentFolderId === folderId) ||
-    documents.some((document) => document.folderId === folderId)
-  );
-}
-
 function folderDisplayLabel(folder: Pick<FolderListItem, "name" | "path">) {
   return `${folder.name} ${folder.path}`;
-}
-
-function parseFavorites(raw: string | null): FavoriteState {
-  if (!raw) return emptyFavorites;
-
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) return { documents: parsed.filter(isString), folders: [] };
-    if (!parsed || typeof parsed !== "object") return emptyFavorites;
-
-    const value = parsed as Partial<Record<keyof FavoriteState, unknown>>;
-    return {
-      documents: Array.isArray(value.documents) ? value.documents.filter(isString) : [],
-      folders: Array.isArray(value.folders) ? value.folders.filter(isString) : [],
-    };
-  } catch {
-    return emptyFavorites;
-  }
-}
-
-function toggleListValue(values: string[], value: string) {
-  return values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === "string";
 }
 
 function folderErrorMessage(folderError: string) {
