@@ -40,11 +40,12 @@ import {
   type ActiveWikiLinkCompletion,
   type WikiLinkCompletionOption,
 } from "@/lib/wiki-links/autocomplete";
-import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
+import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
 import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
+const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
 
 type EditableDocument = {
   id: string;
@@ -114,8 +115,27 @@ export function DocumentEditor({
 
         persistEditorFoldState(update.view, context.storageKey);
       }),
+      EditorView.domEventHandlers({
+        paste: (event, view) => {
+          if (!canWrite) {
+            return false;
+          }
+
+          const html = event.clipboardData?.getData("text/html") ?? "";
+          const markdown = htmlToMarkdown(html);
+
+          if (!markdown) {
+            return false;
+          }
+
+          event.preventDefault();
+          view.dispatch(view.state.replaceSelection(markdown));
+
+          return true;
+        },
+      }),
     ],
-    [],
+    [canWrite],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
@@ -501,7 +521,7 @@ function MarkdownPreview({
       {foldTree.sections.length > 0 ? (
         <>
           {leadingMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
               {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
             </ReactMarkdown>
           ) : null}
@@ -518,7 +538,7 @@ function MarkdownPreview({
           ))}
         </>
       ) : (
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
           {renderPreviewMarkdownWithWikiLinks(
             strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
             candidateBySlug,
@@ -584,14 +604,14 @@ function MarkdownPreviewSection({
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
           {previewHeadingMarkdown}
         </ReactMarkdown>
       </div>
       {folded ? null : (
         <>
           {section.bodyMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
               {previewBodyMarkdown}
             </ReactMarkdown>
           ) : null}
@@ -626,6 +646,54 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
+}
+
+function remarkPreviewSoftLineBreaks() {
+  return (tree: unknown) => {
+    visitMarkdownParents(tree);
+  };
+}
+
+function visitMarkdownParents(node: unknown) {
+  if (!node || typeof node !== "object") {
+    return;
+  }
+
+  const parent = node as { children?: unknown[] };
+
+  if (!Array.isArray(parent.children)) {
+    return;
+  }
+
+  parent.children = parent.children.flatMap((child) => splitMarkdownSoftLineBreaks(child));
+  parent.children.forEach(visitMarkdownParents);
+}
+
+function splitMarkdownSoftLineBreaks(node: unknown) {
+  if (!node || typeof node !== "object") {
+    return [node];
+  }
+
+  const textNode = node as { type?: string; value?: string };
+
+  if (textNode.type !== "text" || typeof textNode.value !== "string" || !textNode.value.includes("\n")) {
+    return [node];
+  }
+
+  const parts = textNode.value.split("\n");
+  return parts.flatMap((part, index) => {
+    const nodes: Array<{ type: string; value?: string }> = [];
+
+    if (index > 0) {
+      nodes.push({ type: "break" });
+    }
+
+    if (part.length > 0) {
+      nodes.push({ type: "text", value: part });
+    }
+
+    return nodes;
+  });
 }
 
 function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {
@@ -874,15 +942,12 @@ function DocumentProperties({
     linkId: link.id,
     broken: link.isBroken,
   }));
-  const visibleProperties = visibleDocumentProperties(properties);
-  const hasFrontmatterTags = properties.some((property) => property.key === "tags");
   const hasFrontmatterLinks = properties.some((property) => property.key === "links");
 
   return (
     <section aria-label="Document properties" className="space-y-3 py-2">
       <h2 className="text-lg font-semibold">Properties</h2>
       <div className="space-y-2 text-sm">
-        {!hasFrontmatterTags ? <TagsPropertyRow tags={tags} /> : null}
         {!hasFrontmatterLinks && linkedItems.length > 0 ? (
           <LinksPropertyRow
             linkedItems={linkedItems}
@@ -892,7 +957,7 @@ function DocumentProperties({
         ) : null}
         {properties.map((property) => {
           if (property.key === "tags") {
-            return <TagsPropertyRow key={property.id} tags={tags} />;
+            return <TagsPropertyRow key={property.id} tags={propertyTags(property.valueJson)} />;
           }
           if (property.key === "links") {
             return (
@@ -910,11 +975,6 @@ function DocumentProperties({
             </PropertyRow>
           );
         })}
-        {visibleProperties.length === 0 && !hasFrontmatterTags && linkedItems.length === 0 ? (
-          <PropertyRow label="frontmatter">
-            <span className="text-slate-400">none</span>
-          </PropertyRow>
-        ) : null}
         <PropertyRow label="comments">
           <div className="flex min-w-0 flex-1 flex-col items-stretch gap-2">
             {comments.length === 0 ? <span className="text-slate-400">none</span> : null}
@@ -952,17 +1012,32 @@ function DocumentProperties({
   );
 }
 
-function TagsPropertyRow({ tags }: { tags: Pick<Tag, "id" | "name">[] }) {
+function TagsPropertyRow({ tags }: { tags: string[] }) {
   return (
     <PropertyRow label="tags">
       {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
       {tags.map((tag) => (
-        <span key={tag.id} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
-          #{tag.name}
+        <span key={tag} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
+          #{tag}
         </span>
       ))}
     </PropertyRow>
   );
+}
+
+function propertyTags(value: unknown): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(/[,\s]+/)
+      .map((tag) => tag.replace(/^#/, "").trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(propertyTags);
+  }
+
+  return [];
 }
 
 function LinksPropertyRow({

@@ -19,6 +19,30 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T12:15:00+09:00 - regression fix
+
+- Result: Issue #46 branch에서 외부 branch merge 이후 다시 나타난 DocumentEditor 저장 flicker와 preview 줄바꿈 접힘 회귀를 복구했다.
+- Coverage: `updateDocumentAction()`과 `createCommentAction()`은 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행한다. Preview paragraph는 `white-space: pre-wrap`을 유지하고 ReactMarkdown soft line break를 explicit break node로 렌더링해 edit mode 단일 개행과 외부 텍스트 paste 개행을 보존한다. PR review follow-up으로 HTML-to-Markdown 변환의 inline whitespace, backtick code delimiter, inline code significant whitespace, nested list indentation, table cell/row boundary, fenced code block delimiter 선택도 보강했다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 회귀 보고, PR #47 review comments, `app/workspaces/[workspaceSlug]/actions.ts`, `app/globals.css`, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `tests/workspace-actions.test.ts`, `tests/markdown/preview-styles.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/markdown/html-to-markdown.test.ts`, `tests/e2e/preview-line-breaks.spec.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/markdown/html-to-markdown.test.ts tests/workspace-actions.test.ts tests/markdown/preview-styles.test.ts`, `pnpm exec tsc --noEmit`, `pnpm exec playwright test tests/e2e/preview-line-breaks.spec.ts`.
+
+## 2026-05-17T12:10:00+09:00 - review follow-up
+
+- Result: Issue #46 branch를 최신 main과 merge한 뒤 Properties tags 정책에 맞춰 실패하던 DocumentEditor component tests를 수정했다.
+- Coverage: Properties tags row는 YAML frontmatter `tags:` 값만 렌더링하고, 본문 `#tag`는 knowledge graph/tag extraction 용도로만 사용하며 Properties 영역에는 표시하지 않는다. Frontmatter가 없는 문서의 `frontmatter none` placeholder row도 렌더링하지 않는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 정책 확인, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/html-to-markdown.test.ts tests/components/document-editor-preview.test.tsx tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx tests/markdown/outline.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-17T11:55:00+09:00 - implementation
+
+- Result: Issue #46 rich paste 동작을 추가해 외부 앱에서 복사한 styled text를 Markdown editor에 붙여넣을 때 의미 있는 스타일을 Markdown으로 보존한다.
+- Coverage: clipboard `text/html`을 감지하면 CodeMirror paste handler가 기본 paste를 막고 heading, bold, italic, link, list, inline code, code block, blockquote, line break를 semantic Markdown으로 변환해 삽입한다. HTML이 없거나 변환 결과가 비어 있으면 기존 plain text paste 흐름을 유지한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #46, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `tests/markdown/html-to-markdown.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/html-to-markdown.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-17T11:24:00+09:00 - review follow-up
 
 - Result: PR #45 Codex review에서 지적한 preview outline navigation edge case를 수정했다.
