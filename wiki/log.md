@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 68
+source_count: 69
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:47:00+09:00 - implementation
+
+- Result: Issue #52 Task 3 `DocumentEditor` paste integration을 추가했다.
+- Coverage: Workspace page가 `pasteDocumentImageAttachmentAction`을 bind해 `DocumentEditor`에 전달하고, CodeMirror paste handler는 clipboard image file을 rich HTML 변환보다 먼저 upload해 반환된 image markdown을 현재 selection에 삽입한다. Image file이 없으면 기존 rich HTML paste 변환을 유지한다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor.tsx`, `components/document-editor/types.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`.
 
 ## 2026-05-18T00:38:00+09:00 - implementation
 

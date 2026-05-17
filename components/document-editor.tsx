@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { toast } from "sonner";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
 import type { DocumentEditorProps } from "@/components/document-editor/types";
 import { DocumentProperties } from "@/components/document-editor/document-properties";
@@ -33,11 +34,44 @@ import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
+const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+function createPastedImagePlaceholder() {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return `![Uploading image...](about:blank#munjib-paste-${id})`;
+}
+
+function getClipboardImageFile(dataTransfer: DataTransfer | null) {
+  if (!dataTransfer) return null;
+
+  const itemFile = Array.from(dataTransfer.items ?? [])
+    .find((item) => item.kind === "file" && pastedImageMimeTypes.has(item.type))
+    ?.getAsFile();
+  if (itemFile) return itemFile;
+
+  return Array.from(dataTransfer.files ?? []).find((file) => pastedImageMimeTypes.has(file.type)) ?? null;
+}
+
+function replaceCurrentPlaceholder(view: EditorView, placeholder: string, insert: string) {
+  const currentMarkdown = view.state.doc.toString();
+  const from = currentMarkdown.indexOf(placeholder);
+
+  if (from === -1) {
+    return;
+  }
+
+  view.dispatch({
+    changes: { from, to: from + placeholder.length, insert },
+  });
+}
+
 export function DocumentEditor({
   document,
   canWrite,
   action,
   uploadAttachmentAction,
+  pasteImageAttachmentAction,
   linkCandidates,
   tags,
   properties,
@@ -79,6 +113,29 @@ export function DocumentEditor({
             return false;
           }
 
+          const imageFile = getClipboardImageFile(event.clipboardData);
+
+          if (imageFile) {
+            event.preventDefault();
+            const placeholder = createPastedImagePlaceholder();
+            const formData = new FormData();
+            formData.set("documentId", document?.id ?? "");
+            formData.set("attachment", imageFile);
+
+            view.dispatch(view.state.replaceSelection(placeholder));
+
+            void pasteImageAttachmentAction(formData)
+              .then(({ markdown }) => {
+                replaceCurrentPlaceholder(view, placeholder, markdown);
+              })
+              .catch(() => {
+                replaceCurrentPlaceholder(view, placeholder, "");
+                toast.error("Image paste failed");
+              });
+
+            return true;
+          }
+
           const html = event.clipboardData?.getData("text/html") ?? "";
           const markdown = htmlToMarkdown(html);
 
@@ -93,7 +150,7 @@ export function DocumentEditor({
         },
       }),
     ],
-    [canWrite],
+    [canWrite, document?.id, pasteImageAttachmentAction],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
