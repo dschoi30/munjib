@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 67
+source_count: 68
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:38:00+09:00 - implementation
+
+- Result: Issue #52 Task 2 paste image attachment server action contract를 추가했다.
+- Coverage: `pasteDocumentImageAttachmentAction()`은 clipboard image file과 `documentId`를 받아 `uploadPastedDocumentImageAttachment()`를 호출하고, workspace path revalidation 후 redirect 없이 editor insertion용 `{ markdown }`을 반환한다. File이 없으면 `ATTACHMENT_FILE_REQUIRED`를 throw한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-actions.test.ts`.
 
 ## 2026-05-18T00:25:00+09:00 - implementation
 

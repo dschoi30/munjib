@@ -2,7 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { uploadDocumentAttachment } from "@/lib/attachments/service";
+import {
+  uploadDocumentAttachment,
+  uploadPastedDocumentImageAttachment,
+} from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { createComment } from "@/lib/comments/service";
 import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
@@ -178,6 +181,30 @@ export async function uploadDocumentAttachmentAction(
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
   redirect(`/workspaces/${workspaceSlug}?document=${attachment.documentId}`);
+}
+
+export async function pasteDocumentImageAttachmentAction(
+  workspaceSlug: string,
+  formData: FormData,
+) {
+  const user = await requireCurrentUser();
+  const file = formData.get("attachment");
+  const documentId = String(formData.get("documentId"));
+
+  if (!(file instanceof File)) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+  }
+
+  const attachment = await uploadPastedDocumentImageAttachment({
+    documentId,
+    actorId: user.id,
+    fileName: file.name,
+    mimeType: file.type || "application/octet-stream",
+    bytes: new Uint8Array(await file.arrayBuffer()),
+  });
+
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { markdown: attachment.markdown };
 }
 
 export async function createCommentAction(workspaceSlug: string, formData: FormData) {

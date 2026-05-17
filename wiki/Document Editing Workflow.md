@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 48
+source_count: 49
 tags:
   - munjib
   - workflow
@@ -94,7 +94,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다.
 
-Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 `image/png`, `image/jpeg`, `image/gif`, `image/webp` clipboard image만 허용하고 이름 없는 paste에는 `pasted-image.<ext>` fallback을 쓴다. Attachment row와 `attachment.uploaded` audit log만 생성하며 document markdown, version, link/metadata reconciliation은 건드리지 않는다. 호출자는 반환된 `![file](/api/attachments/<id>)` markdown을 editor cursor에 삽입한다.
+Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 `image/png`, `image/jpeg`, `image/gif`, `image/webp` clipboard image만 허용하고 이름 없는 paste에는 `pasted-image.<ext>` fallback을 쓴다. Attachment row와 `attachment.uploaded` audit log만 생성하며 document markdown, version, link/metadata reconciliation은 건드리지 않는다. `pasteDocumentImageAttachmentAction()`은 paste form의 `documentId`와 `attachment` file을 받아 이 service로 넘기고, workspace path를 revalidate한 뒤 redirect 없이 `{ markdown }`을 반환한다. 호출자는 반환된 `![file](/api/attachments/<id>)` markdown을 editor cursor에 삽입한다.
 
 `createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다. Comment 저장도 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행해 DocumentEditor remount와 화면 깜빡임을 피한다.
 
