@@ -444,6 +444,24 @@ describe("DocumentEditor heading preview folding", () => {
     expect(paragraph?.querySelector("br")).toBeTruthy();
   });
 
+  it("renders soft line breaks inside preview heading sections", async () => {
+    const { container } = renderEditor("# Heading\nFirst line");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    codeMirrorHarness.changeHandlers[0]("# Heading\nFirst line\nSecond line", {
+      state: { selection: { main: { head: "# Heading\nFirst line\nSecond line".length } } },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
+
+    const paragraph = container.querySelector(".markdown-preview section p");
+
+    expect(paragraph?.textContent).toContain("First line");
+    expect(paragraph?.textContent).toContain("Second line");
+    expect(paragraph?.querySelector("br")).toBeTruthy();
+  });
+
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
     const markdown = "# A\nLine\n# B\nOther";
     renderEditor(markdown);

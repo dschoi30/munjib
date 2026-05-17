@@ -1,5 +1,6 @@
 type RenderContext = {
   listDepth: number;
+  preserveTextWhitespace?: boolean;
 };
 
 export function htmlToMarkdown(html: string) {
@@ -22,7 +23,7 @@ function renderNode(node: ChildNode, context: RenderContext): string {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? "";
 
-    return text.replace(/\s+/g, " ");
+    return context.preserveTextWhitespace ? text : text.replace(/\s+/g, " ");
   }
 
   if (!(node instanceof HTMLElement)) {
@@ -53,7 +54,7 @@ function renderNode(node: ChildNode, context: RenderContext): string {
   }
 
   if (tagName === "code") {
-    return wrapCode(renderInlineChildren(node, context));
+    return wrapCode(renderInlineChildren(node, { ...context, preserveTextWhitespace: true }));
   }
 
   if (tagName === "pre") {
@@ -65,6 +66,18 @@ function renderNode(node: ChildNode, context: RenderContext): string {
     const href = node.getAttribute("href");
 
     return href ? `[${label}](${href})` : label;
+  }
+
+  if (tagName === "table") {
+    return block(renderTable(node));
+  }
+
+  if (tagName === "tr") {
+    return renderTableRow(node);
+  }
+
+  if (tagName === "td" || tagName === "th") {
+    return renderChildren(node.childNodes, context).trim();
   }
 
   if (tagName === "ul" || tagName === "ol") {
@@ -130,6 +143,20 @@ function renderListItem(node: HTMLElement, marker: string, context: RenderContex
     .join("\n");
 
   return nestedContent ? `${ownContent}\n${nestedContent}` : ownContent;
+}
+
+function renderTable(node: HTMLElement) {
+  return Array.from(node.querySelectorAll("tr"))
+    .map((row) => renderTableRow(row))
+    .filter((row) => row.length > 0)
+    .join("\n");
+}
+
+function renderTableRow(node: HTMLElement) {
+  return Array.from(node.children)
+    .filter((child) => ["td", "th"].includes(child.tagName.toLowerCase()))
+    .map((cell) => renderChildren(cell.childNodes, { listDepth: 0 }).trim())
+    .join("\t");
 }
 
 function block(content: string, options: { preserveLeadingWhitespace?: boolean } = {}) {
