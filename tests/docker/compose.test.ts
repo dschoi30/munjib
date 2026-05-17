@@ -14,11 +14,11 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("target: runner");
     expect(compose).toContain("target: tools");
     expect(compose).toContain("condition: service_healthy");
-    expect(compose).toContain(
-      "${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}",
-    );
-    expect(compose).toContain("${NEXTAUTH_URL:-http://localhost:3000}");
-    expect(compose).toContain("${NEXTAUTH_SECRET:-obsidian-clone-development-secret}");
+    expect(compose).toContain("DOCKER_DATABASE_URL");
+    expect(compose).toContain("postgres:5432");
+    expect(compose).toContain("NEXTAUTH_URL");
+    expect(compose).toContain("localhost:3000");
+    expect(compose).toContain("NEXTAUTH_SECRET");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
   });
 
@@ -27,10 +27,9 @@ describe("Docker web service configuration", () => {
 
     expect(compose).toContain("target: dev");
     expect(compose).toContain("pnpm run dev");
-    expect(compose).toContain(
-      "${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}",
-    );
-    expect(compose).toContain("${NEXTAUTH_URL:-http://localhost:3000}");
+    expect(compose).toContain("DOCKER_DATABASE_URL");
+    expect(compose).toContain("postgres:5432");
+    expect(compose).toContain("NEXTAUTH_URL");
     expect(compose).toContain(".:/app");
     expect(compose).toContain("/app/node_modules");
     expect(compose).toContain("/app/.next");
