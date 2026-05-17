@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-17
-source_count: 64
+updated: 2026-05-18
+source_count: 65
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:00:00+09:00 - design
+
+- Result: Issue #52 clipboard image paste attachment 설계를 작성했다.
+- Coverage: 설계는 clipboard image file paste를 attachment로 즉시 저장하고, 반환된 image markdown을 현재 CodeMirror selection에 삽입하되 문서 본문 persistence는 기존 Save 흐름에 남기는 방향을 정한다. Remote image download, Markdown import image 가져오기, ZIP import, blob URL draft preview는 범위에서 제외한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: GitHub issue #52, `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`.
+- Verification: spec self-review.
 
 ## 2026-05-17T23:08:00+09:00 - review follow-up
 
