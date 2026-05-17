@@ -28,4 +28,20 @@ describe("htmlToMarkdown", () => {
   it("preserves pasted line breaks from HTML fragments", () => {
     expect(htmlToMarkdown("<p>First<br>Second</p><p>Third</p>")).toBe("First\nSecond\n\nThird");
   });
+
+  it("preserves whitespace between inline HTML elements", () => {
+    expect(htmlToMarkdown("<p><span>Alpha</span> <span>Beta</span></p>")).toBe("Alpha Beta");
+  });
+
+  it("wraps inline code with a delimiter longer than the pasted backtick runs", () => {
+    expect(htmlToMarkdown("<p><code>`code` and ``more``</code></p>")).toBe(
+      "``` `code` and ``more`` ```",
+    );
+  });
+
+  it("preserves nested list indentation", () => {
+    expect(htmlToMarkdown("<ul><li>Parent<ul><li>Child</li></ul></li></ul>")).toBe(
+      "- Parent\n  - Child",
+    );
+  });
 });
