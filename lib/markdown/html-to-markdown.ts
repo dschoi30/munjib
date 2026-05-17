@@ -58,7 +58,7 @@ function renderNode(node: ChildNode, context: RenderContext): string {
   }
 
   if (tagName === "pre") {
-    return block(`\`\`\`\n${node.textContent?.replace(/\n+$/, "") ?? ""}\n\`\`\``);
+    return block(wrapCodeBlock(node.textContent?.replace(/\n+$/, "") ?? ""));
   }
 
   if (tagName === "a") {
@@ -188,6 +188,16 @@ function wrapCode(content: string) {
   const padding = trimmed.startsWith("`") || trimmed.endsWith("`") ? " " : "";
 
   return `${marker}${padding}${trimmed}${padding}${marker}`;
+}
+
+function wrapCodeBlock(content: string) {
+  const longestBacktickFence = Math.max(
+    2,
+    ...Array.from(content.matchAll(/^`+/gm), (match) => match[0].length),
+  );
+  const fence = "`".repeat(longestBacktickFence + 1);
+
+  return `${fence}\n${content}\n${fence}`;
 }
 
 function normalizeMarkdown(markdown: string) {

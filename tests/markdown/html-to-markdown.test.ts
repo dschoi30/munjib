@@ -54,4 +54,10 @@ describe("htmlToMarkdown", () => {
   it("preserves significant whitespace inside inline code", () => {
     expect(htmlToMarkdown("<p><code>const  value\t=\t1</code></p>")).toBe("`const  value\t=\t1`");
   });
+
+  it("uses a code block fence longer than pasted fenced code content", () => {
+    expect(htmlToMarkdown("<pre>```md\n# Nested fence\n```</pre>")).toBe(
+      "````\n```md\n# Nested fence\n```\n````",
+    );
+  });
 });
