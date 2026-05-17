@@ -22,7 +22,7 @@ function renderNode(node: ChildNode, context: RenderContext): string {
   if (node.nodeType === Node.TEXT_NODE) {
     const text = node.textContent ?? "";
 
-    return text.trim().length > 0 ? text.replace(/\s+/g, " ") : "";
+    return text.replace(/\s+/g, " ");
   }
 
   if (!(node instanceof HTMLElement)) {
@@ -68,7 +68,7 @@ function renderNode(node: ChildNode, context: RenderContext): string {
   }
 
   if (tagName === "ul" || tagName === "ol") {
-    return block(renderList(node, tagName === "ol", context));
+    return block(renderList(node, tagName === "ol", context), { preserveLeadingWhitespace: true });
   }
 
   if (tagName === "li") {
@@ -92,16 +92,29 @@ function renderInlineChildren(node: HTMLElement, context: RenderContext) {
   return renderChildren(node.childNodes, context).trim();
 }
 
-function renderList(node: HTMLElement, ordered: boolean, context: RenderContext) {
+function renderList(node: HTMLElement, ordered: boolean, context: RenderContext): string {
   return Array.from(node.children)
     .filter((child) => child.tagName.toLowerCase() === "li")
     .map((child, index) => renderListItem(child as HTMLElement, ordered ? `${index + 1}.` : "-", context))
     .join("\n");
 }
 
-function renderListItem(node: HTMLElement, marker: string, context: RenderContext) {
+function renderListItem(node: HTMLElement, marker: string, context: RenderContext): string {
   const nextContext = { ...context, listDepth: context.listDepth + 1 };
-  const content = normalizeMarkdown(renderChildren(node.childNodes, nextContext)).replace(/\n\n/g, "\n");
+  const childNodes = Array.from(node.childNodes);
+  const nestedLists: HTMLElement[] = [];
+  const contentNodes = childNodes.filter((child) => {
+    if (
+      child instanceof HTMLElement &&
+      ["ul", "ol"].includes(child.tagName.toLowerCase())
+    ) {
+      nestedLists.push(child);
+      return false;
+    }
+
+    return true;
+  });
+  const content = normalizeMarkdown(renderChildren(contentNodes, nextContext)).replace(/\n\n/g, "\n");
   const indentation = "  ".repeat(context.listDepth);
   const continuationIndentation = `${indentation}  `;
   const lines = content.split("\n");
@@ -110,12 +123,19 @@ function renderListItem(node: HTMLElement, marker: string, context: RenderContex
     .slice(1)
     .map((line) => (line.trim().length > 0 ? `${continuationIndentation}${line.trim()}` : ""))
     .join("\n");
+  const ownContent = rest ? `${firstLine}\n${rest}` : firstLine;
+  const nestedContent: string = nestedLists
+    .map((list) => renderList(list, list.tagName.toLowerCase() === "ol", nextContext))
+    .filter((list) => list.trim().length > 0)
+    .join("\n");
 
-  return rest ? `${firstLine}\n${rest}` : firstLine;
+  return nestedContent ? `${ownContent}\n${nestedContent}` : ownContent;
 }
 
-function block(content: string) {
-  const trimmed = content.trim();
+function block(content: string, options: { preserveLeadingWhitespace?: boolean } = {}) {
+  const trimmed = options.preserveLeadingWhitespace
+    ? content.replace(/^\n+/, "").trimEnd()
+    : content.trim();
 
   return trimmed ? `${trimmed}\n\n` : "";
 }
@@ -127,15 +147,28 @@ function wrapInline(marker: string, content: string) {
 }
 
 function wrapCode(content: string) {
-  const marker = content.includes("`") ? "``" : "`";
+  const trimmed = content.trim();
 
-  return `${marker}${content.trim()}${marker}`;
+  if (!trimmed) {
+    return "";
+  }
+
+  const longestBacktickRun = Math.max(
+    0,
+    ...Array.from(trimmed.matchAll(/`+/g), (match) => match[0].length),
+  );
+  const marker = "`".repeat(longestBacktickRun + 1);
+  const padding = trimmed.startsWith("`") || trimmed.endsWith("`") ? " " : "";
+
+  return `${marker}${padding}${trimmed}${padding}${marker}`;
 }
 
 function normalizeMarkdown(markdown: string) {
   return markdown
     .replace(/\u00a0/g, " ")
+    .replace(/^[ \t]+$/gm, "")
     .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n\n[ \t]+/g, "\n\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
