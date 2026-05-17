@@ -8,6 +8,7 @@ import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/docu
 
 const codeMirrorHarness = vi.hoisted(() => ({
   updateListeners: [] as Array<(update: unknown) => void>,
+  pasteHandlers: [] as Array<(event: ClipboardEvent, view: unknown) => boolean>,
 }));
 
 vi.mock("@uiw/react-codemirror", () => ({
@@ -21,6 +22,7 @@ vi.mock("@uiw/react-codemirror", () => ({
     extensions?: unknown[];
   }) => {
     codeMirrorHarness.updateListeners = findUpdateListeners(extensions ?? []);
+    codeMirrorHarness.pasteHandlers = findPasteHandlers(extensions ?? []);
 
     return <textarea aria-label={ariaLabel} readOnly value={value} />;
   },
@@ -29,6 +31,7 @@ vi.mock("@uiw/react-codemirror", () => ({
 beforeEach(() => {
   let store: Record<string, string> = {};
   codeMirrorHarness.updateListeners = [];
+  codeMirrorHarness.pasteHandlers = [];
 
   Object.defineProperty(window, "localStorage", {
     configurable: true,
@@ -75,6 +78,37 @@ function renderEditor(markdown: string, props: Partial<Parameters<typeof Documen
       />
     </DocumentViewModeProvider>,
   );
+}
+
+function findPasteHandlers(extensions: unknown[]): Array<(event: ClipboardEvent, view: unknown) => boolean> {
+  const handlers: Array<(event: ClipboardEvent, view: unknown) => boolean> = [];
+  const visit = (extension: unknown) => {
+    if (!extension || typeof extension !== "object") {
+      return;
+    }
+
+    const maybeProvider = extension as {
+      extension?: unknown;
+      extensions?: unknown;
+      domEventHandlers?: { paste?: unknown };
+    };
+
+    if (typeof maybeProvider.domEventHandlers?.paste === "function") {
+      handlers.push(maybeProvider.domEventHandlers.paste as (event: ClipboardEvent, view: unknown) => boolean);
+    }
+
+    if (Array.isArray(maybeProvider.extension)) {
+      maybeProvider.extension.forEach(visit);
+    }
+
+    if (Array.isArray(maybeProvider.extensions)) {
+      maybeProvider.extensions.forEach(visit);
+    }
+  };
+
+  extensions.forEach(visit);
+
+  return handlers;
 }
 
 function TestModeControls() {
@@ -340,5 +374,37 @@ describe("DocumentEditor heading preview folding", () => {
     codeMirrorHarness.updateListeners[0](createFoldedRangeUpdate(liveMarkdown, 2, 3));
 
     expect(window.localStorage.getItem("munjib:heading-folds:doc-1")).toBe("[\"1-a-0\"]");
+  });
+
+  it("converts rich HTML clipboard content to markdown before paste", async () => {
+    renderEditor("Intro");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const dispatch = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: text }));
+    const event = {
+      preventDefault,
+      clipboardData: {
+        getData: (type: string) =>
+          type === "text/html"
+            ? "<h1>Pasted Title</h1><p><strong>Styled</strong> text</p>"
+            : "Pasted Title\nStyled text",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers).toHaveLength(1);
+    expect(
+      codeMirrorHarness.pasteHandlers[0](event, {
+        state: { replaceSelection },
+        dispatch,
+      }),
+    ).toBe(true);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(replaceSelection).toHaveBeenCalledWith("# Pasted Title\n\n**Styled** text");
+    expect(dispatch).toHaveBeenCalledWith({ changes: "# Pasted Title\n\n**Styled** text" });
   });
 });

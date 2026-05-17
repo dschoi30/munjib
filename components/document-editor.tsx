@@ -40,6 +40,7 @@ import {
 } from "@/lib/wiki-links/autocomplete";
 import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
+import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -106,8 +107,27 @@ export function DocumentEditor({
 
         persistEditorFoldState(update.view, context.storageKey);
       }),
+      EditorView.domEventHandlers({
+        paste: (event, view) => {
+          if (!canWrite) {
+            return false;
+          }
+
+          const html = event.clipboardData?.getData("text/html") ?? "";
+          const markdown = htmlToMarkdown(html);
+
+          if (!markdown) {
+            return false;
+          }
+
+          event.preventDefault();
+          view.dispatch(view.state.replaceSelection(markdown));
+
+          return true;
+        },
+      }),
     ],
-    [],
+    [canWrite],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
