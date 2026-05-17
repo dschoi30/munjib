@@ -3,10 +3,10 @@ id: workflow-local-development
 title: Local Development Workflow
 type: workflow
 status: active
-summary: Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.
+summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 13
+source_count: 15
 tags:
   - munjib
   - workflow
@@ -65,6 +65,34 @@ postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public
 
 NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다.
 
+## Docker web+DB 실행
+
+Issue #50부터 Docker는 기존 PostgreSQL container에 더해 Next.js web service도 함께 띄우는 경로를 제공한다.
+
+Production-style container 실행:
+
+```bash
+docker compose up --build
+```
+
+Development container 실행:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속한다. Host machine에서 직접 Prisma/test를 실행할 때는 기존처럼 `localhost:55432` 또는 `127.0.0.1:55432`를 사용한다.
+
+Docker web container에서 schema와 seed를 준비하는 명령:
+
+```bash
+docker compose run --rm web pnpm exec prisma migrate deploy
+docker compose run --rm web pnpm exec prisma db push
+docker compose run --rm web pnpm run db:seed
+```
+
+`migrate deploy`는 migration 파일이 준비된 환경에 쓰고, 로컬 개발 DB를 현재 Prisma schema로 맞추는 임시 경로는 `prisma db push`를 쓴다. Seed 후에는 `company-handbook` workspace와 개발용 owner/editor/viewer user로 로그인 흐름을 확인할 수 있다.
+
 ## Seed와 로그인
 
 `pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
@@ -121,6 +149,9 @@ PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 �
 
 - `package.json`
 - `.env.example`
+- `Dockerfile`
+- `docker-compose.yml`
+- `docker-compose.dev.yml`
 - `prisma/seed.ts`
 - `lib/wiki/sync.ts`
 - `lib/wiki/feature-start.ts`

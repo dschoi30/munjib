@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 64
+source_count: 65
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-17T23:20:00+09:00 - design
+
+- Result: Issue #50 Dockerized Next.js web service 설계와 구현 계획을 기록했다.
+- Coverage: 기존 PostgreSQL-only `docker-compose.yml`을 web+DB 기본 compose로 확장하고, production-style `Dockerfile` runner target과 source-mounted `docker-compose.dev.yml` development override를 함께 제공하는 방향을 확정했다. Docker container 내부 DB URL은 `postgres:5432`, host machine local 개발 URL은 `localhost:55432`로 구분한다.
+- Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #50, `docs/superpowers/specs/2026-05-17-dockerized-next-js-web-service-design.md`, `docs/superpowers/plans/2026-05-17-dockerized-next-js-web-service.md`, `docker-compose.yml`.
+- Verification: spec/plan self-review.
 
 ## 2026-05-17T12:15:00+09:00 - regression fix
 
