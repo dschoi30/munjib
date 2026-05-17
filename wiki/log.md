@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-17
+updated: 2026-05-18
 source_count: 71
 tags:
   - log
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:25:00+09:00 - review follow-up
+
+- Result: PR #51 Codex review에서 지적한 Docker attachment storage persistence를 반영했다.
+- Coverage: Production `web` service가 `/app/storage`를 `web_storage` named volume으로 마운트해 container 재생성 후에도 uploaded attachment files가 DB attachment row와 함께 유지된다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #51 review thread, `docker-compose.yml`, `tests/docker/compose.test.ts`, `wiki/Local Development Workflow.md`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`.
 
 ## 2026-05-17T23:58:00+09:00 - review follow-up
 

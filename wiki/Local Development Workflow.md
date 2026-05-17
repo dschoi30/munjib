@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-17
+updated: 2026-05-18
 source_count: 20
 tags:
   - munjib
@@ -82,6 +82,8 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속한다. Host machine에서 직접 Prisma/test를 실행할 때는 기존처럼 `localhost:55432` 또는 `127.0.0.1:55432`를 사용한다. Host용 `.env`의 `DATABASE_URL`과 충돌하지 않도록 Compose는 container DB override 변수로 `DOCKER_DATABASE_URL`을 사용한다.
+
+Compose는 database row와 uploaded attachment file이 함께 남도록 named volume을 둘 다 둔다. `postgres_data`는 PostgreSQL data directory를 유지하고, `web_storage`는 web container의 `/app/storage`를 유지해 container 재생성 뒤에도 `storage/attachments` 파일을 보존한다.
 
 기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다.
 
