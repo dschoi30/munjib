@@ -44,4 +44,14 @@ describe("htmlToMarkdown", () => {
       "- Parent\n  - Child",
     );
   });
+
+  it("preserves table cell and row boundaries", () => {
+    expect(
+      htmlToMarkdown("<table><tr><td>A1</td><td>B1</td></tr><tr><td>A2</td><td>B2</td></tr></table>"),
+    ).toBe("A1\tB1\nA2\tB2");
+  });
+
+  it("preserves significant whitespace inside inline code", () => {
+    expect(htmlToMarkdown("<p><code>const  value\t=\t1</code></p>")).toBe("`const  value\t=\t1`");
+  });
 });
