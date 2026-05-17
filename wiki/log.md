@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 69
+source_count: 70
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T01:21:00+09:00 - review follow-up
+
+- Result: PR #53 review feedback에 따라 clipboard image paste placeholder 처리와 pending upload save guard를 보강했다.
+- Coverage: `DocumentEditor`는 같은 paste placeholder가 여러 번 존재하면 모두 반환 markdown으로 교체하고, upload 실패 시 모두 제거한다. Image upload가 pending인 동안 Save submit을 차단해 placeholder markdown이 저장되는 것을 막고 `Image upload is still in progress` toast를 표시한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review threads, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T01:03:00+09:00 - maintenance
 

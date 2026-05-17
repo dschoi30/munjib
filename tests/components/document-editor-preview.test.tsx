@@ -556,7 +556,7 @@ describe("DocumentEditor heading preview folding", () => {
     }));
     const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
       if (typeof transaction.changes?.insert === "string") {
-        currentMarkdown = `shifted ${transaction.changes.insert} tail`;
+        currentMarkdown = `shifted ${transaction.changes.insert} tail ${transaction.changes.insert}`;
       }
     });
     const image = new File(["image"], "clipboard.png", { type: "image/png" });
@@ -597,12 +597,81 @@ describe("DocumentEditor heading preview folding", () => {
 
     await vi.waitFor(() => {
       expect(dispatch).toHaveBeenCalledWith({
-        changes: {
-          from: 8,
-          to: 8 + placeholder.length,
-          insert: "![clipboard.png](/api/attachments/attachment-1)",
-        },
+        changes: [
+          {
+            from: 8,
+            to: 8 + placeholder.length,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+          {
+            from: 14 + placeholder.length,
+            to: 14 + placeholder.length * 2,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+        ],
       });
+    });
+  });
+
+  it("blocks document save while pasted image upload is pending", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    const action = vi.fn(async () => {});
+    const { container } = renderEditor("Intro", { action, pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: { toString: () => currentMarkdown },
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    const form = container.querySelector<HTMLFormElement>("#document-save-doc-1");
+    if (!form) throw new Error("Expected save form");
+    fireEvent.submit(form);
+    expect(action).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith("Image upload is still in progress");
+
+    const placeholder = currentMarkdown.replace("Intro ", "");
+    upload.resolve({ markdown: "![clipboard.png](/api/attachments/attachment-1)" });
+
+    await vi.waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        changes: [
+          {
+            from: 6,
+            to: 6 + placeholder.length,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+        ],
+      });
+    });
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
     });
   });
 
@@ -690,11 +759,13 @@ describe("DocumentEditor heading preview folding", () => {
       expect(toastError).toHaveBeenCalledWith("Image paste failed");
     });
     expect(dispatch).toHaveBeenCalledWith({
-      changes: {
-        from: 7,
-        to: 7 + placeholder.length,
-        insert: "",
-      },
+      changes: [
+        {
+          from: 7,
+          to: 7 + placeholder.length,
+          insert: "",
+        },
+      ],
     });
     expect(dispatch).not.toHaveBeenCalledWith(
       expect.objectContaining({
