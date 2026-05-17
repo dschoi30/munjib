@@ -193,7 +193,7 @@ function wrapCode(content: string) {
 function wrapCodeBlock(content: string) {
   const longestBacktickFence = Math.max(
     2,
-    ...Array.from(content.matchAll(/^`+/gm), (match) => match[0].length),
+    ...Array.from(content.matchAll(/^ {0,3}(`+)/gm), (match) => match[1].length),
   );
   const fence = "`".repeat(longestBacktickFence + 1);
 
