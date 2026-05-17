@@ -165,7 +165,7 @@ export async function uploadDocumentAttachmentAction(
   const documentId = String(formData.get("documentId"));
 
   if (!(file instanceof File)) {
-    throw new Error("ATTACHMENT_FILE_REQUIRED");
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
   }
 
   const attachment = await uploadDocumentAttachment({

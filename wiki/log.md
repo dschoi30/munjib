@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 66
+source_count: 67
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:25:00+09:00 - implementation
+
+- Result: Issue #52 Task 1 paste-only image attachment service를 추가했다.
+- Coverage: `uploadPastedDocumentImageAttachment()`는 허용된 clipboard image MIME type만 저장하고 unnamed paste fallback file name을 만들며, attachment storage/row와 `attachment.uploaded` audit log를 생성한다. Manual attachment upload는 기존처럼 markdown append, document version, link/metadata reconciliation을 수행한다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/service.ts`, `lib/service-errors.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/attachments/service.test.ts`.
 
 ## 2026-05-18T00:10:00+09:00 - plan
 

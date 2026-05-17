@@ -11,6 +11,7 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
 
@@ -34,9 +35,13 @@ export type UploadDocumentAttachmentInput = {
 };
 
 export async function uploadDocumentAttachment(input: UploadDocumentAttachmentInput) {
-  if (input.bytes.byteLength === 0) throw new Error("ATTACHMENT_EMPTY");
-  if (input.bytes.byteLength > maxAttachmentBytes) throw new Error("ATTACHMENT_TOO_LARGE");
-  if (!allowedMimeTypes.has(input.mimeType)) throw new Error("ATTACHMENT_MIME_TYPE_FORBIDDEN");
+  if (input.bytes.byteLength === 0) throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_EMPTY);
+  if (input.bytes.byteLength > maxAttachmentBytes) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+  }
+  if (!allowedMimeTypes.has(input.mimeType)) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
 
   const { document, role, access } = await getWritableDocument(input.documentId, input.actorId);
   assertCanWriteWorkspace(role);
@@ -124,6 +129,70 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
 
       return attachment;
     });
+  } catch (error) {
+    await unlink(absolutePath).catch(() => undefined);
+    throw error;
+  }
+}
+
+export async function uploadPastedDocumentImageAttachment(input: UploadDocumentAttachmentInput) {
+  if (input.bytes.byteLength === 0) throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_EMPTY);
+  if (input.bytes.byteLength > maxAttachmentBytes) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+  }
+  if (!isAllowedPastedImageMimeType(input.mimeType)) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const { document, role, access } = await getWritableDocument(input.documentId, input.actorId);
+  assertCanWriteWorkspace(role);
+  assertCanWriteDocument({
+    workspaceRole: role,
+    explicitPermissionCount: access.explicitPermissionCount,
+    userPermission: access.userPermission,
+  });
+
+  const safeFileName = sanitizePastedImageFileName(input.fileName, input.mimeType);
+  const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName}`;
+  const absolutePath = attachmentPath(storageKey);
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, input.bytes);
+
+  try {
+    const attachment = await prisma.$transaction(async (tx) => {
+      const created = await tx.attachment.create({
+        data: {
+          documentId: document.id,
+          fileName: safeFileName,
+          mimeType: input.mimeType,
+          size: input.bytes.byteLength,
+          storageKey,
+          uploadedById: input.actorId,
+        },
+      });
+
+      await writeAuditLog(tx, {
+        organizationId: document.workspace.organizationId,
+        actorId: input.actorId,
+        action: "attachment.uploaded",
+        resourceType: "attachment",
+        resourceId: created.id,
+        metadata: {
+          documentId: document.id,
+          fileName: created.fileName,
+          mimeType: created.mimeType,
+          size: created.size,
+          source: "clipboard-paste",
+        },
+      });
+
+      return created;
+    });
+
+    return {
+      ...attachment,
+      markdown: imageMarkdownLink(attachment.fileName, attachment.id),
+    };
   } catch (error) {
     await unlink(absolutePath).catch(() => undefined);
     throw error;
@@ -221,6 +290,33 @@ function attachmentPath(storageKey: string) {
 function sanitizeFileName(fileName: string) {
   const baseName = path.basename(fileName).replace(/[^A-Za-z0-9._-]/g, "-");
   return baseName || "attachment";
+}
+
+function isAllowedPastedImageMimeType(mimeType: string) {
+  return (
+    mimeType === "image/png" ||
+    mimeType === "image/jpeg" ||
+    mimeType === "image/gif" ||
+    mimeType === "image/webp"
+  );
+}
+
+function sanitizePastedImageFileName(fileName: string, mimeType: string) {
+  const safeFileName = sanitizeFileName(fileName);
+  if (safeFileName !== "attachment") return safeFileName;
+
+  return `pasted-image.${extensionForImageMimeType(mimeType)}`;
+}
+
+function extensionForImageMimeType(mimeType: string) {
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/gif") return "gif";
+  if (mimeType === "image/webp") return "webp";
+  return "png";
+}
+
+function imageMarkdownLink(fileName: string, attachmentId: string) {
+  return `![${fileName}](/api/attachments/${attachmentId})`;
 }
 
 function appendMarkdownLink(markdown: string, link: string) {
