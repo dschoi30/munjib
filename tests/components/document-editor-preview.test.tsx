@@ -552,4 +552,19 @@ describe("DocumentEditor properties", () => {
     expect(within(properties).getByText("#review")).toBeTruthy();
     expect(within(properties).queryByText("#graph-only")).toBeNull();
   });
+
+  it("renders object and null frontmatter property values without placeholder strings", () => {
+    renderEditor("---\nsettings:\n  enabled: true\nempty:\n---\n\nBody", {
+      properties: [
+        { id: "property-settings", key: "settings", valueJson: { enabled: true } },
+        { id: "property-empty", key: "empty", valueJson: null },
+      ],
+    });
+
+    const properties = screen.getByRole("region", { name: "Document properties" });
+
+    expect(within(properties).getByText('{"enabled":true}')).toBeTruthy();
+    expect(within(properties).queryByText("[object Object]")).toBeNull();
+    expect(within(properties).queryByText("null")).toBeNull();
+  });
 });
