@@ -45,6 +45,7 @@ import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
 import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
+const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
 
 type EditableDocument = {
   id: string;
@@ -520,7 +521,7 @@ function MarkdownPreview({
       {foldTree.sections.length > 0 ? (
         <>
           {leadingMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
               {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
             </ReactMarkdown>
           ) : null}
@@ -537,7 +538,7 @@ function MarkdownPreview({
           ))}
         </>
       ) : (
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
           {renderPreviewMarkdownWithWikiLinks(
             strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
             candidateBySlug,
@@ -603,14 +604,14 @@ function MarkdownPreviewSection({
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
           {previewHeadingMarkdown}
         </ReactMarkdown>
       </div>
       {folded ? null : (
         <>
           {section.bodyMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
               {previewBodyMarkdown}
             </ReactMarkdown>
           ) : null}
@@ -645,6 +646,54 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
+}
+
+function remarkPreviewSoftLineBreaks() {
+  return (tree: unknown) => {
+    visitMarkdownParents(tree);
+  };
+}
+
+function visitMarkdownParents(node: unknown) {
+  if (!node || typeof node !== "object") {
+    return;
+  }
+
+  const parent = node as { children?: unknown[] };
+
+  if (!Array.isArray(parent.children)) {
+    return;
+  }
+
+  parent.children = parent.children.flatMap((child) => splitMarkdownSoftLineBreaks(child));
+  parent.children.forEach(visitMarkdownParents);
+}
+
+function splitMarkdownSoftLineBreaks(node: unknown) {
+  if (!node || typeof node !== "object") {
+    return [node];
+  }
+
+  const textNode = node as { type?: string; value?: string };
+
+  if (textNode.type !== "text" || typeof textNode.value !== "string" || !textNode.value.includes("\n")) {
+    return [node];
+  }
+
+  const parts = textNode.value.split("\n");
+  return parts.flatMap((part, index) => {
+    const nodes: Array<{ type: string; value?: string }> = [];
+
+    if (index > 0) {
+      nodes.push({ type: "break" });
+    }
+
+    if (part.length > 0) {
+      nodes.push({ type: "text", value: part });
+    }
+
+    return nodes;
+  });
 }
 
 function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {

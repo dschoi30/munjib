@@ -10,6 +10,7 @@ import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/docu
 const codeMirrorHarness = vi.hoisted(() => ({
   updateListeners: [] as Array<(update: unknown) => void>,
   pasteHandlers: [] as Array<(event: ClipboardEvent, view: unknown) => boolean>,
+  changeHandlers: [] as Array<(value: string, viewUpdate: { state: { selection: { main: { head: number } } } }) => void>,
 }));
 
 vi.mock("@uiw/react-codemirror", () => ({
@@ -17,13 +18,16 @@ vi.mock("@uiw/react-codemirror", () => ({
     value,
     "aria-label": ariaLabel,
     extensions,
+    onChange,
   }: {
     value: string;
     "aria-label": string;
     extensions?: unknown[];
+    onChange?: (value: string, viewUpdate: { state: { selection: { main: { head: number } } } }) => void;
   }) => {
     codeMirrorHarness.updateListeners = findUpdateListeners(extensions ?? []);
     codeMirrorHarness.pasteHandlers = findPasteHandlers(extensions ?? []);
+    codeMirrorHarness.changeHandlers = onChange ? [onChange] : [];
 
     return <textarea aria-label={ariaLabel} readOnly value={value} />;
   },
@@ -33,6 +37,7 @@ beforeEach(() => {
   let store: Record<string, string> = {};
   codeMirrorHarness.updateListeners = [];
   codeMirrorHarness.pasteHandlers = [];
+  codeMirrorHarness.changeHandlers = [];
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
@@ -417,6 +422,26 @@ describe("DocumentEditor heading preview folding", () => {
     expect(heading.tagName).toBe("H1");
     expect(paragraph.tagName).toBe("P");
     expect(container.textContent).toContain("HeadingBody line");
+  });
+
+  it("renders edit-mode soft line breaks as explicit preview line breaks", async () => {
+    const { container } = renderEditor("First line");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    expect(codeMirrorHarness.changeHandlers).toHaveLength(1);
+
+    codeMirrorHarness.changeHandlers[0]("First line\nSecond line", {
+      state: { selection: { main: { head: "First line\nSecond line".length } } },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
+
+    const paragraph = container.querySelector(".markdown-preview p");
+
+    expect(paragraph?.textContent).toContain("First line");
+    expect(paragraph?.textContent).toContain("Second line");
+    expect(paragraph?.querySelector("br")).toBeTruthy();
   });
 
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
