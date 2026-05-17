@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-11
-source_count: 27
+updated: 2026-05-16
+source_count: 28
 tags:
   - munjib
   - source
@@ -75,6 +75,8 @@ Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 �
 
 Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigation을 구현했다. 구현 범위는 상단 문서 탭, 탭 하단 back/forward toolbar, 현재 document/folder path 표시다. 이 구현은 DB schema나 markdown payload를 바꾸지 않고, 기존 server-selected single document editor와 URL query routing을 유지한다. 열린 탭 목록은 workspace-scoped browser `localStorage`에 저장하는 UI state이며, 일반 문서 선택은 현재 탭을 교체하고 tab strip `+` button 또는 sidebar Open in new tab menu만 새 탭을 만든다. Tab strip은 `+` button을 마지막 tab에 붙이고, tab이 row 폭을 채우면 각 tab width를 함께 줄인다. Forward navigation은 대상 document가 있고 해당 document가 readable할 때만 활성화한다. 여러 editor instance와 unsaved buffer 보존은 후속 범위로 둔다.
 
+2026-05-16 metadata panel outline 설계는 PRD의 Obsidian-style 문서 탐색 경험을 오른쪽 panel로 확장하는 계획이다. `Outline` tab은 현재 선택 문서의 `#`-`####` ATX heading을 추출해 tree로 보여주고, level별 vertical guide line과 click-to-scroll navigation을 제공한다. 설계 근거는 `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`이다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -100,6 +102,7 @@ Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigatio
 - GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 설계.
 - GitHub issue #25와 `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`: Markdown heading folding 설계.
 - GitHub issue #29와 `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`: 문서 탭과 navigation toolbar 설계.
+- `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`: metadata panel outline tab 설계.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 

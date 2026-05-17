@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
-import React from "react";
+import React, { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useHeadingNavigation } from "@/components/app-shell";
 import { MetadataPanel } from "@/components/metadata-panel";
 
 afterEach(() => {
+  window.document.querySelectorAll("[data-outline-heading-id]").forEach((target) => {
+    target.remove();
+  });
   cleanup();
 });
 
@@ -48,27 +52,86 @@ const attachments: Attachment[] = [
   },
 ];
 
+const outlineDocument = {
+  id: "doc-1",
+  contentMarkdown: "# Welcome\n\n## Setup\n\n### Install\n\n#### Env\n\n##### Hidden",
+};
+
 function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
   return render(
     <MetadataPanel
+      document={outlineDocument}
       versions={versions}
       auditLogs={auditLogs}
       attachments={attachments}
       canWrite
       restoreVersionAction={async () => {}}
       onTogglePanel={vi.fn()}
+      onNavigateToHeading={vi.fn()}
       {...props}
     />,
   );
 }
 
+function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
+  return render(
+    <AppShell
+      left={<div>Left</div>}
+      center={<div>Center</div>}
+      right={
+        <MetadataPanel
+          document={outlineDocument}
+          versions={versions}
+          auditLogs={auditLogs}
+          attachments={attachments}
+          canWrite
+          restoreVersionAction={async () => {}}
+          onTogglePanel={vi.fn()}
+          onNavigateToHeading={undefined}
+          {...props}
+        />
+      }
+    />,
+  );
+}
+
+function UnhandledHeadingNavigator() {
+  const headingNavigation = useHeadingNavigation();
+  const setHeadingNavigator = headingNavigation?.setHeadingNavigator;
+
+  useEffect(() => {
+    setHeadingNavigator?.(() => false);
+    return () => setHeadingNavigator?.(null);
+  }, [setHeadingNavigator]);
+
+  return <div>Unhandled navigator</div>;
+}
+
+function LiveOutlineDocumentProbe({ contentMarkdown }: { contentMarkdown: string }) {
+  const headingNavigation = useHeadingNavigation();
+  const setOutlineDocument = headingNavigation?.setOutlineDocument;
+
+  useEffect(() => {
+    setOutlineDocument?.({ id: "doc-1", contentMarkdown });
+    return () => setOutlineDocument?.(null);
+  }, [contentMarkdown, setOutlineDocument]);
+
+  return <div>Live outline document</div>;
+}
+
 describe("MetadataPanel", () => {
-  it("opens attachments by default and switches metadata lists from the tab toolbar", () => {
+  it("opens outline by default and switches metadata lists from the tab toolbar", () => {
     renderPanel();
 
     expect(screen.queryByText("Local graph")).toBeNull();
     expect(screen.queryByRole("img", { name: /Local graph/ })).toBeNull();
-    expect(screen.getByRole("link", { name: "notes.txt" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Outline" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Go to heading Welcome" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to heading Setup" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go to heading Hidden" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "notes.txt" })).toBeNull();
     expect(screen.queryByText("v2")).toBeNull();
     expect(screen.queryByText("document.updated")).toBeNull();
 
@@ -83,6 +146,111 @@ describe("MetadataPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Audit log" }));
     expect(screen.getByText("document.updated")).toBeTruthy();
     expect(screen.queryByText("v2")).toBeNull();
+  });
+
+  it("navigates to outline headings", () => {
+    const onNavigateToHeading = vi.fn();
+
+    renderPanel({ onNavigateToHeading });
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Install" }));
+
+    expect(onNavigateToHeading).toHaveBeenCalledWith({
+      id: "1-welcome-0/2-setup-0/3-install-0",
+      lineNumber: 5,
+    });
+  });
+
+  it("scrolls to a matching outline target when no navigation callback is provided", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    renderPanel({ onNavigateToHeading: undefined });
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("scrolls to a matching outline target when AppShell has no registered navigator", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    renderPanelInAppShell();
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("falls back to a matching outline target when AppShell navigator does not handle it", () => {
+    const scrollIntoView = vi.fn();
+    const target = window.document.createElement("h2");
+    target.setAttribute("data-outline-heading-id", "1-welcome-0/2-setup-0");
+    target.scrollIntoView = scrollIntoView;
+    window.document.body.appendChild(target);
+
+    render(
+      <AppShell
+        left={<div>Left</div>}
+        center={<UnhandledHeadingNavigator />}
+        right={
+          <MetadataPanel
+            document={outlineDocument}
+            versions={versions}
+            auditLogs={auditLogs}
+            attachments={attachments}
+            canWrite
+            restoreVersionAction={async () => {}}
+            onTogglePanel={vi.fn()}
+          />
+        }
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Go to heading Setup" }));
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start", behavior: "smooth" });
+  });
+
+  it("uses the live outline document from AppShell when it matches the selected document", () => {
+    render(
+      <AppShell
+        left={<div>Left</div>}
+        center={
+          <LiveOutlineDocumentProbe
+            contentMarkdown={"# Live Draft\n\n## Unsaved Heading"}
+          />
+        }
+        right={
+          <MetadataPanel
+            document={{ id: "doc-1", contentMarkdown: "# Saved Heading" }}
+            versions={versions}
+            auditLogs={auditLogs}
+            attachments={attachments}
+            canWrite
+            restoreVersionAction={async () => {}}
+            onTogglePanel={vi.fn()}
+          />
+        }
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Go to heading Live Draft" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Go to heading Unsaved Heading" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Go to heading Saved Heading" })).toBeNull();
+  });
+
+  it("shows an empty state when the document has no outline headings", () => {
+    renderPanel({ document: { id: "doc-1", contentMarkdown: "Body only" } });
+
+    expect(screen.getByText("No outline headings")).toBeTruthy();
   });
 
   it("shows empty states for versions and audit log tabs", () => {
