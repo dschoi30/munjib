@@ -1,11 +1,15 @@
 "use client";
 
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
-import { FileClock, History, PanelRightClose, Paperclip } from "lucide-react";
+import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useState } from "react";
-import { useRightPanel } from "@/components/app-shell";
+import { useCallback, useMemo, useState } from "react";
+import {
+  useHeadingNavigation,
+  useRightPanel,
+  type HeadingNavigationTarget,
+} from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -13,32 +17,79 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  buildMarkdownOutline,
+  type MarkdownOutlineItem,
+} from "@/lib/markdown/folding";
+import { scrollToOutlineHeading } from "@/lib/outline-targets";
 
-type MetadataTab = "attachments" | "versions" | "audit";
+type MetadataTab = "outline" | "attachments" | "versions" | "audit";
+
+type MetadataDocument = {
+  id: string;
+  contentMarkdown: string;
+};
 
 export function MetadataPanel({
+  document,
   versions,
   auditLogs,
   attachments,
   canWrite,
   restoreVersionAction,
   onTogglePanel,
+  onNavigateToHeading,
 }: {
+  document: MetadataDocument | null;
   versions: DocumentVersion[];
   auditLogs: AuditLog[];
   attachments: Attachment[];
   canWrite: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
   onTogglePanel?: () => void;
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
-  const [activeTab, setActiveTab] = useState<MetadataTab>("attachments");
+  const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
   const rightPanel = useRightPanel();
+  const headingNavigation = useHeadingNavigation();
+  const liveOutlineDocument = headingNavigation?.outlineDocument;
+  const navigateToHeading = headingNavigation?.navigateToHeading;
   const collapsePanel = onTogglePanel ?? rightPanel?.collapse;
+  const outlineDocument =
+    liveOutlineDocument?.id === document?.id
+      ? liveOutlineDocument
+      : document;
+  const outlineItems = useMemo(
+    () => buildMarkdownOutline(outlineDocument?.contentMarkdown ?? ""),
+    [outlineDocument?.contentMarkdown],
+  );
+  const handleNavigateToHeading = useCallback(
+    (target: HeadingNavigationTarget) => {
+      if (onNavigateToHeading) {
+        onNavigateToHeading(target);
+        return;
+      }
+
+      if (navigateToHeading?.(target)) {
+        return;
+      }
+
+      scrollToOutlineHeading(target.id);
+    },
+    [navigateToHeading, onNavigateToHeading],
+  );
 
   return (
     <div className="space-y-4">
       <TooltipProvider delayDuration={0}>
         <div className="flex h-11 items-center gap-1">
+          <MetadataTabButton
+            label="Outline"
+            active={activeTab === "outline"}
+            onClick={() => setActiveTab("outline")}
+          >
+            <ListTree className="h-4 w-4" aria-hidden="true" />
+          </MetadataTabButton>
           <MetadataTabButton
             label="Attachments"
             active={activeTab === "attachments"}
@@ -72,6 +123,9 @@ export function MetadataPanel({
           </ToolbarTooltip>
         </div>
       </TooltipProvider>
+      {activeTab === "outline" ? (
+        <OutlineList items={outlineItems} onNavigateToHeading={handleNavigateToHeading} />
+      ) : null}
       {activeTab === "attachments" ? <AttachmentsList attachments={attachments} /> : null}
       {activeTab === "versions" ? (
         <VersionsList
@@ -82,6 +136,65 @@ export function MetadataPanel({
       ) : null}
       {activeTab === "audit" ? <AuditLogList auditLogs={auditLogs} /> : null}
     </div>
+  );
+}
+
+function OutlineList({
+  items,
+  onNavigateToHeading,
+}: {
+  items: MarkdownOutlineItem[];
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
+}) {
+  return (
+    <section>
+      <h2 className="text-sm font-semibold">Outline</h2>
+      {items.length === 0 ? (
+        <p className="mt-2 text-sm text-slate-600">No outline headings</p>
+      ) : (
+        <ul className="mt-2 space-y-1 text-sm text-slate-600">
+          {items.map((item) => (
+            <OutlineItemRow
+              key={item.id}
+              item={item}
+              onNavigateToHeading={onNavigateToHeading}
+            />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function OutlineItemRow({
+  item,
+  onNavigateToHeading,
+}: {
+  item: MarkdownOutlineItem;
+  onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-label={`Go to heading ${item.title}`}
+        onClick={() => onNavigateToHeading?.({ id: item.id, lineNumber: item.lineNumber })}
+        className="flex w-full min-w-0 rounded px-2 py-1 text-left text-slate-600 hover:bg-slate-200 hover:text-ink focus:bg-slate-200 focus:text-ink focus:outline-none"
+      >
+        <span className="truncate">{item.title}</span>
+      </button>
+      {item.children.length > 0 ? (
+        <ul className="ml-3 border-l border-slate-200 pl-2">
+          {item.children.map((child) => (
+            <OutlineItemRow
+              key={child.id}
+              item={child}
+              onNavigateToHeading={onNavigateToHeading}
+            />
+          ))}
+        </ul>
+      ) : null}
+    </li>
   );
 }
 
