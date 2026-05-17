@@ -55,15 +55,17 @@ function getClipboardImageFile(dataTransfer: DataTransfer | null) {
 
 function replaceCurrentPlaceholder(view: EditorView, placeholder: string, insert: string) {
   const currentMarkdown = view.state.doc.toString();
-  const from = currentMarkdown.indexOf(placeholder);
+  const changes = [];
+  let from = currentMarkdown.indexOf(placeholder);
 
-  if (from === -1) {
-    return;
+  while (from !== -1) {
+    changes.push({ from, to: from + placeholder.length, insert });
+    from = currentMarkdown.indexOf(placeholder, from + placeholder.length);
   }
 
-  view.dispatch({
-    changes: { from, to: from + placeholder.length, insert },
-  });
+  if (changes.length > 0) {
+    view.dispatch({ changes });
+  }
 }
 
 export function DocumentEditor({
@@ -95,6 +97,8 @@ export function DocumentEditor({
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
+  const [pendingImagePasteCount, setPendingImagePasteCount] = useState(0);
+  const hasPendingImagePaste = pendingImagePasteCount > 0;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -123,14 +127,18 @@ export function DocumentEditor({
             formData.set("attachment", imageFile);
 
             view.dispatch(view.state.replaceSelection(placeholder));
+            setPendingImagePasteCount((count) => count + 1);
 
-            void pasteImageAttachmentAction(formData)
+            void Promise.resolve(pasteImageAttachmentAction(formData))
               .then(({ markdown }) => {
                 replaceCurrentPlaceholder(view, placeholder, markdown);
               })
               .catch(() => {
                 replaceCurrentPlaceholder(view, placeholder, "");
                 toast.error("Image paste failed");
+              })
+              .finally(() => {
+                setPendingImagePasteCount((count) => Math.max(0, count - 1));
               });
 
             return true;
@@ -303,7 +311,18 @@ export function DocumentEditor({
 
   return (
     <div key={document.id} className="mx-auto max-w-4xl space-y-4">
-      <form id={`document-save-${document.id}`} action={action}>
+      <form
+        id={`document-save-${document.id}`}
+        action={action}
+        onSubmit={(event) => {
+          if (!hasPendingImagePaste) {
+            return;
+          }
+
+          event.preventDefault();
+          toast.error("Image upload is still in progress");
+        }}
+      >
         <input type="hidden" name="documentId" value={document.id} />
         <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
       </form>
@@ -389,7 +408,7 @@ export function DocumentEditor({
         <p className="text-sm text-slate-500">
           {canWrite ? "Markdown changes are saved when you press Save." : "Viewer access is read-only."}
         </p>
-        <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite}>
+        <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite || hasPendingImagePaste}>
           <Save className="mr-2 h-4 w-4" aria-hidden="true" />
           Save
         </Button>
