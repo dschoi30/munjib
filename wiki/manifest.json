@@ -118,7 +118,7 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Munjib repository wiki의 탐색 인덱스와 feature-start 포함 workflow navigation.",
+      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker 포함 local workflow navigation.",
       "tags": [
         "index",
         "munjib"
@@ -147,7 +147,7 @@
       "title": "Local Development Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib 로컬 개발, DB, seed, test, e2e, feature start, wiki maintenance 명령.",
+      "summary": "Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.",
       "tags": [
         "munjib",
         "workflow",
@@ -160,7 +160,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 13,
+      "source_count": 20,
       "searchPriority": 50
     },
     {
@@ -180,7 +180,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 64,
+      "source_count": 71,
       "searchPriority": 1
     },
     {

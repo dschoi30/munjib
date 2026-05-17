@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-17
-source_count: 64
+updated: 2026-05-18
+source_count: 71
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:25:00+09:00 - review follow-up
+
+- Result: PR #51 Codex review에서 지적한 Docker attachment storage persistence를 반영했다.
+- Coverage: Production `web` service가 `/app/storage`를 `web_storage` named volume으로 마운트해 container 재생성 후에도 uploaded attachment files가 DB attachment row와 함께 유지된다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #51 review thread, `docker-compose.yml`, `tests/docker/compose.test.ts`, `wiki/Local Development Workflow.md`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`.
+
+## 2026-05-17T23:58:00+09:00 - review follow-up
+
+- Result: PR #51 Docker review feedback를 반영했다.
+- Coverage: Production `runner` image는 `pnpm prune --prod`로 devDependencies를 제거하고, Prisma/seed 등 DB 관리 명령은 devDependencies가 있는 `tools` target/service에서 실행한다. `public` directory를 runtime image에 포함하기 위해 `public/.gitkeep`을 추가했다. Compose environment는 host `.env`의 `DATABASE_URL`과 충돌하지 않도록 `DOCKER_DATABASE_URL` placeholder default를 사용하며, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`도 placeholder default를 사용한다. Host port conflict 때는 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 override한다. Docker contract test는 placeholder 전체 문자열 대신 variable name과 default 핵심값을 분리해 확인한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #51 review threads, `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.docker.example`, `public/.gitkeep`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`, `docker compose build web tools`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose up -d postgres web`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose run --rm tools pnpm exec prisma db push`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose run --rm tools pnpm run db:seed`, `curl -I http://127.0.0.1:3101/login`, `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test`.
+
+## 2026-05-17T23:35:00+09:00 - implementation
+
+- Result: Issue #50 Docker web+DB 실행 구성을 추가했다.
+- Coverage: `Dockerfile`은 `runner` target에서 production dependency와 built `.next` output으로 `pnpm start`를 실행하고, `dev` target에서 source-mounted `pnpm run dev`를 지원한다. 기본 `docker-compose.yml`은 `postgres` healthcheck 이후 `web` service를 시작하며, `docker-compose.dev.yml`은 dev target, bind mount, anonymous dependency/build volumes를 적용한다. Docker contract test는 compose/Dockerfile/dockerignore의 핵심 계약을 검증한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #50, `Dockerfile`, `.dockerignore`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.docker.example`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`.
+
+## 2026-05-17T23:20:00+09:00 - design
+
+- Result: Issue #50 Dockerized Next.js web service 설계와 구현 계획을 기록했다.
+- Coverage: 기존 PostgreSQL-only `docker-compose.yml`을 web+DB 기본 compose로 확장하고, production-style `Dockerfile` runner target과 source-mounted `docker-compose.dev.yml` development override를 함께 제공하는 방향을 확정했다. Docker container 내부 DB URL은 `postgres:5432`, host machine local 개발 URL은 `localhost:55432`로 구분한다.
+- Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #50, `docs/superpowers/specs/2026-05-17-dockerized-next-js-web-service-design.md`, `docs/superpowers/plans/2026-05-17-dockerized-next-js-web-service.md`, `docker-compose.yml`.
+- Verification: spec/plan self-review.
 
 ## 2026-05-17T23:08:00+09:00 - review follow-up
 
