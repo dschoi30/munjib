@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T18:16:00+09:00 - plan
+
+- Result: Issue #48 document editor/navigation 구조 리팩토링 구현 계획을 작성했다.
+- Coverage: plan은 editor shared types, suggestion popover, folding storage, preview markdown helpers, markdown preview, document properties, navigation helpers, navigation rows, search/favorites panels, 최종 wiki/PR workflow를 task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`, `docs/superpowers/plans/2026-05-17-document-editor-navigation-refactor.md`.
+- Verification: plan self-review.
+
 ## 2026-05-17T18:09:00+09:00 - design
 
 - Result: Issue #48 document editor/navigation 구조 리팩토링 설계를 승인하고 spec으로 기록했다.
