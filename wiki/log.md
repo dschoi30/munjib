@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T22:49:00+09:00 - implementation
+
+- Result: Issue #48에서 `DocumentEditor`와 `DocumentNavigation`의 동작을 유지하면서 큰 component 파일을 feature-local module로 분리했다.
+- Coverage: editor preview/folding/properties/suggestion UI와 navigation panel/row/tree/favorites helper를 하위 module로 나누고, public entrypoint component, route shape, localStorage key, server action contract는 유지했다. `components/document-editor.tsx`는 342줄, `components/document-navigation.tsx`는 384줄로 줄었다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #48, `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`, `docs/superpowers/plans/2026-05-17-document-editor-navigation-refactor.md`, `components/document-editor.tsx`, `components/document-editor/*`, `components/document-navigation.tsx`, `components/document-navigation/*`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/components/document-list.test.tsx tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-17T18:16:00+09:00 - plan
 
 - Result: Issue #48 document editor/navigation 구조 리팩토링 구현 계획을 작성했다.
