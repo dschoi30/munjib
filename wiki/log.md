@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 74
+source_count: 75
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T03:14:00+09:00 - review follow-up
+
+- Result: PR #53 추가 review feedback에 따라 pending image paste draft update를 active document가 아니라 source editor view document 기준으로 기록하도록 보강했다.
+- Coverage: 오래된 CodeMirror view에서 upload completion dispatch가 발생해도 `EditorView`와 source document id의 mapping을 사용해 해당 paste가 시작된 문서 draft만 갱신한다. 다른 문서에도 pending paste가 있는 상태에서 source view update가 active document draft를 덮어쓰는 corruption path를 막는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T03:06:00+09:00 - review follow-up
 
