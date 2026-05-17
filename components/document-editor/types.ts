@@ -25,6 +25,7 @@ export type DocumentEditorProps = {
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;
   uploadAttachmentAction: (formData: FormData) => Promise<void>;
+  pasteImageAttachmentAction: (formData: FormData) => Promise<{ markdown: string }>;
   linkCandidates: LinkCandidate[];
   tags: Pick<Tag, "id" | "name">[];
   properties: Pick<DocumentProperty, "id" | "key" | "valueJson">[];
