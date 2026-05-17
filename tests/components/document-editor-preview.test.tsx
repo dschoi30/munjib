@@ -713,20 +713,37 @@ describe("DocumentEditor heading preview folding", () => {
       },
     } as unknown as ClipboardEvent;
     let firstMarkdown = "First";
+    let firstView: {
+      state: {
+        replaceSelection: ReturnType<typeof vi.fn>;
+        doc: { readonly length: number; toString: () => string; lineAt: () => { number: number } };
+        selection: { ranges: Array<{ from: number; to: number }> };
+        sliceDoc: () => string;
+      };
+      dispatch: ReturnType<typeof vi.fn>;
+    };
     const firstDispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
       if (typeof transaction.changes?.insert === "string") {
         firstMarkdown = `First ${transaction.changes.insert}`;
       }
+      codeMirrorHarness.updateListeners.forEach((listener) => listener({ view: firstView }));
     });
-    expect(codeMirrorHarness.pasteHandlers[0](event, {
+    firstView = {
       state: {
         replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
-        doc: { toString: () => firstMarkdown },
+        doc: {
+          get length() {
+            return firstMarkdown.length;
+          },
+          toString: () => firstMarkdown,
+          lineAt: () => ({ number: 1 }),
+        },
         selection: { ranges: [{ from: 5, to: 5 }] },
         sliceDoc: () => "",
       },
       dispatch: firstDispatch,
-    })).toBe(true);
+    };
+    expect(codeMirrorHarness.pasteHandlers[0](event, firstView)).toBe(true);
 
     await vi.waitFor(() => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
@@ -747,15 +764,40 @@ describe("DocumentEditor heading preview folding", () => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
     });
 
-    expect(codeMirrorHarness.pasteHandlers[0](event, {
+    let secondMarkdown = "Second";
+    let secondView: {
+      state: {
+        replaceSelection: ReturnType<typeof vi.fn>;
+        doc: { readonly length: number; toString: () => string; lineAt: () => { number: number } };
+        selection: { ranges: Array<{ from: number; to: number }> };
+        sliceDoc: () => string;
+      };
+      dispatch: ReturnType<typeof vi.fn>;
+    };
+    const secondDispatch = vi.fn((transaction: { changes?: { insert?: string } | Array<{ insert: string }> }) => {
+      if (Array.isArray(transaction.changes)) {
+        secondMarkdown = `Second ${transaction.changes[0]?.insert ?? ""}`;
+      } else if (typeof transaction.changes?.insert === "string") {
+        secondMarkdown = `Second ${transaction.changes.insert}`;
+      }
+      codeMirrorHarness.updateListeners.forEach((listener) => listener({ view: secondView }));
+    });
+    secondView = {
       state: {
         replaceSelection: vi.fn((text: string) => ({ changes: { from: 6, to: 6, insert: text } })),
-        doc: { toString: () => "Second" },
+        doc: {
+          get length() {
+            return secondMarkdown.length;
+          },
+          toString: () => secondMarkdown,
+          lineAt: () => ({ number: 1 }),
+        },
         selection: { ranges: [{ from: 6, to: 6 }] },
         sliceDoc: () => "",
       },
-      dispatch: vi.fn(),
-    })).toBe(true);
+      dispatch: secondDispatch,
+    };
+    expect(codeMirrorHarness.pasteHandlers[0](event, secondView)).toBe(true);
 
     await vi.waitFor(() => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);

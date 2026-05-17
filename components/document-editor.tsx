@@ -124,6 +124,7 @@ export function DocumentEditor({
     storageKey: string;
   } | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const editorViewDocumentIdsRef = useRef(new WeakMap<EditorView, string>());
   const activeDocumentIdRef = useRef<string | null>(document?.id ?? null);
   const pendingImagePasteCountsRef = useRef<Record<string, number>>({});
   const pendingImagePasteDraftsRef = useRef<Record<string, string>>({});
@@ -148,9 +149,10 @@ export function DocumentEditor({
 
         persistEditorFoldState(update.view, context.storageKey);
 
-        const activeDocumentId = activeDocumentIdRef.current;
-        if (activeDocumentId && (pendingImagePasteCountsRef.current[activeDocumentId] ?? 0) > 0) {
-          pendingImagePasteDraftsRef.current[activeDocumentId] = update.view.state.doc.toString();
+        const viewDocumentId = editorViewDocumentIdsRef.current.get(update.view);
+        const draftDocumentId = viewDocumentId ?? activeDocumentIdRef.current;
+        if (draftDocumentId && (pendingImagePasteCountsRef.current[draftDocumentId] ?? 0) > 0) {
+          pendingImagePasteDraftsRef.current[draftDocumentId] = update.view.state.doc.toString();
         }
       }),
       EditorView.domEventHandlers({
@@ -170,6 +172,9 @@ export function DocumentEditor({
             formData.set("documentId", document?.id ?? "");
             formData.set("attachment", imageFile);
 
+            if (pasteDocumentId) {
+              editorViewDocumentIdsRef.current.set(view, pasteDocumentId);
+            }
             view.dispatch(view.state.replaceSelection(placeholder));
             pendingImagePasteDraftsRef.current[pasteDocumentId] = view.state.doc.toString();
             setPendingImagePasteCounts((counts) => ({
@@ -308,9 +313,12 @@ export function DocumentEditor({
   const handleCreateEditor = useCallback(
     (view: EditorView) => {
       editorViewRef.current = view;
+      if (document?.id) {
+        editorViewDocumentIdsRef.current.set(view, document.id);
+      }
       restoreEditorFolds(view);
     },
-    [restoreEditorFolds],
+    [document?.id, restoreEditorFolds],
   );
 
   useEffect(() => {
