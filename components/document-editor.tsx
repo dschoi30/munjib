@@ -1,7 +1,7 @@
 "use client";
 
 import { markdown } from "@codemirror/lang-markdown";
-import { foldEffect, foldedRanges } from "@codemirror/language";
+import { foldEffect } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -23,15 +23,24 @@ import type {
   EditableDocument,
   LinkCandidate,
 } from "@/components/document-editor/types";
+import {
+  persistEditorFoldState,
+  readStoredFoldedHeadingKeys,
+  writeStoredFoldedHeadingKeys,
+} from "@/components/document-editor/folding-storage";
+import {
+  getMarkdownBeforeFirstHeading,
+  getSharedMarkdownDefinitions,
+  markdownInlineToPlainText,
+  remarkPreviewSoftLineBreaks,
+  renderPreviewChunk,
+} from "@/components/document-editor/preview-markdown";
 import { WikiLinkSuggestions } from "@/components/document-editor/wiki-link-suggestions";
 import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
 import {
   buildHeadingFoldTree,
-  createHeadingFoldStorageValue,
   getValidFoldedHeadingKeys,
-  parseHeadingFoldStorageValue,
-  type HeadingFoldTree,
   type HeadingFoldSection,
 } from "@/lib/markdown/folding";
 import {
@@ -589,270 +598,6 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
-}
-
-function remarkPreviewSoftLineBreaks() {
-  return (tree: unknown) => {
-    visitMarkdownParents(tree);
-  };
-}
-
-function visitMarkdownParents(node: unknown) {
-  if (!node || typeof node !== "object") {
-    return;
-  }
-
-  const parent = node as { children?: unknown[] };
-
-  if (!Array.isArray(parent.children)) {
-    return;
-  }
-
-  parent.children = parent.children.flatMap((child) => splitMarkdownSoftLineBreaks(child));
-  parent.children.forEach(visitMarkdownParents);
-}
-
-function splitMarkdownSoftLineBreaks(node: unknown) {
-  if (!node || typeof node !== "object") {
-    return [node];
-  }
-
-  const textNode = node as { type?: string; value?: string };
-
-  if (textNode.type !== "text" || typeof textNode.value !== "string" || !textNode.value.includes("\n")) {
-    return [node];
-  }
-
-  const parts = textNode.value.split("\n");
-  return parts.flatMap((part, index) => {
-    const nodes: Array<{ type: string; value?: string }> = [];
-
-    if (index > 0) {
-      nodes.push({ type: "break" });
-    }
-
-    if (part.length > 0) {
-      nodes.push({ type: "text", value: part });
-    }
-
-    return nodes;
-  });
-}
-
-function readStoredFoldedHeadingKeys(storageKey: string, validKeys: Set<string>) {
-  try {
-    return getValidFoldedHeadingKeys(
-      parseHeadingFoldStorageValue(window.localStorage.getItem(storageKey)),
-      validKeys,
-    );
-  } catch {
-    return [];
-  }
-}
-
-function writeStoredFoldedHeadingKeys(storageKey: string, foldedKeys: Set<string>) {
-  try {
-    window.localStorage.setItem(storageKey, createHeadingFoldStorageValue(foldedKeys));
-  } catch {
-    // Folding remains usable in memory when browser storage is unavailable.
-  }
-}
-
-function persistEditorFoldState(view: EditorView, storageKey: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const foldTree = buildHeadingFoldTree(view.state.doc.toString());
-  const foldedKeys = getEditorFoldedHeadingKeys(view, foldTree);
-
-  if (!foldedKeys) {
-    return;
-  }
-
-  writeStoredFoldedHeadingKeys(storageKey, foldedKeys);
-}
-
-function getEditorFoldedHeadingKeys(view: EditorView, foldTree: HeadingFoldTree) {
-  const sectionKeyByEditorRange = new Map<string, string>();
-
-  for (const section of foldTree.sectionByKey.values()) {
-    const editorRange = section.editorRange;
-
-    if (editorRange && editorRange.fromLine <= editorRange.toLine) {
-      const headingLine = editorRange.fromLine - 1;
-
-      sectionKeyByEditorRange.set(
-        createEditorRangeKey(editorRange.fromLine, editorRange.toLine),
-        section.key,
-      );
-
-      if (headingLine >= 1 && headingLine <= editorRange.toLine) {
-        sectionKeyByEditorRange.set(createEditorRangeKey(headingLine, editorRange.toLine), section.key);
-      }
-    }
-  }
-
-  try {
-    const foldedKeys = new Set<string>();
-
-    foldedRanges(view.state).between(0, view.state.doc.length, (from, to) => {
-      try {
-        const fromLine = view.state.doc.lineAt(from).number;
-        const toLine = view.state.doc.lineAt(to).number;
-        const sectionKey = sectionKeyByEditorRange.get(createEditorRangeKey(fromLine, toLine));
-
-        if (sectionKey) {
-          foldedKeys.add(sectionKey);
-        }
-      } catch {
-        // Ignore a range that cannot be mapped back to a document line.
-      }
-    });
-
-    return new Set(getValidFoldedHeadingKeys(foldedKeys, foldTree.headingKeys));
-  } catch {
-    return null;
-  }
-}
-
-function createEditorRangeKey(fromLine: number, toLine: number) {
-  return `${fromLine}:${toLine}`;
-}
-
-function markdownInlineToPlainText(markdown: string) {
-  return markdown
-    .replace(/!?\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_match, target: string, alias: string | undefined) =>
-      alias ?? target,
-    )
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/[*_~]+/g, "")
-    .replace(/\\([\\`*_{}[\]()#+\-.!|>])/g, "$1")
-    .trim();
-}
-
-function getMarkdownBeforeFirstHeading(markdown: string) {
-  let inFence: { marker: "`" | "~"; length: number } | null = null;
-
-  for (const line of tokenizeMarkdownLines(markdown)) {
-    inFence = getNextFenceState(line.content, inFence);
-
-    if (!inFence && /^ {0,3}#{1,6}(?:[ \t]+|$)/.test(line.content)) {
-      return markdown.slice(0, line.startOffset);
-    }
-  }
-
-  return markdown;
-}
-
-function getSharedMarkdownDefinitions(markdown: string) {
-  const definitions: string[] = [];
-  let inFence: { marker: "`" | "~"; length: number } | null = null;
-
-  const lines = tokenizeMarkdownLines(markdown);
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index].content;
-
-    if (inFence) {
-      inFence = getNextFenceState(line, inFence);
-      continue;
-    }
-
-    const nextFenceState = getNextFenceState(line, inFence);
-    if (nextFenceState) {
-      inFence = nextFenceState;
-      continue;
-    }
-
-    if (isMarkdownDefinitionLine(line)) {
-      definitions.push(line);
-
-      for (index += 1; index < lines.length; index += 1) {
-        const continuationLine = lines[index].content;
-
-        if (!isMarkdownDefinitionContinuationLine(continuationLine)) {
-          index -= 1;
-          break;
-        }
-
-        definitions.push(continuationLine);
-      }
-    }
-  }
-
-  return definitions.join("\n");
-}
-
-function tokenizeMarkdownLines(markdown: string) {
-  const lines: Array<{ content: string; startOffset: number }> = [];
-  let startOffset = 0;
-
-  for (let index = 0; index <= markdown.length; index += 1) {
-    if (index !== markdown.length && markdown[index] !== "\n") {
-      continue;
-    }
-
-    const hasNewline = index < markdown.length;
-    const rawContent = markdown.slice(startOffset, index);
-
-    if (rawContent.length > 0 || hasNewline || markdown.length === 0) {
-      lines.push({
-        content: rawContent.endsWith("\r") ? rawContent.slice(0, -1) : rawContent,
-        startOffset,
-      });
-    }
-
-    startOffset = index + 1;
-  }
-
-  return lines;
-}
-
-function getNextFenceState(
-  content: string,
-  inFence: { marker: "`" | "~"; length: number } | null,
-) {
-  if (inFence) {
-    const closingFence = content.match(/^ {0,3}(`{3,}|~{3,})[ \t]*$/);
-
-    if (!closingFence) {
-      return inFence;
-    }
-
-    const marker = closingFence[1][0] as "`" | "~";
-    const length = closingFence[1].length;
-
-    return inFence.marker === marker && length >= inFence.length ? null : inFence;
-  }
-
-  const openingFence = content.match(/^ {0,3}(`{3,}|~{3,})/);
-
-  return openingFence
-    ? {
-        marker: openingFence[1][0] as "`" | "~",
-        length: openingFence[1].length,
-      }
-    : null;
-}
-
-function renderPreviewChunk(
-  markdown: string,
-  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>,
-  sharedDefinitions: string,
-) {
-  const markdownWithDefinitions = sharedDefinitions ? `${markdown}\n\n${sharedDefinitions}` : markdown;
-
-  return renderPreviewMarkdownWithWikiLinks(markdownWithDefinitions, candidateBySlug);
-}
-
-function isMarkdownDefinitionLine(line: string) {
-  return /^ {0,3}\[(?:\^[^\]\n]+|[^\]\n]+)\]:[ \t]*(?:\S.*)?$/.test(line);
-}
-
-function isMarkdownDefinitionContinuationLine(line: string) {
-  return line.trim().length === 0 || /^[ \t]/.test(line);
 }
 
 function DocumentProperties({
