@@ -76,7 +76,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 
 ## 수정 흐름
 
-`updateDocumentAction()`은 form data의 `documentId`, `title`, `contentMarkdown`을 받아 `updateDocument()`를 호출한다. 저장 후 workspace path를 revalidate하고 같은 문서 query로 redirect한다. 이 redirect는 저장 후 UI가 stale RSC payload를 계속 보여주는 문제를 막기 위한 핵심이다.
+`updateDocumentAction()`은 form data의 `documentId`, `title`, `contentMarkdown`을 받아 `updateDocument()`를 호출한다. 저장 후 workspace path만 revalidate하고 같은 문서 query로 redirect하지 않는다. 현재 문서 저장은 이미 같은 editor surface 안에서 완료 상태를 갱신하므로, redirect를 추가하면 document editor가 재마운트되어 저장 시 화면 깜빡임이 다시 발생한다.
 
 `updateDocument()`는 다음을 수행한다.
 
@@ -94,7 +94,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다.
 
-`createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다.
+`createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다. Comment 저장도 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행해 DocumentEditor remount와 화면 깜빡임을 피한다.
 
 ## 아카이브와 broken link 생성
 
@@ -110,11 +110,11 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 `DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다. Title input은 Obsidian-style reading surface에 맞춰 borderless heading-size control로 렌더링한다.
 
-Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. Issue #31에서 edit/preview control은 editor 내부 segmented text buttons가 아니라 navigation toolbar 오른쪽의 single icon toggle로 이동했다. Preview 상태에서는 edit icon만 보이고, edit 상태에서는 preview icon만 보여 두 mode가 교대로 전환된다. Mode 전환은 workspace center scroll container의 현재 `scrollTop`을 복원해 문서 중간에서 edit/preview를 오가도 화면이 맨 위로 점프하지 않는다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다.
+Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. Issue #31에서 edit/preview control은 editor 내부 segmented text buttons가 아니라 navigation toolbar 오른쪽의 single icon toggle로 이동했다. Preview 상태에서는 edit icon만 보이고, edit 상태에서는 preview icon만 보여 두 mode가 교대로 전환된다. Mode 전환은 workspace center scroll container의 현재 `scrollTop`을 복원해 문서 중간에서 edit/preview를 오가도 화면이 맨 위로 점프하지 않는다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다. 외부 앱에서 rich text를 붙여넣을 때 clipboard HTML이 있으면 heading, bold, italic, link, list, code, blockquote 같은 semantic style을 Markdown으로 변환해 저장 모델은 `contentMarkdown`으로 유지한다. HTML-to-Markdown 변환은 inline element 사이 공백, backtick을 포함한 inline code delimiter, inline code 내부 의미 있는 공백, nested list indentation, table cell/row boundary, fenced code block 내부 fence 충돌을 보존한다.
 
-Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다.
+Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다. Preview paragraph는 CSS `white-space: pre-wrap`으로 렌더링하고, ReactMarkdown remark transform이 paragraph 내부 soft line break를 explicit break node로 바꿔 edit mode에서 입력한 단일 개행과 외부 텍스트 paste 개행을 preview에 안정적으로 반영한다.
 
-Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
+Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
 우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 
@@ -142,6 +142,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `app/workspaces/[workspaceSlug]/actions.ts`
 - GitHub issue #26
 - `components/document-editor.tsx`
+- `app/globals.css`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
 - `components/knowledge-graph-view.tsx`
@@ -155,6 +156,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/documents/service.ts`
 - `lib/documents/import-markdown.ts`
 - `lib/markdown/folding.ts`
+- `lib/markdown/html-to-markdown.ts`
 - `lib/wiki-links/preview.ts`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
@@ -164,9 +166,12 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `prisma/schema.prisma`
 - `tests/markdown/folding.test.ts`
 - `tests/markdown/outline.test.ts`
+- `tests/markdown/preview-styles.test.ts`
+- `tests/workspace-actions.test.ts`
 - `tests/components/metadata-panel.test.tsx`
 - `tests/components/app-shell.test.tsx`
 - `tests/components/document-editor-preview.test.tsx`
+- `tests/e2e/preview-line-breaks.spec.ts`
 - `tests/components/document-list.test.tsx`
 - `tests/documents/import-markdown.test.ts`
 - `tests/components/knowledge-graph-view.test.tsx`
