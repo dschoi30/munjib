@@ -15,6 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
@@ -96,6 +97,7 @@ export function DocumentEditor({
     storageKey: string;
   } | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const previewHeadingExpanderRef = useRef<((id: string) => void) | null>(null);
   const headingNavigation = useHeadingNavigation();
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
@@ -196,11 +198,21 @@ export function DocumentEditor({
     }
 
     const navigateToHeading = (target: HeadingNavigationTarget) => {
-      const previewTarget = getOutlineHeadingTarget(target.id);
+      let previewTarget = getOutlineHeadingTarget(target.id);
 
       if (previewTarget) {
         previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
         return true;
+      }
+
+      if (mode === "preview" && previewHeadingExpanderRef.current) {
+        flushSync(() => previewHeadingExpanderRef.current?.(target.id));
+        previewTarget = getOutlineHeadingTarget(target.id);
+
+        if (previewTarget) {
+          previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+          return true;
+        }
       }
 
       const view = editorViewRef.current;
@@ -225,7 +237,7 @@ export function DocumentEditor({
 
     registerHeadingNavigator(navigateToHeading);
     return () => registerHeadingNavigator(null);
-  }, [document?.id, registerHeadingNavigator]);
+  }, [document?.id, mode, registerHeadingNavigator]);
 
   useEffect(() => {
     if (!setOutlineDocument) {
@@ -332,6 +344,9 @@ export function DocumentEditor({
             markdown={contentMarkdown}
             documentId={document.id}
             linkCandidates={linkCandidates}
+            registerHeadingExpander={(expander) => {
+              previewHeadingExpanderRef.current = expander;
+            }}
           />
         ) : null}
       </div>
@@ -384,10 +399,12 @@ function MarkdownPreview({
   markdown,
   documentId,
   linkCandidates,
+  registerHeadingExpander,
 }: {
   markdown: string;
   documentId: string;
   linkCandidates: LinkCandidate[];
+  registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
@@ -443,6 +460,42 @@ function MarkdownPreview({
     [foldTree.headingKeys, storageKey],
   );
 
+  const unfoldHeadingAncestors = useCallback(
+    (id: string) => {
+      const ancestorIds = getAncestorOutlineHeadingIds(id);
+
+      if (ancestorIds.length === 0) {
+        return;
+      }
+
+      setFoldedKeys((current) => {
+        const next = new Set(current);
+        let changed = false;
+
+        for (const ancestorId of ancestorIds) {
+          if (next.delete(ancestorId)) {
+            changed = true;
+          }
+        }
+
+        if (!changed) {
+          return current;
+        }
+
+        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
+        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
+
+        return validKeySet;
+      });
+    },
+    [foldTree.headingKeys, storageKey],
+  );
+
+  useEffect(() => {
+    registerHeadingExpander?.(unfoldHeadingAncestors);
+    return () => registerHeadingExpander?.(null);
+  }, [registerHeadingExpander, unfoldHeadingAncestors]);
+
   return (
     <div className="markdown-preview min-w-0 p-5">
       {foldTree.sections.length > 0 ? (
@@ -474,6 +527,17 @@ function MarkdownPreview({
       )}
     </div>
   );
+}
+
+function getAncestorOutlineHeadingIds(id: string) {
+  const parts = id.split("/");
+  const ancestors: string[] = [];
+
+  for (let index = 1; index < parts.length; index += 1) {
+    ancestors.push(parts.slice(0, index).join("/"));
+  }
+
+  return ancestors;
 }
 
 function MarkdownPreviewSection({

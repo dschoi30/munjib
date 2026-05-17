@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 63
+updated: 2026-05-17
+source_count: 64
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-17T11:24:00+09:00 - review follow-up
+
+- Result: PR #45 Codex review에서 지적한 preview outline navigation edge case를 수정했다.
+- Coverage: preview mode에서 접힌 parent section 아래 child heading outline row를 클릭하면 `DocumentEditor`가 target heading의 ancestor fold keys를 먼저 펼치고 DOM target을 다시 조회한 뒤 스크롤한다. 이로써 child heading이 접힘 때문에 DOM에 없던 경우에도 outline click이 no-op으로 끝나지 않는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #45 unresolved review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-17T00:18:00+09:00 - review follow-up
 
