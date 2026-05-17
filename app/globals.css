@@ -17,6 +17,10 @@
   margin-top: 0.85rem;
 }
 
+.markdown-preview p {
+  white-space: pre-wrap;
+}
+
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3 {

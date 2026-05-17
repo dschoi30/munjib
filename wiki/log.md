@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-17T12:15:00+09:00 - regression fix
+
+- Result: Issue #46 branch에서 외부 branch merge 이후 다시 나타난 DocumentEditor 저장 flicker와 preview 줄바꿈 접힘 회귀를 복구했다.
+- Coverage: `updateDocumentAction()`과 `createCommentAction()`은 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행한다. Preview paragraph는 `white-space: pre-wrap`을 유지해 외부 텍스트 paste나 markdown paragraph의 단일 개행을 보존한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 회귀 보고, `app/workspaces/[workspaceSlug]/actions.ts`, `app/globals.css`, `tests/workspace-actions.test.ts`, `tests/markdown/preview-styles.test.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-actions.test.ts`, `pnpm exec vitest run tests/markdown/preview-styles.test.ts`.
+
 ## 2026-05-17T12:10:00+09:00 - review follow-up
 
 - Result: Issue #46 branch를 최신 main과 merge한 뒤 Properties tags 정책에 맞춰 실패하던 DocumentEditor component tests를 수정했다.
