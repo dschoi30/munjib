@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 63
+updated: 2026-05-17
+source_count: 64
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-17T11:55:00+09:00 - implementation
+
+- Result: Issue #46 rich paste 동작을 추가해 외부 앱에서 복사한 styled text를 Markdown editor에 붙여넣을 때 의미 있는 스타일을 Markdown으로 보존한다.
+- Coverage: clipboard `text/html`을 감지하면 CodeMirror paste handler가 기본 paste를 막고 heading, bold, italic, link, list, inline code, code block, blockquote, line break를 semantic Markdown으로 변환해 삽입한다. HTML이 없거나 변환 결과가 비어 있으면 기존 plain text paste 흐름을 유지한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #46, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `tests/markdown/html-to-markdown.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/html-to-markdown.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-16T23:19:24+09:00 - design
 
