@@ -573,6 +573,8 @@ describe("DocumentEditor heading preview folding", () => {
       state: {
         replaceSelection,
         doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 2, to: 5 }] },
+        sliceDoc: (from: number, to: number) => "Intro".slice(from, to),
       },
       dispatch,
     })).toBe(true);
@@ -642,6 +644,8 @@ describe("DocumentEditor heading preview folding", () => {
       state: {
         replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
         doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
       },
       dispatch,
     })).toBe(true);
@@ -670,6 +674,62 @@ describe("DocumentEditor heading preview folding", () => {
         ],
       });
     });
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+  });
+
+  it("does not keep save disabled after switching away from a document with pending image paste", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    const { rerender } = render(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: { toString: () => "First" },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch: vi.fn(),
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-2", title: "Second", contentMarkdown: "Second" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
     await vi.waitFor(() => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
     });
@@ -705,6 +765,8 @@ describe("DocumentEditor heading preview folding", () => {
       state: {
         replaceSelection: vi.fn((text: string) => ({ changes: { from: 0, to: 0, insert: text } })),
         doc: { toString: () => "" },
+        selection: { ranges: [{ from: 0, to: 0 }] },
+        sliceDoc: () => "",
       },
       dispatch: vi.fn(),
     })).toBe(true);
@@ -746,6 +808,8 @@ describe("DocumentEditor heading preview folding", () => {
       state: {
         replaceSelection,
         doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 1, to: 4 }] },
+        sliceDoc: (from: number, to: number) => "Intro".slice(from, to),
       },
       dispatch,
     })).toBe(true);
@@ -763,7 +827,7 @@ describe("DocumentEditor heading preview folding", () => {
         {
           from: 7,
           to: 7 + placeholder.length,
-          insert: "",
+          insert: "ntr",
         },
       ],
     });

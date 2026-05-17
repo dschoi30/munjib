@@ -54,18 +54,31 @@ function getClipboardImageFile(dataTransfer: DataTransfer | null) {
 }
 
 function replaceCurrentPlaceholder(view: EditorView, placeholder: string, insert: string) {
+  replaceCurrentPlaceholders(view, placeholder, insert);
+}
+
+function replaceCurrentPlaceholders(view: EditorView, placeholder: string, insert: string | string[]) {
   const currentMarkdown = view.state.doc.toString();
   const changes = [];
   let from = currentMarkdown.indexOf(placeholder);
+  let index = 0;
 
   while (from !== -1) {
-    changes.push({ from, to: from + placeholder.length, insert });
+    const replacement = Array.isArray(insert)
+      ? (insert[Math.min(index, insert.length - 1)] ?? "")
+      : insert;
+    changes.push({ from, to: from + placeholder.length, insert: replacement });
     from = currentMarkdown.indexOf(placeholder, from + placeholder.length);
+    index += 1;
   }
 
   if (changes.length > 0) {
     view.dispatch({ changes });
   }
+}
+
+function getSelectedTexts(view: EditorView) {
+  return view.state.selection.ranges.map((range) => view.state.sliceDoc(range.from, range.to));
 }
 
 export function DocumentEditor({
@@ -97,8 +110,12 @@ export function DocumentEditor({
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
-  const [pendingImagePasteCount, setPendingImagePasteCount] = useState(0);
-  const hasPendingImagePaste = pendingImagePasteCount > 0;
+  const [pendingImagePaste, setPendingImagePaste] = useState<{
+    count: number;
+    documentId: string | null;
+  }>({ count: 0, documentId: null });
+  const hasPendingImagePaste =
+    pendingImagePaste.documentId === document?.id && pendingImagePaste.count > 0;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -122,23 +139,37 @@ export function DocumentEditor({
           if (imageFile) {
             event.preventDefault();
             const placeholder = createPastedImagePlaceholder();
+            const selectedTexts = getSelectedTexts(view);
+            const pasteDocumentId = document?.id ?? null;
             const formData = new FormData();
             formData.set("documentId", document?.id ?? "");
             formData.set("attachment", imageFile);
 
             view.dispatch(view.state.replaceSelection(placeholder));
-            setPendingImagePasteCount((count) => count + 1);
+            setPendingImagePaste((pending) => ({
+              documentId: pasteDocumentId,
+              count: pending.documentId === pasteDocumentId ? pending.count + 1 : 1,
+            }));
 
             void Promise.resolve(pasteImageAttachmentAction(formData))
               .then(({ markdown }) => {
                 replaceCurrentPlaceholder(view, placeholder, markdown);
               })
               .catch(() => {
-                replaceCurrentPlaceholder(view, placeholder, "");
+                replaceCurrentPlaceholders(view, placeholder, selectedTexts);
                 toast.error("Image paste failed");
               })
               .finally(() => {
-                setPendingImagePasteCount((count) => Math.max(0, count - 1));
+                setPendingImagePaste((pending) => {
+                  if (pending.documentId !== pasteDocumentId) {
+                    return pending;
+                  }
+
+                  return {
+                    documentId: pasteDocumentId,
+                    count: Math.max(0, pending.count - 1),
+                  };
+                });
               });
 
             return true;
