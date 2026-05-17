@@ -3,7 +3,6 @@
 import { markdown } from "@codemirror/lang-markdown";
 import { foldEffect, foldedRanges } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
-import type { DocumentProperty, Tag } from "@prisma/client";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -19,6 +18,12 @@ import { flushSync } from "react-dom";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
+import type {
+  DocumentEditorProps,
+  EditableDocument,
+  LinkCandidate,
+} from "@/components/document-editor/types";
+import { WikiLinkSuggestions } from "@/components/document-editor/wiki-link-suggestions";
 import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,12 +38,10 @@ import {
   buildWikiLinkPreviewCandidateMap,
   renderPreviewMarkdownWithWikiLinks,
 } from "@/lib/wiki-links/preview";
-import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 import {
   getActiveWikiLinkCompletion,
   getWikiLinkCompletionOptions,
   type ActiveWikiLinkCompletion,
-  type WikiLinkCompletionOption,
 } from "@/lib/wiki-links/autocomplete";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
@@ -46,18 +49,6 @@ import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
-
-type EditableDocument = {
-  id: string;
-  title: string;
-  contentMarkdown: string;
-};
-type LinkCandidate = {
-  id: string;
-  slug: string;
-  title: string;
-  path: string;
-};
 
 export function DocumentEditor({
   document,
@@ -71,23 +62,7 @@ export function DocumentEditor({
   linkPanels,
   createFromBrokenLinkAction,
   createCommentAction,
-}: {
-  document: EditableDocument | null;
-  canWrite: boolean;
-  action: (formData: FormData) => Promise<void>;
-  uploadAttachmentAction: (formData: FormData) => Promise<void>;
-  linkCandidates: LinkCandidate[];
-  tags: Pick<Tag, "id" | "name">[];
-  properties: Pick<DocumentProperty, "id" | "key" | "valueJson">[];
-  comments: Array<{
-    id: string;
-    body: string;
-    user: { name: string; email: string };
-  }>;
-  linkPanels: DocumentLinkPanels;
-  createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
-  createCommentAction: (formData: FormData) => Promise<void>;
-}) {
+}: DocumentEditorProps) {
   const { mode } = useDocumentViewMode();
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
@@ -160,7 +135,7 @@ export function DocumentEditor({
     );
   }
 
-  function insertWikiLink(option: WikiLinkCompletionOption) {
+  function insertWikiLink(option: (typeof suggestions)[number]) {
     if (!activeCompletion) return;
     const nextMarkdown = `${contentMarkdown.slice(0, activeCompletion.from)}${option.insertText}${contentMarkdown.slice(
       activeCompletion.to,
@@ -379,38 +354,6 @@ export function DocumentEditor({
           Save
         </Button>
       </div>
-    </div>
-  );
-}
-
-function WikiLinkSuggestions({
-  canWrite,
-  suggestions,
-  onSelect,
-}: {
-  canWrite: boolean;
-  suggestions: WikiLinkCompletionOption[];
-  onSelect: (option: WikiLinkCompletionOption) => void;
-}) {
-  if (!canWrite || suggestions.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
-      <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-        Wiki links
-      </div>
-      {suggestions.map((option) => (
-        <button
-          key={option.id}
-          type="button"
-          onClick={() => onSelect(option)}
-          className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
-        >
-          {option.label}
-        </button>
-      ))}
     </div>
   );
 }
@@ -923,14 +866,10 @@ function DocumentProperties({
   createCommentAction,
 }: {
   document: EditableDocument;
-  tags: Pick<Tag, "id" | "name">[];
-  properties: Pick<DocumentProperty, "id" | "key" | "valueJson">[];
-  comments: Array<{
-    id: string;
-    body: string;
-    user: { name: string; email: string };
-  }>;
-  linkPanels: DocumentLinkPanels;
+  tags: DocumentEditorProps["tags"];
+  properties: DocumentEditorProps["properties"];
+  comments: DocumentEditorProps["comments"];
+  linkPanels: DocumentEditorProps["linkPanels"];
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
   createCommentAction: (formData: FormData) => Promise<void>;
