@@ -83,3 +83,19 @@ pnpm wiki:sync-check --staged
 `pnpm wiki:sync-check --staged` fails when staged source changes do not include any staged wiki maintenance file. This is a guardrail, not a substitute for judgment: small implementation-only changes may need a deliberate no-op wiki update entry, while architectural, workflow, model, or tooling changes should update the relevant page content.
 
 The tracked `.githooks/pre-commit` hook runs `pnpm wiki:sync-check --staged` and `pnpm wiki:lint`. `pnpm wiki:install-hooks` enables that hook for the local checkout by setting `core.hooksPath`.
+
+## Task Completion and PR Review Workflow
+
+After finishing an implementation task, do not stop at local verification. Complete this sequence unless the user explicitly asks for a different handoff:
+
+1. Run the relevant verification commands and fix any failures.
+2. Stage the source changes and any required wiki maintenance.
+3. Run `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged`.
+4. Commit and push the branch.
+5. Create the PR. A user choice to push/create a PR counts as starting the PR review workflow.
+6. Mark the PR ready for review, or request review if the PR is already ready.
+7. Wait at least 5 minutes.
+8. Re-check PR review submissions, unresolved review threads, inline comments, and CI/check status.
+9. If there is actionable review feedback or a failing check, fix it on the same branch, rerun verification and wiki sync, commit, push, and repeat the PR review check.
+
+Only give the final task-complete response after reporting the PR review and CI/check status. If review or CI inspection is blocked by authentication, tooling, or network failure, state the blocker and the exact command or permission needed instead of silently skipping the step.

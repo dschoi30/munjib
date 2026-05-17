@@ -27,6 +27,31 @@ links:
 - Source evidence: GitHub issue #46, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `tests/markdown/html-to-markdown.test.ts`, `tests/components/document-editor-preview.test.tsx`.
 - Verification: `pnpm exec vitest run tests/markdown/html-to-markdown.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
+## 2026-05-17T11:24:00+09:00 - review follow-up
+
+- Result: PR #45 Codex review에서 지적한 preview outline navigation edge case를 수정했다.
+- Coverage: preview mode에서 접힌 parent section 아래 child heading outline row를 클릭하면 `DocumentEditor`가 target heading의 ancestor fold keys를 먼저 펼치고 DOM target을 다시 조회한 뒤 스크롤한다. 이로써 child heading이 접힘 때문에 DOM에 없던 경우에도 outline click이 no-op으로 끝나지 않는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #45 unresolved review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/components/metadata-panel.test.tsx tests/components/app-shell.test.tsx tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-17T00:18:00+09:00 - review follow-up
+
+- Result: Issue #44 final review에서 발견된 outline navigation fallback edge case를 수정했다.
+- Coverage: `AppShell` heading navigator는 실제 target 처리 여부를 boolean으로 반환하고, `DocumentEditor`는 preview target 또는 CodeMirror line scroll을 성공했을 때만 handled로 보고한다. `MetadataPanel`은 registered navigator가 target을 처리하지 못하면 DOM `data-outline-heading-id` fallback으로 스크롤한다. PR review follow-up으로 `DocumentEditor`의 저장 전 `contentMarkdown` state를 `AppShell` outline document context에 등록해 metadata outline이 live markdown을 우선 사용하게 했고, selector escaping utility는 `lib/outline-targets.ts`로 공유했다. PR review loop 누락 원인은 completion rule이 wiki에는 있었지만 `AGENTS.md`의 hard rule로 고정되지 않았고, draft PR 생성과 review request/wait/recheck 단계가 별도 상태처럼 쓰인 점이었다. `AGENTS.md`, [[Local Development Workflow]], [[Wiki Maintenance Automation]]에 push/PR 선택이 review workflow 시작이라는 규칙, 5분 대기, review thread/CI 재확인, blocker 보고 요구를 명시했다. Plan의 final status checkbox도 구현 완료 상태에 맞춰 갱신했다.
+- Pages: [[log|Wiki Log]], [[Local Development Workflow]], [[Wiki Maintenance Automation]].
+- Source evidence: final code review, GitHub PR #45 review threads, `AGENTS.md`, `components/app-shell.tsx`, `components/document-editor.tsx`, `components/metadata-panel.tsx`, `lib/outline-targets.ts`, `tests/components/app-shell.test.tsx`, `tests/components/metadata-panel.test.tsx`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`.
+- Verification: `pnpm exec vitest run tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/metadata-panel.test.tsx tests/components/document-editor-preview.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:lint`.
+
+## 2026-05-16T23:55:00+09:00 - implementation
+
+- Result: Issue #44 metadata panel outline navigation 구현 상태를 durable wiki에 반영했다.
+- Coverage: metadata panel 첫 번째 `Outline` tab, `#`-`####` ATX heading extraction, frontmatter/fenced-code/empty-heading exclusion, `DocumentNavigation`-style `border-l` guide lines, preview `data-outline-heading-id`, edit mode CodeMirror line scroll, DOM fallback navigation을 기록했다.
+- Changed files: `wiki/Document Editing Workflow.md`, `wiki/index.md`, `wiki/log.md`, `wiki/manifest.json`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #44, `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`, `docs/superpowers/plans/2026-05-16-metadata-panel-outline.md`, `lib/markdown/folding.ts`, `components/metadata-panel.tsx`, `components/document-editor.tsx`, `components/app-shell.tsx`, `tests/markdown/outline.test.ts`, `tests/components/metadata-panel.test.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/app-shell.test.tsx`.
+- Verification: `pnpm exec vitest run tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/components/metadata-panel.test.tsx tests/components/document-editor-preview.test.tsx tests/components/app-shell.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-05-16T23:19:24+09:00 - design
 
 - Result: metadata panel outline 기능 설계를 승인하고 spec으로 기록했다.

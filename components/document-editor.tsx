@@ -15,8 +15,10 @@ import {
   Upload,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
 import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +43,7 @@ import {
 import { visibleDocumentProperties } from "@/lib/document-metadata/display";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
+import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
@@ -94,6 +97,11 @@ export function DocumentEditor({
   const editorFoldContextRef = useRef<{
     storageKey: string;
   } | null>(null);
+  const editorViewRef = useRef<EditorView | null>(null);
+  const previewHeadingExpanderRef = useRef<((id: string) => void) | null>(null);
+  const headingNavigation = useHeadingNavigation();
+  const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
+  const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const extensions = useMemo(
     () => [
@@ -192,6 +200,82 @@ export function DocumentEditor({
     },
     [contentMarkdown, document?.id],
   );
+  const handleCreateEditor = useCallback(
+    (view: EditorView) => {
+      editorViewRef.current = view;
+      restoreEditorFolds(view);
+    },
+    [restoreEditorFolds],
+  );
+
+  useEffect(() => {
+    editorViewRef.current = null;
+  }, [document?.id]);
+
+  useEffect(() => {
+    if (!document?.id || !registerHeadingNavigator) {
+      return;
+    }
+
+    const navigateToHeading = (target: HeadingNavigationTarget) => {
+      let previewTarget = getOutlineHeadingTarget(target.id);
+
+      if (previewTarget) {
+        previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+        return true;
+      }
+
+      if (mode === "preview" && previewHeadingExpanderRef.current) {
+        flushSync(() => previewHeadingExpanderRef.current?.(target.id));
+        previewTarget = getOutlineHeadingTarget(target.id);
+
+        if (previewTarget) {
+          previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
+          return true;
+        }
+      }
+
+      const view = editorViewRef.current;
+
+      if (!view || target.lineNumber < 1) {
+        return false;
+      }
+
+      try {
+        const line = view.state.doc.line(target.lineNumber);
+
+        view.dispatch({
+          effects: EditorView.scrollIntoView(line.from, { y: "start" }),
+        });
+
+        return true;
+      } catch {
+        // Ignore outline targets whose source line is no longer present.
+        return false;
+      }
+    };
+
+    registerHeadingNavigator(navigateToHeading);
+    return () => registerHeadingNavigator(null);
+  }, [document?.id, mode, registerHeadingNavigator]);
+
+  useEffect(() => {
+    if (!setOutlineDocument) {
+      return;
+    }
+
+    setOutlineDocument(
+      document?.id ? { id: document.id, contentMarkdown } : null,
+    );
+  }, [contentMarkdown, document?.id, setOutlineDocument]);
+
+  useEffect(() => {
+    if (!setOutlineDocument) {
+      return;
+    }
+
+    return () => setOutlineDocument(null);
+  }, [document?.id, setOutlineDocument]);
   const editorMarkdownReady = contentDocumentId === document?.id;
 
   if (!document) {
@@ -262,7 +346,7 @@ export function DocumentEditor({
               }}
               editable={canWrite}
               extensions={extensions}
-              onCreateEditor={restoreEditorFolds}
+              onCreateEditor={handleCreateEditor}
               onChange={(value, viewUpdate) =>
                 updateMarkdown(value, viewUpdate.state.selection.main.head)
               }
@@ -280,6 +364,9 @@ export function DocumentEditor({
             markdown={contentMarkdown}
             documentId={document.id}
             linkCandidates={linkCandidates}
+            registerHeadingExpander={(expander) => {
+              previewHeadingExpanderRef.current = expander;
+            }}
           />
         ) : null}
       </div>
@@ -332,10 +419,12 @@ function MarkdownPreview({
   markdown,
   documentId,
   linkCandidates,
+  registerHeadingExpander,
 }: {
   markdown: string;
   documentId: string;
   linkCandidates: LinkCandidate[];
+  registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
@@ -391,6 +480,42 @@ function MarkdownPreview({
     [foldTree.headingKeys, storageKey],
   );
 
+  const unfoldHeadingAncestors = useCallback(
+    (id: string) => {
+      const ancestorIds = getAncestorOutlineHeadingIds(id);
+
+      if (ancestorIds.length === 0) {
+        return;
+      }
+
+      setFoldedKeys((current) => {
+        const next = new Set(current);
+        let changed = false;
+
+        for (const ancestorId of ancestorIds) {
+          if (next.delete(ancestorId)) {
+            changed = true;
+          }
+        }
+
+        if (!changed) {
+          return current;
+        }
+
+        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
+        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
+
+        return validKeySet;
+      });
+    },
+    [foldTree.headingKeys, storageKey],
+  );
+
+  useEffect(() => {
+    registerHeadingExpander?.(unfoldHeadingAncestors);
+    return () => registerHeadingExpander?.(null);
+  }, [registerHeadingExpander, unfoldHeadingAncestors]);
+
   return (
     <div className="markdown-preview min-w-0 p-5">
       {foldTree.sections.length > 0 ? (
@@ -424,6 +549,17 @@ function MarkdownPreview({
   );
 }
 
+function getAncestorOutlineHeadingIds(id: string) {
+  const parts = id.split("/");
+  const ancestors: string[] = [];
+
+  for (let index = 1; index < parts.length; index += 1) {
+    ancestors.push(parts.slice(0, index).join("/"));
+  }
+
+  return ancestors;
+}
+
 function MarkdownPreviewSection({
   section,
   foldedKeys,
@@ -446,7 +582,10 @@ function MarkdownPreviewSection({
   const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
 
   return (
-    <section className={getPreviewHeadingSectionClassName(section.level)}>
+    <section
+      data-outline-heading-id={section.key}
+      className={getPreviewHeadingSectionClassName(section.level)}
+    >
       <div className="group relative">
         <button
           type="button"
