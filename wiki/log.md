@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-18T01:03:00+09:00 - maintenance
+
+- Result: Issue #52 clipboard image paste attachment workflow를 최종 구현 상태에 맞춰 정리했다.
+- Coverage: Manual attachment upload는 기존처럼 markdown link append와 즉시 document version 생성을 수행하고, Markdown editor clipboard image paste는 `pasteDocumentImageAttachmentAction()`을 통해 paste-only attachment service를 호출한다. Paste-only service/action은 `image/png`, `image/jpeg`, `image/gif`, `image/webp` file blob만 저장하고 `![file](/api/attachments/<id>)` markdown을 반환하되 `Document.contentMarkdown`와 `DocumentVersion`은 즉시 바꾸지 않는다. `DocumentEditor`는 paste selection에 temporary upload placeholder를 동기 삽입하고 upload 성공 시 현재 placeholder를 반환 markdown으로 교체하며, upload 실패 시 placeholder를 제거하고 `Image paste failed` toast를 표시한다. Body markdown persistence, version 생성, metadata/link reconciliation, audit log 작성은 사용자가 Save를 누를 때 기존 `updateDocument()` 흐름에서 확정된다. Remote `<img>` download와 Markdown import image collection은 Issue #52 범위 밖이다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #52, `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`, `docs/superpowers/plans/2026-05-18-clipboard-image-paste-attachments.md`, `lib/attachments/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-editor.tsx`, `tests/attachments/service.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/attachments/service.test.ts tests/workspace-actions.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
 ## 2026-05-18T00:47:00+09:00 - implementation
 
 - Result: Issue #52 Task 3 `DocumentEditor` paste integration을 추가했다.
