@@ -57,6 +57,25 @@ function replaceCurrentPlaceholder(view: EditorView, placeholder: string, insert
   replaceCurrentPlaceholders(view, placeholder, insert);
 }
 
+function replacePlaceholdersInMarkdown(markdown: string, placeholder: string, insert: string | string[]) {
+  let nextMarkdown = "";
+  let start = 0;
+  let from = markdown.indexOf(placeholder);
+  let index = 0;
+
+  while (from !== -1) {
+    const replacement = Array.isArray(insert)
+      ? (insert[Math.min(index, insert.length - 1)] ?? "")
+      : insert;
+    nextMarkdown += `${markdown.slice(start, from)}${replacement}`;
+    start = from + placeholder.length;
+    from = markdown.indexOf(placeholder, start);
+    index += 1;
+  }
+
+  return index > 0 ? `${nextMarkdown}${markdown.slice(start)}` : markdown;
+}
+
 function replaceCurrentPlaceholders(view: EditorView, placeholder: string, insert: string | string[]) {
   const currentMarkdown = view.state.doc.toString();
   const changes = [];
@@ -105,6 +124,9 @@ export function DocumentEditor({
     storageKey: string;
   } | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const activeDocumentIdRef = useRef<string | null>(document?.id ?? null);
+  const pendingImagePasteCountsRef = useRef<Record<string, number>>({});
+  const pendingImagePasteDraftsRef = useRef<Record<string, string>>({});
   const previewHeadingExpanderRef = useRef<((id: string) => void) | null>(null);
   const headingNavigation = useHeadingNavigation();
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
@@ -112,6 +134,8 @@ export function DocumentEditor({
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const [pendingImagePasteCounts, setPendingImagePasteCounts] = useState<Record<string, number>>({});
   const hasPendingImagePaste = document?.id ? (pendingImagePasteCounts[document.id] ?? 0) > 0 : false;
+  activeDocumentIdRef.current = document?.id ?? null;
+  pendingImagePasteCountsRef.current = pendingImagePasteCounts;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -123,6 +147,11 @@ export function DocumentEditor({
         }
 
         persistEditorFoldState(update.view, context.storageKey);
+
+        const activeDocumentId = activeDocumentIdRef.current;
+        if (activeDocumentId && (pendingImagePasteCountsRef.current[activeDocumentId] ?? 0) > 0) {
+          pendingImagePasteDraftsRef.current[activeDocumentId] = update.view.state.doc.toString();
+        }
       }),
       EditorView.domEventHandlers({
         paste: (event, view) => {
@@ -142,6 +171,7 @@ export function DocumentEditor({
             formData.set("attachment", imageFile);
 
             view.dispatch(view.state.replaceSelection(placeholder));
+            pendingImagePasteDraftsRef.current[pasteDocumentId] = view.state.doc.toString();
             setPendingImagePasteCounts((counts) => ({
               ...counts,
               [pasteDocumentId]: (counts[pasteDocumentId] ?? 0) + 1,
@@ -149,10 +179,22 @@ export function DocumentEditor({
 
             void Promise.resolve(pasteImageAttachmentAction(formData))
               .then(({ markdown }) => {
+                const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                const nextDraft = replacePlaceholdersInMarkdown(currentDraft, placeholder, markdown);
+                pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
                 replaceCurrentPlaceholder(view, placeholder, markdown);
+                if (activeDocumentIdRef.current === pasteDocumentId) {
+                  setContentMarkdown(nextDraft);
+                }
               })
               .catch(() => {
+                const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                const nextDraft = replacePlaceholdersInMarkdown(currentDraft, placeholder, selectedTexts);
+                pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
                 replaceCurrentPlaceholders(view, placeholder, selectedTexts);
+                if (activeDocumentIdRef.current === pasteDocumentId) {
+                  setContentMarkdown(nextDraft);
+                }
                 toast.error("Image paste failed");
               })
               .finally(() => {
@@ -199,7 +241,11 @@ export function DocumentEditor({
 
   useEffect(() => {
     setTitle(document?.title ?? "");
-    setContentMarkdown(document?.contentMarkdown ?? "");
+    setContentMarkdown(
+      document?.id
+        ? (pendingImagePasteDraftsRef.current[document.id] ?? document.contentMarkdown)
+        : "",
+    );
     setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);

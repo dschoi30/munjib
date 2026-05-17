@@ -712,14 +712,20 @@ describe("DocumentEditor heading preview folding", () => {
         getData: () => "",
       },
     } as unknown as ClipboardEvent;
+    let firstMarkdown = "First";
+    const firstDispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        firstMarkdown = `First ${transaction.changes.insert}`;
+      }
+    });
     expect(codeMirrorHarness.pasteHandlers[0](event, {
       state: {
         replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
-        doc: { toString: () => "First" },
+        doc: { toString: () => firstMarkdown },
         selection: { ranges: [{ from: 5, to: 5 }] },
         sliceDoc: () => "",
       },
-      dispatch: vi.fn(),
+      dispatch: firstDispatch,
     })).toBe(true);
 
     await vi.waitFor(() => {
@@ -779,6 +785,11 @@ describe("DocumentEditor heading preview folding", () => {
 
     await vi.waitFor(() => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+    await vi.waitFor(() => {
+      expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
+        "First ![first.png](/api/attachments/attachment-1)",
+      );
     });
   });
 
