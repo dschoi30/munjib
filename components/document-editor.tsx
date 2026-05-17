@@ -6,8 +6,6 @@ import { EditorView } from "@codemirror/view";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
-  ChevronDown,
-  ChevronRight,
   MessageSquare,
   Paperclip,
   Save,
@@ -15,49 +13,29 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import ReactMarkdown, { type Components } from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
 import type {
   DocumentEditorProps,
   EditableDocument,
-  LinkCandidate,
 } from "@/components/document-editor/types";
 import {
   persistEditorFoldState,
   readStoredFoldedHeadingKeys,
-  writeStoredFoldedHeadingKeys,
 } from "@/components/document-editor/folding-storage";
-import {
-  getMarkdownBeforeFirstHeading,
-  getSharedMarkdownDefinitions,
-  markdownInlineToPlainText,
-  remarkPreviewSoftLineBreaks,
-  renderPreviewChunk,
-} from "@/components/document-editor/preview-markdown";
+import { MarkdownPreview } from "@/components/document-editor/markdown-preview";
 import { WikiLinkSuggestions } from "@/components/document-editor/wiki-link-suggestions";
 import { useDocumentViewMode } from "@/components/document-view-mode";
 import { Button } from "@/components/ui/button";
-import {
-  buildHeadingFoldTree,
-  getValidFoldedHeadingKeys,
-  type HeadingFoldSection,
-} from "@/lib/markdown/folding";
-import {
-  buildWikiLinkPreviewCandidateMap,
-  renderPreviewMarkdownWithWikiLinks,
-} from "@/lib/wiki-links/preview";
+import { buildHeadingFoldTree } from "@/lib/markdown/folding";
 import {
   getActiveWikiLinkCompletion,
   getWikiLinkCompletionOptions,
   type ActiveWikiLinkCompletion,
 } from "@/lib/wiki-links/autocomplete";
-import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { htmlToMarkdown } from "@/lib/markdown/html-to-markdown";
 import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
-const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
 
 export function DocumentEditor({
   document,
@@ -365,239 +343,6 @@ export function DocumentEditor({
       </div>
     </div>
   );
-}
-
-function MarkdownPreview({
-  markdown,
-  documentId,
-  linkCandidates,
-  registerHeadingExpander,
-}: {
-  markdown: string;
-  documentId: string;
-  linkCandidates: LinkCandidate[];
-  registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
-}) {
-  const candidateBySlug = useMemo(
-    () => buildWikiLinkPreviewCandidateMap(linkCandidates),
-    [linkCandidates],
-  );
-  const markdownComponents = useMemo<Components>(
-    () => ({
-      a: ({ href, children }) => {
-        const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
-        return href?.startsWith("?document=") ? (
-          <Link href={href} className={className}>
-            {children}
-          </Link>
-        ) : (
-          <a href={href} className={className}>
-            {children}
-          </a>
-        );
-      },
-    }),
-    [],
-  );
-  const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
-  const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
-  const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(strippedMarkdown), [strippedMarkdown]);
-  const sharedDefinitions = useMemo(() => getSharedMarkdownDefinitions(strippedMarkdown), [strippedMarkdown]);
-  const storageKey = `munjib:heading-folds:${documentId}`;
-  const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
-    new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
-  );
-
-  useEffect(() => {
-    setFoldedKeys(new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)));
-  }, [storageKey, foldTree]);
-
-  const toggleSection = useCallback(
-    (key: string) => {
-      setFoldedKeys((current) => {
-        const next = new Set(current);
-
-        if (next.has(key)) {
-          next.delete(key);
-        } else {
-          next.add(key);
-        }
-
-        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
-        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
-
-        return validKeySet;
-      });
-    },
-    [foldTree.headingKeys, storageKey],
-  );
-
-  const unfoldHeadingAncestors = useCallback(
-    (id: string) => {
-      const ancestorIds = getAncestorOutlineHeadingIds(id);
-
-      if (ancestorIds.length === 0) {
-        return;
-      }
-
-      setFoldedKeys((current) => {
-        const next = new Set(current);
-        let changed = false;
-
-        for (const ancestorId of ancestorIds) {
-          if (next.delete(ancestorId)) {
-            changed = true;
-          }
-        }
-
-        if (!changed) {
-          return current;
-        }
-
-        const validKeySet = new Set(getValidFoldedHeadingKeys(next, foldTree.headingKeys));
-        writeStoredFoldedHeadingKeys(storageKey, validKeySet);
-
-        return validKeySet;
-      });
-    },
-    [foldTree.headingKeys, storageKey],
-  );
-
-  useEffect(() => {
-    registerHeadingExpander?.(unfoldHeadingAncestors);
-    return () => registerHeadingExpander?.(null);
-  }, [registerHeadingExpander, unfoldHeadingAncestors]);
-
-  return (
-    <div className="markdown-preview min-w-0 p-5">
-      {foldTree.sections.length > 0 ? (
-        <>
-          {leadingMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-              {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
-            </ReactMarkdown>
-          ) : null}
-          {foldTree.sections.map((section) => (
-            <MarkdownPreviewSection
-              key={section.key}
-              section={section}
-              foldedKeys={foldedKeys}
-              markdownComponents={markdownComponents}
-              candidateBySlug={candidateBySlug}
-              sharedDefinitions={sharedDefinitions}
-              onToggle={toggleSection}
-            />
-          ))}
-        </>
-      ) : (
-        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-          {renderPreviewMarkdownWithWikiLinks(
-            strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
-            candidateBySlug,
-          )}
-        </ReactMarkdown>
-      )}
-    </div>
-  );
-}
-
-function getAncestorOutlineHeadingIds(id: string) {
-  const parts = id.split("/");
-  const ancestors: string[] = [];
-
-  for (let index = 1; index < parts.length; index += 1) {
-    ancestors.push(parts.slice(0, index).join("/"));
-  }
-
-  return ancestors;
-}
-
-function MarkdownPreviewSection({
-  section,
-  foldedKeys,
-  markdownComponents,
-  candidateBySlug,
-  sharedDefinitions,
-  onToggle,
-}: {
-  section: HeadingFoldSection;
-  foldedKeys: Set<string>;
-  markdownComponents: Components;
-  candidateBySlug: ReturnType<typeof buildWikiLinkPreviewCandidateMap>;
-  sharedDefinitions: string;
-  onToggle: (key: string) => void;
-}) {
-  const folded = foldedKeys.has(section.key);
-  const headingLabel = markdownInlineToPlainText(section.title);
-  const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
-  const previewHeadingMarkdown = renderPreviewChunk(headingMarkdown, candidateBySlug, sharedDefinitions);
-  const previewBodyMarkdown = renderPreviewChunk(section.bodyMarkdown, candidateBySlug, sharedDefinitions);
-
-  return (
-    <section
-      data-outline-heading-id={section.key}
-      className={getPreviewHeadingSectionClassName(section.level)}
-    >
-      <div className="group relative">
-        <button
-          type="button"
-          aria-expanded={!folded}
-          aria-label={`${folded ? "Expand" : "Collapse"} section ${headingLabel}`}
-          onClick={() => onToggle(section.key)}
-          className={
-            folded
-              ? "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 hover:text-ink focus:outline-none"
-              : "absolute right-full top-1 mr-1 inline-flex h-6 w-6 items-center justify-center rounded text-slate-500 opacity-0 hover:text-ink focus:opacity-100 focus:outline-none group-hover:opacity-100 group-focus-within:opacity-100"
-          }
-        >
-          {folded ? (
-            <ChevronRight className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <ChevronDown className="h-4 w-4" aria-hidden="true" />
-          )}
-        </button>
-        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-          {previewHeadingMarkdown}
-        </ReactMarkdown>
-      </div>
-      {folded ? null : (
-        <>
-          {section.bodyMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-              {previewBodyMarkdown}
-            </ReactMarkdown>
-          ) : null}
-          {section.children.map((child) => (
-            <MarkdownPreviewSection
-              key={child.key}
-              section={child}
-              foldedKeys={foldedKeys}
-              markdownComponents={markdownComponents}
-              candidateBySlug={candidateBySlug}
-              sharedDefinitions={sharedDefinitions}
-              onToggle={onToggle}
-            />
-          ))}
-        </>
-      )}
-    </section>
-  );
-}
-
-function getPreviewHeadingSectionClassName(level: number) {
-  if (level <= 1) {
-    return "mt-8 first:mt-0";
-  }
-
-  if (level === 2) {
-    return "mt-6";
-  }
-
-  if (level === 3) {
-    return "mt-4";
-  }
-
-  return "mt-3";
 }
 
 function DocumentProperties({
