@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-17
-source_count: 67
+source_count: 71
 tags:
   - log
   - munjib
@@ -25,7 +25,7 @@ links:
 - Coverage: Production `runner` image는 `pnpm prune --prod`로 devDependencies를 제거하고, Prisma/seed 등 DB 관리 명령은 devDependencies가 있는 `tools` target/service에서 실행한다. `public` directory를 runtime image에 포함하기 위해 `public/.gitkeep`을 추가했다. Compose environment는 host `.env`의 `DATABASE_URL`과 충돌하지 않도록 `DOCKER_DATABASE_URL` placeholder default를 사용하며, `NEXTAUTH_URL`, `NEXTAUTH_SECRET`도 placeholder default를 사용한다. Host port conflict 때는 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 override한다. Docker contract test는 placeholder 전체 문자열 대신 variable name과 default 핵심값을 분리해 확인한다.
 - Pages: [[Local Development Workflow]], [[log|Wiki Log]].
 - Source evidence: PR #51 review threads, `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.docker.example`, `public/.gitkeep`, `tests/docker/compose.test.ts`.
-- Verification: pending rerun after review follow-up.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`, `docker compose build web tools`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose up -d postgres web`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose run --rm tools pnpm exec prisma db push`, `POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose run --rm tools pnpm run db:seed`, `curl -I http://127.0.0.1:3101/login`, `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test`.
 
 ## 2026-05-17T23:35:00+09:00 - implementation
 
@@ -42,6 +42,38 @@ links:
 - Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #50, `docs/superpowers/specs/2026-05-17-dockerized-next-js-web-service-design.md`, `docs/superpowers/plans/2026-05-17-dockerized-next-js-web-service.md`, `docker-compose.yml`.
 - Verification: spec/plan self-review.
+
+## 2026-05-17T23:08:00+09:00 - review follow-up
+
+- Result: PR #49 review에서 지적된 frontmatter property value 표시 edge case를 수정했다.
+- Coverage: 일반 property row가 object value를 `[object Object]`로 표시하지 않고 JSON string으로 표시하며, null/undefined value는 literal `null`/`undefined` text 대신 빈 값으로 둔다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #49 review thread, `components/document-editor/document-properties.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-17T22:49:00+09:00 - implementation
+
+- Result: Issue #48에서 `DocumentEditor`와 `DocumentNavigation`의 동작을 유지하면서 큰 component 파일을 feature-local module로 분리했다.
+- Coverage: editor preview/folding/properties/suggestion UI와 navigation panel/row/tree/favorites helper를 하위 module로 나누고, public entrypoint component, route shape, localStorage key, server action contract는 유지했다. `components/document-editor.tsx`는 342줄, `components/document-navigation.tsx`는 384줄로 줄었다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #48, `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`, `docs/superpowers/plans/2026-05-17-document-editor-navigation-refactor.md`, `components/document-editor.tsx`, `components/document-editor/*`, `components/document-navigation.tsx`, `components/document-navigation/*`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/components/document-list.test.tsx tests/markdown/outline.test.ts tests/markdown/folding.test.ts tests/wiki-links/preview.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-17T18:16:00+09:00 - plan
+
+- Result: Issue #48 document editor/navigation 구조 리팩토링 구현 계획을 작성했다.
+- Coverage: plan은 editor shared types, suggestion popover, folding storage, preview markdown helpers, markdown preview, document properties, navigation helpers, navigation rows, search/favorites panels, 최종 wiki/PR workflow를 task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`, `docs/superpowers/plans/2026-05-17-document-editor-navigation-refactor.md`.
+- Verification: plan self-review.
+
+## 2026-05-17T18:09:00+09:00 - design
+
+- Result: Issue #48 document editor/navigation 구조 리팩토링 설계를 승인하고 spec으로 기록했다.
+- Coverage: `components/document-editor.tsx`는 public `DocumentEditor` entrypoint와 editor state를 유지하고 preview/folding/properties/suggestion UI를 feature-local module로 분리한다. `components/document-navigation.tsx`는 public `DocumentNavigation` entrypoint와 container state, keyboard/menu/toast policy를 유지하고 search/favorites/document/folder rows, tree, favorites helper를 하위 module로 분리한다. Navigation 전용 `errors.ts`는 만들지 않고 작은 folder error toast policy는 container에 남긴다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #48, 사용자 승인, `components/document-editor.tsx`, `components/document-navigation.tsx`, `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`.
+- Verification: spec self-review.
 
 ## 2026-05-17T12:15:00+09:00 - regression fix
 
