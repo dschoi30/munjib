@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 71
+source_count: 72
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T02:46:00+09:00 - review follow-up
+
+- Result: PR #53 review feedback에 따라 pending image paste state를 document별 count로 바꿨다.
+- Coverage: 서로 다른 문서에서 paste image upload가 동시에 pending이어도 각 문서의 Save guard가 독립적으로 유지된다. 한 문서의 upload 완료가 다른 문서의 pending placeholder 저장 차단을 해제하지 않는다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T01:29:00+09:00 - review follow-up
 
