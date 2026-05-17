@@ -120,6 +120,8 @@ Title 아래 Properties 영역은 tags, links, frontmatter properties, comments�
 
 Issue #44 이후 metadata panel의 첫 번째 tab은 `Outline`이다. Outline은 현재 선택 문서 markdown 원문에서 `#`, `##`, `###`, `####` ATX heading을 추출하되 YAML frontmatter와 fenced code block 내부 heading-like line은 제외한다. Empty heading과 closing marker만 남는 heading도 outline에서 제외한다. `DocumentEditor`는 저장 전 `contentMarkdown` state도 `AppShell` heading navigation context에 등록하므로 outline은 server snapshot이 아니라 현재 편집 중인 live markdown을 우선 사용한다. Heading tree는 `DocumentNavigation` tree와 같은 `border-l` vertical guide line으로 level을 구분한다. Row click은 `AppShell` heading navigation context를 통해 preview mode의 `data-outline-heading-id` target을 먼저 찾고, edit mode에서는 CodeMirror source line으로 스크롤하며, 등록된 navigator가 없을 때는 같은 outline target DOM fallback으로 스크롤한다. Preview mode에서 접힌 parent section 아래 child heading으로 이동할 때는 target DOM 조회 전에 ancestor fold key를 펼친 뒤 다시 조회해, 접힌 하위 heading outline click이 no-op이 되지 않게 한다.
 
+Issue #48 이후 editor와 navigation source는 동작을 유지한 채 feature-local module로 분리되었다. `components/document-editor.tsx`는 `DocumentEditor` entrypoint와 editor state/orchestration을 맡고, `components/document-editor/` 아래의 `markdown-preview.tsx`, `document-properties.tsx`, `folding-storage.ts`, `preview-markdown.ts`, `wiki-link-suggestions.tsx`, `types.ts`가 preview, properties, folding, suggestion UI를 나눠 맡는다. `components/document-navigation.tsx`는 `DocumentNavigation` entrypoint와 container state/orchestration을 맡고, `components/document-navigation/` 아래의 panel, row, tree, favorites module이 sidebar rendering과 순수 helper를 나눠 맡는다.
+
 ## Document tabs and navigation toolbar
 
 Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, sidebar search result link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
@@ -142,9 +144,21 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `app/workspaces/[workspaceSlug]/actions.ts`
 - GitHub issue #26
 - `components/document-editor.tsx`
+- `components/document-editor/markdown-preview.tsx`
+- `components/document-editor/document-properties.tsx`
+- `components/document-editor/folding-storage.ts`
+- `components/document-editor/preview-markdown.ts`
+- `components/document-editor/wiki-link-suggestions.tsx`
 - `app/globals.css`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/document-navigation/search-panel.tsx`
+- `components/document-navigation/favorites-panel.tsx`
+- `components/document-navigation/document-row.tsx`
+- `components/document-navigation/folder-row.tsx`
+- `components/document-navigation/document-section.tsx`
+- `components/document-navigation/favorites.ts`
+- `components/document-navigation/tree.ts`
 - `components/knowledge-graph-view.tsx`
 - `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
