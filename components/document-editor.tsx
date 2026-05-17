@@ -110,12 +110,8 @@ export function DocumentEditor({
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
-  const [pendingImagePaste, setPendingImagePaste] = useState<{
-    count: number;
-    documentId: string | null;
-  }>({ count: 0, documentId: null });
-  const hasPendingImagePaste =
-    pendingImagePaste.documentId === document?.id && pendingImagePaste.count > 0;
+  const [pendingImagePasteCounts, setPendingImagePasteCounts] = useState<Record<string, number>>({});
+  const hasPendingImagePaste = document?.id ? (pendingImagePasteCounts[document.id] ?? 0) > 0 : false;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -140,15 +136,15 @@ export function DocumentEditor({
             event.preventDefault();
             const placeholder = createPastedImagePlaceholder();
             const selectedTexts = getSelectedTexts(view);
-            const pasteDocumentId = document?.id ?? null;
+            const pasteDocumentId = document?.id ?? "";
             const formData = new FormData();
             formData.set("documentId", document?.id ?? "");
             formData.set("attachment", imageFile);
 
             view.dispatch(view.state.replaceSelection(placeholder));
-            setPendingImagePaste((pending) => ({
-              documentId: pasteDocumentId,
-              count: pending.documentId === pasteDocumentId ? pending.count + 1 : 1,
+            setPendingImagePasteCounts((counts) => ({
+              ...counts,
+              [pasteDocumentId]: (counts[pasteDocumentId] ?? 0) + 1,
             }));
 
             void Promise.resolve(pasteImageAttachmentAction(formData))
@@ -160,15 +156,17 @@ export function DocumentEditor({
                 toast.error("Image paste failed");
               })
               .finally(() => {
-                setPendingImagePaste((pending) => {
-                  if (pending.documentId !== pasteDocumentId) {
-                    return pending;
+                setPendingImagePasteCounts((counts) => {
+                  const nextCount = Math.max(0, (counts[pasteDocumentId] ?? 0) - 1);
+                  const nextCounts = { ...counts };
+
+                  if (nextCount > 0) {
+                    nextCounts[pasteDocumentId] = nextCount;
+                  } else {
+                    delete nextCounts[pasteDocumentId];
                   }
 
-                  return {
-                    documentId: pasteDocumentId,
-                    count: Math.max(0, pending.count - 1),
-                  };
+                  return nextCounts;
                 });
               });
 

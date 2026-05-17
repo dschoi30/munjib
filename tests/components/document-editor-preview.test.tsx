@@ -679,9 +679,16 @@ describe("DocumentEditor heading preview folding", () => {
     });
   });
 
-  it("does not keep save disabled after switching away from a document with pending image paste", async () => {
-    const upload = createDeferred<{ markdown: string }>();
-    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+  it("tracks pending pasted image uploads by document", async () => {
+    const firstUpload = createDeferred<{ markdown: string }>();
+    const secondUpload = createDeferred<{ markdown: string }>();
+    const uploads = [firstUpload, secondUpload];
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => {
+      const upload = uploads[pasteImageAttachmentAction.mock.calls.length - 1];
+      if (!upload) throw new Error("Unexpected paste upload");
+
+      return upload.promise;
+    });
     const { rerender } = render(
       <DocumentViewModeProvider>
         <TestModeControls />
@@ -729,6 +736,46 @@ describe("DocumentEditor heading preview folding", () => {
         />
       </DocumentViewModeProvider>,
     );
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 6, to: 6, insert: text } })),
+        doc: { toString: () => "Second" },
+        selection: { ranges: [{ from: 6, to: 6 }] },
+        sliceDoc: () => "",
+      },
+      dispatch: vi.fn(),
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    secondUpload.resolve({ markdown: "![second.png](/api/attachments/attachment-2)" });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+
+    firstUpload.resolve({ markdown: "![first.png](/api/attachments/attachment-1)" });
 
     await vi.waitFor(() => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
