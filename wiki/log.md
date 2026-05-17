@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 65
+source_count: 66
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T00:10:00+09:00 - plan
+
+- Result: Issue #52 clipboard image paste attachment 구현 계획을 작성했다.
+- Coverage: plan은 paste-only attachment service, server action, `DocumentEditor` paste integration, wiki maintenance, final PR workflow를 TDD task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`, `docs/superpowers/plans/2026-05-18-clipboard-image-paste-attachments.md`.
+- Verification: plan self-review.
 
 ## 2026-05-18T00:00:00+09:00 - design
 
