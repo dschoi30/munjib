@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-18
-source_count: 82
+updated: 2026-05-20
+source_count: 83
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-20T00:36:00+09:00 - bugfix
+
+- Result: Clipboard rich HTML paste에 image file 없이 `<img src>`만 포함될 때 source link만 붙여넣어지던 문제를 수정했다.
+- Coverage: `DocumentEditor`는 clipboard HTML의 `<img>`를 upload placeholder로 치환해 Markdown으로 삽입한다. Data URL image는 client에서 File로 만들어 `pasteImageAttachmentAction()`에 보내고, remote image URL은 browser CORS를 피하기 위해 `imageUrl`로 server action에 넘겨 서버에서 fetch/upload한 뒤 placeholder를 attachment image markdown으로 교체한다. Server-side remote image fetch는 http/https URL만 허용하고 DNS lookup 결과가 private/local/link-local address이면 fetch 전에 거부하며, redirect 차단, 5초 timeout, allowed image MIME type, content-length, streaming byte limit을 적용한다. Image-only anchor wrapper는 source link markdown으로 변환하지 않고 image placeholder로 대체한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/workspace-actions.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T03:14:00+09:00 - review follow-up
 
