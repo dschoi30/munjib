@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-18
-source_count: 71
+source_count: 82
 tags:
   - log
   - munjib
@@ -18,6 +18,102 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-18T03:14:00+09:00 - review follow-up
+
+- Result: PR #53 추가 review feedback에 따라 pending image paste draft update를 active document가 아니라 source editor view document 기준으로 기록하도록 보강했다.
+- Coverage: 오래된 CodeMirror view에서 upload completion dispatch가 발생해도 `EditorView`와 source document id의 mapping을 사용해 해당 paste가 시작된 문서 draft만 갱신한다. 다른 문서에도 pending paste가 있는 상태에서 source view update가 active document draft를 덮어쓰는 corruption path를 막는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T03:06:00+09:00 - review follow-up
+
+- Result: PR #53 추가 review feedback에 따라 pasted image draft cache를 완료 후 stale server content보다 우선하지 않도록 보강했다.
+- Coverage: Pending image paste draft는 upload가 진행 중인 문서 상태 또는 비활성 source document에 완료 결과를 한 번 전달하기 위한 임시 값으로 제한된다. Upload가 끝난 활성 문서는 draft cache를 지우고, 비활성 문서에서 끝난 결과도 해당 문서를 다시 열 때 한 번 반영한 뒤 cache를 지워 이후 server-side content refresh를 stale draft가 덮지 않게 한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T02:54:00+09:00 - review follow-up
+
+- Result: PR #53 review feedback에 따라 pending paste upload 완료 결과를 source document draft에 적용하도록 보강했다.
+- Coverage: Image upload가 pending인 동안 다른 문서로 전환해도 upload 성공 결과는 paste가 시작된 document draft에 반영된다. 사용자가 원래 문서로 돌아오면 placeholder 대신 반환된 image markdown이 표시된다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T02:46:00+09:00 - review follow-up
+
+- Result: PR #53 review feedback에 따라 pending image paste state를 document별 count로 바꿨다.
+- Coverage: 서로 다른 문서에서 paste image upload가 동시에 pending이어도 각 문서의 Save guard가 독립적으로 유지된다. 한 문서의 upload 완료가 다른 문서의 pending placeholder 저장 차단을 해제하지 않는다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #53 review thread, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T01:29:00+09:00 - review follow-up
+
+- Result: PR #53 추가 review feedback에 따라 clipboard image paste 실패 복구와 pending state scope를 보강했다.
+- Coverage: Upload 실패 시 placeholder를 빈 문자열로 지우지 않고 paste 전에 선택된 text로 되돌린다. Pending upload save guard는 현재 선택 문서 기준으로만 적용되어, 느린 upload가 진행 중이어도 다른 문서로 전환하면 해당 문서 Save를 막지 않는다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review threads, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T01:21:00+09:00 - review follow-up
+
+- Result: PR #53 review feedback에 따라 clipboard image paste placeholder 처리와 pending upload save guard를 보강했다.
+- Coverage: `DocumentEditor`는 같은 paste placeholder가 여러 번 존재하면 모두 반환 markdown으로 교체하고, upload 실패 시 모두 제거한다. Image upload가 pending인 동안 Save submit을 차단해 placeholder markdown이 저장되는 것을 막고 `Image upload is still in progress` toast를 표시한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #53 review threads, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-18T01:03:00+09:00 - maintenance
+
+- Result: Issue #52 clipboard image paste attachment workflow를 최종 구현 상태에 맞춰 정리했다.
+- Coverage: Manual attachment upload는 기존처럼 markdown link append와 즉시 document version 생성을 수행하고, Markdown editor clipboard image paste는 `pasteDocumentImageAttachmentAction()`을 통해 paste-only attachment service를 호출한다. Paste-only service/action은 `image/png`, `image/jpeg`, `image/gif`, `image/webp` file blob만 저장하고 `![file](/api/attachments/<id>)` markdown을 반환하되 `Document.contentMarkdown`와 `DocumentVersion`은 즉시 바꾸지 않는다. `DocumentEditor`는 paste selection에 temporary upload placeholder를 동기 삽입하고 upload 성공 시 현재 placeholder를 반환 markdown으로 교체하며, upload 실패 시 placeholder를 제거하고 `Image paste failed` toast를 표시한다. Body markdown persistence, version 생성, metadata/link reconciliation, audit log 작성은 사용자가 Save를 누를 때 기존 `updateDocument()` 흐름에서 확정된다. Remote `<img>` download와 Markdown import image collection은 Issue #52 범위 밖이다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #52, `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`, `docs/superpowers/plans/2026-05-18-clipboard-image-paste-attachments.md`, `lib/attachments/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-editor.tsx`, `tests/attachments/service.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/attachments/service.test.ts tests/workspace-actions.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-18T00:47:00+09:00 - implementation
+
+- Result: Issue #52 Task 3 `DocumentEditor` paste integration을 추가했다.
+- Coverage: Workspace page가 `pasteDocumentImageAttachmentAction`을 bind해 `DocumentEditor`에 전달하고, CodeMirror paste handler는 clipboard image file을 rich HTML 변환보다 먼저 upload해 반환된 image markdown을 현재 selection에 삽입한다. Image file이 없으면 기존 rich HTML paste 변환을 유지한다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor.tsx`, `components/document-editor/types.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`.
+
+## 2026-05-18T00:38:00+09:00 - implementation
+
+- Result: Issue #52 Task 2 paste image attachment server action contract를 추가했다.
+- Coverage: `pasteDocumentImageAttachmentAction()`은 clipboard image file과 `documentId`를 받아 `uploadPastedDocumentImageAttachment()`를 호출하고, workspace path revalidation 후 redirect 없이 editor insertion용 `{ markdown }`을 반환한다. File이 없으면 `ATTACHMENT_FILE_REQUIRED`를 throw한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-actions.test.ts`.
+
+## 2026-05-18T00:25:00+09:00 - implementation
+
+- Result: Issue #52 Task 1 paste-only image attachment service를 추가했다.
+- Coverage: `uploadPastedDocumentImageAttachment()`는 허용된 clipboard image MIME type만 저장하고 unnamed paste fallback file name을 만들며, attachment storage/row와 `attachment.uploaded` audit log를 생성한다. Manual attachment upload는 기존처럼 markdown append, document version, link/metadata reconciliation을 수행한다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/service.ts`, `lib/service-errors.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/attachments/service.test.ts`.
+
+## 2026-05-18T00:10:00+09:00 - plan
+
+- Result: Issue #52 clipboard image paste attachment 구현 계획을 작성했다.
+- Coverage: plan은 paste-only attachment service, server action, `DocumentEditor` paste integration, wiki maintenance, final PR workflow를 TDD task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`, `docs/superpowers/plans/2026-05-18-clipboard-image-paste-attachments.md`.
+- Verification: plan self-review.
+
+## 2026-05-18T00:00:00+09:00 - design
+
+- Result: Issue #52 clipboard image paste attachment 설계를 작성했다.
+- Coverage: 설계는 clipboard image file paste를 attachment로 즉시 저장하고, 반환된 image markdown을 현재 CodeMirror selection에 삽입하되 문서 본문 persistence는 기존 Save 흐름에 남기는 방향을 정한다. Remote image download, Markdown import image 가져오기, ZIP import, blob URL draft preview는 범위에서 제외한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: GitHub issue #52, `docs/superpowers/specs/2026-05-18-clipboard-image-paste-design.md`.
+- Verification: spec self-review.
 
 ## 2026-05-18T00:25:00+09:00 - review follow-up
 

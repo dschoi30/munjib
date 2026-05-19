@@ -1,8 +1,12 @@
 import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
-import { uploadDocumentAttachment } from "@/lib/attachments/service";
+import {
+  uploadDocumentAttachment,
+  uploadPastedDocumentImageAttachment,
+} from "@/lib/attachments/service";
 import { prisma } from "@/lib/db/client";
 import { createDocument } from "@/lib/documents/service";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("attachment service", () => {
@@ -30,11 +34,10 @@ describe("attachment service", () => {
     expect(attachment.fileName).toBe("notes.txt");
     const updated = await prisma.document.findUniqueOrThrow({ where: { id: document.id } });
     expect(updated.contentMarkdown).toContain(`[notes.txt](/api/attachments/${attachment.id})`);
-    await expect(
-      prisma.auditLog.findMany({
-        where: { resourceType: "attachment", resourceId: attachment.id },
-      }),
-    ).resolves.toHaveLength(1);
+    const auditLogs = await prisma.auditLog.findMany({
+      where: { resourceType: "attachment", resourceId: attachment.id },
+    });
+    expect(auditLogs).toHaveLength(1);
   });
 
   it("prevents viewers from uploading attachments", async () => {
@@ -61,5 +64,90 @@ describe("attachment service", () => {
         bytes: new TextEncoder().encode("hello"),
       }),
     ).rejects.toThrow("WORKSPACE_WRITE_FORBIDDEN");
+  });
+
+  it("uploads a pasted image attachment without changing document markdown or versions", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Paste Target",
+      contentMarkdown: "# Paste Target",
+    });
+
+    const attachment = await uploadPastedDocumentImageAttachment({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      fileName: "clipboard.png",
+      mimeType: "image/png",
+      bytes: new Uint8Array([137, 80, 78, 71]),
+    });
+
+    expect(attachment.fileName).toBe("clipboard.png");
+    expect(attachment.markdown).toBe(`![clipboard.png](/api/attachments/${attachment.id})`);
+
+    const updated = await prisma.document.findUniqueOrThrow({
+      where: { id: document.id },
+      include: { versions: true },
+    });
+    expect(updated.contentMarkdown).toBe("# Paste Target");
+    expect(updated.versions).toHaveLength(1);
+    const auditLogs = await prisma.auditLog.findMany({
+      where: { resourceType: "attachment", resourceId: attachment.id },
+    });
+    expect(auditLogs).toHaveLength(1);
+    expect(auditLogs[0]).toMatchObject({
+      action: "attachment.uploaded",
+      resourceType: "attachment",
+      resourceId: attachment.id,
+    });
+    expect(auditLogs[0]?.metadataJson).toMatchObject({
+      source: "clipboard-paste",
+      documentId: document.id,
+      fileName: "clipboard.png",
+      mimeType: "image/png",
+      size: 4,
+    });
+  });
+
+  it("uses a fallback file name for unnamed pasted images", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Fallback Target",
+      contentMarkdown: "# Fallback Target",
+    });
+
+    const attachment = await uploadPastedDocumentImageAttachment({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      fileName: "",
+      mimeType: "image/png",
+      bytes: new Uint8Array([1, 2, 3]),
+    });
+
+    expect(attachment.fileName).toBe("pasted-image.png");
+    expect(attachment.markdown).toBe(`![pasted-image.png](/api/attachments/${attachment.id})`);
+  });
+
+  it("rejects non-image pasted attachments", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Reject Target",
+      contentMarkdown: "# Reject Target",
+    });
+
+    await expect(
+      uploadPastedDocumentImageAttachment({
+        documentId: document.id,
+        actorId: fixture.user.id,
+        fileName: "notes.txt",
+        mimeType: "text/plain",
+        bytes: new TextEncoder().encode("hello"),
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
   });
 });
