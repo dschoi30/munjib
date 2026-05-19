@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import { toast } from "sonner";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
 import type { DocumentEditorProps } from "@/components/document-editor/types";
 import { DocumentProperties } from "@/components/document-editor/document-properties";
@@ -33,11 +34,78 @@ import { getOutlineHeadingTarget } from "@/lib/outline-targets";
 
 const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false });
 
+const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
+
+function createPastedImagePlaceholder() {
+  const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+  return `![Uploading image...](about:blank#munjib-paste-${id})`;
+}
+
+function getClipboardImageFile(dataTransfer: DataTransfer | null) {
+  if (!dataTransfer) return null;
+
+  const itemFile = Array.from(dataTransfer.items ?? [])
+    .find((item) => item.kind === "file" && pastedImageMimeTypes.has(item.type))
+    ?.getAsFile();
+  if (itemFile) return itemFile;
+
+  return Array.from(dataTransfer.files ?? []).find((file) => pastedImageMimeTypes.has(file.type)) ?? null;
+}
+
+function replaceCurrentPlaceholder(view: EditorView, placeholder: string, insert: string) {
+  replaceCurrentPlaceholders(view, placeholder, insert);
+}
+
+function replacePlaceholdersInMarkdown(markdown: string, placeholder: string, insert: string | string[]) {
+  let nextMarkdown = "";
+  let start = 0;
+  let from = markdown.indexOf(placeholder);
+  let index = 0;
+
+  while (from !== -1) {
+    const replacement = Array.isArray(insert)
+      ? (insert[Math.min(index, insert.length - 1)] ?? "")
+      : insert;
+    nextMarkdown += `${markdown.slice(start, from)}${replacement}`;
+    start = from + placeholder.length;
+    from = markdown.indexOf(placeholder, start);
+    index += 1;
+  }
+
+  return index > 0 ? `${nextMarkdown}${markdown.slice(start)}` : markdown;
+}
+
+function replaceCurrentPlaceholders(view: EditorView, placeholder: string, insert: string | string[]) {
+  const currentMarkdown = view.state.doc.toString();
+  const changes = [];
+  let from = currentMarkdown.indexOf(placeholder);
+  let index = 0;
+
+  while (from !== -1) {
+    const replacement = Array.isArray(insert)
+      ? (insert[Math.min(index, insert.length - 1)] ?? "")
+      : insert;
+    changes.push({ from, to: from + placeholder.length, insert: replacement });
+    from = currentMarkdown.indexOf(placeholder, from + placeholder.length);
+    index += 1;
+  }
+
+  if (changes.length > 0) {
+    view.dispatch({ changes });
+  }
+}
+
+function getSelectedTexts(view: EditorView) {
+  return view.state.selection.ranges.map((range) => view.state.sliceDoc(range.from, range.to));
+}
+
 export function DocumentEditor({
   document,
   canWrite,
   action,
   uploadAttachmentAction,
+  pasteImageAttachmentAction,
   linkCandidates,
   tags,
   properties,
@@ -56,11 +124,19 @@ export function DocumentEditor({
     storageKey: string;
   } | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
+  const editorViewDocumentIdsRef = useRef(new WeakMap<EditorView, string>());
+  const activeDocumentIdRef = useRef<string | null>(document?.id ?? null);
+  const pendingImagePasteCountsRef = useRef<Record<string, number>>({});
+  const pendingImagePasteDraftsRef = useRef<Record<string, string>>({});
   const previewHeadingExpanderRef = useRef<((id: string) => void) | null>(null);
   const headingNavigation = useHeadingNavigation();
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
+  const [pendingImagePasteCounts, setPendingImagePasteCounts] = useState<Record<string, number>>({});
+  const hasPendingImagePaste = document?.id ? (pendingImagePasteCounts[document.id] ?? 0) > 0 : false;
+  activeDocumentIdRef.current = document?.id ?? null;
+  pendingImagePasteCountsRef.current = pendingImagePasteCounts;
   const extensions = useMemo(
     () => [
       markdown(),
@@ -72,11 +148,79 @@ export function DocumentEditor({
         }
 
         persistEditorFoldState(update.view, context.storageKey);
+
+        const viewDocumentId = editorViewDocumentIdsRef.current.get(update.view);
+        const draftDocumentId = viewDocumentId ?? activeDocumentIdRef.current;
+        if (draftDocumentId && (pendingImagePasteCountsRef.current[draftDocumentId] ?? 0) > 0) {
+          pendingImagePasteDraftsRef.current[draftDocumentId] = update.view.state.doc.toString();
+        }
       }),
       EditorView.domEventHandlers({
         paste: (event, view) => {
           if (!canWrite) {
             return false;
+          }
+
+          const imageFile = getClipboardImageFile(event.clipboardData);
+
+          if (imageFile) {
+            event.preventDefault();
+            const placeholder = createPastedImagePlaceholder();
+            const selectedTexts = getSelectedTexts(view);
+            const pasteDocumentId = document?.id ?? "";
+            const formData = new FormData();
+            formData.set("documentId", document?.id ?? "");
+            formData.set("attachment", imageFile);
+
+            if (pasteDocumentId) {
+              editorViewDocumentIdsRef.current.set(view, pasteDocumentId);
+            }
+            view.dispatch(view.state.replaceSelection(placeholder));
+            pendingImagePasteDraftsRef.current[pasteDocumentId] = view.state.doc.toString();
+            setPendingImagePasteCounts((counts) => ({
+              ...counts,
+              [pasteDocumentId]: (counts[pasteDocumentId] ?? 0) + 1,
+            }));
+
+            void Promise.resolve(pasteImageAttachmentAction(formData))
+              .then(({ markdown }) => {
+                const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                const nextDraft = replacePlaceholdersInMarkdown(currentDraft, placeholder, markdown);
+                pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                replaceCurrentPlaceholder(view, placeholder, markdown);
+                if (activeDocumentIdRef.current === pasteDocumentId) {
+                  setContentMarkdown(nextDraft);
+                }
+              })
+              .catch(() => {
+                const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                const nextDraft = replacePlaceholdersInMarkdown(currentDraft, placeholder, selectedTexts);
+                pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                replaceCurrentPlaceholders(view, placeholder, selectedTexts);
+                if (activeDocumentIdRef.current === pasteDocumentId) {
+                  setContentMarkdown(nextDraft);
+                }
+                toast.error("Image paste failed");
+              })
+              .finally(() => {
+                setPendingImagePasteCounts((counts) => {
+                  const nextCount = Math.max(0, (counts[pasteDocumentId] ?? 0) - 1);
+                  const nextCounts = { ...counts };
+
+                  if (nextCount > 0) {
+                    nextCounts[pasteDocumentId] = nextCount;
+                  } else {
+                    delete nextCounts[pasteDocumentId];
+                    if (activeDocumentIdRef.current === pasteDocumentId) {
+                      delete pendingImagePasteDraftsRef.current[pasteDocumentId];
+                    }
+                  }
+
+                  return nextCounts;
+                });
+              });
+
+            return true;
           }
 
           const html = event.clipboardData?.getData("text/html") ?? "";
@@ -93,7 +237,7 @@ export function DocumentEditor({
         },
       }),
     ],
-    [canWrite],
+    [canWrite, document?.id, pasteImageAttachmentAction],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
@@ -104,8 +248,16 @@ export function DocumentEditor({
   }, [activeCompletion, document?.id, linkCandidates]);
 
   useEffect(() => {
+    const pendingDraft = document?.id ? pendingImagePasteDraftsRef.current[document.id] : undefined;
     setTitle(document?.title ?? "");
-    setContentMarkdown(document?.contentMarkdown ?? "");
+    setContentMarkdown(document?.id ? (pendingDraft ?? document.contentMarkdown) : "");
+    if (
+      document?.id &&
+      pendingDraft !== undefined &&
+      (pendingImagePasteCountsRef.current[document.id] ?? 0) === 0
+    ) {
+      delete pendingImagePasteDraftsRef.current[document.id];
+    }
     setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
   }, [document?.id, document?.title, document?.contentMarkdown]);
@@ -161,9 +313,12 @@ export function DocumentEditor({
   const handleCreateEditor = useCallback(
     (view: EditorView) => {
       editorViewRef.current = view;
+      if (document?.id) {
+        editorViewDocumentIdsRef.current.set(view, document.id);
+      }
       restoreEditorFolds(view);
     },
-    [restoreEditorFolds],
+    [document?.id, restoreEditorFolds],
   );
 
   useEffect(() => {
@@ -246,7 +401,18 @@ export function DocumentEditor({
 
   return (
     <div key={document.id} className="mx-auto max-w-4xl space-y-4">
-      <form id={`document-save-${document.id}`} action={action}>
+      <form
+        id={`document-save-${document.id}`}
+        action={action}
+        onSubmit={(event) => {
+          if (!hasPendingImagePaste) {
+            return;
+          }
+
+          event.preventDefault();
+          toast.error("Image upload is still in progress");
+        }}
+      >
         <input type="hidden" name="documentId" value={document.id} />
         <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
       </form>
@@ -332,7 +498,7 @@ export function DocumentEditor({
         <p className="text-sm text-slate-500">
           {canWrite ? "Markdown changes are saved when you press Save." : "Viewer access is read-only."}
         </p>
-        <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite}>
+        <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite || hasPendingImagePaste}>
           <Save className="mr-2 h-4 w-4" aria-hidden="true" />
           Save
         </Button>

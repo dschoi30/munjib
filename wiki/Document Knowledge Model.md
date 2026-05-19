@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 16
+updated: 2026-05-18
+source_count: 17
 tags:
   - munjib
   - data-model
@@ -269,7 +269,7 @@ Issue #34 graph view는 새 storage model을 추가하지 않는다. Workspace p
 - `Attachment`: 문서에 업로드된 file metadata다. 실제 bytes는 `storage/attachments/<workspaceId>/<uuid>-<safeFileName>` 아래 저장되고 DB에는 fileName, mimeType, size, storageKey, uploadedById를 둔다.
 - `Comment`: 문서 comment다. `body`, `userId`, `createdAt`, optional `resolvedAt`을 가진다.
 
-Attachment upload는 markdown link를 문서 본문 끝에 append하고 새 document version과 audit log를 남긴다. Comment 생성은 write 가능한 사용자만 수행할 수 있고 `comment.created` audit log를 남긴다.
+Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 새 document version과 audit log를 남긴다. Paste-only image attachment upload는 clipboard image bytes를 같은 `Attachment` storage model에 저장하지만 document markdown과 versions는 변경하지 않고, editor cursor insertion용 image markdown을 service return value로 돌려준다. Comment 생성은 write 가능한 사용자만 수행할 수 있고 `comment.created` audit log를 남긴다.
 
 ## 권한과 감사
 

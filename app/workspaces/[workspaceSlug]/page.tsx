@@ -24,6 +24,7 @@ import {
   createCommentAction,
   createDocumentFromBrokenLinkAction,
   importMarkdownDocumentAction,
+  pasteDocumentImageAttachmentAction,
   renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
@@ -246,6 +247,7 @@ export default async function WorkspacePage({
   );
   const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
+  const pasteImageAttachmentAction = pasteDocumentImageAttachmentAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const selectedCenterFolder = selectedFolder
     ? {
@@ -345,6 +347,7 @@ export default async function WorkspacePage({
               canWrite={canWriteSelectedDocument}
               action={updateAction}
               uploadAttachmentAction={uploadAttachmentAction}
+              pasteImageAttachmentAction={pasteImageAttachmentAction}
               linkCandidates={readableDocuments.map((document) => ({
                 id: document.id,
                 slug: document.slug,

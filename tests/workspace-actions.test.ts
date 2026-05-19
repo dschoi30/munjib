@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   createFolder: vi.fn(),
   deriveMarkdownImportTitle: vi.fn(),
   isSupportedMarkdownImportFile: vi.fn(),
+  pasteDocumentImageAttachment: vi.fn(),
   redirect: vi.fn(),
   renameFolder: vi.fn(),
   requireCurrentUser: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("@/lib/comments/service", () => ({
 
 vi.mock("@/lib/attachments/service", () => ({
   uploadDocumentAttachment: mocks.uploadDocumentAttachment,
+  uploadPastedDocumentImageAttachment: mocks.pasteDocumentImageAttachment,
 }));
 
 vi.mock("@/lib/folders/service", () => ({
@@ -97,5 +99,49 @@ describe("workspace document actions", () => {
     });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
+    mocks.pasteDocumentImageAttachment.mockResolvedValue({
+      id: "attachment-1",
+      documentId: "doc-1",
+      markdown: "![clipboard.png](/api/attachments/attachment-1)",
+    });
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+    formData.set(
+      "attachment",
+      new File([new Uint8Array([1, 2, 3])], "clipboard.png", { type: "image/png" }),
+    );
+
+    const result = await pasteDocumentImageAttachmentAction("company-handbook", formData);
+
+    expect(mocks.pasteDocumentImageAttachment).toHaveBeenCalledWith({
+      actorId: "user-1",
+      bytes: expect.any(Uint8Array),
+      documentId: "doc-1",
+      fileName: "clipboard.png",
+      mimeType: "image/png",
+    });
+    const call = mocks.pasteDocumentImageAttachment.mock.calls[0]?.[0];
+    expect(Array.from(call.bytes)).toEqual([1, 2, 3]);
+    expect(result).toEqual({ markdown: "![clipboard.png](/api/attachments/attachment-1)" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("pasteDocumentImageAttachmentAction requires a file", async () => {
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+
+    await expect(pasteDocumentImageAttachmentAction("company-handbook", formData)).rejects.toThrow(
+      "ATTACHMENT_FILE_REQUIRED",
+    );
   });
 });

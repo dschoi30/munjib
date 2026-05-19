@@ -7,6 +7,8 @@ import { AppShell, useHeadingNavigation } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 
+const toastError = vi.hoisted(() => vi.fn());
+
 const codeMirrorHarness = vi.hoisted(() => ({
   updateListeners: [] as Array<(update: unknown) => void>,
   pasteHandlers: [] as Array<(event: ClipboardEvent, view: unknown) => boolean>,
@@ -33,11 +35,18 @@ vi.mock("@uiw/react-codemirror", () => ({
   },
 }));
 
+vi.mock("sonner", () => ({
+  toast: {
+    error: toastError,
+  },
+}));
+
 beforeEach(() => {
   let store: Record<string, string> = {};
   codeMirrorHarness.updateListeners = [];
   codeMirrorHarness.pasteHandlers = [];
   codeMirrorHarness.changeHandlers = [];
+  toastError.mockClear();
   Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
     configurable: true,
     value: vi.fn(),
@@ -68,6 +77,7 @@ const baseProps = {
   canWrite: true,
   action: async () => {},
   uploadAttachmentAction: async () => {},
+  pasteImageAttachmentAction: async () => ({ markdown: "![clipboard.png](/api/attachments/attachment-1)" }),
   linkCandidates: [],
   tags: [],
   properties: [],
@@ -76,6 +86,17 @@ const baseProps = {
   createFromBrokenLinkAction: async () => {},
   createCommentAction: async () => {},
 };
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
+}
 
 function renderEditor(markdown: string, props: Partial<Parameters<typeof DocumentEditor>[0]> = {}) {
   return render(
@@ -518,6 +539,452 @@ describe("DocumentEditor heading preview folding", () => {
     expect(preventDefault).toHaveBeenCalled();
     expect(replaceSelection).toHaveBeenCalledWith("# Pasted Title\n\n**Styled** text");
     expect(dispatch).toHaveBeenCalledWith({ changes: "# Pasted Title\n\n**Styled** text" });
+  });
+
+  it("uploads clipboard image files and replaces the current placeholder with returned markdown", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    let currentMarkdown = "Intro";
+    const replaceSelection = vi.fn((text: string) => ({
+      changes: { from: 2, to: 5, insert: text },
+    }));
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `shifted ${transaction.changes.insert} tail ${transaction.changes.insert}`;
+      }
+    });
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 2, to: 5 }] },
+        sliceDoc: (from: number, to: number) => "Intro".slice(from, to),
+      },
+      dispatch,
+    })).toBe(true);
+
+    expect(replaceSelection).toHaveBeenCalledWith(expect.stringMatching(/^!\[Uploading image\.\.\.\]\(about:blank#munjib-paste-/));
+    const placeholder = replaceSelection.mock.calls[0]?.[0];
+    if (!placeholder) throw new Error("Expected paste placeholder");
+    expect(dispatch).toHaveBeenCalledWith({
+      changes: { from: 2, to: 5, insert: placeholder },
+    });
+
+    await vi.waitFor(() => {
+      expect(pasteImageAttachmentAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const formData = pasteImageAttachmentAction.mock.calls[0]?.[0];
+    if (!formData) throw new Error("Expected paste FormData");
+    expect(formData.get("documentId")).toBe("doc-1");
+    expect(formData.get("attachment")).toBe(image);
+    expect(preventDefault).toHaveBeenCalled();
+
+    upload.resolve({ markdown: "![clipboard.png](/api/attachments/attachment-1)" });
+
+    await vi.waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        changes: [
+          {
+            from: 8,
+            to: 8 + placeholder.length,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+          {
+            from: 14 + placeholder.length,
+            to: 14 + placeholder.length * 2,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+        ],
+      });
+    });
+  });
+
+  it("blocks document save while pasted image upload is pending", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    const action = vi.fn(async () => {});
+    const { container } = renderEditor("Intro", { action, pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    const form = container.querySelector<HTMLFormElement>("#document-save-doc-1");
+    if (!form) throw new Error("Expected save form");
+    fireEvent.submit(form);
+    expect(action).not.toHaveBeenCalled();
+    expect(toastError).toHaveBeenCalledWith("Image upload is still in progress");
+
+    const placeholder = currentMarkdown.replace("Intro ", "");
+    upload.resolve({ markdown: "![clipboard.png](/api/attachments/attachment-1)" });
+
+    await vi.waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        changes: [
+          {
+            from: 6,
+            to: 6 + placeholder.length,
+            insert: "![clipboard.png](/api/attachments/attachment-1)",
+          },
+        ],
+      });
+    });
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+  });
+
+  it("tracks pending pasted image uploads by document", async () => {
+    const firstUpload = createDeferred<{ markdown: string }>();
+    const secondUpload = createDeferred<{ markdown: string }>();
+    const uploads = [firstUpload, secondUpload];
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => {
+      const upload = uploads[pasteImageAttachmentAction.mock.calls.length - 1];
+      if (!upload) throw new Error("Unexpected paste upload");
+
+      return upload.promise;
+    });
+    const { rerender } = render(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    let firstMarkdown = "First";
+    let firstView: {
+      state: {
+        replaceSelection: ReturnType<typeof vi.fn>;
+        doc: { readonly length: number; toString: () => string; lineAt: () => { number: number } };
+        selection: { ranges: Array<{ from: number; to: number }> };
+        sliceDoc: () => string;
+      };
+      dispatch: ReturnType<typeof vi.fn>;
+    };
+    const firstDispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        firstMarkdown = `First ${transaction.changes.insert}`;
+      }
+      codeMirrorHarness.updateListeners.forEach((listener) => listener({ view: firstView }));
+    });
+    firstView = {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: {
+          get length() {
+            return firstMarkdown.length;
+          },
+          toString: () => firstMarkdown,
+          lineAt: () => ({ number: 1 }),
+        },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch: firstDispatch,
+    };
+    expect(codeMirrorHarness.pasteHandlers[0](event, firstView)).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-2", title: "Second", contentMarkdown: "Second" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+
+    let secondMarkdown = "Second";
+    let secondView: {
+      state: {
+        replaceSelection: ReturnType<typeof vi.fn>;
+        doc: { readonly length: number; toString: () => string; lineAt: () => { number: number } };
+        selection: { ranges: Array<{ from: number; to: number }> };
+        sliceDoc: () => string;
+      };
+      dispatch: ReturnType<typeof vi.fn>;
+    };
+    const secondDispatch = vi.fn((transaction: { changes?: { insert?: string } | Array<{ insert: string }> }) => {
+      if (Array.isArray(transaction.changes)) {
+        secondMarkdown = `Second ${transaction.changes[0]?.insert ?? ""}`;
+      } else if (typeof transaction.changes?.insert === "string") {
+        secondMarkdown = `Second ${transaction.changes.insert}`;
+      }
+      codeMirrorHarness.updateListeners.forEach((listener) => listener({ view: secondView }));
+    });
+    secondView = {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 6, to: 6, insert: text } })),
+        doc: {
+          get length() {
+            return secondMarkdown.length;
+          },
+          toString: () => secondMarkdown,
+          lineAt: () => ({ number: 1 }),
+        },
+        selection: { ranges: [{ from: 6, to: 6 }] },
+        sliceDoc: () => "",
+      },
+      dispatch: secondDispatch,
+    };
+    expect(codeMirrorHarness.pasteHandlers[0](event, secondView)).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    secondUpload.resolve({ markdown: "![second.png](/api/attachments/attachment-2)" });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+
+    firstUpload.resolve({ markdown: "![first.png](/api/attachments/attachment-1)" });
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+    await vi.waitFor(() => {
+      expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
+        "First ![first.png](/api/attachments/attachment-1)",
+      );
+    });
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          pasteImageAttachmentAction={pasteImageAttachmentAction}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First server refresh" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    await vi.waitFor(() => {
+      expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
+        "First server refresh",
+      );
+    });
+  });
+
+  it("prefers clipboard image items over files when uploading pasted images", async () => {
+    const pasteImageAttachmentAction = vi.fn(async (_formData: FormData) => ({
+      markdown: "![item.png](/api/attachments/attachment-item)",
+    }));
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const itemImage = new File(["item"], "item.png", { type: "image/png" });
+    const fallbackFile = new File(["file"], "file.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [fallbackFile],
+        items: [
+          {
+            kind: "file",
+            type: "image/png",
+            getAsFile: () => itemImage,
+          },
+        ],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 0, to: 0, insert: text } })),
+        doc: { toString: () => "" },
+        selection: { ranges: [{ from: 0, to: 0 }] },
+        sliceDoc: () => "",
+      },
+      dispatch: vi.fn(),
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(pasteImageAttachmentAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const formData = pasteImageAttachmentAction.mock.calls[0]?.[0];
+    if (!formData) throw new Error("Expected paste FormData");
+    expect(formData.get("attachment")).toBe(itemImage);
+  });
+
+  it("removes the image placeholder and shows an error toast when pasted image upload fails", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    let currentMarkdown = "Intro";
+    const replaceSelection = vi.fn((text: string) => ({ changes: { from: 1, to: 1, insert: text } }));
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `prefix ${transaction.changes.insert} suffix`;
+      }
+    });
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 1, to: 4 }] },
+        sliceDoc: (from: number, to: number) => "Intro".slice(from, to),
+      },
+      dispatch,
+    })).toBe(true);
+
+    const placeholder = replaceSelection.mock.calls[0]?.[0];
+    if (!placeholder) throw new Error("Expected paste placeholder");
+
+    upload.reject(new Error("upload failed"));
+
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Image paste failed");
+    });
+    expect(dispatch).toHaveBeenCalledWith({
+      changes: [
+        {
+          from: 7,
+          to: 7 + placeholder.length,
+          insert: "ntr",
+        },
+      ],
+    });
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        changes: expect.objectContaining({
+          insert: "![clipboard.png](/api/attachments/attachment-1)",
+        }),
+      }),
+    );
+  });
+
+  it("keeps rich HTML paste behavior when no image file is present", async () => {
+    const pasteImageAttachmentAction = vi.fn(async () => ({
+      markdown: "![clipboard.png](/api/attachments/attachment-1)",
+    }));
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const dispatch = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: text }));
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) => (type === "text/html" ? "<p><strong>Styled</strong></p>" : "Styled"),
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: { replaceSelection },
+      dispatch,
+    })).toBe(true);
+
+    expect(pasteImageAttachmentAction).not.toHaveBeenCalled();
+    expect(replaceSelection).toHaveBeenCalledWith("**Styled**");
   });
 });
 
