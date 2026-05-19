@@ -1,5 +1,7 @@
 "use server";
 
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -21,6 +23,9 @@ import {
   restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
+
+const maxPastedImageBytes = 5 * 1024 * 1024;
+const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
 export async function updateDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
@@ -190,21 +195,148 @@ export async function pasteDocumentImageAttachmentAction(
   const user = await requireCurrentUser();
   const file = formData.get("attachment");
   const documentId = String(formData.get("documentId"));
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  const requestedFileName = String(formData.get("fileName") ?? "").trim();
 
-  if (!(file instanceof File)) {
+  if (!(file instanceof File) && !imageUrl) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
   }
+
+  const attachmentInput = file instanceof File
+    ? {
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      }
+    : await fetchPastedImageUrl(imageUrl, requestedFileName);
 
   const attachment = await uploadPastedDocumentImageAttachment({
     documentId,
     actorId: user.id,
-    fileName: file.name,
-    mimeType: file.type || "application/octet-stream",
-    bytes: new Uint8Array(await file.arrayBuffer()),
+    ...attachmentInput,
   });
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
   return { markdown: attachment.markdown };
+}
+
+async function fetchPastedImageUrl(imageUrl: string, requestedFileName: string) {
+  const url = new URL(imageUrl);
+  await assertPublicHttpUrl(url);
+
+  const response = await fetch(url, {
+    redirect: "error",
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+  }
+
+  const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "application/octet-stream";
+  if (!pastedImageMimeTypes.has(mimeType)) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  if (contentLength > maxPastedImageBytes) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+  }
+
+  return {
+    fileName: requestedFileName || url.pathname.split("/").pop() || "pasted-image",
+    mimeType,
+    bytes: await readResponseBytesWithLimit(response, maxPastedImageBytes),
+  };
+}
+
+async function assertPublicHttpUrl(url: URL) {
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+}
+
+function isPublicAddress(address: string) {
+  if (isIP(address) === 4) {
+    const parts = address.split(".").map(Number);
+    const [a, b] = parts;
+
+    return !(
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+
+  if (isIP(address) === 6) {
+    const normalized = address.toLowerCase();
+
+    return !(
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80:") ||
+      normalized.startsWith("::ffff:127.") ||
+      normalized.startsWith("::ffff:10.") ||
+      normalized.startsWith("::ffff:192.168.")
+    );
+  }
+
+  return false;
+}
+
+async function readResponseBytesWithLimit(response: Response, limit: number) {
+  if (!response.body) {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (bytes.byteLength > limit) {
+      throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+    }
+
+    return bytes;
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    if (!value) continue;
+
+    const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+    total += chunk.byteLength;
+    if (total > limit) {
+      await reader.cancel().catch(() => undefined);
+      throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+    }
+    chunks.push(chunk);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return bytes;
 }
 
 export async function createCommentAction(workspaceSlug: string, formData: FormData) {
