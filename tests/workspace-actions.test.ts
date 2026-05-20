@@ -123,6 +123,31 @@ describe("workspace document actions", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  test("importMarkdownDocumentAction returns the created document without redirect", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
+    mocks.deriveMarkdownImportTitle.mockReturnValue("Imported");
+    mocks.createDocument.mockResolvedValue({ id: "doc-imported" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("markdownFile", new File(["# Imported"], "imported.md", {
+      type: "text/markdown",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      actorId: "user-1",
+      title: "Imported",
+      contentMarkdown: "# Imported",
+    });
+    expect(result).toEqual({ documentId: "doc-imported" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
     mocks.pasteDocumentImageAttachment.mockResolvedValue({
       id: "attachment-1",

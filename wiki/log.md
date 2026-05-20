@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-21
-source_count: 86
+source_count: 87
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-21T01:00:00+09:00 - bugfix
+
+- Result: Markdown import 직후 화면 깜빡임을 줄이기 위해 import navigation을 server redirect에서 client push로 옮겼다.
+- Coverage: `importMarkdownDocumentAction()`은 document 생성과 revalidation 후 `{ documentId }`만 반환한다. Workspace settings import form은 client action에서 dialog를 닫고 `router.push()`로 imported document URL을 연다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-list.tsx`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-21T00:56:00+09:00 - bugfix
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { FileText, Settings, Upload, X } from "lucide-react";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
@@ -46,7 +46,7 @@ export function DocumentList({
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
   createFolderAction: (formData: FormData) => Promise<void>;
-  importMarkdownAction: (formData: FormData) => Promise<void>;
+  importMarkdownAction: (formData: FormData) => Promise<{ documentId: string }>;
   renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
@@ -144,6 +144,7 @@ export function DocumentList({
       />
       {settingsOpen ? (
         <WorkspaceSettingsPanel
+          workspaceSlug={workspaceSlug}
           canWrite={canWrite}
           importMarkdownAction={importMarkdownAction}
           onClose={() => setSettingsOpen(false)}
@@ -154,14 +155,27 @@ export function DocumentList({
 }
 
 function WorkspaceSettingsPanel({
+  workspaceSlug,
   canWrite,
   importMarkdownAction,
   onClose,
 }: {
+  workspaceSlug: string;
   canWrite: boolean;
-  importMarkdownAction: (formData: FormData) => Promise<void>;
+  importMarkdownAction: (formData: FormData) => Promise<{ documentId: string }>;
   onClose: () => void;
 }) {
+  const router = useRouter();
+  const [isImportPending, startImportTransition] = useTransition();
+
+  const handleImportMarkdown = useCallback((formData: FormData) => {
+    startImportTransition(async () => {
+      const { documentId } = await importMarkdownAction(formData);
+      onClose();
+      router.push(workspaceDocumentHref({ workspaceSlug, documentId }));
+    });
+  }, [importMarkdownAction, onClose, router, workspaceSlug]);
+
   return (
     <div
       data-testid="workspace-settings-backdrop"
@@ -210,7 +224,7 @@ function WorkspaceSettingsPanel({
               <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-          <form action={importMarkdownAction} className="space-y-4">
+          <form action={handleImportMarkdown} className="space-y-4">
             <label
               htmlFor="markdownFile"
               className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center"
@@ -224,13 +238,13 @@ function WorkspaceSettingsPanel({
                 type="file"
                 aria-label="Markdown file"
                 accept=".md,.markdown,text/markdown,text/x-markdown"
-                disabled={!canWrite}
+                disabled={!canWrite || isImportPending}
                 className="mt-5 w-full max-w-md text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
               />
             </label>
             <Button
               type="submit"
-              disabled={!canWrite}
+              disabled={!canWrite || isImportPending}
               className="h-10 w-full max-w-md"
             >
               Import Markdown

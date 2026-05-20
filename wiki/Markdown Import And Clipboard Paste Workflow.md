@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-21
-source_count: 10
+source_count: 11
 tags:
   - munjib
   - workflow
@@ -29,6 +29,8 @@ links:
 
 Markdown import는 새 document를 즉시 만든다. Imported file text가 곧 `Document.contentMarkdown`이 되고, `createDocument()` 흐름에서 initial version, link reconciliation, metadata reconciliation, `document.created` audit log가 같이 확정된다.
 
+Import 직후 navigation은 server action `redirect()`를 쓰지 않는다. Server action은 `{ documentId }`를 반환하고 settings panel이 client-side `router.push()`로 새 문서를 연다. 이 방식은 import 완료 직후 workspace surface가 server redirect로 크게 remount되며 깜빡이는 현상을 줄이기 위한 것이다.
+
 Clipboard paste는 현재 editor draft를 먼저 바꾼다. Image paste는 attachment row와 file storage를 먼저 만들 수 있지만, 본문의 image markdown persistence, document version, link/metadata reconciliation, `document.updated` audit log는 사용자가 Save를 누를 때 `updateDocument()`에서 확정된다.
 
 ## Markdown import
@@ -43,7 +45,8 @@ UI 진입점은 workspace settings dialog의 `Import` menu다. `components/docum
 4. `file.text()`를 읽어 원문 Markdown을 그대로 `contentMarkdown`으로 사용한다.
 5. `deriveMarkdownImportTitle()`로 제목을 정한다.
 6. `createDocument()`를 호출한다.
-7. workspace route를 revalidate하고 imported document URL로 redirect한다.
+7. workspace route를 revalidate하고 created document id를 반환한다.
+8. Settings dialog client form action이 dialog를 닫고 imported document URL로 `router.push()`한다.
 
 Title 우선순위는 YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name, 마지막으로 `Untitled`다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
 

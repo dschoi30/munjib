@@ -77,7 +77,7 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
   });
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+  return { documentId: document.id };
 }
 
 export async function createFolderAction(workspaceSlug: string, formData: FormData) {
