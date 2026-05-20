@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-20
-source_count: 83
+updated: 2026-05-21
+source_count: 84
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-21T00:00:00+09:00 - documentation
+
+- Result: Markdown import와 clipboard paste 프로세스를 별도 workflow 문서로 분리했다.
+- Coverage: 새 [[Markdown Import And Clipboard Paste Workflow]]는 Markdown file import의 document creation 흐름과 clipboard image/rich HTML paste의 draft, attachment, Save guard, remote image server fetch, 실패 처리 차이를 정리한다. [[Document Editing Workflow]]는 상위 편집 흐름을 유지하고 세부 import/paste 설명은 새 문서로 연결한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `lib/documents/import-markdown.ts`, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `lib/attachments/service.ts`, `tests/documents/import-markdown.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/workspace-actions.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-20T00:36:00+09:00 - bugfix
 

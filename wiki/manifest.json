@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-19",
+  "updated": "2026-05-20",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -63,9 +63,10 @@
         "[[Document Knowledge Model]]",
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
-        "[[Auth And Permissions Workflow]]"
+        "[[Auth And Permissions Workflow]]",
+        "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 51,
+      "source_count": 52,
       "searchPriority": 50
     },
     {
@@ -130,6 +131,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
+        "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
         "[[Next.js Prisma Monolith]]",
@@ -138,7 +140,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 37,
+      "source_count": 38,
       "searchPriority": 5
     },
     {
@@ -180,8 +182,32 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 83,
+      "source_count": 84,
       "searchPriority": 1
+    },
+    {
+      "id": "workflow-markdown-import-clipboard-paste",
+      "path": "wiki/Markdown Import And Clipboard Paste Workflow.md",
+      "title": "Markdown Import And Clipboard Paste Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "documents",
+        "markdown",
+        "clipboard",
+        "attachments"
+      ],
+      "links": [
+        "[[Document Editing Workflow]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Auth And Permissions Workflow]]"
+      ],
+      "source_count": 8,
+      "searchPriority": 50
     },
     {
       "id": "concept-munjib",
