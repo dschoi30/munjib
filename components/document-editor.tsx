@@ -344,7 +344,8 @@ export function DocumentEditor({
             }));
 
             for (const image of images) {
-              void Promise.resolve(pasteImageAttachmentAction(formDataFromHtmlImagePaste(image, pasteDocumentId)))
+              void Promise.resolve()
+                .then(() => pasteImageAttachmentAction(formDataFromHtmlImagePaste(image, pasteDocumentId)))
                 .then(({ markdown }) => {
                   const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
                   const nextDraft = replacePlaceholdersInMarkdown(currentDraft, image.placeholder, markdown);

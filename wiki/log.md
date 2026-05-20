@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-21
-source_count: 85
+source_count: 86
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-21T00:56:00+09:00 - bugfix
+
+- Result: PR review feedback에 따라 clipboard HTML image paste의 server fetch와 pending state guard를 추가 보강했다.
+- Coverage: IPv4-mapped IPv6 address는 dotted form뿐 아니라 hex form도 IPv4 private range 판정으로 재검사한다. Remote image fetch는 검증된 DNS answer를 한 개만 쓰지 않고, 실패 시 다음 검증 address를 순서대로 시도한다. Unsupported/malformed `data:` image가 HTML paste form data 생성 중 동기 throw해도 pending image paste count가 finally에서 정리된다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-editor.tsx`, `tests/workspace-actions.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-actions.test.ts`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`.
 
 ## 2026-05-21T00:45:00+09:00 - security
 

@@ -1102,6 +1102,56 @@ describe("DocumentEditor heading preview folding", () => {
 
     upload.resolve({ markdown: "![source.png](/api/attachments/attachment-1)" });
   });
+
+  it("clears pending state when rich HTML image form data creation fails", async () => {
+    const pasteImageAttachmentAction = vi.fn(async (_formData: FormData) => ({
+      markdown: "![source.png](/api/attachments/attachment-1)",
+    }));
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } }));
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } | Array<{ insert: string }> }) => {
+      if (Array.isArray(transaction.changes)) {
+        currentMarkdown = `Intro ${transaction.changes[0]?.insert ?? ""}`;
+      } else if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? '<p><img src="data:text/plain;base64,aW1hZ2U=" alt="fallback"></p>'
+            : "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Image paste failed");
+    });
+    expect(pasteImageAttachmentAction).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+  });
 });
 
 describe("DocumentEditor properties", () => {

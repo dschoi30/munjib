@@ -241,8 +241,53 @@ describe("workspace document actions", () => {
     }, expect.any(Function));
   });
 
+  test("pasteDocumentImageAttachmentAction retries the next validated address", async () => {
+    mocks.lookup.mockResolvedValue([
+      { address: "203.0.113.10", family: 4 },
+      { address: "93.184.216.34", family: 4 },
+    ]);
+    mocks.httpsRequest
+      .mockImplementationOnce(createMockNodeRequestError(new Error("connect failed")))
+      .mockImplementationOnce(createMockNodeRequest([7, 8, 9], "image/png"));
+    mocks.pasteDocumentImageAttachment.mockResolvedValue({
+      id: "attachment-1",
+      documentId: "doc-1",
+      markdown: "![diagram.png](/api/attachments/attachment-1)",
+    });
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+    formData.set("imageUrl", "https://example.com/assets/diagram.png");
+
+    await pasteDocumentImageAttachmentAction("company-handbook", formData);
+
+    expect(mocks.httpsRequest).toHaveBeenCalledTimes(2);
+    expect(mocks.httpsRequest.mock.calls[0]?.[0]).toMatchObject({ hostname: "203.0.113.10" });
+    expect(mocks.httpsRequest.mock.calls[1]?.[0]).toMatchObject({ hostname: "93.184.216.34" });
+    const call = mocks.pasteDocumentImageAttachment.mock.calls[0]?.[0];
+    expect(Array.from(call.bytes)).toEqual([7, 8, 9]);
+  });
+
   test("pasteDocumentImageAttachmentAction rejects IPv4-mapped private IPv6 image URLs", async () => {
     mocks.lookup.mockResolvedValue([{ address: "::ffff:172.16.0.1", family: 6 }]);
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+    formData.set("imageUrl", "https://example.com/internal.png");
+
+    await expect(pasteDocumentImageAttachmentAction("company-handbook", formData)).rejects.toThrow(
+      "ATTACHMENT_MIME_TYPE_FORBIDDEN",
+    );
+    expect(mocks.httpsRequest).not.toHaveBeenCalled();
+    expect(mocks.pasteDocumentImageAttachment).not.toHaveBeenCalled();
+  });
+
+  test("pasteDocumentImageAttachmentAction rejects hex IPv4-mapped private IPv6 image URLs", async () => {
+    mocks.lookup.mockResolvedValue([{ address: "::ffff:7f00:1", family: 6 }]);
     const { pasteDocumentImageAttachmentAction } = await import(
       "@/app/workspaces/[workspaceSlug]/actions"
     );
@@ -296,6 +341,25 @@ function createMockNodeRequest(bytes: number[], mimeType: string, statusCode = 2
     };
 
     callback(response);
+    return request;
+  };
+}
+
+function createMockNodeRequestError(error: Error) {
+  return () => {
+    const request = {
+      end: vi.fn(),
+      on: vi.fn((event: string, handler: (error: Error) => void) => {
+        if (event === "error") {
+          queueMicrotask(() => handler(error));
+        }
+
+        return request;
+      }),
+      setTimeout: vi.fn(),
+      destroy: vi.fn(),
+    };
+
     return request;
   };
 }

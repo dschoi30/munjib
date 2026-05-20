@@ -225,8 +225,28 @@ export async function pasteDocumentImageAttachmentAction(
 
 async function fetchPastedImageUrl(imageUrl: string, requestedFileName: string) {
   const url = new URL(imageUrl);
-  const validatedAddress = await resolvePublicHttpUrl(url);
-  const response = await requestPinnedImageUrl(url, validatedAddress);
+  const validatedAddresses = await resolvePublicHttpUrl(url);
+  let lastError: unknown;
+
+  for (const address of validatedAddresses) {
+    try {
+      return await fetchPastedImageUrlAtAddress(url, requestedFileName, address);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+}
+
+async function fetchPastedImageUrlAtAddress(
+  url: URL,
+  requestedFileName: string,
+  address: string,
+) {
+  const response = await requestPinnedImageUrl(url, address);
   const statusCode = response.statusCode ?? 0;
   if (statusCode < 200 || statusCode >= 300) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
@@ -266,7 +286,7 @@ async function resolvePublicHttpUrl(url: URL) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
   }
 
-  return addresses[0].address;
+  return addresses.map(({ address }) => address);
 }
 
 function requestPinnedImageUrl(url: URL, address: string) {
@@ -324,7 +344,7 @@ function isPublicAddress(address: string) {
 
   if (isIP(address) === 6) {
     const normalized = address.toLowerCase();
-    const mappedIpv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+    const mappedIpv4 = ipv4MappedAddress(normalized);
     if (mappedIpv4) {
       return isPublicAddress(mappedIpv4);
     }
@@ -339,6 +359,31 @@ function isPublicAddress(address: string) {
   }
 
   return false;
+}
+
+function ipv4MappedAddress(address: string) {
+  const dotted = address.match(/^(?:::ffff:|0:0:0:0:0:ffff:)(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (dotted) {
+    return dotted;
+  }
+
+  const hex = address.match(/^(?:::ffff:|0:0:0:0:0:ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hex) {
+    return null;
+  }
+
+  const high = Number.parseInt(hex[1], 16);
+  const low = Number.parseInt(hex[2], 16);
+  if (!Number.isFinite(high) || !Number.isFinite(low) || high > 0xffff || low > 0xffff) {
+    return null;
+  }
+
+  return [
+    (high >> 8) & 0xff,
+    high & 0xff,
+    (low >> 8) & 0xff,
+    low & 0xff,
+  ].join(".");
 }
 
 function headerValue(value: string | string[] | undefined) {
