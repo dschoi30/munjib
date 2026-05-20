@@ -174,11 +174,7 @@ function fileFromDataUrl(dataUrl: string, fileName: string) {
   const mimeType = match[1];
   const payload = match[3];
   const binary = match[2] ? atob(payload) : decodeURIComponent(payload);
-  const bytes = new Uint8Array(binary.length);
-
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
 
   return new File([bytes], withImageExtension(fileName, mimeType), { type: mimeType });
 }

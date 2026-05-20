@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-21
-source_count: 8
+source_count: 9
 tags:
   - munjib
   - workflow
@@ -94,6 +94,7 @@ Server action의 remote image fetch는 보안 제한을 둔다.
 
 - `http:`와 `https:`만 허용한다.
 - `localhost`, `.localhost`, private IPv4, loopback, link-local, carrier-grade NAT, multicast, private IPv6, link-local IPv6를 DNS lookup 결과 기준으로 거부한다.
+- DNS rebinding을 피하기 위해 검증된 IP address에 직접 연결하고, 원래 hostname은 HTTPS SNI와 `Host` header로만 유지한다.
 - redirect는 `redirect: "error"`로 차단한다.
 - `AbortSignal.timeout(5_000)`으로 5초 timeout을 둔다.
 - `image/png`, `image/jpeg`, `image/gif`, `image/webp`만 허용한다.

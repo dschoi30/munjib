@@ -1,7 +1,10 @@
 "use server";
 
 import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
 import { isIP } from "node:net";
+import type { IncomingMessage } from "node:http";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -222,22 +225,21 @@ export async function pasteDocumentImageAttachmentAction(
 
 async function fetchPastedImageUrl(imageUrl: string, requestedFileName: string) {
   const url = new URL(imageUrl);
-  await assertPublicHttpUrl(url);
-
-  const response = await fetch(url, {
-    redirect: "error",
-    signal: AbortSignal.timeout(5_000),
-  });
-  if (!response.ok) {
+  const validatedAddress = await resolvePublicHttpUrl(url);
+  const response = await requestPinnedImageUrl(url, validatedAddress);
+  const statusCode = response.statusCode ?? 0;
+  if (statusCode < 200 || statusCode >= 300) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
   }
 
-  const mimeType = response.headers.get("content-type")?.split(";")[0]?.trim() || "application/octet-stream";
+  const mimeType = headerValue(response.headers["content-type"])
+    ?.split(";")[0]
+    ?.trim() || "application/octet-stream";
   if (!pastedImageMimeTypes.has(mimeType)) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
   }
 
-  const contentLength = Number(response.headers.get("content-length") ?? "0");
+  const contentLength = Number(headerValue(response.headers["content-length"]) ?? "0");
   if (contentLength > maxPastedImageBytes) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
   }
@@ -245,11 +247,11 @@ async function fetchPastedImageUrl(imageUrl: string, requestedFileName: string) 
   return {
     fileName: requestedFileName || url.pathname.split("/").pop() || "pasted-image",
     mimeType,
-    bytes: await readResponseBytesWithLimit(response, maxPastedImageBytes),
+    bytes: await readNodeResponseBytesWithLimit(response, maxPastedImageBytes),
   };
 }
 
-async function assertPublicHttpUrl(url: URL) {
+async function resolvePublicHttpUrl(url: URL) {
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
   }
@@ -263,6 +265,43 @@ async function assertPublicHttpUrl(url: URL) {
   if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
   }
+
+  return addresses[0].address;
+}
+
+function requestPinnedImageUrl(url: URL, address: string) {
+  const request = url.protocol === "https:" ? httpsRequest : httpRequest;
+  const hostHeader = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+
+  return new Promise<IncomingMessage>((resolve, reject) => {
+    const clientRequest = request(
+      {
+        hostname: address,
+        port: url.port || undefined,
+        method: "GET",
+        path: `${url.pathname}${url.search}`,
+        servername: url.hostname,
+        headers: {
+          Host: hostHeader,
+        },
+      },
+      (response) => {
+        if ((response.statusCode ?? 0) >= 300 && (response.statusCode ?? 0) < 400) {
+          response.resume();
+          reject(new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED));
+          return;
+        }
+
+        resolve(response);
+      },
+    );
+
+    clientRequest.setTimeout(5_000, () => {
+      clientRequest.destroy(new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED));
+    });
+    clientRequest.on("error", reject);
+    clientRequest.end();
+  });
 }
 
 function isPublicAddress(address: string) {
@@ -285,45 +324,36 @@ function isPublicAddress(address: string) {
 
   if (isIP(address) === 6) {
     const normalized = address.toLowerCase();
+    const mappedIpv4 = normalized.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+    if (mappedIpv4) {
+      return isPublicAddress(mappedIpv4);
+    }
 
     return !(
       normalized === "::" ||
       normalized === "::1" ||
       normalized.startsWith("fc") ||
       normalized.startsWith("fd") ||
-      normalized.startsWith("fe80:") ||
-      normalized.startsWith("::ffff:127.") ||
-      normalized.startsWith("::ffff:10.") ||
-      normalized.startsWith("::ffff:192.168.")
+      normalized.startsWith("fe80:")
     );
   }
 
   return false;
 }
 
-async function readResponseBytesWithLimit(response: Response, limit: number) {
-  if (!response.body) {
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (bytes.byteLength > limit) {
-      throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
-    }
+function headerValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
 
-    return bytes;
-  }
-
-  const reader = response.body.getReader();
+async function readNodeResponseBytesWithLimit(response: IncomingMessage, limit: number) {
   const chunks: Uint8Array[] = [];
   let total = 0;
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    if (!value) continue;
-
-    const chunk = value instanceof Uint8Array ? value : new Uint8Array(value);
+  for await (const value of response) {
+    const chunk = value instanceof Uint8Array ? value : Buffer.from(value);
     total += chunk.byteLength;
     if (total > limit) {
-      await reader.cancel().catch(() => undefined);
+      response.destroy();
       throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
     }
     chunks.push(chunk);

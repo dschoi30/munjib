@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-21
-source_count: 84
+source_count: 85
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-21T00:45:00+09:00 - security
+
+- Result: Clipboard HTML remote image server fetch의 SSRF hardening을 PR review feedback에 맞춰 보강했다.
+- Coverage: Remote image fetch는 DNS lookup으로 public address만 허용한 뒤 원래 hostname을 다시 resolve하지 않고 검증된 IP address에 직접 연결한다. HTTPS 요청은 원래 hostname을 SNI와 `Host` header에 유지해 DNS rebinding 우회를 줄인다. IPv4-mapped IPv6 private range도 IPv4 판정 경로로 재검사한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `tests/workspace-actions.test.ts`, `components/document-editor.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/workspace-actions.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-21T00:00:00+09:00 - documentation
 
