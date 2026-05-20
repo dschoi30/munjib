@@ -18,10 +18,20 @@ const mocks = vi.hoisted(() => ({
   updateDocument: vi.fn(),
   uploadDocumentAttachment: vi.fn(),
   lookup: vi.fn(),
+  httpRequest: vi.fn(),
+  httpsRequest: vi.fn(),
 }));
 
 vi.mock("node:dns/promises", () => ({
   lookup: mocks.lookup,
+}));
+
+vi.mock("node:http", () => ({
+  request: mocks.httpRequest,
+}));
+
+vi.mock("node:https", () => ({
+  request: mocks.httpsRequest,
 }));
 
 vi.mock("next/cache", () => ({
@@ -69,6 +79,8 @@ describe("workspace document actions", () => {
     vi.clearAllMocks();
     mocks.requireCurrentUser.mockResolvedValue({ id: "user-1" });
     mocks.lookup.mockResolvedValue([{ address: "93.184.216.34", family: 4 }]);
+    mocks.httpRequest.mockImplementation(createMockNodeRequest([4, 5, 6], "image/png"));
+    mocks.httpsRequest.mockImplementation(createMockNodeRequest([4, 5, 6], "image/png"));
   });
 
   afterEach(() => {
@@ -161,13 +173,6 @@ describe("workspace document actions", () => {
       documentId: "doc-1",
       markdown: "![diagram.png](/api/attachments/attachment-1)",
     });
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response(new Uint8Array([4, 5, 6]), {
-        headers: { "content-type": "image/png" },
-        status: 200,
-      })),
-    );
     const { pasteDocumentImageAttachmentAction } = await import(
       "@/app/workspaces/[workspaceSlug]/actions"
     );
@@ -178,10 +183,21 @@ describe("workspace document actions", () => {
 
     const result = await pasteDocumentImageAttachmentAction("company-handbook", formData);
 
-    expect(fetch).toHaveBeenCalledWith(new URL("https://example.com/assets/diagram.png"), {
-      redirect: "error",
-      signal: expect.any(AbortSignal),
-    });
+    expect(mocks.httpsRequest).toHaveBeenCalledWith({
+      hostname: "93.184.216.34",
+      port: undefined,
+      method: "GET",
+      path: "/assets/diagram.png",
+      servername: "example.com",
+      headers: {
+        Host: "example.com",
+      },
+    }, expect.any(Function));
+    expect(mocks.httpRequest).not.toHaveBeenCalled();
+    const request = mocks.httpsRequest.mock.results[0]?.value;
+    expect(request.setTimeout).toHaveBeenCalledWith(5_000, expect.any(Function));
+    expect(request.end).toHaveBeenCalled();
+    expect(request.on).toHaveBeenCalledWith("error", expect.any(Function));
     expect(mocks.lookup).toHaveBeenCalledWith("example.com", { all: true, verbatim: true });
     expect(mocks.pasteDocumentImageAttachment).toHaveBeenCalledWith({
       actorId: "user-1",
@@ -197,9 +213,52 @@ describe("workspace document actions", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  test("pasteDocumentImageAttachmentAction pins remote fetch to the validated address", async () => {
+    mocks.lookup.mockResolvedValue([{ address: "203.0.113.10", family: 4 }]);
+    mocks.pasteDocumentImageAttachment.mockResolvedValue({
+      id: "attachment-1",
+      documentId: "doc-1",
+      markdown: "![diagram.png](/api/attachments/attachment-1)",
+    });
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+    formData.set("imageUrl", "https://images.example.test:8443/assets/diagram.png?size=large");
+
+    await pasteDocumentImageAttachmentAction("company-handbook", formData);
+
+    expect(mocks.httpsRequest).toHaveBeenCalledWith({
+      hostname: "203.0.113.10",
+      port: "8443",
+      method: "GET",
+      path: "/assets/diagram.png?size=large",
+      servername: "images.example.test",
+      headers: {
+        Host: "images.example.test:8443",
+      },
+    }, expect.any(Function));
+  });
+
+  test("pasteDocumentImageAttachmentAction rejects IPv4-mapped private IPv6 image URLs", async () => {
+    mocks.lookup.mockResolvedValue([{ address: "::ffff:172.16.0.1", family: 6 }]);
+    const { pasteDocumentImageAttachmentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("documentId", "doc-1");
+    formData.set("imageUrl", "https://example.com/internal.png");
+
+    await expect(pasteDocumentImageAttachmentAction("company-handbook", formData)).rejects.toThrow(
+      "ATTACHMENT_MIME_TYPE_FORBIDDEN",
+    );
+    expect(mocks.httpsRequest).not.toHaveBeenCalled();
+    expect(mocks.pasteDocumentImageAttachment).not.toHaveBeenCalled();
+  });
+
   test("pasteDocumentImageAttachmentAction rejects private remote image URLs before fetch", async () => {
     mocks.lookup.mockResolvedValue([{ address: "127.0.0.1", family: 4 }]);
-    vi.stubGlobal("fetch", vi.fn());
     const { pasteDocumentImageAttachmentAction } = await import(
       "@/app/workspaces/[workspaceSlug]/actions"
     );
@@ -210,7 +269,33 @@ describe("workspace document actions", () => {
     await expect(pasteDocumentImageAttachmentAction("company-handbook", formData)).rejects.toThrow(
       "ATTACHMENT_MIME_TYPE_FORBIDDEN",
     );
-    expect(fetch).not.toHaveBeenCalled();
+    expect(mocks.httpRequest).not.toHaveBeenCalled();
+    expect(mocks.httpsRequest).not.toHaveBeenCalled();
     expect(mocks.pasteDocumentImageAttachment).not.toHaveBeenCalled();
   });
 });
+
+function createMockNodeRequest(bytes: number[], mimeType: string, statusCode = 200) {
+  return (_options: unknown, callback: (response: unknown) => void) => {
+    const response = {
+      statusCode,
+      headers: {
+        "content-type": mimeType,
+      },
+      destroy: vi.fn(),
+      resume: vi.fn(),
+      async *[Symbol.asyncIterator]() {
+        yield new Uint8Array(bytes);
+      },
+    };
+    const request = {
+      end: vi.fn(),
+      on: vi.fn(),
+      setTimeout: vi.fn(),
+      destroy: vi.fn(),
+    };
+
+    callback(response);
+    return request;
+  };
+}
