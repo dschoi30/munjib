@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-21
-source_count: 9
+source_count: 10
 tags:
   - munjib
   - workflow
@@ -94,7 +94,7 @@ Server action의 remote image fetch는 보안 제한을 둔다.
 
 - `http:`와 `https:`만 허용한다.
 - `localhost`, `.localhost`, private IPv4, loopback, link-local, carrier-grade NAT, multicast, private IPv6, link-local IPv6를 DNS lookup 결과 기준으로 거부한다.
-- DNS rebinding을 피하기 위해 검증된 IP address에 직접 연결하고, 원래 hostname은 HTTPS SNI와 `Host` header로만 유지한다.
+- DNS rebinding을 피하기 위해 검증된 IP address에 직접 연결하고, 원래 hostname은 HTTPS SNI와 `Host` header로만 유지한다. 검증된 DNS answer가 여러 개면 첫 address 실패 시 다음 address를 순서대로 시도한다.
 - redirect는 `redirect: "error"`로 차단한다.
 - `AbortSignal.timeout(5_000)`으로 5초 timeout을 둔다.
 - `image/png`, `image/jpeg`, `image/gif`, `image/webp`만 허용한다.
@@ -112,7 +112,7 @@ Upload 결과는 source editor view가 속한 document draft에 적용된다. �
 
 Image paste upload가 실패하면 placeholder를 제거하거나 alt text로 되돌리고 `toast.error("Image paste failed")`를 표시한다. Clipboard image file paste는 paste 전에 선택되어 있던 text를 복구한다. HTML image paste는 `<img alt>` text 또는 `pasted-image` fallback을 사용한다.
 
-Remote image URL fetch 실패, forbidden MIME type, private host, timeout, size limit 초과는 모두 upload 실패로 보이며 editor에는 실패 toast가 나타난다.
+Remote image URL fetch 실패, forbidden MIME type, private host, timeout, size limit 초과는 모두 upload 실패로 보이며 editor에는 실패 toast가 나타난다. Malformed 또는 unsupported `data:` image source는 form data 생성 단계에서 실패해도 async catch/finally 경로를 거쳐 pending count를 정리하므로 Save guard가 stuck 상태로 남지 않는다.
 
 ## 관련 코드
 
