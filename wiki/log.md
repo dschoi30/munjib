@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-21
-source_count: 87
+updated: 2026-05-23
+source_count: 88
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-23T23:55:00+09:00 - design
+
+- Result: Issue #55 multiple Markdown file import 설계를 기록했다.
+- Coverage: Workspace settings Import form은 여러 Markdown file 선택, selected file table, current-route 유지, panel-centered local status message, partial success batch result를 목표로 한다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`이다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #55, `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`.
+- Verification: Spec self-review.
 
 ## 2026-05-21T01:00:00+09:00 - bugfix
 
