@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-18
-source_count: 50
+updated: 2026-05-21
+source_count: 52
 tags:
   - munjib
   - workflow
@@ -19,6 +19,7 @@ links:
   - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Auth And Permissions Workflow]]"
+  - "[[Markdown Import And Clipboard Paste Workflow]]"
 ---
 
 # Document Editing Workflow
@@ -70,7 +71,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 7. `document.created` audit log를 남긴다.
 8. 생성 문서 URL로 redirect한다.
 
-`importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 `.md`, `.markdown`, `text/markdown`, `text/x-markdown` 파일만 허용한다. Missing file과 zero-byte empty file selection은 `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED`, unsupported file은 `SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE`로 전역 관리하며, action/service에서 ad hoc string literal을 직접 throw하지 않는다. 파일 text는 그대로 `contentMarkdown`에 저장하고, 문서 제목은 `lib/documents/import-markdown.ts`의 `deriveMarkdownImportTitle()`로 정한다. 제목 우선순위는 YAML frontmatter의 inline string `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name이다. YAML `title: |`, `title: >` 같은 block scalar marker는 title 후보로 쓰지 않고 fallback하며, 첫 ATX heading scan은 fenced code block 내부의 shell comment 같은 `# ...` line을 건너뛴다. 생성 자체는 `createDocument()`를 재사용하므로 workspace write permission, unique slug, initial version, wiki link reconciliation, document metadata reconciliation, `document.created` audit log 흐름이 blank document 생성과 같다. Import 완료 후 workspace route를 revalidate하고 imported document URL로 redirect한다.
+`importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
 
 `moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다.
 
@@ -94,7 +95,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `N
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다.
 
-Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 `image/png`, `image/jpeg`, `image/gif`, `image/webp` clipboard image file blob만 허용하고 이름 없는 paste에는 `pasted-image.<ext>` fallback을 쓴다. Attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. `pasteDocumentImageAttachmentAction()`은 Markdown editor clipboard image paste에서 호출되며, paste form의 `documentId`와 `attachment` file을 이 service로 넘기고 workspace path를 revalidate한 뒤 redirect 없이 `{ markdown }`을 반환한다. 반환 markdown은 `![file](/api/attachments/<id>)` 형식이다.
+Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 clipboard image paste에서 attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. Clipboard image file paste, HTML `<img>` paste, remote image URL server fetch, pending draft, Save guard 세부 흐름은 [[Markdown Import And Clipboard Paste Workflow]]에서 본다.
 
 `createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다. Comment 저장도 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행해 DocumentEditor remount와 화면 깜빡임을 피한다.
 
@@ -112,7 +113,7 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 `DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다. Title input은 Obsidian-style reading surface에 맞춰 borderless heading-size control로 렌더링한다.
 
-Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. Issue #31에서 edit/preview control은 editor 내부 segmented text buttons가 아니라 navigation toolbar 오른쪽의 single icon toggle로 이동했다. Preview 상태에서는 edit icon만 보이고, edit 상태에서는 preview icon만 보여 두 mode가 교대로 전환된다. Mode 전환은 workspace center scroll container의 현재 `scrollTop`을 복원해 문서 중간에서 edit/preview를 오가도 화면이 맨 위로 점프하지 않는다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다. Clipboard paste에 image file이 있으면 `DocumentEditor`가 rich HTML 변환보다 먼저 `pasteImageAttachmentAction`을 호출한다. `DocumentEditor`는 paste selection에 임시 `![Uploading image...](about:blank#munjib-paste-...)` placeholder를 동기 삽입하고, upload 성공 후 현재 editor document에서 같은 placeholder를 모두 찾아 반환된 image markdown으로 교체한다. Upload 실패 시 같은 placeholder를 paste 전에 선택되어 있던 text로 되돌리고 `toast.error("Image paste failed")`를 표시한다. Image upload가 pending인 동안 같은 document의 Save submit은 차단되고 `Image upload is still in progress` toast를 표시한다. Pending paste draft는 upload가 진행 중인 document 또는 비활성 source document에 완료 결과를 한 번 전달하기 위한 임시 값으로만 유지하고, update listener는 active document가 아니라 source `EditorView`에 매핑된 document id 기준으로 draft를 갱신한다. 완료 후에는 cache를 지워 이후 server-side content refresh가 stale draft에 가려지지 않게 한다. 이 paste-only path는 document markdown persistence를 기존 Save 흐름에 남기므로, 사용자가 Save를 누를 때 `updateDocument()`가 body markdown 저장, version 생성, link/metadata reconciliation, document update audit log 작성을 확정한다. Remote `<img>` 다운로드와 Markdown import image 수집은 Issue #52 범위에서 제외한다. 외부 앱에서 rich text를 붙여넣을 때 clipboard HTML이 있으면 heading, bold, italic, link, list, code, blockquote 같은 semantic style을 Markdown으로 변환해 저장 모델은 `contentMarkdown`으로 유지한다. HTML-to-Markdown 변환은 inline element 사이 공백, backtick을 포함한 inline code delimiter, inline code 내부 의미 있는 공백, nested list indentation, table cell/row boundary, fenced code block 내부 fence 충돌을 보존한다.
+Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서 제거되었다. Issue #31에서 edit/preview control은 editor 내부 segmented text buttons가 아니라 navigation toolbar 오른쪽의 single icon toggle로 이동했다. Preview 상태에서는 edit icon만 보이고, edit 상태에서는 preview icon만 보여 두 mode가 교대로 전환된다. Mode 전환은 workspace center scroll container의 현재 `scrollTop`을 복원해 문서 중간에서 edit/preview를 오가도 화면이 맨 위로 점프하지 않는다. CodeMirror markdown editor는 `[[` 입력 중 workspace 문서 후보를 보여주는 autocomplete를 제공한다. Duplicate title 후보는 path-qualified label과 insert text를 사용해 folder-aware wiki link를 삽입한다. Clipboard paste는 image file, rich HTML image, rich HTML text, plain text 순서로 분기하며, image/attachment 세부 처리와 Save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 정리한다. 외부 앱에서 rich text를 붙여넣을 때 clipboard HTML이 있으면 heading, bold, italic, link, list, code, blockquote 같은 semantic style을 Markdown으로 변환해 저장 모델은 `contentMarkdown`으로 유지한다. HTML-to-Markdown 변환은 inline element 사이 공백, backtick을 포함한 inline code delimiter, inline code 내부 의미 있는 공백, nested list indentation, table cell/row boundary, fenced code block 내부 fence 충돌을 보존한다.
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다. Preview paragraph는 CSS `white-space: pre-wrap`으로 렌더링하고, ReactMarkdown remark transform이 paragraph 내부 soft line break를 explicit break node로 바꿔 edit mode에서 입력한 단일 개행과 외부 텍스트 paste 개행을 preview에 안정적으로 반영한다.
 

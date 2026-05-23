@@ -986,6 +986,172 @@ describe("DocumentEditor heading preview folding", () => {
     expect(pasteImageAttachmentAction).not.toHaveBeenCalled();
     expect(replaceSelection).toHaveBeenCalledWith("**Styled**");
   });
+
+  it("uploads image tags from rich HTML clipboard content instead of pasting only the source link", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    let currentMarkdown = "Intro";
+    const replaceSelection = vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } }));
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } | Array<{ insert: string }> }) => {
+      if (Array.isArray(transaction.changes)) {
+        currentMarkdown = `Intro ${transaction.changes[0]?.insert ?? ""}`;
+      } else if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? '<p>Before <a href="https://example.com/source.png"><img src="data:image/png;base64,aW1hZ2U=" alt="diagram"></a> after</p>'
+            : "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(pasteImageAttachmentAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const formData = pasteImageAttachmentAction.mock.calls[0]?.[0];
+    if (!formData) throw new Error("Expected image paste FormData");
+    expect(formData.get("documentId")).toBe("doc-1");
+    expect((formData.get("attachment") as File).name).toBe("diagram.png");
+
+    const insertedMarkdown = replaceSelection.mock.calls[0]?.[0];
+    if (!insertedMarkdown) throw new Error("Expected inserted markdown");
+    const placeholder = insertedMarkdown.match(/!\[Uploading image\.\.\.\]\(about:blank#munjib-paste-[^)]+\)/)?.[0];
+    if (!placeholder) throw new Error("Expected pasted image placeholder");
+    expect(insertedMarkdown).toBe(`Before ${placeholder} after`);
+    expect(insertedMarkdown).not.toContain("https://example.com/source.png");
+
+    upload.resolve({ markdown: "![diagram.png](/api/attachments/attachment-1)" });
+
+    await vi.waitFor(() => {
+      expect(dispatch).toHaveBeenCalledWith({
+        changes: [
+          {
+            from: 13,
+            to: 13 + placeholder.length,
+            insert: "![diagram.png](/api/attachments/attachment-1)",
+          },
+        ],
+      });
+    });
+  });
+
+  it("sends remote image tags from rich HTML paste to the server without client-side fetch", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } }));
+    const dispatch = vi.fn();
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? '<p><a href="https://example.com/source.png"><img src="https://cdn.example.com/source.png" alt="remote diagram"></a></p>'
+            : "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => "Intro" },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(pasteImageAttachmentAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const formData = pasteImageAttachmentAction.mock.calls[0]?.[0];
+    if (!formData) throw new Error("Expected image paste FormData");
+    expect(formData.get("attachment")).toBeNull();
+    expect(formData.get("imageUrl")).toBe("https://cdn.example.com/source.png");
+    expect(formData.get("fileName")).toBe("source");
+    expect(replaceSelection.mock.calls[0]?.[0]).not.toContain("https://example.com/source.png");
+
+    upload.resolve({ markdown: "![source.png](/api/attachments/attachment-1)" });
+  });
+
+  it("clears pending state when rich HTML image form data creation fails", async () => {
+    const pasteImageAttachmentAction = vi.fn(async (_formData: FormData) => ({
+      markdown: "![source.png](/api/attachments/attachment-1)",
+    }));
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } }));
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } | Array<{ insert: string }> }) => {
+      if (Array.isArray(transaction.changes)) {
+        currentMarkdown = `Intro ${transaction.changes[0]?.insert ?? ""}`;
+      } else if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? '<p><img src="data:text/plain;base64,aW1hZ2U=" alt="fallback"></p>'
+            : "",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection,
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith("Image paste failed");
+    });
+    expect(pasteImageAttachmentAction).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(false);
+    });
+  });
 });
 
 describe("DocumentEditor properties", () => {

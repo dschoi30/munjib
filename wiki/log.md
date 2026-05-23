@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-18
-source_count: 82
+updated: 2026-05-21
+source_count: 87
 tags:
   - log
   - munjib
@@ -18,6 +18,46 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-21T01:00:00+09:00 - bugfix
+
+- Result: Markdown import 직후 화면 깜빡임을 줄이기 위해 import navigation을 server redirect에서 client push로 옮겼다.
+- Coverage: `importMarkdownDocumentAction()`은 document 생성과 revalidation 후 `{ documentId }`만 반환한다. Workspace settings import form은 client action에서 dialog를 닫고 `router.push()`로 imported document URL을 연다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-list.tsx`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-21T00:56:00+09:00 - bugfix
+
+- Result: PR review feedback에 따라 clipboard HTML image paste의 server fetch와 pending state guard를 추가 보강했다.
+- Coverage: IPv4-mapped IPv6 address는 dotted form뿐 아니라 hex form도 IPv4 private range 판정으로 재검사한다. Remote image fetch는 검증된 DNS answer를 한 개만 쓰지 않고, 실패 시 다음 검증 address를 순서대로 시도한다. Unsupported/malformed `data:` image가 HTML paste form data 생성 중 동기 throw해도 pending image paste count가 finally에서 정리된다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-editor.tsx`, `tests/workspace-actions.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-actions.test.ts`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`.
+
+## 2026-05-21T00:45:00+09:00 - security
+
+- Result: Clipboard HTML remote image server fetch의 SSRF hardening을 PR review feedback에 맞춰 보강했다.
+- Coverage: Remote image fetch는 DNS lookup으로 public address만 허용한 뒤 원래 hostname을 다시 resolve하지 않고 검증된 IP address에 직접 연결한다. HTTPS 요청은 원래 hostname을 SNI와 `Host` header에 유지해 DNS rebinding 우회를 줄인다. IPv4-mapped IPv6 private range도 IPv4 판정 경로로 재검사한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/actions.ts`, `tests/workspace-actions.test.ts`, `components/document-editor.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/workspace-actions.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-21T00:00:00+09:00 - documentation
+
+- Result: Markdown import와 clipboard paste 프로세스를 별도 workflow 문서로 분리했다.
+- Coverage: 새 [[Markdown Import And Clipboard Paste Workflow]]는 Markdown file import의 document creation 흐름과 clipboard image/rich HTML paste의 draft, attachment, Save guard, remote image server fetch, 실패 처리 차이를 정리한다. [[Document Editing Workflow]]는 상위 편집 흐름을 유지하고 세부 import/paste 설명은 새 문서로 연결한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `lib/documents/import-markdown.ts`, `components/document-editor.tsx`, `lib/markdown/html-to-markdown.ts`, `lib/attachments/service.ts`, `tests/documents/import-markdown.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/workspace-actions.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-20T00:36:00+09:00 - bugfix
+
+- Result: Clipboard rich HTML paste에 image file 없이 `<img src>`만 포함될 때 source link만 붙여넣어지던 문제를 수정했다.
+- Coverage: `DocumentEditor`는 clipboard HTML의 `<img>`를 upload placeholder로 치환해 Markdown으로 삽입한다. Data URL image는 client에서 File로 만들어 `pasteImageAttachmentAction()`에 보내고, remote image URL은 browser CORS를 피하기 위해 `imageUrl`로 server action에 넘겨 서버에서 fetch/upload한 뒤 placeholder를 attachment image markdown으로 교체한다. Server-side remote image fetch는 http/https URL만 허용하고 DNS lookup 결과가 private/local/link-local address이면 fetch 전에 거부하며, redirect 차단, 5초 timeout, allowed image MIME type, content-length, streaming byte limit을 적용한다. Image-only anchor wrapper는 source link markdown으로 변환하지 않고 image placeholder로 대체한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/workspace-actions.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-18T03:14:00+09:00 - review follow-up
 

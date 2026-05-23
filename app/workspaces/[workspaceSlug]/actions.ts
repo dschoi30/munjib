@@ -1,5 +1,10 @@
 "use server";
 
+import { lookup } from "node:dns/promises";
+import { request as httpRequest } from "node:http";
+import { request as httpsRequest } from "node:https";
+import { isIP } from "node:net";
+import type { IncomingMessage } from "node:http";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -21,6 +26,9 @@ import {
   restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
+
+const maxPastedImageBytes = 5 * 1024 * 1024;
+const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
 export async function updateDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
@@ -69,7 +77,7 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
   });
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+  return { documentId: document.id };
 }
 
 export async function createFolderAction(workspaceSlug: string, formData: FormData) {
@@ -190,21 +198,220 @@ export async function pasteDocumentImageAttachmentAction(
   const user = await requireCurrentUser();
   const file = formData.get("attachment");
   const documentId = String(formData.get("documentId"));
+  const imageUrl = String(formData.get("imageUrl") ?? "").trim();
+  const requestedFileName = String(formData.get("fileName") ?? "").trim();
 
-  if (!(file instanceof File)) {
+  if (!(file instanceof File) && !imageUrl) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
   }
+
+  const attachmentInput = file instanceof File
+    ? {
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        bytes: new Uint8Array(await file.arrayBuffer()),
+      }
+    : await fetchPastedImageUrl(imageUrl, requestedFileName);
 
   const attachment = await uploadPastedDocumentImageAttachment({
     documentId,
     actorId: user.id,
-    fileName: file.name,
-    mimeType: file.type || "application/octet-stream",
-    bytes: new Uint8Array(await file.arrayBuffer()),
+    ...attachmentInput,
   });
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
   return { markdown: attachment.markdown };
+}
+
+async function fetchPastedImageUrl(imageUrl: string, requestedFileName: string) {
+  const url = new URL(imageUrl);
+  const validatedAddresses = await resolvePublicHttpUrl(url);
+  let lastError: unknown;
+
+  for (const address of validatedAddresses) {
+    try {
+      return await fetchPastedImageUrlAtAddress(url, requestedFileName, address);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+}
+
+async function fetchPastedImageUrlAtAddress(
+  url: URL,
+  requestedFileName: string,
+  address: string,
+) {
+  const response = await requestPinnedImageUrl(url, address);
+  const statusCode = response.statusCode ?? 0;
+  if (statusCode < 200 || statusCode >= 300) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+  }
+
+  const mimeType = headerValue(response.headers["content-type"])
+    ?.split(";")[0]
+    ?.trim() || "application/octet-stream";
+  if (!pastedImageMimeTypes.has(mimeType)) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const contentLength = Number(headerValue(response.headers["content-length"]) ?? "0");
+  if (contentLength > maxPastedImageBytes) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+  }
+
+  return {
+    fileName: requestedFileName || url.pathname.split("/").pop() || "pasted-image",
+    mimeType,
+    bytes: await readNodeResponseBytesWithLimit(response, maxPastedImageBytes),
+  };
+}
+
+async function resolvePublicHttpUrl(url: URL) {
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const hostname = url.hostname.toLowerCase();
+  if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost")) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  const addresses = await lookup(hostname, { all: true, verbatim: true });
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_MIME_TYPE_FORBIDDEN);
+  }
+
+  return addresses.map(({ address }) => address);
+}
+
+function requestPinnedImageUrl(url: URL, address: string) {
+  const request = url.protocol === "https:" ? httpsRequest : httpRequest;
+  const hostHeader = url.port ? `${url.hostname}:${url.port}` : url.hostname;
+
+  return new Promise<IncomingMessage>((resolve, reject) => {
+    const clientRequest = request(
+      {
+        hostname: address,
+        port: url.port || undefined,
+        method: "GET",
+        path: `${url.pathname}${url.search}`,
+        servername: url.hostname,
+        headers: {
+          Host: hostHeader,
+        },
+      },
+      (response) => {
+        if ((response.statusCode ?? 0) >= 300 && (response.statusCode ?? 0) < 400) {
+          response.resume();
+          reject(new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED));
+          return;
+        }
+
+        resolve(response);
+      },
+    );
+
+    clientRequest.setTimeout(5_000, () => {
+      clientRequest.destroy(new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED));
+    });
+    clientRequest.on("error", reject);
+    clientRequest.end();
+  });
+}
+
+function isPublicAddress(address: string) {
+  if (isIP(address) === 4) {
+    const parts = address.split(".").map(Number);
+    const [a, b] = parts;
+
+    return !(
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      (a === 198 && (b === 18 || b === 19)) ||
+      a >= 224
+    );
+  }
+
+  if (isIP(address) === 6) {
+    const normalized = address.toLowerCase();
+    const mappedIpv4 = ipv4MappedAddress(normalized);
+    if (mappedIpv4) {
+      return isPublicAddress(mappedIpv4);
+    }
+
+    return !(
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe80:")
+    );
+  }
+
+  return false;
+}
+
+function ipv4MappedAddress(address: string) {
+  const dotted = address.match(/^(?:::ffff:|0:0:0:0:0:ffff:)(\d+\.\d+\.\d+\.\d+)$/)?.[1];
+  if (dotted) {
+    return dotted;
+  }
+
+  const hex = address.match(/^(?:::ffff:|0:0:0:0:0:ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (!hex) {
+    return null;
+  }
+
+  const high = Number.parseInt(hex[1], 16);
+  const low = Number.parseInt(hex[2], 16);
+  if (!Number.isFinite(high) || !Number.isFinite(low) || high > 0xffff || low > 0xffff) {
+    return null;
+  }
+
+  return [
+    (high >> 8) & 0xff,
+    high & 0xff,
+    (low >> 8) & 0xff,
+    low & 0xff,
+  ].join(".");
+}
+
+function headerValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+async function readNodeResponseBytesWithLimit(response: IncomingMessage, limit: number) {
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  for await (const value of response) {
+    const chunk = value instanceof Uint8Array ? value : Buffer.from(value);
+    total += chunk.byteLength;
+    if (total > limit) {
+      response.destroy();
+      throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
+    }
+    chunks.push(chunk);
+  }
+
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  return bytes;
 }
 
 export async function createCommentAction(workspaceSlug: string, formData: FormData) {
