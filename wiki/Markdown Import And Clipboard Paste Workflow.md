@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
-updated: 2026-05-21
-source_count: 11
+updated: 2026-05-23
+source_count: 12
 tags:
   - munjib
   - workflow
@@ -29,7 +29,7 @@ links:
 
 Markdown import는 새 document를 즉시 만든다. Imported file text가 곧 `Document.contentMarkdown`이 되고, `createDocument()` 흐름에서 initial version, link reconciliation, metadata reconciliation, `document.created` audit log가 같이 확정된다.
 
-Import 직후 navigation은 server action `redirect()`를 쓰지 않는다. Server action은 `{ documentId }`를 반환하고 settings panel이 client-side `router.push()`로 새 문서를 연다. 이 방식은 import 완료 직후 workspace surface가 server redirect로 크게 remount되며 깜빡이는 현상을 줄이기 위한 것이다.
+Import 직후 navigation은 server action `redirect()`를 쓰지 않는다. 현재 단일-file import server action은 `{ documentId }`를 반환하고 settings panel이 client-side `router.push()`로 새 문서를 연다. 이 방식은 import 완료 직후 workspace surface가 server redirect로 크게 remount되며 깜빡이는 현상을 줄이기 위한 것이다. Issue #55 설계는 이 흐름을 복수-file import로 확장하면서 import 완료 후 현재 route/document에 머물고 settings panel 안에서 batch 결과를 확인하는 방향이다.
 
 Clipboard paste는 현재 editor draft를 먼저 바꾼다. Image paste는 attachment row와 file storage를 먼저 만들 수 있지만, 본문의 image markdown persistence, document version, link/metadata reconciliation, `document.updated` audit log는 사용자가 Save를 누를 때 `updateDocument()`에서 확정된다.
 
@@ -51,6 +51,21 @@ UI 진입점은 workspace settings dialog의 `Import` menu다. `components/docum
 Title 우선순위는 YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name, 마지막으로 `Untitled`다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
 
 Import는 attachment upload를 별도로 하지 않는다. Markdown 안에 이미 `![alt](url)` 또는 `![alt](/api/attachments/...)`가 있으면 그 text를 그대로 문서 본문으로 저장한다. 따라서 import된 Markdown의 이미지가 보이는지는 URL이 브라우저에서 접근 가능한지, 또는 이미 Munjib attachment URL을 가리키는지에 달려 있다.
+
+## Planned multiple-file import
+
+Issue #55 설계는 workspace settings Import form이 여러 Markdown file을 한 번에 선택하고 가져오는 흐름이다. 설계 근거는 `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`이다.
+
+Planned behavior:
+
+- Native file input styling은 감추고, 기존 dashed import form 영역을 클릭하면 file picker가 열린다.
+- File input은 `multiple`을 지원한다.
+- 선택한 file 목록은 form 영역 안에 table로 표시한다.
+- Import 완료 후 settings panel은 닫지 않고 현재 document route도 바꾸지 않는다.
+- 성공 후 document list refresh만 수행해 새 문서가 navigation에 나타나게 한다.
+- 진행 중, 완료, 실패 또는 부분 실패는 global Sonner 위치를 바꾸지 않고 settings panel 중앙의 toast-like local status message로 표시한다.
+- Server action은 repeated `markdownFiles` field를 batch로 처리하되 기존 단일 `markdownFile` caller도 호환한다.
+- Missing all files는 기존처럼 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw하고, empty/unsupported 개별 file은 batch result의 failed row로 보고해 유효한 file import를 계속한다.
 
 ## Clipboard paste dispatch
 
