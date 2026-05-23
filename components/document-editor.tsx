@@ -36,6 +36,13 @@ const CodeMirror = dynamic(() => import("@uiw/react-codemirror"), { ssr: false }
 
 const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
 
+type HtmlImagePaste = {
+  placeholder: string;
+  altText: string;
+  fileName: string;
+  src: string;
+};
+
 function createPastedImagePlaceholder() {
   const id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
@@ -98,6 +105,98 @@ function replaceCurrentPlaceholders(view: EditorView, placeholder: string, inser
 
 function getSelectedTexts(view: EditorView) {
   return view.state.selection.ranges.map((range) => view.state.sliceDoc(range.from, range.to));
+}
+
+function htmlToMarkdownWithImagePlaceholders(html: string) {
+  if (typeof DOMParser === "undefined" || html.trim().length === 0) {
+    return { markdown: "", images: [] as HtmlImagePaste[] };
+  }
+
+  const parsedDocument = new DOMParser().parseFromString(html, "text/html");
+  const images: HtmlImagePaste[] = [];
+
+  for (const image of Array.from(parsedDocument.body.querySelectorAll("img"))) {
+    const src = image.getAttribute("src")?.trim();
+    if (!src) continue;
+
+    const altText = image.getAttribute("alt")?.trim() || "pasted-image";
+    const placeholder = createPastedImagePlaceholder();
+    images.push({
+      placeholder,
+      altText,
+      fileName: pastedImageFileName(src, altText),
+      src,
+    });
+
+    const replacement = parsedDocument.createTextNode(placeholder);
+    const imageLink = image.closest("a");
+    if (imageLink && isImageOnlyLink(imageLink, image)) {
+      imageLink.replaceWith(replacement);
+    } else {
+      image.replaceWith(replacement);
+    }
+  }
+
+  return {
+    markdown: htmlToMarkdown(parsedDocument.body.innerHTML),
+    images,
+  };
+}
+
+function isImageOnlyLink(link: HTMLAnchorElement, image: HTMLImageElement) {
+  return Array.from(link.childNodes).every((child) => {
+    if (child === image) return true;
+    if (child.nodeType === Node.TEXT_NODE) return (child.textContent ?? "").trim().length === 0;
+    return false;
+  });
+}
+
+function formDataFromHtmlImagePaste(image: HtmlImagePaste, documentId: string) {
+  const formData = new FormData();
+  formData.set("documentId", documentId);
+
+  if (image.src.startsWith("data:")) {
+    formData.set("attachment", fileFromDataUrl(image.src, image.fileName));
+  } else {
+    formData.set("imageUrl", image.src);
+    formData.set("fileName", image.fileName);
+  }
+
+  return formData;
+}
+
+function fileFromDataUrl(dataUrl: string, fileName: string) {
+  const match = dataUrl.match(/^data:([^;,]+)(;base64)?,(.*)$/);
+  if (!match || !pastedImageMimeTypes.has(match[1])) {
+    throw new Error("UNSUPPORTED_IMAGE_TYPE");
+  }
+
+  const mimeType = match[1];
+  const payload = match[3];
+  const binary = match[2] ? atob(payload) : decodeURIComponent(payload);
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+
+  return new File([bytes], withImageExtension(fileName, mimeType), { type: mimeType });
+}
+
+function pastedImageFileName(src: string, altText: string) {
+  const urlName = src.startsWith("data:") ? "" : src.split(/[?#]/)[0]?.split("/").pop() ?? "";
+  const candidate = sanitizeFileName(urlName || altText || "pasted-image");
+
+  return candidate || "pasted-image";
+}
+
+function sanitizeFileName(value: string) {
+  return value
+    .replace(/\.[a-z0-9]+$/i, "")
+    .replace(/[^a-zA-Z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+function withImageExtension(fileName: string, mimeType: string) {
+  const extension = mimeType === "image/jpeg" ? "jpg" : mimeType.split("/")[1] ?? "png";
+
+  return fileName.toLowerCase().endsWith(`.${extension}`) ? fileName : `${fileName}.${extension}`;
 }
 
 export function DocumentEditor({
@@ -224,7 +323,7 @@ export function DocumentEditor({
           }
 
           const html = event.clipboardData?.getData("text/html") ?? "";
-          const markdown = htmlToMarkdown(html);
+          const { markdown, images } = htmlToMarkdownWithImagePlaceholders(html);
 
           if (!markdown) {
             return false;
@@ -232,6 +331,59 @@ export function DocumentEditor({
 
           event.preventDefault();
           view.dispatch(view.state.replaceSelection(markdown));
+
+          if (images.length > 0) {
+            const pasteDocumentId = document?.id ?? "";
+            if (pasteDocumentId) {
+              editorViewDocumentIdsRef.current.set(view, pasteDocumentId);
+            }
+            pendingImagePasteDraftsRef.current[pasteDocumentId] = view.state.doc.toString();
+            setPendingImagePasteCounts((counts) => ({
+              ...counts,
+              [pasteDocumentId]: (counts[pasteDocumentId] ?? 0) + images.length,
+            }));
+
+            for (const image of images) {
+              void Promise.resolve()
+                .then(() => pasteImageAttachmentAction(formDataFromHtmlImagePaste(image, pasteDocumentId)))
+                .then(({ markdown }) => {
+                  const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                  const nextDraft = replacePlaceholdersInMarkdown(currentDraft, image.placeholder, markdown);
+                  pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                  replaceCurrentPlaceholder(view, image.placeholder, markdown);
+                  if (activeDocumentIdRef.current === pasteDocumentId) {
+                    setContentMarkdown(nextDraft);
+                  }
+                })
+                .catch(() => {
+                  const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
+                  const nextDraft = replacePlaceholdersInMarkdown(currentDraft, image.placeholder, image.altText);
+                  pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                  replaceCurrentPlaceholder(view, image.placeholder, image.altText);
+                  if (activeDocumentIdRef.current === pasteDocumentId) {
+                    setContentMarkdown(nextDraft);
+                  }
+                  toast.error("Image paste failed");
+                })
+                .finally(() => {
+                  setPendingImagePasteCounts((counts) => {
+                    const nextCount = Math.max(0, (counts[pasteDocumentId] ?? 0) - 1);
+                    const nextCounts = { ...counts };
+
+                    if (nextCount > 0) {
+                      nextCounts[pasteDocumentId] = nextCount;
+                    } else {
+                      delete nextCounts[pasteDocumentId];
+                      if (activeDocumentIdRef.current === pasteDocumentId) {
+                        delete pendingImagePasteDraftsRef.current[pasteDocumentId];
+                      }
+                    }
+
+                    return nextCounts;
+                  });
+                });
+            }
+          }
 
           return true;
         },

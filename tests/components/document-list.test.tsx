@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
@@ -34,7 +34,7 @@ const baseProps = {
   canWrite: true,
   createAction: async () => {},
   createFolderAction: async () => {},
-  importMarkdownAction: async () => {},
+  importMarkdownAction: async () => ({ documentId: "doc-imported" }),
   renameFolderAction: async (formData: FormData) => ({
     folderId: String(formData.get("folderId")),
   }),
@@ -169,6 +169,28 @@ describe("DocumentList", () => {
       "disabled",
       true,
     );
+  });
+
+  it("navigates to imported markdown documents from the client without server redirect", async () => {
+    const importMarkdownAction = vi.fn(async () => ({ documentId: "doc-imported" }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    const fileInput = screen.getByLabelText("Markdown file") as HTMLInputElement;
+    fireEvent.change(fileInput, {
+      target: {
+        files: [new File(["# Imported"], "imported.md", { type: "text/markdown" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-imported");
+    });
+    expect(screen.queryByRole("dialog", { name: "Workspace settings" })).toBeNull();
   });
 
   it("opens search from the toolbar and replaces the document list with matching results", () => {
