@@ -51,7 +51,7 @@ export function DocumentLinkRow({
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
-        <span className="block truncate">{documentDisplayLabel(document)}</span>
+        <span className="block truncate">{document.title}</span>
         {description ? (
           <span className="mt-0.5 block truncate text-[11px] text-slate-500">{description}</span>
         ) : null}

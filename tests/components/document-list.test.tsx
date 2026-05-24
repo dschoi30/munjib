@@ -161,6 +161,66 @@ describe("DocumentList", () => {
     expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
   });
 
+  it("orders folders before documents and sorts each group by title descending", () => {
+    renderList({
+      folders: [
+        { id: "folder-alpha", parentFolderId: null, name: "Alpha", path: "/alpha" },
+        { id: "folder-zulu", parentFolderId: null, name: "Zulu", path: "/zulu" },
+      ],
+      documents: [
+        {
+          id: "doc-alpha",
+          folderId: null,
+          title: "Alpha Doc",
+          path: "/alpha-doc",
+          contentText: "",
+          canWrite: true,
+        },
+        {
+          id: "doc-zulu",
+          folderId: null,
+          title: "Zulu Doc",
+          path: "/zulu-doc",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    const rowNames = Array.from(
+      allDocumentsNav.querySelectorAll("button[aria-expanded]:not([data-row-action-menu]), a[href]"),
+    ).map((element) => element.textContent?.trim());
+
+    expect(rowNames).toEqual(["Zulu", "Alpha", "Zulu Doc", "Alpha Doc"]);
+  });
+
+  it("shows duplicate document titles without path context in visible rows", () => {
+    renderList({
+      documents: [
+        {
+          id: "doc-root-runbook",
+          folderId: null,
+          title: "Runbook",
+          path: "/runbook",
+          contentText: "",
+          canWrite: true,
+        },
+        {
+          id: "doc-folder-runbook",
+          folderId: null,
+          title: "Runbook",
+          path: "/operations/runbook",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(4);
+    expect(screen.queryByText("Runbook · /operations/runbook")).toBeNull();
+  });
+
   it("closes the workspace settings panel", () => {
     renderList();
 

@@ -8,11 +8,9 @@ describe("workspace tree helpers", () => {
     expect(treeDepth("/operations/runbooks")).toBe(1);
   });
 
-  it("uses path context when duplicate titles need disambiguation", () => {
+  it("uses document titles as display labels", () => {
     expect(documentDisplayLabel({ title: "Runbook", path: "/runbook" })).toBe("Runbook");
-    expect(documentDisplayLabel({ title: "Runbook", path: "/operations/runbook" })).toBe(
-      "Runbook · /operations/runbook",
-    );
+    expect(documentDisplayLabel({ title: "Runbook", path: "/operations/runbook" })).toBe("Runbook");
   });
 
   it("counts direct folder children only", () => {
