@@ -28,8 +28,7 @@ export function treeDepth(path: string) {
 }
 
 export function documentDisplayLabel(document: Pick<Document, "title" | "path">) {
-  const rootPath = `/${document.title.trim().toLowerCase().replace(/\s+/g, "-")}`;
-  return document.path === rootPath ? document.title : `${document.title} · ${document.path}`;
+  return document.title;
 }
 
 export function countFolderChildren(input: {
