@@ -22,6 +22,7 @@ import type {
   ArchiveDocumentResult,
   ArchiveFolderResult,
   CreateDocumentAction,
+  CreateFolderAction,
   FavoriteState,
   RenameFolderResult,
 } from "@/components/document-navigation/types";
@@ -44,6 +45,7 @@ export function DocumentNavigation({
   selectedFolderId,
   canWrite,
   createAction,
+  createFolderAction,
   renameFolderAction,
   archiveFolderAction,
   archiveDocumentAction,
@@ -61,6 +63,7 @@ export function DocumentNavigation({
   selectedFolderId: string | null;
   canWrite: boolean;
   createAction: CreateDocumentAction;
+  createFolderAction: CreateFolderAction;
   renameFolderAction: (formData: FormData) => Promise<RenameFolderResult>;
   archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
   archiveDocumentAction: (formData: FormData) => Promise<ArchiveDocumentResult>;
@@ -205,6 +208,38 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
+  async function addFolderChild(folderId: string) {
+    const formData = new FormData();
+    formData.set("parentFolderId", folderId);
+    formData.set("redirect", "false");
+
+    const result = await createFolderAction(formData);
+    setOpenMenuId(null);
+    startTransition(() => {
+      if (result?.folderId) {
+        router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  async function addFolderDocument(folderId: string) {
+    const formData = new FormData();
+    formData.set("folderId", folderId);
+    formData.set("redirect", "false");
+
+    const result = await createAction(formData);
+    setOpenMenuId(null);
+    startTransition(() => {
+      if (result?.documentId) {
+        router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   async function archiveFolderFromMenu(formData: FormData) {
     const result = await archiveFolderAction(formData);
     if (result.error) {
@@ -288,7 +323,6 @@ export function DocumentNavigation({
             expanded={isExpanded}
             selected={item.folder.id === selectedFolderId}
             canWrite={canWrite}
-            createAction={createAction}
             renameFolderAction={renameFolderFromMenu}
             archiveFolderAction={archiveFolderFromMenu}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
@@ -297,6 +331,8 @@ export function DocumentNavigation({
             onOpenMenu={setOpenMenuId}
             onStartRename={startFolderRename}
             onCancelRename={() => setRenamingFolderId(null)}
+            onAddFolder={addFolderChild}
+            onAddDocument={addFolderDocument}
             onToggleFavorite={toggleFavoriteFolder}
             onToggle={() => {
               setOpenMenuId(null);
