@@ -230,7 +230,7 @@ describe("DocumentList", () => {
     await waitFor(() => {
       expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
     });
-    const submittedFormData = importMarkdownAction.mock.calls[0][0] as FormData;
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile, secondFile]);
     expect(submittedFormData.get("folderId")).toBeNull();
 
@@ -279,7 +279,7 @@ describe("DocumentList", () => {
     await waitFor(() => {
       expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
     });
-    const submittedFormData = importMarkdownAction.mock.calls[0][0] as FormData;
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
     expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
   });
@@ -308,7 +308,7 @@ describe("DocumentList", () => {
     await waitFor(() => {
       expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
     });
-    const submittedFormData = importMarkdownAction.mock.calls[0][0] as FormData;
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
     expect(submittedFormData.get("folderId")).toBeNull();
   });

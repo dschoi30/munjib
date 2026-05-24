@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 90
+source_count: 91
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T12:45:00+09:00 - feature
+
+- Result: Issue #55 multiple Markdown file import를 구현하고 settings panel을 별도 component로 분리했다.
+- Coverage: Workspace settings Import form은 multiple file selection, selected file table, root-default destination picker, folder tree popup, panel-centered status message, partial success batch result, duplicate filename row status handling, current-route 유지 refresh를 제공한다. `components/document-list.tsx`는 sidebar composition과 settings panel open/close만 맡고, import UI/state는 `components/workspace-settings-panel.tsx`로 분리했다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-list.tsx`, `components/workspace-settings-panel.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/components/document-list.test.tsx`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T00:40:00+09:00 - plan
 
