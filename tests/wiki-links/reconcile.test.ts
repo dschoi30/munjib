@@ -371,6 +371,38 @@ Read [[Ignored Content Link]].`,
     expect(link.isAmbiguous).toBe(false);
   });
 
+  it("resolves frontmatter path-qualified targets with non-ASCII parent folders", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const history = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "역사",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: history.id,
+      title: "수에즈 운하 위기",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[역사/수에즈_운하_위기]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetTitleRaw).toBe("역사/수에즈_운하_위기");
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
   it("falls back to title matching when a slash-containing target is not a document path", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const target = await createDocument({

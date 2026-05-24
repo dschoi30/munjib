@@ -4,6 +4,7 @@ import {
   pathQualifiedCandidateToTitleLookupKey,
   pathQualifiedTargetToLookupDocumentPath,
   pathQualifiedTargetToLookupKey,
+  pathQualifiedTargetToTitleLookupKey,
   wikiLinkTargetToLookupKey,
 } from "@/lib/wiki-links/targets";
 
@@ -62,7 +63,7 @@ function resolveLinkTarget(
       };
     }
 
-    const targetLookupKey = pathQualifiedTargetToLookupKey(targetTitleRaw);
+    const targetLookupKey = pathQualifiedTargetToTitleLookupKey(targetTitleRaw);
     const pathTitleMatches = targets.filter(
       (candidate) => pathQualifiedCandidateToTitleLookupKey(candidate) === targetLookupKey,
     );

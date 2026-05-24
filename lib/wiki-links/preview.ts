@@ -1,6 +1,7 @@
 import {
   pathQualifiedCandidateToTitleLookupKey,
   pathQualifiedTargetToLookupKey,
+  pathQualifiedTargetToTitleLookupKey,
   wikiLinkTargetToLookupKey,
 } from "@/lib/wiki-links/targets";
 
@@ -146,7 +147,11 @@ function transformWikiLinks(
 
 function candidateLookupKeys(targetTitle: string) {
   const keys = targetTitle.includes("/")
-    ? [pathQualifiedTargetToLookupKey(targetTitle), wikiLinkTargetToLookupKey(targetTitle)]
+    ? [
+        pathQualifiedTargetToLookupKey(targetTitle),
+        pathQualifiedTargetToTitleLookupKey(targetTitle),
+        wikiLinkTargetToLookupKey(targetTitle),
+      ]
     : [wikiLinkTargetToLookupKey(targetTitle)];
   return Array.from(new Set(keys));
 }
