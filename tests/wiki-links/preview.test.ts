@@ -136,4 +136,84 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
       "[Q1/Q2 Plan](?document=plan)",
     );
   });
+
+  it("keeps punctuation-compatible title fallback matching", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "q1-q2-plan", title: "Q1/Q2 Plan", path: "/q1-q2-plan" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Q1Q2 Plan]]", candidates)).toBe(
+      "[Q1Q2 Plan](?document=plan)",
+    );
+  });
+
+  it("keeps hyphen-compatible title fallback matching", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "a-b", title: "A-B", path: "/a-b" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[A - B]]", candidates)).toBe(
+      "[A - B](?document=plan)",
+    );
+  });
+
+  it("resolves underscore targets to titles with spaces", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/수에즈-운하-위기",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[수에즈_운하_위기]]", candidates)).toBe(
+      "[수에즈_운하_위기](?document=suez)",
+    );
+  });
+
+  it("resolves underscore path-qualified targets segment by segment", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/history/untitled",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[History/수에즈_운하_위기]]", candidates)).toBe(
+      "[History/수에즈_운하_위기](?document=suez)",
+    );
+  });
+
+  it("resolves underscore parent segments in path-qualified targets", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "roadmap",
+        slug: "roadmap",
+        title: "Roadmap",
+        path: "/project-plans/roadmap",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Project_Plans/Roadmap]]", candidates)).toBe(
+      "[Project_Plans/Roadmap](?document=roadmap)",
+    );
+  });
+
+  it("resolves path-qualified targets with non-ASCII parent folders", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/untitled/untitled",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[역사/수에즈_운하_위기]]", candidates)).toBe(
+      "[역사/수에즈_운하_위기](?document=suez)",
+    );
+  });
 });
