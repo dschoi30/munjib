@@ -187,6 +187,21 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     );
   });
 
+  it("resolves underscore parent segments in path-qualified targets", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "roadmap",
+        slug: "roadmap",
+        title: "Roadmap",
+        path: "/project-plans/roadmap",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Project_Plans/Roadmap]]", candidates)).toBe(
+      "[Project_Plans/Roadmap](?document=roadmap)",
+    );
+  });
+
   it("resolves path-qualified targets with non-ASCII parent folders", () => {
     const candidates = buildWikiLinkPreviewCandidateMap([
       {
