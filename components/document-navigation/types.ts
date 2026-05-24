@@ -21,8 +21,8 @@ export type ToggleFavoriteDocumentHandler = (documentId: string) => void;
 export type ToggleFavoriteFolderHandler = (folderId: string) => void;
 export type OpenDocumentInNewTabHandler = (document: DocumentListItem) => void;
 export type ArchiveDocumentAction = (formData: FormData) => Promise<void>;
-export type AddFolderChildHandler = (folderId: string) => void;
-export type AddFolderDocumentHandler = (folderId: string) => void;
+export type AddFolderChildHandler = (folderId: string) => Promise<void>;
+export type AddFolderDocumentHandler = (folderId: string) => Promise<void>;
 
 export type TreeRow =
   | { kind: "folder"; folder: FolderListItem }
