@@ -235,17 +235,13 @@ function WorkspaceSettingsPanel({
 
       try {
         const result = await importMarkdownAction(formData);
-        const importedNames = new Set(result.imported.map(({ fileName }) => fileName));
-        const failedNames = new Set(result.failed.map(({ fileName }) => fileName));
+        const importedCounts = countImportResultsByFileName(result.imported);
+        const failedCounts = countImportResultsByFileName(result.failed);
 
         setSelectedFiles((current) =>
           current.map((selectedFile) => ({
             ...selectedFile,
-            status: failedNames.has(selectedFile.file.name)
-              ? "Failed"
-              : importedNames.has(selectedFile.file.name)
-                ? "Imported"
-                : selectedFile.status,
+            status: consumeImportStatus(selectedFile, importedCounts, failedCounts),
           })),
         );
         setStatusMessage({
@@ -327,6 +323,7 @@ function WorkspaceSettingsPanel({
               aria-label="Markdown files"
               accept=".md,.markdown,text/markdown,text/x-markdown"
               multiple
+              tabIndex={-1}
               disabled={!canWrite || importLocked}
               className="sr-only"
               onChange={handleSelectedFilesChange}
@@ -408,4 +405,37 @@ function formatFileSize(size: number) {
   const kilobytes = size / 1024;
   if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
   return `${(kilobytes / 1024).toFixed(1)} MB`;
+}
+
+function countImportResultsByFileName(results: Array<{ fileName: string }>) {
+  const counts = new Map<string, number>();
+
+  results.forEach(({ fileName }) => {
+    counts.set(fileName, (counts.get(fileName) ?? 0) + 1);
+  });
+
+  return counts;
+}
+
+function consumeImportStatus(
+  selectedFile: SelectedImportFile,
+  importedCounts: Map<string, number>,
+  failedCounts: Map<string, number>,
+) {
+  const fileName = selectedFile.file.name;
+  const failedCount = failedCounts.get(fileName) ?? 0;
+
+  if (failedCount > 0) {
+    failedCounts.set(fileName, failedCount - 1);
+    return "Failed";
+  }
+
+  const importedCount = importedCounts.get(fileName) ?? 0;
+
+  if (importedCount > 0) {
+    importedCounts.set(fileName, importedCount - 1);
+    return "Imported";
+  }
+
+  return selectedFile.status;
 }
