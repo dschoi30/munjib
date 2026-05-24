@@ -37,14 +37,6 @@ export function DocumentCreateControls({
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
   const activeIconButtonClassName = "h-8 w-8 bg-slate-200 p-0 text-ink";
 
-  async function submitCreateDocument(formData: FormData) {
-    await createAction(formData);
-  }
-
-  async function submitCreateFolder(formData: FormData) {
-    await createFolderAction(formData);
-  }
-
   return (
     <TooltipProvider delayDuration={0}>
       <div
@@ -73,7 +65,7 @@ export function DocumentCreateControls({
             <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
-        <form action={submitCreateDocument}>
+        <form action={createAction}>
           <input type="hidden" name="folderId" value={selectedFolderId ?? ""} />
           <ToolbarTooltip label="New document">
             <Button
@@ -86,7 +78,7 @@ export function DocumentCreateControls({
             </Button>
           </ToolbarTooltip>
         </form>
-        <form action={submitCreateFolder}>
+        <form action={createFolderAction}>
           <input type="hidden" name="parentFolderId" value={selectedFolderId ?? ""} />
           <ToolbarTooltip label="New folder">
             <Button
