@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 91
+source_count: 92
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T12:55:00+09:00 - review follow-up
+
+- Result: PR #56 review feedback에 따라 multiple Markdown import의 batch failure handling과 panel state update를 보강했다.
+- Coverage: `createDocument()` 실패는 file별 failed row로 기록해 이미 생성된 document 결과와 workspace revalidation을 보존한다. Settings panel은 folder sort를 `useMemo`로 memoize하고, duplicate filename row status 계산은 React state updater 내부의 local count map으로 수행해 updater purity를 유지한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #56 review threads, `app/workspaces/[workspaceSlug]/actions.ts`, `components/workspace-settings-panel.tsx`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T12:45:00+09:00 - feature
 

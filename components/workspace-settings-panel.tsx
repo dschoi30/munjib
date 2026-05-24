@@ -5,6 +5,7 @@ import {
   type ChangeEvent,
   type FormEvent,
   useCallback,
+  useMemo,
   useRef,
   useState,
   useTransition,
@@ -55,7 +56,10 @@ export function WorkspaceSettingsPanel({
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
   const importLocked = isImportPending || isImporting;
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
-  const sortedFolders = [...folders].sort((left, right) => left.path.localeCompare(right.path));
+  const sortedFolders = useMemo(
+    () => [...folders].sort((left, right) => left.path.localeCompare(right.path)),
+    [folders],
+  );
   const destinationPath =
     sortedFolders.find((folder) => folder.id === destinationFolderId)?.path ?? "/";
 
@@ -107,15 +111,7 @@ export function WorkspaceSettingsPanel({
 
       try {
         const result = await importMarkdownAction(formData);
-        const importedCounts = countImportResultsByFileName(result.imported);
-        const failedCounts = countImportResultsByFileName(result.failed);
-
-        setSelectedFiles((current) =>
-          current.map((selectedFile) => ({
-            ...selectedFile,
-            status: consumeImportStatus(selectedFile, importedCounts, failedCounts),
-          })),
-        );
+        setSelectedFiles((current) => resolveImportStatuses(current, result));
         setStatusMessage({
           tone: result.failed.length > 0 ? "error" : "success",
           text:
@@ -347,4 +343,17 @@ function consumeImportStatus(
   }
 
   return selectedFile.status;
+}
+
+function resolveImportStatuses(
+  selectedFiles: SelectedImportFile[],
+  result: MarkdownImportActionResult,
+) {
+  const importedCounts = countImportResultsByFileName(result.imported);
+  const failedCounts = countImportResultsByFileName(result.failed);
+
+  return selectedFiles.map((selectedFile) => ({
+    ...selectedFile,
+    status: consumeImportStatus(selectedFile, importedCounts, failedCounts),
+  }));
 }
