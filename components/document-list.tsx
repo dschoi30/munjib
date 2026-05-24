@@ -406,7 +406,7 @@ function WorkspaceSettingsPanel({
               <div className="relative min-w-0">
                 <button
                   type="button"
-                  aria-label="Import destination"
+                  aria-label={`Import destination: ${destinationPath}`}
                   aria-expanded={destinationPickerOpen}
                   onClick={() => setDestinationPickerOpen((open) => !open)}
                   disabled={!canWrite || importLocked}
