@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 93
+source_count: 94
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T13:45:00+09:00 - feature
+
+- Result: Issue #57 folder sidebar action/order refinements를 구현했다.
+- Coverage: Sidebar tree는 folder 우선, 같은 kind 안에서는 title/name 내림차순으로 정렬한다. Document row visible label은 path context 없이 title만 표시한다. Folder row hover action은 `...` menu만 노출하고, `Add folder`/`Add document`는 menu-scoped client action result를 사용해 redirect-style 깜빡임을 줄인다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `components/document-navigation/tree.ts`, `components/document-navigation/folder-row.tsx`, `components/document-navigation.tsx`, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/components/document-list.test.tsx`, `tests/workspace-actions.test.ts`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-24T13:15:00+09:00 - design
 
