@@ -110,10 +110,6 @@ export function FolderToggleRow({
     ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
     : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-slate-200 focus-within:bg-slate-200";
 
-  async function submitCreateDocument(formData: FormData) {
-    await createAction(formData);
-  }
-
   if (isRenaming) {
     const renameInputId = `rename-folder-${folder.id}`;
 
@@ -164,7 +160,7 @@ export function FolderToggleRow({
           isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
         }`}
       >
-        <form action={submitCreateDocument}>
+        <form action={createAction}>
           <input type="hidden" name="folderId" value={folder.id} />
           <button
             type="submit"
