@@ -31,6 +31,11 @@ export function documentDisplayLabel(document: Pick<Document, "title" | "path">)
   return document.title;
 }
 
+export function documentActionLabel(document: Pick<Document, "title" | "path">) {
+  const rootPath = `/${document.title.trim().toLowerCase().replace(/\s+/g, "-")}`;
+  return document.path === rootPath ? document.title : `${document.title} · ${document.path}`;
+}
+
 export function countFolderChildren(input: {
   folderId: string;
   folders: WorkspaceTreeFolder[];

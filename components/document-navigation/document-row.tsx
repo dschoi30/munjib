@@ -9,7 +9,7 @@ import type {
   OpenMenuHandler,
   ToggleFavoriteDocumentHandler,
 } from "@/components/document-navigation/types";
-import { documentDisplayLabel } from "@/lib/workspace-tree";
+import { documentActionLabel } from "@/lib/workspace-tree";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 export function DocumentLinkRow({
@@ -39,7 +39,7 @@ export function DocumentLinkRow({
 }) {
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
-  const displayLabel = documentDisplayLabel(document);
+  const actionLabel = documentActionLabel(document);
   const rowClassName = selected
     ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
     : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
@@ -58,7 +58,7 @@ export function DocumentLinkRow({
       </Link>
       <button
         type="button"
-        aria-label={`Open actions for ${displayLabel}`}
+        aria-label={`Open actions for ${actionLabel}`}
         aria-expanded={isMenuOpen}
         onClick={(event) => {
           event.stopPropagation();
