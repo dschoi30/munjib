@@ -5,9 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+const toastMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
+}));
+
+vi.mock("sonner", () => ({
+  toast: toastMock,
 }));
 
 const folderFixtures = [
@@ -71,6 +76,7 @@ const baseProps = {
 beforeEach(() => {
   router.push.mockReset();
   router.refresh.mockReset();
+  toastMock.mockReset();
 
   let store: Record<string, string> = {};
 
@@ -710,5 +716,53 @@ describe("DocumentList", () => {
     expect(submittedFormData.get("folderId")).toBe("folder-engineering");
     expect(submittedFormData.get("redirect")).toBe("false");
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
+  });
+
+  it("shows feedback when folder menu creation fails", async () => {
+    const createFolderAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add folder" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+  });
+
+  it("shows feedback when folder menu document creation fails", async () => {
+    const createAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add document" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });

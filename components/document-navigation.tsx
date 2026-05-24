@@ -30,8 +30,10 @@ import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 const folderErrorToastId = "folder-trash-error";
+const folderCreateErrorToastId = "folder-create-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
+const folderCreateErrorMessage = "Could not create the item. Try again.";
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -230,6 +232,12 @@ export function DocumentNavigation({
         }
         router.refresh();
       });
+    } catch {
+      toast(folderCreateErrorMessage, {
+        id: folderCreateErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
+      });
     } finally {
       setPendingFolderCreateAction(null);
     }
@@ -253,6 +261,12 @@ export function DocumentNavigation({
           return;
         }
         router.refresh();
+      });
+    } catch {
+      toast(folderCreateErrorMessage, {
+        id: folderCreateErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
       });
     } finally {
       setPendingFolderCreateAction(null);
