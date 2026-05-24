@@ -85,15 +85,24 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
       continue;
     }
 
-    const contentMarkdown = await file.text();
-    const document = await createDocument({
-      workspaceSlug,
-      actorId: user.id,
-      folderId,
-      title: deriveMarkdownImportTitle({ fileName: file.name, contentMarkdown }),
-      contentMarkdown,
-    });
-    imported.push({ fileName: file.name, documentId: document.id });
+    try {
+      const contentMarkdown = await file.text();
+      const document = await createDocument({
+        workspaceSlug,
+        actorId: user.id,
+        folderId,
+        title: deriveMarkdownImportTitle({ fileName: file.name, contentMarkdown }),
+        contentMarkdown,
+      });
+      imported.push({ fileName: file.name, documentId: document.id });
+    } catch (error) {
+      failed.push({
+        fileName: file.name,
+        error: error instanceof Error
+          ? error.message
+          : SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE,
+      });
+    }
   }
 
   revalidatePath(`/workspaces/${workspaceSlug}`);

@@ -274,6 +274,36 @@ describe("workspace document actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 
+  test("importMarkdownDocumentAction reports create failures while returning prior imports", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
+    mocks.deriveMarkdownImportTitle
+      .mockReturnValueOnce("First")
+      .mockReturnValueOnce("Second");
+    mocks.createDocument
+      .mockResolvedValueOnce({ id: "doc-first" })
+      .mockRejectedValueOnce(new Error("DOCUMENT_SLUG_RETRY_EXHAUSTED"));
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# First"], "first.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File(["# Second"], "second.md", {
+      type: "text/markdown",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      documentIds: ["doc-first"],
+      imported: [{ fileName: "first.md", documentId: "doc-first" }],
+      failed: [{ fileName: "second.md", error: "DOCUMENT_SLUG_RETRY_EXHAUSTED" }],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
   test("importMarkdownDocumentAction requires a markdown file", async () => {
     const { importMarkdownDocumentAction } = await import(
       "@/app/workspaces/[workspaceSlug]/actions"
