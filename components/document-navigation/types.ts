@@ -5,6 +5,14 @@ export type FavoriteState = { documents: string[]; folders: string[] };
 export type RenameFolderResult = { folderId: string; error?: string };
 export type ArchiveFolderResult = { folderId: string; error?: string };
 export type ArchiveDocumentResult = { documentId: string };
+export type CreateDocumentResult = { documentId: string };
+export type CreateFolderResult = { folderId: string };
+export type CreateDocumentAction = (
+  formData: FormData
+) => Promise<void | CreateDocumentResult>;
+export type CreateFolderAction = (
+  formData: FormData
+) => Promise<void | CreateFolderResult>;
 
 export type OpenMenuHandler = (menuId: string | null) => void;
 export type ToggleFavoriteDocumentHandler = (documentId: string) => void;

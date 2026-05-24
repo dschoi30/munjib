@@ -5,6 +5,10 @@ import { useCallback, useState } from "react";
 import { Settings } from "lucide-react";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
+import type {
+  CreateDocumentAction,
+  CreateFolderAction,
+} from "@/components/document-navigation/types";
 import {
   type MarkdownImportActionResult,
   WorkspaceSettingsPanel,
@@ -48,8 +52,8 @@ export function DocumentList({
   folders: FolderListItem[];
   documents: DocumentListItem[];
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
-  createFolderAction: (formData: FormData) => Promise<void>;
+  createAction: CreateDocumentAction;
+  createFolderAction: CreateFolderAction;
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;

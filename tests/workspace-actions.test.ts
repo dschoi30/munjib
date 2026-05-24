@@ -140,6 +140,7 @@ describe("workspace document actions", () => {
       contentMarkdown: "",
     });
     expect(result).toEqual({ documentId: "doc-created" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
@@ -352,6 +353,7 @@ describe("workspace document actions", () => {
       name: "Untitled folder",
     });
     expect(result).toEqual({ folderId: "folder-created" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
