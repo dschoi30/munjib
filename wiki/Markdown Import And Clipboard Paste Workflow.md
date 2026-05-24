@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-24
-source_count: 12
+source_count: 14
 tags:
   - munjib
   - workflow
@@ -29,38 +29,40 @@ links:
 
 Markdown import는 새 document를 즉시 만든다. Imported file text가 곧 `Document.contentMarkdown`이 되고, `createDocument()` 흐름에서 initial version, link reconciliation, metadata reconciliation, `document.created` audit log가 같이 확정된다.
 
-Import 직후 navigation은 server action `redirect()`를 쓰지 않는다. 현재 단일-file import server action은 `{ documentId }`를 반환하고 settings panel이 client-side `router.push()`로 새 문서를 연다. 이 방식은 import 완료 직후 workspace surface가 server redirect로 크게 remount되며 깜빡이는 현상을 줄이기 위한 것이다. Issue #55 설계는 이 흐름을 복수-file import로 확장하면서 import 완료 후 현재 route/document에 머물고 settings panel 안에서 batch 결과를 확인하는 방향이다.
+Import 직후 navigation은 server action `redirect()`를 쓰지 않는다. Issue #55 이후 Markdown import는 복수 file batch action으로 동작하고, import 완료 후에도 현재 route/document에 머문다. Settings panel은 `router.refresh()`로 document list를 갱신하고 panel 안에서 batch 결과를 보여준다.
 
 Clipboard paste는 현재 editor draft를 먼저 바꾼다. Image paste는 attachment row와 file storage를 먼저 만들 수 있지만, 본문의 image markdown persistence, document version, link/metadata reconciliation, `document.updated` audit log는 사용자가 Save를 누를 때 `updateDocument()`에서 확정된다.
 
 ## Markdown import
 
-UI 진입점은 workspace settings dialog의 `Import` menu다. `components/document-list.tsx`의 Markdown file form은 `importMarkdownAction` server action으로 제출된다.
+UI 진입점은 workspace settings dialog의 `Import` menu다. `components/workspace-settings-panel.tsx`의 Markdown import form은 `importMarkdownAction` server action으로 제출된다. `components/document-list.tsx`는 settings panel open/close와 prop 전달만 담당한다.
 
 `importMarkdownDocumentAction()`은 다음 순서로 동작한다.
 
 1. `requireCurrentUser()`로 현재 user를 확인한다.
-2. form의 `markdownFile`이 `File`이고 size가 0보다 큰지 확인한다.
-3. `isSupportedMarkdownImportFile()`로 `.md`, `.markdown`, `text/markdown`, `text/x-markdown`만 허용한다.
-4. `file.text()`를 읽어 원문 Markdown을 그대로 `contentMarkdown`으로 사용한다.
-5. `deriveMarkdownImportTitle()`로 제목을 정한다.
-6. `createDocument()`를 호출한다.
-7. workspace route를 revalidate하고 created document id를 반환한다.
-8. Settings dialog client form action이 dialog를 닫고 imported document URL로 `router.push()`한다.
+2. form의 repeated `markdownFiles` field에서 File 목록을 읽는다. 이전 단일 caller 호환을 위해 `markdownFile` fallback도 지원한다.
+3. file이 하나도 없으면 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw한다.
+4. form의 `folderId`가 있으면 batch 전체 destination folder로 사용하고, 없으면 workspace root로 import한다.
+5. 각 file마다 size 0이면 failed row에 `MARKDOWN_IMPORT_FILE_REQUIRED`를 기록하고 계속한다.
+6. `isSupportedMarkdownImportFile()`로 `.md`, `.markdown`, `text/markdown`, `text/x-markdown`만 허용한다. Unsupported file은 failed row에 `MARKDOWN_IMPORT_UNSUPPORTED_FILE`을 기록하고 계속한다.
+7. valid file은 `file.text()`를 읽어 원문 Markdown을 그대로 `contentMarkdown`으로 사용한다.
+8. `deriveMarkdownImportTitle()`로 제목을 정하고 `createDocument()`를 호출한다.
+9. workspace route를 한 번 revalidate하고 `{ documentIds, imported, failed }` batch result를 반환한다.
+10. Settings panel은 dialog를 닫거나 route를 바꾸지 않고 `router.refresh()`로 list를 갱신한다.
 
 Title 우선순위는 YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name, 마지막으로 `Untitled`다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
 
 Import는 attachment upload를 별도로 하지 않는다. Markdown 안에 이미 `![alt](url)` 또는 `![alt](/api/attachments/...)`가 있으면 그 text를 그대로 문서 본문으로 저장한다. 따라서 import된 Markdown의 이미지가 보이는지는 URL이 브라우저에서 접근 가능한지, 또는 이미 Munjib attachment URL을 가리키는지에 달려 있다.
 
-## Planned multiple-file import
+## Multiple-file Markdown import
 
-Issue #55 설계는 workspace settings Import form이 여러 Markdown file을 한 번에 선택하고 가져오는 흐름이다. 설계 근거는 `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`이다.
+Issue #55는 workspace settings Import form이 여러 Markdown file을 한 번에 선택하고 가져오는 흐름이다. 설계 근거는 `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-05-24-multiple-markdown-file-import.md`이다.
 
-Planned behavior:
+Implemented behavior:
 
 - Native file input styling은 감추고, 기존 dashed import form 영역을 클릭하면 file picker가 열린다.
 - File input은 `multiple`을 지원한다.
-- 선택한 file 목록은 form 영역 안에 table로 표시한다.
+- 선택한 file 목록은 table로 표시하고 각 row는 `Ready`, `Importing`, `Imported`, `Failed` status를 가진다.
 - Submit row는 약 2/3 너비의 bordered destination path 영역과 더 좁은 Import button으로 나뉜다.
 - Destination path는 기본으로 workspace root를 표시하며, 사용자가 선택하지 않으면 root에 import한다.
 - Destination path 영역을 클릭하면 popup tree가 열리고 root 또는 folder path를 선택한다. 선택한 folder는 batch 전체의 `folderId`로 server action에 전달한다.
@@ -69,6 +71,7 @@ Planned behavior:
 - 진행 중, 완료, 실패 또는 부분 실패는 global Sonner 위치를 바꾸지 않고 settings panel 중앙의 toast-like local status message로 표시한다.
 - Server action은 repeated `markdownFiles` field를 batch로 처리하되 기존 단일 `markdownFile` caller도 호환한다.
 - Missing all files는 기존처럼 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw하고, empty/unsupported 개별 file은 batch result의 failed row로 보고해 유효한 file import를 계속한다.
+- 같은 basename file이 섞인 partial result는 fileName별 result count를 소비하는 방식으로 row status를 매칭해 duplicate name이 모두 같은 status로 표시되지 않게 한다.
 
 ## Clipboard paste dispatch
 
@@ -137,7 +140,8 @@ Remote image URL fetch 실패, forbidden MIME type, private host, timeout, size 
 
 ## 관련 코드
 
-- `components/document-list.tsx`: settings dialog Markdown import form.
+- `components/document-list.tsx`: workspace sidebar composition과 settings panel open/close.
+- `components/workspace-settings-panel.tsx`: settings dialog Markdown import form, selected-file table, destination picker, panel status message.
 - `app/workspaces/[workspaceSlug]/actions.ts`: `importMarkdownDocumentAction()`, `pasteDocumentImageAttachmentAction()`, remote image URL server fetch.
 - `lib/documents/import-markdown.ts`: supported Markdown file 판정과 imported title derivation.
 - `components/document-editor.tsx`: CodeMirror paste dispatch, image placeholder, pending draft/save guard.
