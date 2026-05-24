@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 95
+source_count: 96
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:40:00+09:00 - review follow-up
+
+- Result: PR #62 Codex review feedback에 따라 folder menu creation failure feedback을 추가했다.
+- Coverage: Folder row menu의 `Add folder`와 `Add document` action이 server action 실패 시 click handler rejection으로 끝나지 않고 Sonner toast로 복구 가능한 오류를 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T13:55:00+09:00 - review follow-up
 
