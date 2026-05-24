@@ -247,6 +247,18 @@ describe("workspace document actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 
+  test("importMarkdownDocumentAction requires a markdown file", async () => {
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+
+    await expect(importMarkdownDocumentAction("company-handbook", formData)).rejects.toThrow(
+      "MARKDOWN_IMPORT_FILE_REQUIRED",
+    );
+    expect(mocks.createDocument).not.toHaveBeenCalled();
+  });
+
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
     mocks.pasteDocumentImageAttachment.mockResolvedValue({
       id: "attachment-1",
