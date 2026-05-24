@@ -22,7 +22,13 @@ export function pathQualifiedTargetToLookupKey(targetTitleRaw: string) {
 }
 
 export function pathQualifiedTargetToLookupDocumentPath(targetTitleRaw: string) {
-  return pathQualifiedTargetToDocumentPath(targetTitleRaw);
+  const segments = targetTitleRaw
+    .trim()
+    .replace(/^\/+|\/+$/g, "")
+    .split("/")
+    .map((segment) => wikiLinkPathSegmentToStoredPathKey(segment))
+    .filter(Boolean);
+  return `/${segments.join("/")}`;
 }
 
 export function pathQualifiedTargetToTitleLookupKey(targetTitleRaw: string) {
@@ -31,7 +37,9 @@ export function pathQualifiedTargetToTitleLookupKey(targetTitleRaw: string) {
     .replace(/^\/+|\/+$/g, "")
     .split("/")
     .map((segment, index, allSegments) =>
-      index === allSegments.length - 1 ? wikiLinkTargetToLookupKey(segment) : slugifyTitle(segment),
+      index === allSegments.length - 1
+        ? wikiLinkTargetToLookupKey(segment)
+        : wikiLinkPathSegmentToStoredPathKey(segment),
     )
     .filter(Boolean);
   return segments.join("/");
@@ -69,4 +77,8 @@ function normalizeWikiLinkTargetForLookup(targetTitleRaw: string) {
     .replace(/\s+/g, " ")
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function wikiLinkPathSegmentToStoredPathKey(segment: string) {
+  return slugifyTitle(segment.replace(/_+/g, " "));
 }

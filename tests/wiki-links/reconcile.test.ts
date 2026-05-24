@@ -371,6 +371,38 @@ Read [[Ignored Content Link]].`,
     expect(link.isAmbiguous).toBe(false);
   });
 
+  it("resolves frontmatter underscore parent segments in path-qualified targets", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const projectPlans = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Project Plans",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: projectPlans.id,
+      title: "Roadmap",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Project_Plans/Roadmap]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetTitleRaw).toBe("Project_Plans/Roadmap");
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
   it("resolves frontmatter path-qualified targets with non-ASCII parent folders", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const history = await createFolder({

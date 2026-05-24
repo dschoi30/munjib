@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 97
+source_count: 98
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:35:00+09:00 - review follow-up
+
+- Result: PR #60 automated review feedback에 따라 path-qualified target의 parent segment에도 underscore-to-space normalization을 적용했다.
+- Coverage: Direct stored path matching과 parent-path title fallback 모두 parent segment를 `slugifyTitle(segment.replace(/_+/g, " "))` 방식으로 비교해 `[[Project_Plans/Roadmap]]`이 `Project Plans` folder 아래 `Roadmap` 문서와 매칭된다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #60 review threads, `lib/wiki-links/targets.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:28:00+09:00 - review follow-up
 
