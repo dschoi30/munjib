@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 94
+source_count: 95
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:12:00+09:00 - review follow-up
+
+- Result: PR #60 automated review feedback에 따라 wiki-link lookup key의 slug-compatible punctuation normalization을 복원하고 lookup 반복 계산을 줄였다.
+- Coverage: Unicode-preserving lookup key는 underscore를 공백처럼 취급하면서 punctuation을 제거해 `[[Q1Q2 Plan]]`이 `Q1/Q2 Plan` 문서와 계속 매칭된다. Path-qualified title fallback lookup key는 filter loop 밖에서 계산하고 preview candidate lookup keys는 중복 제거한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #60 review threads, `lib/wiki-links/targets.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T14:00:00+09:00 - bugfix
 

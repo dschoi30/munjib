@@ -62,8 +62,9 @@ function resolveLinkTarget(
       };
     }
 
+    const targetLookupKey = pathQualifiedTargetToLookupKey(targetTitleRaw);
     const pathTitleMatches = targets.filter(
-      (candidate) => pathQualifiedCandidateToTitleLookupKey(candidate) === pathQualifiedTargetToLookupKey(targetTitleRaw),
+      (candidate) => pathQualifiedCandidateToTitleLookupKey(candidate) === targetLookupKey,
     );
     if (pathTitleMatches.length === 1) {
       return {

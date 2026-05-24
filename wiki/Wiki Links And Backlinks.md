@@ -60,7 +60,7 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 
 Issue #59는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정했다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
 
-한글처럼 global slug 생성에서 보존되지 않는 title은 wiki-link lookup 전용 Unicode-preserving key로 비교한다. Path-qualified target은 먼저 stored document path와 비교하고, path segment가 `untitled`처럼 title 정보를 잃는 경우 parent path와 마지막 title segment lookup key를 함께 비교해 resolve한다.
+한글처럼 global slug 생성에서 보존되지 않는 title은 wiki-link lookup 전용 Unicode-preserving key로 비교한다. 이 key는 기존 slug-compatible matching과 맞도록 punctuation을 제거해 `[[Q1Q2 Plan]]`이 `Q1/Q2 Plan` 문서와 계속 매칭되게 한다. Path-qualified target은 먼저 stored document path와 비교하고, path segment가 `untitled`처럼 title 정보를 잃는 경우 parent path와 마지막 title segment lookup key를 함께 비교해 resolve한다.
 
 ## Autocomplete
 
