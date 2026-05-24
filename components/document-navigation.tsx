@@ -21,6 +21,7 @@ import { buildTreeItems, hasTreeChildren } from "@/components/document-navigatio
 import type {
   ArchiveDocumentResult,
   ArchiveFolderResult,
+  CreateDocumentAction,
   FavoriteState,
   RenameFolderResult,
 } from "@/components/document-navigation/types";
@@ -59,7 +60,7 @@ export function DocumentNavigation({
   onSearchQueryChange: (query: string) => void;
   selectedFolderId: string | null;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
+  createAction: CreateDocumentAction;
   renameFolderAction: (formData: FormData) => Promise<RenameFolderResult>;
   archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
   archiveDocumentAction: (formData: FormData) => Promise<ArchiveDocumentResult>;

@@ -1,5 +1,9 @@
 import { FilePlus2, Folder, FolderPlus, Network, Search, Star } from "lucide-react";
 import type { ReactNode } from "react";
+import type {
+  CreateDocumentAction,
+  CreateFolderAction,
+} from "@/components/document-navigation/types";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -21,8 +25,8 @@ export function DocumentCreateControls({
 }: {
   selectedFolderId: string | null;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
-  createFolderAction: (formData: FormData) => Promise<void>;
+  createAction: CreateDocumentAction;
+  createFolderAction: CreateFolderAction;
   activeView: "documents" | "search" | "favorites" | "graph";
   onOpenDocuments: () => void;
   onOpenSearch: () => void;
@@ -32,6 +36,14 @@ export function DocumentCreateControls({
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
   const activeIconButtonClassName = "h-8 w-8 bg-slate-200 p-0 text-ink";
+
+  async function submitCreateDocument(formData: FormData) {
+    await createAction(formData);
+  }
+
+  async function submitCreateFolder(formData: FormData) {
+    await createFolderAction(formData);
+  }
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -61,7 +73,7 @@ export function DocumentCreateControls({
             <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
-        <form action={createAction}>
+        <form action={submitCreateDocument}>
           <input type="hidden" name="folderId" value={selectedFolderId ?? ""} />
           <ToolbarTooltip label="New document">
             <Button
@@ -74,7 +86,7 @@ export function DocumentCreateControls({
             </Button>
           </ToolbarTooltip>
         </form>
-        <form action={createFolderAction}>
+        <form action={submitCreateFolder}>
           <input type="hidden" name="parentFolderId" value={selectedFolderId ?? ""} />
           <ToolbarTooltip label="New folder">
             <Button
