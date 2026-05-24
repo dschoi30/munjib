@@ -145,9 +145,10 @@ function transformWikiLinks(
 }
 
 function candidateLookupKeys(targetTitle: string) {
-  return targetTitle.includes("/")
+  const keys = targetTitle.includes("/")
     ? [pathQualifiedTargetToLookupKey(targetTitle), wikiLinkTargetToLookupKey(targetTitle)]
     : [wikiLinkTargetToLookupKey(targetTitle)];
+  return Array.from(new Set(keys));
 }
 
 function escapeMarkdownText(value: string) {

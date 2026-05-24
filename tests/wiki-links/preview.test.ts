@@ -137,6 +137,16 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     );
   });
 
+  it("keeps punctuation-compatible title fallback matching", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "q1-q2-plan", title: "Q1/Q2 Plan", path: "/q1-q2-plan" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[Q1Q2 Plan]]", candidates)).toBe(
+      "[Q1Q2 Plan](?document=plan)",
+    );
+  });
+
   it("resolves underscore targets to titles with spaces", () => {
     const candidates = buildWikiLinkPreviewCandidateMap([
       {
