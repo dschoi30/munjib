@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
@@ -599,5 +599,66 @@ describe("DocumentList", () => {
 
     const selectedRow = screen.getAllByRole("link", { name: "Welcome" })[0].parentElement;
     expect(selectedRow?.className).toContain("bg-slate-200");
+  });
+
+  it("moves folder-scoped creation into the folder actions menu", () => {
+    renderList();
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+
+    expect(
+      within(allDocumentsNav).queryByRole("button", { name: /New document in Engineering/ }),
+    ).toBeNull();
+
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+
+    expect(screen.getByRole("menuitem", { name: "Add folder" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Add document" })).toBeTruthy();
+  });
+
+  it("adds a child folder from the folder actions menu without direct form redirect", async () => {
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add folder" }));
+
+    await waitFor(() => {
+      expect(createFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("parentFolderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?folder=folder-created");
+  });
+
+  it("adds a document from the folder actions menu without direct form redirect", async () => {
+    const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+    renderList({ createAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add document" }));
+
+    await waitFor(() => {
+      expect(createAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("folderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
   });
 });

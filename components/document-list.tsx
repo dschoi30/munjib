@@ -7,7 +7,9 @@ import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
 import type {
   CreateDocumentAction,
+  CreateDocumentFormAction,
   CreateFolderAction,
+  CreateFolderFormAction,
 } from "@/components/document-navigation/types";
 import {
   type MarkdownImportActionResult,
@@ -124,8 +126,8 @@ export function DocumentList({
       <DocumentCreateControls
         selectedFolderId={selectedFolderId}
         canWrite={canWrite}
-        createAction={createAction}
-        createFolderAction={createFolderAction}
+        createAction={createAction as CreateDocumentFormAction}
+        createFolderAction={createFolderAction as CreateFolderFormAction}
         activeView={isGraphView ? "graph" : activePanel}
         onOpenDocuments={openDocuments}
         onOpenSearch={openSearch}
@@ -144,6 +146,7 @@ export function DocumentList({
         selectedFolderId={selectedFolderId}
         canWrite={canWrite}
         createAction={createAction}
+        createFolderAction={createFolderAction}
         renameFolderAction={renameFolderAction}
         archiveFolderAction={archiveFolderAction}
         archiveDocumentAction={archiveDocumentAction}
