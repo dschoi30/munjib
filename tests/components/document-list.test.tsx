@@ -10,9 +10,24 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }));
 
+const folderFixtures = [
+  {
+    id: "folder-engineering",
+    parentFolderId: null,
+    name: "Engineering",
+    path: "/engineering",
+  },
+  {
+    id: "folder-runbooks",
+    parentFolderId: "folder-engineering",
+    name: "Runbooks",
+    path: "/engineering/runbooks",
+  },
+];
+
 const baseProps = {
   workspaceSlug: "company-handbook",
-  folders: [],
+  folders: folderFixtures,
   documents: [
     {
       id: "doc-1",
@@ -129,6 +144,9 @@ describe("DocumentList", () => {
     );
     expect(fileInput).toHaveProperty("multiple", true);
     expect(fileInput.className).toContain("sr-only");
+    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
+      "/",
+    );
     expect(screen.getByRole("button", { name: "Import Markdown" })).toBeTruthy();
   });
 
@@ -223,6 +241,75 @@ describe("DocumentList", () => {
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
     expect(screen.getByRole("status").textContent).toBe("Imported 2 Markdown file(s).");
     expect(screen.getAllByText("Imported")).toHaveLength(2);
+  });
+
+  it("opens the destination picker and imports markdown files into the selected folder", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import destination" }));
+
+    expect(
+      screen.getByRole("tree", { name: "Import destination folders" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "/" })).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "/engineering" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("treeitem", { name: "/engineering/runbooks" }));
+
+    expect(screen.queryByRole("tree", { name: "Import destination folders" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
+      "/engineering/runbooks",
+    );
+
+    const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [importedFile],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = importMarkdownAction.mock.calls[0][0] as FormData;
+    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
+    expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
+  });
+
+  it("omits folderId when importing markdown files to the default root destination", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "root.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
+      "/",
+    );
+
+    const importedFile = new File(["# Root"], "root.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [importedFile],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = importMarkdownAction.mock.calls[0][0] as FormData;
+    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
+    expect(submittedFormData.get("folderId")).toBeNull();
   });
 
   it("shows partial markdown import failures in the settings panel", async () => {

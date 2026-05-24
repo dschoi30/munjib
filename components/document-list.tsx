@@ -169,6 +169,7 @@ export function DocumentList({
       {settingsOpen ? (
         <WorkspaceSettingsPanel
           canWrite={canWrite}
+          folders={folders}
           importMarkdownAction={importMarkdownAction}
           onClose={() => setSettingsOpen(false)}
         />
@@ -179,10 +180,12 @@ export function DocumentList({
 
 function WorkspaceSettingsPanel({
   canWrite,
+  folders,
   importMarkdownAction,
   onClose,
 }: {
   canWrite: boolean;
+  folders: FolderListItem[];
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   onClose: () => void;
 }) {
@@ -192,8 +195,13 @@ function WorkspaceSettingsPanel({
   const [isImporting, setIsImporting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
   const [statusMessage, setStatusMessage] = useState<ImportStatusMessage | null>(null);
+  const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
+  const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
   const importLocked = isImportPending || isImporting;
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
+  const sortedFolders = [...folders].sort((left, right) => left.path.localeCompare(right.path));
+  const destinationPath =
+    sortedFolders.find((folder) => folder.id === destinationFolderId)?.path ?? "/";
 
   const handleOpenFilePicker = useCallback(() => {
     if (!canWrite || importLocked) return;
@@ -211,6 +219,11 @@ function WorkspaceSettingsPanel({
       })),
     );
     setStatusMessage(null);
+  }, []);
+
+  const handleSelectDestination = useCallback((folderId: string | null) => {
+    setDestinationFolderId(folderId);
+    setDestinationPickerOpen(false);
   }, []);
 
   const handleImportMarkdown = useCallback((event: FormEvent<HTMLFormElement>) => {
@@ -232,6 +245,9 @@ function WorkspaceSettingsPanel({
       filesToImport.forEach(({ file }) => {
         formData.append("markdownFiles", file);
       });
+      if (destinationFolderId !== null) {
+        formData.append("folderId", destinationFolderId);
+      }
 
       try {
         const result = await importMarkdownAction(formData);
@@ -264,7 +280,7 @@ function WorkspaceSettingsPanel({
         setIsImporting(false);
       }
     });
-  }, [importMarkdownAction, isSubmitDisabled, router, selectedFiles]);
+  }, [destinationFolderId, importMarkdownAction, isSubmitDisabled, router, selectedFiles]);
 
   return (
     <div
@@ -386,13 +402,50 @@ function WorkspaceSettingsPanel({
                 {statusMessage.text}
               </div>
             ) : null}
-            <Button
-              type="submit"
-              disabled={isSubmitDisabled}
-              className="h-10 w-full max-w-md"
-            >
-              Import Markdown
-            </Button>
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)] gap-3">
+              <div className="relative min-w-0">
+                <button
+                  type="button"
+                  aria-label="Import destination"
+                  aria-expanded={destinationPickerOpen}
+                  onClick={() => setDestinationPickerOpen((open) => !open)}
+                  disabled={!canWrite || importLocked}
+                  className="h-10 w-full truncate rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-ink shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {destinationPath}
+                </button>
+                {destinationPickerOpen ? (
+                  <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                    <div role="tree" aria-label="Import destination folders" className="space-y-1">
+                      <button
+                        type="button"
+                        role="treeitem"
+                        aria-selected={destinationFolderId === null}
+                        onClick={() => handleSelectDestination(null)}
+                        className="block w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                      >
+                        /
+                      </button>
+                      {sortedFolders.map((folder) => (
+                        <button
+                          key={folder.id}
+                          type="button"
+                          role="treeitem"
+                          aria-selected={destinationFolderId === folder.id}
+                          onClick={() => handleSelectDestination(folder.id)}
+                          className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                        >
+                          {folder.path}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <Button type="submit" disabled={isSubmitDisabled} className="h-10 w-full">
+                Import Markdown
+              </Button>
+            </div>
           </form>
         </div>
       </section>
