@@ -1,5 +1,8 @@
-import { slugifyTitle } from "@/lib/text/slug";
-import { pathQualifiedTargetToLookupKey } from "@/lib/wiki-links/targets";
+import {
+  pathQualifiedCandidateToTitleLookupKey,
+  pathQualifiedTargetToLookupKey,
+  wikiLinkTargetToLookupKey,
+} from "@/lib/wiki-links/targets";
 
 export type WikiLinkPreviewCandidate = {
   id: string;
@@ -14,8 +17,9 @@ export function buildWikiLinkPreviewCandidateMap(candidates: WikiLinkPreviewCand
   for (const candidate of candidates) {
     setUniqueCandidate(candidateBySlug, candidate.slug, candidate);
     candidateBySlug.set(candidate.path.replace(/^\/+|\/+$/g, "").toLowerCase(), candidate);
+    setUniqueCandidate(candidateBySlug, pathQualifiedCandidateToTitleLookupKey(candidate), candidate);
 
-    const titleSlug = slugifyTitle(candidate.title);
+    const titleSlug = wikiLinkTargetToLookupKey(candidate.title);
     setUniqueCandidate(candidateBySlug, titleSlug, candidate);
   }
 
@@ -142,8 +146,8 @@ function transformWikiLinks(
 
 function candidateLookupKeys(targetTitle: string) {
   return targetTitle.includes("/")
-    ? [pathQualifiedTargetToLookupKey(targetTitle), slugifyTitle(targetTitle)]
-    : [slugifyTitle(targetTitle)];
+    ? [pathQualifiedTargetToLookupKey(targetTitle), wikiLinkTargetToLookupKey(targetTitle)]
+    : [wikiLinkTargetToLookupKey(targetTitle)];
 }
 
 function escapeMarkdownText(value: string) {

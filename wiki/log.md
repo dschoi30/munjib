@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 93
+source_count: 94
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T14:00:00+09:00 - bugfix
+
+- Result: Issue #59 underscore wiki link target matching을 구현했다.
+- Coverage: Body preview links와 frontmatter `links:` reconciliation은 target lookup에서 underscore를 공백처럼 취급한다. Raw markdown과 `DocumentLink.targetTitleRaw`는 보존하며, path-qualified target은 segment별 lookup normalization을 적용한다. 한글 title처럼 stored path가 title 정보를 잃는 경우에는 parent path와 마지막 title segment lookup key를 함께 비교한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #59, `lib/wiki-links/targets.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`, `docs/superpowers/plans/2026-05-24-underscore-wiki-link-targets.md`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-24T13:35:00+09:00 - design
 
