@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-24
-source_count: 14
+source_count: 17
 tags:
   - munjib
   - workflow
@@ -72,6 +72,21 @@ Implemented behavior:
 - Server action은 repeated `markdownFiles` field를 batch로 처리하되 기존 단일 `markdownFile` caller도 호환한다.
 - Missing all files는 기존처럼 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw하고, empty/unsupported 개별 file은 batch result의 failed row로 보고해 유효한 file import를 계속한다.
 - 같은 basename file이 섞인 partial result는 fileName별 result count를 소비하는 방식으로 row status를 매칭해 duplicate name이 모두 같은 status로 표시되지 않게 한다.
+
+Issue #58 refines multiple Markdown import progress. Existing settings Import form now handles file selection, destination path, and starting the import run. The full selected-file table is shown in a separate Markdown import progress panel after import starts. 설계 근거는 `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`이다.
+
+Implemented behavior:
+
+- Progress panel top area shows destination, completed/total count, progress bar, current file, and final summary.
+- Progress panel bottom area shows the file table.
+- Progress panel close control uses the existing icon-only `X` button pattern.
+- Interactive progress uses client-side sequential per-file import calls.
+- Each file row moves through `Queued`, `Importing`, `Imported`, or `Failed`.
+- A failed file does not stop later queued files from importing.
+- Rejected per-file action calls are treated as failed rows and do not stop the remaining queue.
+- Active imports block backdrop, settings close, and progress close controls to avoid duplicate or abandoned import runs.
+- `router.refresh()` runs once after the run when at least one document was imported.
+- Server action contract remains issue #55's repeated `markdownFiles` batch result shape; the interactive UI sends one-file batches.
 
 ## Clipboard paste dispatch
 

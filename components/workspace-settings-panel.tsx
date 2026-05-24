@@ -24,15 +24,24 @@ export type MarkdownImportActionResult = {
   failed: Array<{ fileName: string; error: string }>;
 };
 
+type ImportFileStatus = "Ready" | "Queued" | "Importing" | "Imported" | "Failed";
+
 type SelectedImportFile = {
   id: string;
   file: File;
-  status: "Ready" | "Importing" | "Imported" | "Failed";
+  status: ImportFileStatus;
 };
 
-type ImportStatusMessage = {
-  tone: "neutral" | "success" | "error";
-  text: string;
+type ImportRunStatus = "idle" | "importing" | "completed";
+
+type ImportRun = {
+  status: ImportRunStatus;
+  files: SelectedImportFile[];
+  destinationPath: string;
+  destinationFolderId: string | null;
+  importedCount: number;
+  failedCount: number;
+  currentFileName: string | null;
 };
 
 export function WorkspaceSettingsPanel({
@@ -51,10 +60,11 @@ export function WorkspaceSettingsPanel({
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
-  const [statusMessage, setStatusMessage] = useState<ImportStatusMessage | null>(null);
+  const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
   const importLocked = isImportPending || isImporting;
+  const isImportActive = isImporting || importRun?.status === "importing";
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
   const sortedFolders = useMemo(
     () => [...folders].sort((left, right) => left.path.localeCompare(right.path)),
@@ -78,7 +88,7 @@ export function WorkspaceSettingsPanel({
         status: "Ready",
       })),
     );
-    setStatusMessage(null);
+    setImportRun(null);
   }, []);
 
   const handleSelectDestination = useCallback((folderId: string | null) => {
@@ -90,56 +100,104 @@ export function WorkspaceSettingsPanel({
     event.preventDefault();
     if (isSubmitDisabled) return;
 
-    const filesToImport = selectedFiles;
+    const filesToImport = selectedFiles.map((selectedFile, index) => ({
+      ...selectedFile,
+      id: `${selectedFile.id}-run-${index}`,
+      status: index === 0 ? "Importing" : "Queued",
+    })) satisfies SelectedImportFile[];
+    const runDestinationFolderId = destinationFolderId;
+    const runDestinationPath = destinationPath;
+
     setIsImporting(true);
-    setStatusMessage({
-      tone: "neutral",
-      text: `Importing ${filesToImport.length} file(s)...`,
+    setImportRun({
+      status: "importing",
+      files: filesToImport,
+      destinationPath: runDestinationPath,
+      destinationFolderId: runDestinationFolderId,
+      importedCount: 0,
+      failedCount: 0,
+      currentFileName: filesToImport[0]?.file.name ?? null,
     });
-    setSelectedFiles((current) =>
-      current.map((selectedFile) => ({ ...selectedFile, status: "Importing" })),
-    );
 
     startImportTransition(async () => {
-      const formData = new FormData();
-      filesToImport.forEach(({ file }) => {
-        formData.append("markdownFiles", file);
-      });
-      if (destinationFolderId !== null) {
-        formData.append("folderId", destinationFolderId);
+      let importedCount = 0;
+      let failedCount = 0;
+
+      for (const fileToImport of filesToImport) {
+        setImportRun((current) =>
+          current
+            ? {
+                ...current,
+                currentFileName: fileToImport.file.name,
+                files: current.files.map((row) =>
+                  row.id === fileToImport.id ? { ...row, status: "Importing" } : row,
+                ),
+              }
+            : current,
+        );
+
+        const formData = new FormData();
+        formData.append("markdownFiles", fileToImport.file);
+        if (runDestinationFolderId !== null) {
+          formData.append("folderId", runDestinationFolderId);
+        }
+
+        try {
+          const result = await importMarkdownAction(formData);
+          const imported = result.imported.length > 0;
+          if (imported) {
+            importedCount += 1;
+          } else {
+            failedCount += 1;
+          }
+          setImportRun((current) =>
+            updateImportRunRow(current, fileToImport.id, imported ? "Imported" : "Failed", {
+              importedCount,
+              failedCount,
+            }),
+          );
+        } catch {
+          failedCount += 1;
+          setImportRun((current) =>
+            updateImportRunRow(current, fileToImport.id, "Failed", {
+              importedCount,
+              failedCount,
+            }),
+          );
+        }
       }
 
-      try {
-        const result = await importMarkdownAction(formData);
-        setSelectedFiles((current) => resolveImportStatuses(current, result));
-        setStatusMessage({
-          tone: result.failed.length > 0 ? "error" : "success",
-          text:
-            result.failed.length > 0
-              ? `Imported ${result.imported.length} file(s). ${result.failed.length} file(s) failed.`
-              : `Imported ${result.imported.length} Markdown file(s).`,
-        });
+      setImportRun((current) =>
+        current
+          ? {
+              ...current,
+              status: "completed",
+              currentFileName: null,
+              importedCount,
+              failedCount,
+            }
+          : current,
+      );
+      if (importedCount > 0) {
         router.refresh();
-      } catch {
-        setSelectedFiles((current) =>
-          current.map((selectedFile) => ({ ...selectedFile, status: "Failed" })),
-        );
-        setStatusMessage({
-          tone: "error",
-          text: `Import failed for ${filesToImport.length} file(s).`,
-        });
-      } finally {
-        setIsImporting(false);
       }
+      setIsImporting(false);
     });
-  }, [destinationFolderId, importMarkdownAction, isSubmitDisabled, router, selectedFiles]);
+  }, [
+    destinationFolderId,
+    destinationPath,
+    importMarkdownAction,
+    isSubmitDisabled,
+    router,
+    selectedFiles,
+  ]);
 
   return (
     <div
       data-testid="workspace-settings-backdrop"
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/35 px-6 py-16"
       onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !isImportActive) onClose();
       }}
     >
       <section
@@ -176,13 +234,26 @@ export function WorkspaceSettingsPanel({
             <Button
               type="button"
               aria-label="Close settings"
-              onClick={onClose}
-              className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink"
+              onClick={() => {
+                if (!isImportActive) onClose();
+              }}
+              disabled={isImportActive}
+              className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
             >
               <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-          <form onSubmit={handleImportMarkdown} className="space-y-4">
+          {importRun ? (
+            <MarkdownImportProgressPanel
+              run={importRun}
+              onClose={() => {
+                if (!isImportActive) setImportRun(null);
+              }}
+              canClose={!isImportActive}
+            />
+          ) : null}
+          {!importRun ? (
+            <form onSubmit={handleImportMarkdown} className="space-y-4">
             <input
               ref={fileInputRef}
               id="markdownFiles"
@@ -204,56 +275,12 @@ export function WorkspaceSettingsPanel({
             >
               <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
               <span className="mt-4 text-base font-semibold text-ink">Markdown files</span>
-              <span className="mt-2 text-sm leading-6 text-slate-600">.md or .markdown</span>
+              <span className="mt-2 text-sm leading-6 text-slate-600">
+                {selectedFiles.length > 0
+                  ? `${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} selected`
+                  : ".md or .markdown"}
+              </span>
             </button>
-            {selectedFiles.length > 0 ? (
-              <div className="overflow-hidden rounded-md border border-slate-200">
-                <table aria-label="Selected Markdown files" className="w-full text-left text-sm">
-                  <thead className="bg-slate-50 text-xs font-medium text-slate-500">
-                    <tr>
-                      <th scope="col" className="px-3 py-2">
-                        File name
-                      </th>
-                      <th scope="col" className="px-3 py-2">
-                        Size
-                      </th>
-                      <th scope="col" className="px-3 py-2">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-slate-700">
-                    {selectedFiles.map((selectedFile) => (
-                      <tr key={selectedFile.id}>
-                        <td className="max-w-0 truncate px-3 py-2 font-medium text-ink">
-                          {selectedFile.file.name}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2">
-                          {formatFileSize(selectedFile.file.size)}
-                        </td>
-                        <td className="whitespace-nowrap px-3 py-2">
-                          {selectedFile.status}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : null}
-            {statusMessage ? (
-              <div
-                role="status"
-                className={
-                  statusMessage.tone === "error"
-                    ? "rounded-md bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-700"
-                    : statusMessage.tone === "success"
-                      ? "rounded-md bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-700"
-                      : "rounded-md bg-slate-50 px-4 py-3 text-center text-sm font-medium text-slate-700"
-                }
-              >
-                {statusMessage.text}
-              </div>
-            ) : null}
             <div className="grid grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)] gap-3">
               <div className="relative min-w-0">
                 <button
@@ -299,9 +326,104 @@ export function WorkspaceSettingsPanel({
               </Button>
             </div>
           </form>
+          ) : null}
         </div>
       </section>
     </div>
+  );
+}
+
+function MarkdownImportProgressPanel({
+  run,
+  onClose,
+  canClose,
+}: {
+  run: ImportRun;
+  onClose: () => void;
+  canClose: boolean;
+}) {
+  const totalCount = run.files.length;
+  const completedCount = run.importedCount + run.failedCount;
+  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const statusText = importRunStatusText(run, completedCount, totalCount);
+
+  return (
+    <section
+      role="region"
+      aria-label="Markdown import progress"
+      className="flex min-h-0 flex-1 flex-col gap-4"
+    >
+      <div className="flex items-start gap-4">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-slate-500">Markdown Import</p>
+          <h3 className="mt-2 text-2xl font-semibold text-ink">Importing files</h3>
+          <p className="mt-2 truncate text-sm text-slate-600">
+            Destination: {run.destinationPath}
+          </p>
+        </div>
+        <Button
+          type="button"
+          aria-label="Close import progress"
+          onClick={onClose}
+          disabled={!canClose}
+          className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </Button>
+      </div>
+
+      <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+        <div className="flex items-center justify-between gap-3 text-sm font-medium text-ink">
+          <span role="status">{statusText}</span>
+          <span className="text-slate-500">{progressPercent}%</span>
+        </div>
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+          <div
+            className="h-full rounded-full bg-sky-500 transition-[width]"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        {run.currentFileName ? (
+          <p className="mt-3 truncate text-sm text-slate-600">Current: {run.currentFileName}</p>
+        ) : null}
+      </div>
+
+      <div className="min-h-0 overflow-hidden rounded-md border border-slate-200">
+        <div className="max-h-[min(22rem,calc(100vh-24rem))] overflow-y-auto">
+          <table
+            aria-label="Markdown import files"
+            className="w-full table-fixed text-left text-sm"
+          >
+            <thead className="bg-slate-50 text-xs font-medium text-slate-500">
+              <tr>
+                <th scope="col" className="w-[60%] px-3 py-2">
+                  File name
+                </th>
+                <th scope="col" className="w-24 px-3 py-2">
+                  Size
+                </th>
+                <th scope="col" className="w-24 px-3 py-2">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-slate-700">
+              {run.files.map((selectedFile) => (
+                <tr key={selectedFile.id}>
+                  <td className="px-3 py-2 font-medium text-ink">
+                    <span className="block truncate">{selectedFile.file.name}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {formatFileSize(selectedFile.file.size)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2">{selectedFile.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -312,48 +434,34 @@ function formatFileSize(size: number) {
   return `${(kilobytes / 1024).toFixed(1)} MB`;
 }
 
-function countImportResultsByFileName(results: Array<{ fileName: string }>) {
-  const counts = new Map<string, number>();
+function updateImportRunRow(
+  current: ImportRun | null,
+  rowId: string,
+  status: ImportFileStatus,
+  counts: { importedCount: number; failedCount: number },
+) {
+  if (!current) return current;
 
-  results.forEach(({ fileName }) => {
-    counts.set(fileName, (counts.get(fileName) ?? 0) + 1);
-  });
-
-  return counts;
+  return {
+    ...current,
+    importedCount: counts.importedCount,
+    failedCount: counts.failedCount,
+    files: current.files.map((row) => (row.id === rowId ? { ...row, status } : row)),
+  };
 }
 
-function consumeImportStatus(
-  selectedFile: SelectedImportFile,
-  importedCounts: Map<string, number>,
-  failedCounts: Map<string, number>,
-) {
-  const fileName = selectedFile.file.name;
-  const failedCount = failedCounts.get(fileName) ?? 0;
-
-  if (failedCount > 0) {
-    failedCounts.set(fileName, failedCount - 1);
-    return "Failed";
+function importRunStatusText(run: ImportRun, completedCount: number, totalCount: number) {
+  if (run.status === "importing") {
+    return `Importing ${Math.min(completedCount + 1, totalCount)} / ${totalCount}`;
   }
 
-  const importedCount = importedCounts.get(fileName) ?? 0;
-
-  if (importedCount > 0) {
-    importedCounts.set(fileName, importedCount - 1);
-    return "Imported";
+  if (run.failedCount === 0) {
+    return `Imported ${run.importedCount} Markdown file(s).`;
   }
 
-  return selectedFile.status;
-}
+  if (run.importedCount === 0) {
+    return `Import failed for ${run.failedCount} file(s).`;
+  }
 
-function resolveImportStatuses(
-  selectedFiles: SelectedImportFile[],
-  result: MarkdownImportActionResult,
-) {
-  const importedCounts = countImportResultsByFileName(result.imported);
-  const failedCounts = countImportResultsByFileName(result.failed);
-
-  return selectedFiles.map((selectedFile) => ({
-    ...selectedFile,
-    status: consumeImportStatus(selectedFile, importedCounts, failedCounts),
-  }));
+  return `Imported ${run.importedCount} file(s). ${run.failedCount} file(s) failed.`;
 }

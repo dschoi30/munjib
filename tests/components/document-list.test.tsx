@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
@@ -290,49 +290,57 @@ describe("DocumentList", () => {
     expect(screen.getByLabelText("Markdown files")).toHaveProperty("disabled", true);
   });
 
-  it("imports selected markdown files without navigation and refreshes the workspace", async () => {
-    const importMarkdownAction = vi.fn(async () => ({
-      documentIds: ["doc-imported", "doc-second"],
-      imported: [
-        { fileName: "imported.md", documentId: "doc-imported" },
-        { fileName: "second.markdown", documentId: "doc-second" },
-      ],
-      failed: [],
-    }));
+  it("opens a markdown import progress panel and imports files one at a time", async () => {
+    const importMarkdownAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        documentIds: ["doc-imported"],
+        imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+        failed: [],
+      })
+      .mockResolvedValueOnce({
+        documentIds: ["doc-second"],
+        imported: [{ fileName: "second.markdown", documentId: "doc-second" }],
+        failed: [],
+      });
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
-    const fileInput = screen.getByLabelText("Markdown files") as HTMLInputElement;
     const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
     const secondFile = new File(["# Second"], "second.markdown", { type: "text/markdown" });
-    fireEvent.change(fileInput, {
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [importedFile, secondFile],
       },
     });
 
-    expect(screen.getByRole("table", { name: "Selected Markdown files" })).toBeTruthy();
-    expect(screen.getByText("imported.md")).toBeTruthy();
-    expect(screen.getByText("second.markdown")).toBeTruthy();
-    expect(screen.getAllByText("Ready")).toHaveLength(2);
+    expect(screen.queryByRole("table", { name: "Markdown import files" })).toBeNull();
+    expect(screen.getByText("2 files selected")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
 
-    expect(screen.getByRole("status").textContent).toBe("Importing 2 file(s)...");
+    expect(screen.getByRole("region", { name: "Markdown import progress" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Importing 1 / 2");
+    expect(screen.getByRole("table", { name: "Markdown import files" })).toBeTruthy();
+    expect(screen.getByText("imported.md").closest("tr")?.textContent).toContain("Importing");
+    expect(screen.getByText("second.markdown").closest("tr")?.textContent).toContain("Queued");
 
     await waitFor(() => {
-      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+      expect(importMarkdownAction).toHaveBeenCalledTimes(2);
     });
-    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
-    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile, secondFile]);
-    expect(submittedFormData.get("folderId")).toBeNull();
+    const firstFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
+    const secondFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[1][0];
+    expect(firstFormData.getAll("markdownFiles")).toEqual([importedFile]);
+    expect(secondFormData.getAll("markdownFiles")).toEqual([secondFile]);
+    expect(firstFormData.get("folderId")).toBeNull();
+    expect(secondFormData.get("folderId")).toBeNull();
 
     await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Imported 2 Markdown file(s).");
       expect(router.refresh).toHaveBeenCalledTimes(1);
     });
     expect(router.push).not.toHaveBeenCalled();
-    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
-    expect(screen.getByRole("status").textContent).toBe("Imported 2 Markdown file(s).");
+    expect(screen.getByRole("region", { name: "Markdown import progress" })).toBeTruthy();
     expect(screen.getAllByText("Imported")).toHaveLength(2);
   });
 
@@ -375,6 +383,10 @@ describe("DocumentList", () => {
     const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
     expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
+    expect(
+      await screen.findByRole("region", { name: "Markdown import progress" }),
+    ).toBeTruthy();
+    expect(await screen.findByText("Destination: /engineering/runbooks")).toBeTruthy();
   });
 
   it("omits folderId when importing markdown files to the default root destination", async () => {
@@ -404,14 +416,30 @@ describe("DocumentList", () => {
     const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
     expect(submittedFormData.get("folderId")).toBeNull();
+    expect(
+      await screen.findByRole("region", { name: "Markdown import progress" }),
+    ).toBeTruthy();
+    expect(await screen.findByText("Destination: /")).toBeTruthy();
   });
 
-  it("shows partial markdown import failures in the settings panel", async () => {
-    const importMarkdownAction = vi.fn(async () => ({
-      documentIds: ["doc-imported"],
-      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
-      failed: [{ fileName: "failed.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
-    }));
+  it("continues importing queued markdown files after one file fails", async () => {
+    const importMarkdownAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        documentIds: ["doc-imported"],
+        imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+        failed: [],
+      })
+      .mockResolvedValueOnce({
+        documentIds: [],
+        imported: [],
+        failed: [{ fileName: "failed.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+      })
+      .mockResolvedValueOnce({
+        documentIds: ["doc-later"],
+        imported: [{ fileName: "later.md", documentId: "doc-later" }],
+        failed: [],
+      });
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
@@ -420,28 +448,75 @@ describe("DocumentList", () => {
         files: [
           new File(["# Imported"], "imported.md", { type: "text/markdown" }),
           new File(["nope"], "failed.md", { type: "text/markdown" }),
+          new File(["# Later"], "later.md", { type: "text/markdown" }),
         ],
       },
     });
     fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
 
     await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledTimes(3);
+    });
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Imported 2 file(s). 1 file(s) failed.",
+      );
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByText("imported.md").closest("tr")?.textContent).toContain("Imported");
+    expect(screen.getByText("failed.md").closest("tr")?.textContent).toContain("Failed");
+    expect(screen.getByText("later.md").closest("tr")?.textContent).toContain("Imported");
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("continues importing queued markdown files after a request throws", async () => {
+    const importMarkdownAction = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("network failed"))
+      .mockResolvedValueOnce({
+        documentIds: ["doc-later"],
+        imported: [{ fileName: "later.md", documentId: "doc-later" }],
+        failed: [],
+      });
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [
+          new File(["# Throws"], "throws.md", { type: "text/markdown" }),
+          new File(["# Later"], "later.md", { type: "text/markdown" }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
       expect(screen.getByRole("status").textContent).toBe(
         "Imported 1 file(s). 1 file(s) failed.",
       );
     });
-    expect(screen.getByText("imported.md").parentElement?.textContent).toContain("Imported");
-    expect(screen.getByText("failed.md").parentElement?.textContent).toContain("Failed");
+    expect(screen.getByText("throws.md").closest("tr")?.textContent).toContain("Failed");
+    expect(screen.getByText("later.md").closest("tr")?.textContent).toContain("Imported");
     expect(router.refresh).toHaveBeenCalledTimes(1);
-    expect(router.push).not.toHaveBeenCalled();
   });
 
-  it("maps mixed duplicate markdown import results to one row per result", async () => {
-    const importMarkdownAction = vi.fn(async () => ({
-      documentIds: ["doc-one"],
-      imported: [{ fileName: "duplicate.md", documentId: "doc-one" }],
-      failed: [{ fileName: "duplicate.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
-    }));
+  it("keeps duplicate markdown filenames as independent progress rows", async () => {
+    const importMarkdownAction = vi
+      .fn()
+      .mockResolvedValueOnce({
+        documentIds: ["doc-one"],
+        imported: [{ fileName: "duplicate.md", documentId: "doc-one" }],
+        failed: [],
+      })
+      .mockResolvedValueOnce({
+        documentIds: [],
+        imported: [],
+        failed: [{ fileName: "duplicate.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+      });
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
@@ -463,11 +538,117 @@ describe("DocumentList", () => {
 
     const duplicateRows = screen
       .getAllByText("duplicate.md")
-      .map((fileNameCell) => fileNameCell.parentElement?.textContent ?? "");
+      .map((fileNameCell) => fileNameCell.closest("tr")?.textContent ?? "");
 
     expect(duplicateRows).toHaveLength(2);
     expect(duplicateRows.filter((rowText) => rowText.includes("Imported"))).toHaveLength(1);
     expect(duplicateRows.filter((rowText) => rowText.includes("Failed"))).toHaveLength(1);
+  });
+
+  it("uses an icon-only x button to close the completed import progress panel", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [new File(["# Imported"], "imported.md", { type: "text/markdown" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Imported 1 Markdown file(s).");
+    });
+
+    const closeButton = screen.getByRole("button", { name: "Close import progress" });
+    fireEvent.click(closeButton);
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Markdown import progress" })).toBeNull();
+  });
+
+  it("keeps settings open during active markdown import and allows close after completion", async () => {
+    let resolveImport: (result: Awaited<ReturnType<typeof baseProps.importMarkdownAction>>) => void =
+      () => {};
+    const importPromise = new Promise<Awaited<ReturnType<typeof baseProps.importMarkdownAction>>>(
+      (resolve) => {
+        resolveImport = resolve;
+      },
+    );
+    const importMarkdownAction = vi.fn(() => importPromise);
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [new File(["# Slow"], "slow.md", { type: "text/markdown" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledTimes(1);
+    });
+    expect(screen.getByRole("region", { name: "Markdown import progress" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close settings" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+
+    fireEvent.click(screen.getByTestId("workspace-settings-backdrop"));
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Markdown import progress" })).toBeTruthy();
+
+    await act(async () => {
+      resolveImport({
+        documentIds: ["doc-slow"],
+        imported: [{ fileName: "slow.md", documentId: "doc-slow" }],
+        failed: [],
+      });
+      await importPromise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Imported 1 Markdown file(s).");
+      expect(screen.getByRole("button", { name: "Close settings" })).toHaveProperty(
+        "disabled",
+        false,
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
+
+    expect(screen.queryByRole("dialog", { name: "Workspace settings" })).toBeNull();
+  });
+
+  it("does not refresh the workspace when every markdown import row fails", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: [],
+      imported: [],
+      failed: [{ fileName: "failed.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [new File(["nope"], "failed.md", { type: "text/markdown" })],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe("Import failed for 1 file(s).");
+    });
+    expect(screen.getByText("failed.md").closest("tr")?.textContent).toContain("Failed");
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 
   it("opens search from the toolbar and replaces the document list with matching results", () => {
