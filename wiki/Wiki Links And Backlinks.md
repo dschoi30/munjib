@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-16
-source_count: 24
+updated: 2026-05-24
+source_count: 25
 tags:
   - munjib
   - wiki-links
@@ -57,6 +57,8 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 본문 content 영역의 `[[...]]`는 preview navigation 대상으로는 렌더링하지만 Properties Links row와 backlink graph의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
 
 이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown의 frontmatter links와 항상 다시 맞춰지도록 단순하게 만든다.
+
+Issue #59 설계는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정한다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되어야 하지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
 
 ## Autocomplete
 
@@ -123,4 +125,6 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `tests/wiki-links/autocomplete.test.ts`
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
+- GitHub issue #59
 - Issue #25 final review blocker fix
+- `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`
