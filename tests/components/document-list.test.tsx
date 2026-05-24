@@ -10,9 +10,24 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }));
 
+const folderFixtures = [
+  {
+    id: "folder-engineering",
+    parentFolderId: null,
+    name: "Engineering",
+    path: "/engineering",
+  },
+  {
+    id: "folder-runbooks",
+    parentFolderId: "folder-engineering",
+    name: "Runbooks",
+    path: "/engineering/runbooks",
+  },
+];
+
 const baseProps = {
   workspaceSlug: "company-handbook",
-  folders: [],
+  folders: folderFixtures,
   documents: [
     {
       id: "doc-1",
@@ -34,7 +49,11 @@ const baseProps = {
   canWrite: true,
   createAction: async () => {},
   createFolderAction: async () => {},
-  importMarkdownAction: async () => ({ documentId: "doc-imported" }),
+  importMarkdownAction: async () => ({
+    documentIds: ["doc-imported"],
+    imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+    failed: [],
+  }),
   renameFolderAction: async (formData: FormData) => ({
     folderId: String(formData.get("folderId")),
   }),
@@ -119,8 +138,14 @@ describe("DocumentList", () => {
       "true",
     );
     expect(screen.getByRole("heading", { name: "Import your contents" })).toBeTruthy();
-    expect(screen.getByLabelText("Markdown file").getAttribute("accept")).toBe(
+    const fileInput = screen.getByLabelText("Markdown files");
+    expect(fileInput.getAttribute("accept")).toBe(
       ".md,.markdown,text/markdown,text/x-markdown",
+    );
+    expect(fileInput).toHaveProperty("multiple", true);
+    expect(fileInput.className).toContain("sr-only");
+    expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
+      "/",
     );
     expect(screen.getByRole("button", { name: "Import Markdown" })).toBeTruthy();
   });
@@ -169,17 +194,84 @@ describe("DocumentList", () => {
       "disabled",
       true,
     );
+    expect(screen.getByLabelText("Markdown files")).toHaveProperty("disabled", true);
   });
 
-  it("navigates to imported markdown documents from the client without server redirect", async () => {
-    const importMarkdownAction = vi.fn(async () => ({ documentId: "doc-imported" }));
+  it("imports selected markdown files without navigation and refreshes the workspace", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported", "doc-second"],
+      imported: [
+        { fileName: "imported.md", documentId: "doc-imported" },
+        { fileName: "second.markdown", documentId: "doc-second" },
+      ],
+      failed: [],
+    }));
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
-    const fileInput = screen.getByLabelText("Markdown file") as HTMLInputElement;
+    const fileInput = screen.getByLabelText("Markdown files") as HTMLInputElement;
+    const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
+    const secondFile = new File(["# Second"], "second.markdown", { type: "text/markdown" });
     fireEvent.change(fileInput, {
       target: {
-        files: [new File(["# Imported"], "imported.md", { type: "text/markdown" })],
+        files: [importedFile, secondFile],
+      },
+    });
+
+    expect(screen.getByRole("table", { name: "Selected Markdown files" })).toBeTruthy();
+    expect(screen.getByText("imported.md")).toBeTruthy();
+    expect(screen.getByText("second.markdown")).toBeTruthy();
+    expect(screen.getAllByText("Ready")).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    expect(screen.getByRole("status").textContent).toBe("Importing 2 file(s)...");
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile, secondFile]);
+    expect(submittedFormData.get("folderId")).toBeNull();
+
+    await waitFor(() => {
+      expect(router.refresh).toHaveBeenCalledTimes(1);
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Imported 2 Markdown file(s).");
+    expect(screen.getAllByText("Imported")).toHaveLength(2);
+  });
+
+  it("opens the destination picker and imports markdown files into the selected folder", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: /Import destination: \// }));
+
+    expect(
+      screen.getByRole("tree", { name: "Import destination folders" }),
+    ).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "/" })).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "/engineering" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("treeitem", { name: "/engineering/runbooks" }));
+
+    expect(screen.queryByRole("tree", { name: "Import destination folders" })).toBeNull();
+    const selectedDestinationButton = screen.getByRole("button", {
+      name: /Import destination: \/engineering\/runbooks/,
+    });
+    expect(selectedDestinationButton.textContent).toBe("/engineering/runbooks");
+
+    const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [importedFile],
       },
     });
     fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
@@ -187,10 +279,102 @@ describe("DocumentList", () => {
     await waitFor(() => {
       expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
     });
-    await waitFor(() => {
-      expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-imported");
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
+    expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
+  });
+
+  it("omits folderId when importing markdown files to the default root destination", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "root.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
+      "/",
+    );
+
+    const importedFile = new File(["# Root"], "root.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [importedFile],
+      },
     });
-    expect(screen.queryByRole("dialog", { name: "Workspace settings" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.getAll("markdownFiles")).toEqual([importedFile]);
+    expect(submittedFormData.get("folderId")).toBeNull();
+  });
+
+  it("shows partial markdown import failures in the settings panel", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [{ fileName: "failed.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [
+          new File(["# Imported"], "imported.md", { type: "text/markdown" }),
+          new File(["nope"], "failed.md", { type: "text/markdown" }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Imported 1 file(s). 1 file(s) failed.",
+      );
+    });
+    expect(screen.getByText("imported.md").parentElement?.textContent).toContain("Imported");
+    expect(screen.getByText("failed.md").parentElement?.textContent).toContain("Failed");
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("maps mixed duplicate markdown import results to one row per result", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-one"],
+      imported: [{ fileName: "duplicate.md", documentId: "doc-one" }],
+      failed: [{ fileName: "duplicate.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [
+          new File(["# Imported"], "duplicate.md", { type: "text/markdown" }),
+          new File(["nope"], "duplicate.md", { type: "text/markdown" }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Imported 1 file(s). 1 file(s) failed.",
+      );
+    });
+
+    const duplicateRows = screen
+      .getAllByText("duplicate.md")
+      .map((fileNameCell) => fileNameCell.parentElement?.textContent ?? "");
+
+    expect(duplicateRows).toHaveLength(2);
+    expect(duplicateRows.filter((rowText) => rowText.includes("Imported"))).toHaveLength(1);
+    expect(duplicateRows.filter((rowText) => rowText.includes("Failed"))).toHaveLength(1);
   });
 
   it("opens search from the toolbar and replaces the document list with matching results", () => {

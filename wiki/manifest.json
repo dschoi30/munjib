@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-05-20",
+  "updated": "2026-05-24",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -140,7 +140,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 38,
+      "source_count": 40,
       "searchPriority": 5
     },
     {
@@ -182,7 +182,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 87,
+      "source_count": 92,
       "searchPriority": 1
     },
     {
@@ -206,7 +206,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 11,
+      "source_count": 14,
       "searchPriority": 50
     },
     {

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-21
-source_count: 87
+updated: 2026-05-24
+source_count: 92
 tags:
   - log
   - munjib
@@ -18,6 +18,46 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T12:55:00+09:00 - review follow-up
+
+- Result: PR #56 review feedback에 따라 multiple Markdown import의 batch failure handling과 panel state update를 보강했다.
+- Coverage: `createDocument()` 실패는 file별 failed row로 기록해 이미 생성된 document 결과와 workspace revalidation을 보존한다. Settings panel은 folder sort를 `useMemo`로 memoize하고, duplicate filename row status 계산은 React state updater 내부의 local count map으로 수행해 updater purity를 유지한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #56 review threads, `app/workspaces/[workspaceSlug]/actions.ts`, `components/workspace-settings-panel.tsx`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-24T12:45:00+09:00 - feature
+
+- Result: Issue #55 multiple Markdown file import를 구현하고 settings panel을 별도 component로 분리했다.
+- Coverage: Workspace settings Import form은 multiple file selection, selected file table, root-default destination picker, folder tree popup, panel-centered status message, partial success batch result, duplicate filename row status handling, current-route 유지 refresh를 제공한다. `components/document-list.tsx`는 sidebar composition과 settings panel open/close만 맡고, import UI/state는 `components/workspace-settings-panel.tsx`로 분리했다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-list.tsx`, `components/workspace-settings-panel.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/components/document-list.test.tsx`, `tests/workspace-actions.test.ts`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-24T00:40:00+09:00 - plan
+
+- Result: Issue #55 multiple Markdown file import implementation plan을 작성했다.
+- Coverage: Plan은 server action batch contract, settings panel multi-file UI, destination path tree picker, wiki/verification/PR workflow를 task 단위로 나눈다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-24-multiple-markdown-file-import.md`, `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`.
+- Verification: Plan self-review.
+
+## 2026-05-24T00:20:00+09:00 - design
+
+- Result: Issue #55 multiple Markdown file import 설계에 destination path 선택 요건을 추가했다.
+- Coverage: Import submit row는 약 2/3 너비의 bordered destination path 영역과 좁은 Import button으로 구성한다. Destination path는 기본 root를 표시하고, 클릭 시 popup tree에서 root 또는 folder를 선택한다. 선택한 folder는 batch 전체 `folderId`로 전달하며 미선택 시 root에 import한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 추가 요건, `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`.
+- Verification: Spec update self-review.
+
+## 2026-05-23T23:55:00+09:00 - design
+
+- Result: Issue #55 multiple Markdown file import 설계를 기록했다.
+- Coverage: Workspace settings Import form은 여러 Markdown file 선택, selected file table, current-route 유지, panel-centered local status message, partial success batch result를 목표로 한다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`이다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #55, `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`.
+- Verification: Spec self-review.
 
 ## 2026-05-21T01:00:00+09:00 - bugfix
 
