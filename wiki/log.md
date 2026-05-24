@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 93
+source_count: 94
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T18:35:00+09:00 - plan
+
+- Result: Issue #58 Markdown import progress panel implementation plan을 작성했다.
+- Coverage: Plan은 progress panel test coverage, `WorkspaceSettingsPanel` sequential per-file import UI/state implementation, wiki/verification/PR workflow를 task 단위로 나눈다. Server action contract는 issue #55 batch result를 유지하고 interactive UI만 one-file batches를 순차 호출한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`, `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`.
+- Verification: Plan self-review.
 
 ## 2026-05-24T18:25:00+09:00 - design
 
