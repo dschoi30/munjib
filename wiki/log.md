@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 95
+source_count: 96
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:20:00+09:00 - review follow-up
+
+- Result: PR #60 automated review feedback에 따라 path-qualified wiki-link lookup의 stored path matching을 `slugifyTitle()` 기반으로 복원하고, non-ASCII parent folder fallback을 보강했다.
+- Coverage: Direct path matching은 persisted `Document.path`와 같은 slug-compatible key를 사용한다. 마지막 segment title matching은 parent folder path를 slug-compatible하게 유지하고 마지막 title segment만 Unicode-preserving lookup key로 비교해 `[[역사/수에즈_운하_위기]]` 같은 link도 resolve한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: PR #60 review threads, `lib/wiki-links/targets.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:12:00+09:00 - review follow-up
 

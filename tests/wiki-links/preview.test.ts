@@ -176,4 +176,19 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
       "[History/수에즈_운하_위기](?document=suez)",
     );
   });
+
+  it("resolves path-qualified targets with non-ASCII parent folders", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/untitled/untitled",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[역사/수에즈_운하_위기]]", candidates)).toBe(
+      "[역사/수에즈_운하_위기](?document=suez)",
+    );
+  });
 });

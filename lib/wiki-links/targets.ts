@@ -19,13 +19,19 @@ export function pathQualifiedTargetToLookupKey(targetTitleRaw: string) {
 }
 
 export function pathQualifiedTargetToLookupDocumentPath(targetTitleRaw: string) {
+  return pathQualifiedTargetToDocumentPath(targetTitleRaw);
+}
+
+export function pathQualifiedTargetToTitleLookupKey(targetTitleRaw: string) {
   const segments = targetTitleRaw
     .trim()
     .replace(/^\/+|\/+$/g, "")
     .split("/")
-    .map((segment) => wikiLinkTargetToLookupKey(segment))
+    .map((segment, index, allSegments) =>
+      index === allSegments.length - 1 ? wikiLinkTargetToLookupKey(segment) : slugifyTitle(segment),
+    )
     .filter(Boolean);
-  return `/${segments.join("/")}`;
+  return segments.join("/");
 }
 
 export function pathQualifiedCandidateToTitleLookupKey(candidate: { path: string; title: string }) {
