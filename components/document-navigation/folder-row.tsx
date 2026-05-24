@@ -79,6 +79,7 @@ export function FolderToggleRow({
   archiveFolderAction,
   isFavorite,
   isRenaming,
+  pendingCreateAction,
   openMenuId,
   onOpenMenu,
   onStartRename,
@@ -96,6 +97,7 @@ export function FolderToggleRow({
   archiveFolderAction: (formData: FormData) => Promise<void>;
   isFavorite: boolean;
   isRenaming: boolean;
+  pendingCreateAction: string | null;
   openMenuId: string | null;
   onOpenMenu: OpenMenuHandler;
   onStartRename: (folderId: string) => void;
@@ -108,6 +110,7 @@ export function FolderToggleRow({
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;
   const menuId = `folder:${folder.id}`;
   const isMenuOpen = openMenuId === menuId;
+  const isCreatingInFolder = pendingCreateAction?.endsWith(`:${folder.id}`) ?? false;
   const displayLabel = folderDisplayLabel(folder);
   const rowClassName = selected
     ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
@@ -183,7 +186,7 @@ export function FolderToggleRow({
           <button
             type="button"
             role="menuitem"
-            disabled={!canWrite}
+            disabled={!canWrite || isCreatingInFolder}
             onClick={() => onAddFolder(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >
@@ -192,7 +195,7 @@ export function FolderToggleRow({
           <button
             type="button"
             role="menuitem"
-            disabled={!canWrite}
+            disabled={!canWrite || isCreatingInFolder}
             onClick={() => onAddDocument(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >

@@ -75,6 +75,9 @@ export function DocumentNavigation({
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [pendingFolderCreateAction, setPendingFolderCreateAction] = useState<string | null>(
+    null,
+  );
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
@@ -209,35 +212,51 @@ export function DocumentNavigation({
   }
 
   async function addFolderChild(folderId: string) {
+    if (pendingFolderCreateAction) return;
+
+    const pendingKey = `folder:${folderId}`;
     const formData = new FormData();
     formData.set("parentFolderId", folderId);
     formData.set("redirect", "false");
 
-    const result = await createFolderAction(formData);
+    setPendingFolderCreateAction(pendingKey);
     setOpenMenuId(null);
-    startTransition(() => {
-      if (result?.folderId) {
-        router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
-        return;
-      }
-      router.refresh();
-    });
+    try {
+      const result = await createFolderAction(formData);
+      startTransition(() => {
+        if (result?.folderId) {
+          router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+          return;
+        }
+        router.refresh();
+      });
+    } finally {
+      setPendingFolderCreateAction(null);
+    }
   }
 
   async function addFolderDocument(folderId: string) {
+    if (pendingFolderCreateAction) return;
+
+    const pendingKey = `document:${folderId}`;
     const formData = new FormData();
     formData.set("folderId", folderId);
     formData.set("redirect", "false");
 
-    const result = await createAction(formData);
+    setPendingFolderCreateAction(pendingKey);
     setOpenMenuId(null);
-    startTransition(() => {
-      if (result?.documentId) {
-        router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
-        return;
-      }
-      router.refresh();
-    });
+    try {
+      const result = await createAction(formData);
+      startTransition(() => {
+        if (result?.documentId) {
+          router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+          return;
+        }
+        router.refresh();
+      });
+    } finally {
+      setPendingFolderCreateAction(null);
+    }
   }
 
   async function archiveFolderFromMenu(formData: FormData) {
@@ -327,6 +346,7 @@ export function DocumentNavigation({
             archiveFolderAction={archiveFolderFromMenu}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
             isRenaming={renamingFolderId === item.folder.id}
+            pendingCreateAction={pendingFolderCreateAction}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onStartRename={startFolderRename}

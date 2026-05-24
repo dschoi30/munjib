@@ -641,6 +641,48 @@ describe("DocumentList", () => {
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?folder=folder-created");
   });
 
+  it("guards folder menu creation against repeated clicks while pending", async () => {
+    let resolveCreateFolder: (result: { folderId: string }) => void = () => {};
+    const createFolderAction = vi.fn(
+      () =>
+        new Promise<{ folderId: string }>((resolve) => {
+          resolveCreateFolder = resolve;
+        }),
+    );
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    const addFolderMenuItem = screen.getByRole("menuitem", { name: "Add folder" });
+
+    fireEvent.click(addFolderMenuItem);
+    fireEvent.click(addFolderMenuItem);
+
+    expect(createFolderAction).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menuitem", { name: "Add folder" })).toBeNull();
+
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    expect(screen.getByRole("menuitem", { name: "Add folder" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+
+    resolveCreateFolder({ folderId: "folder-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?folder=folder-created",
+      );
+    });
+  });
+
   it("adds a document from the folder actions menu without direct form redirect", async () => {
     const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
     renderList({ createAction });
