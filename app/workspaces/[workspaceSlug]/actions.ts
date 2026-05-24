@@ -69,12 +69,18 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
   const failed: Array<{ fileName: string; error: string }> = [];
 
   for (const file of files) {
+    if (file.size === 0) {
+      failed.push({
+        fileName: file.name,
+        error: SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED,
+      });
+      continue;
+    }
+
     if (!isSupportedMarkdownImportFile(file)) {
       failed.push({
         fileName: file.name,
-        error: file.size === 0
-          ? SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED
-          : SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE,
+        error: SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE,
       });
       continue;
     }
