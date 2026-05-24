@@ -618,6 +618,9 @@ describe("DocumentList", () => {
 
     expect(screen.getByRole("menuitem", { name: "Add folder" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Add document" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Move to trash" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Add to favorites" })).toBeTruthy();
   });
 
   it("adds a child folder from the folder actions menu without direct form redirect", async () => {
