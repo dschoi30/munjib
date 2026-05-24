@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 94
+source_count: 95
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:25:00+09:00 - feature
+
+- Result: Issue #58 Markdown import progress panel을 구현했다.
+- Coverage: Existing settings Import form은 file selection과 destination/start command만 담당하고, import 시작 후 별도 progress panel이 진행 요약과 file table을 표시한다. Progress panel은 icon-only `X` close control을 사용하며, client-side sequential per-file import loop로 row status를 즉시 갱신한다. 실패 row나 rejected action이 있어도 queued file import는 계속 진행하고, 문서가 하나 이상 생성된 경우 `router.refresh()`를 한 번 호출한다. Active import 중 backdrop, settings close, progress close는 import run이 중단되지 않도록 막는다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/workspace-settings-panel.tsx`, `tests/components/document-list.test.tsx`, `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`, `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T18:35:00+09:00 - plan
 

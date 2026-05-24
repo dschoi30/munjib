@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-24
-source_count: 16
+source_count: 17
 tags:
   - munjib
   - workflow
@@ -73,18 +73,20 @@ Implemented behavior:
 - Missing all files는 기존처럼 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw하고, empty/unsupported 개별 file은 batch result의 failed row로 보고해 유효한 file import를 계속한다.
 - 같은 basename file이 섞인 partial result는 fileName별 result count를 소비하는 방식으로 row status를 매칭해 duplicate name이 모두 같은 status로 표시되지 않게 한다.
 
-Issue #58은 multiple Markdown import의 표시 위치와 진행 상태를 보완하는 설계다. 설계 근거는 `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`이다.
+Issue #58 refines multiple Markdown import progress. Existing settings Import form now handles file selection, destination path, and starting the import run. The full selected-file table is shown in a separate Markdown import progress panel after import starts. 설계 근거는 `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`이다.
 
-Planned behavior:
+Implemented behavior:
 
-- Existing settings Import form은 file selection, destination path, `Import Markdown` 시작 command만 담당한다.
-- Full selected-file table은 기존 form 아래에 붙이지 않고, import 시작 시 별도 Markdown import progress panel에 표시한다.
-- Progress panel 상단에는 destination, completed/total count, progress bar, current file, final summary를 표시한다.
-- Progress panel 하단에는 file name, size, status table을 표시한다.
-- Progress panel close control은 text `Close`가 아니라 기존 settings panel과 같은 icon-only `X` button pattern을 사용한다.
-- Interactive progress는 batch action 1회 완료를 기다리지 않고 client-side sequential per-file import loop로 표현한다.
-- 각 file row는 `Ready`, `Queued`, `Importing`, `Imported`, `Failed` status를 갖고, 실패한 file이 있어도 다음 queued file import를 계속한다.
-- Server action contract는 issue #55의 repeated `markdownFiles` batch result를 유지하되, interactive UI는 one-file batch를 순차 호출한다.
+- Progress panel top area shows destination, completed/total count, progress bar, current file, and final summary.
+- Progress panel bottom area shows the file table.
+- Progress panel close control uses the existing icon-only `X` button pattern.
+- Interactive progress uses client-side sequential per-file import calls.
+- Each file row moves through `Queued`, `Importing`, `Imported`, or `Failed`.
+- A failed file does not stop later queued files from importing.
+- Rejected per-file action calls are treated as failed rows and do not stop the remaining queue.
+- Active imports block backdrop, settings close, and progress close controls to avoid duplicate or abandoned import runs.
+- `router.refresh()` runs once after the run when at least one document was imported.
+- Server action contract remains issue #55's repeated `markdownFiles` batch result shape; the interactive UI sends one-file batches.
 
 ## Clipboard paste dispatch
 
