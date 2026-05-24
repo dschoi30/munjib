@@ -6,7 +6,7 @@ status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
 updated: 2026-05-24
-source_count: 15
+source_count: 16
 tags:
   - munjib
   - workflow
@@ -73,7 +73,7 @@ Implemented behavior:
 - Missing all files는 기존처럼 `MARKDOWN_IMPORT_FILE_REQUIRED`를 throw하고, empty/unsupported 개별 file은 batch result의 failed row로 보고해 유효한 file import를 계속한다.
 - 같은 basename file이 섞인 partial result는 fileName별 result count를 소비하는 방식으로 row status를 매칭해 duplicate name이 모두 같은 status로 표시되지 않게 한다.
 
-Issue #58은 multiple Markdown import의 표시 위치와 진행 상태를 보완하는 설계다. 설계 근거는 `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`이다.
+Issue #58은 multiple Markdown import의 표시 위치와 진행 상태를 보완하는 설계다. 설계 근거는 `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`이다.
 
 Planned behavior:
 
