@@ -451,6 +451,30 @@ Read [[Ignored Content Link]].`,
     expect(link.isAmbiguous).toBe(false);
   });
 
+  it("keeps hyphen-compatible title fallback matching", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "A-B",
+      contentMarkdown: "",
+    });
+
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[A - B]]\"\n---\n",
+    });
+
+    const link = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id },
+    });
+    expect(link.targetDocumentId).toBe(target.id);
+    expect(link.isBroken).toBe(false);
+    expect(link.isAmbiguous).toBe(false);
+  });
+
   it("marks title-only duplicate links as ambiguous", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const operations = await createFolder({

@@ -1,7 +1,10 @@
 import { slugifyTitle } from "@/lib/text/slug";
 
 export function wikiLinkTargetToLookupKey(targetTitleRaw: string) {
-  return normalizeWikiLinkTargetForLookup(targetTitleRaw).replace(/\s+/g, "-");
+  return normalizeWikiLinkTargetForLookup(targetTitleRaw)
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 export function pathQualifiedTargetToDocumentPath(targetTitleRaw: string) {

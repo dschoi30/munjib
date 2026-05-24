@@ -147,6 +147,16 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
     );
   });
 
+  it("keeps hyphen-compatible title fallback matching", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      { id: "plan", slug: "a-b", title: "A-B", path: "/a-b" },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[A - B]]", candidates)).toBe(
+      "[A - B](?document=plan)",
+    );
+  });
+
   it("resolves underscore targets to titles with spaces", () => {
     const candidates = buildWikiLinkPreviewCandidateMap([
       {
