@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 96
+source_count: 97
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:45:00+09:00 - review follow-up
+
+- Result: PR #61 Codex review feedback에 따라 importing progress count를 total file count로 clamp했다.
+- Coverage: Import run이 마지막 file 결과를 반영한 직후 completed state로 바뀌기 전 transient render에서도 `Importing 3 / 2` 같은 impossible count가 보이지 않도록 `Math.min(completedCount + 1, totalCount)`를 사용한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #61 Codex review, `components/workspace-settings-panel.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:35:00+09:00 - review follow-up
 
