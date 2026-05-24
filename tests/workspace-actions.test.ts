@@ -247,6 +247,33 @@ describe("workspace document actions", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 
+  test("importMarkdownDocumentAction reports empty files while importing valid files", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValueOnce(true);
+    mocks.deriveMarkdownImportTitle.mockReturnValue("Valid");
+    mocks.createDocument.mockResolvedValue({ id: "doc-valid" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# Valid"], "valid.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File([""], "empty.md", {
+      type: "text/markdown",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledTimes(1);
+    expect(mocks.isSupportedMarkdownImportFile).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      documentIds: ["doc-valid"],
+      imported: [{ fileName: "valid.md", documentId: "doc-valid" }],
+      failed: [{ fileName: "empty.md", error: "MARKDOWN_IMPORT_FILE_REQUIRED" }],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
   test("importMarkdownDocumentAction requires a markdown file", async () => {
     const { importMarkdownDocumentAction } = await import(
       "@/app/workspaces/[workspaceSlug]/actions"
