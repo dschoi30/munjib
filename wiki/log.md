@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 98
+source_count: 104
 tags:
   - log
   - munjib
@@ -18,6 +18,30 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:55:00+09:00 - review follow-up
+
+- Result: PR #62 Codex review feedback에 따라 empty document title row가 blank clickable target으로 보이지 않도록 fallback label을 추가했다.
+- Coverage: Document sidebar visible label은 title-only 정책을 유지하되 title이 비어 있거나 whitespace-only이면 `Untitled`를 표시한다. Document action label도 같은 fallback을 사용하고 duplicate/path context가 필요한 경우에만 path를 붙인다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `lib/workspace-tree.ts`, `components/document-navigation/document-row.tsx`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-24T19:42:00+09:00 - review follow-up
+
+- Result: PR #62 Gemini review feedback에 따라 folder menu creation pending guard를 route transition 완료까지 유지하도록 보강했다.
+- Coverage: `Add folder`와 `Add document`는 server action 성공 후 router push/refresh transition이 settle되기 전까지 pending guard를 유지하고, 실패 시에는 pending state를 즉시 해제한 뒤 toast를 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-24T19:40:00+09:00 - review follow-up
+
+- Result: PR #62 Codex review feedback에 따라 folder menu creation failure feedback을 추가했다.
+- Coverage: Folder row menu의 `Add folder`와 `Add document` action이 server action 실패 시 click handler rejection으로 끝나지 않고 Sonner toast로 복구 가능한 오류를 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:35:00+09:00 - review follow-up
 
@@ -59,12 +83,36 @@ links:
 - Source evidence: GitHub issue #59, `lib/wiki-links/targets.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`, `docs/superpowers/plans/2026-05-24-underscore-wiki-link-targets.md`.
 - Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
+## 2026-05-24T13:55:00+09:00 - review follow-up
+
+- Result: Issue #57 final review에서 document row action label의 duplicate title context를 복원했다.
+- Coverage: Sidebar document row visible label은 계속 title만 표시하지만, row action button label은 duplicate title/path 환경에서 구분할 수 있도록 `Document.path` context를 유지한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: final branch review, `components/document-navigation/document-row.tsx`, `lib/workspace-tree.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-24T13:35:00+09:00 - design
 
 - Result: Issue #59 underscore wiki link target matching 설계를 기록했다.
 - Coverage: `[[수에즈_운하_위기]]`처럼 target에 underscore가 포함된 body preview link와 frontmatter `links:` entry를 `수에즈 운하 위기` 문서로 resolve하되, source markdown과 `DocumentLink.targetTitleRaw` raw text는 rewrite하지 않는다. Path-qualified target은 segment별로 같은 lookup normalization을 적용하고, global document slug/path 생성 규칙은 유지한다.
 - Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #59, `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/targets.ts`.
+- Verification: Spec self-review.
+
+## 2026-05-24T13:45:00+09:00 - feature
+
+- Result: Issue #57 folder sidebar action/order refinements를 구현했다.
+- Coverage: Sidebar tree는 folder 우선, 같은 kind 안에서는 title/name 내림차순으로 정렬한다. Document row visible label은 path context 없이 title만 표시한다. Folder row hover action은 `...` menu만 노출하고, `Add folder`/`Add document`는 menu-scoped client action result를 사용해 redirect-style 깜빡임을 줄인다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: `components/document-navigation/tree.ts`, `components/document-navigation/folder-row.tsx`, `components/document-navigation.tsx`, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/components/document-list.test.tsx`, `tests/workspace-actions.test.ts`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-24T13:15:00+09:00 - design
+
+- Result: Issue #57 folder sidebar action/order refinements 설계를 기록했다.
+- Coverage: Folder/document tree는 folder 우선, 같은 kind 안에서는 title/name 내림차순으로 정렬한다. Folder row hover action은 `...` 메뉴만 노출하고, folder-scoped `Add folder`/`Add document`는 menu action으로 이동해 redirect-style 깜빡임을 줄이는 방향으로 설계했다. Sidebar document row는 duplicate title context를 화면에 붙이지 않고 title만 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #57, `docs/superpowers/specs/2026-05-24-folder-sidebar-actions-ordering-design.md`, `components/document-navigation/tree.ts`, `components/document-navigation/folder-row.tsx`.
 - Verification: Spec self-review.
 
 ## 2026-05-24T12:55:00+09:00 - review follow-up

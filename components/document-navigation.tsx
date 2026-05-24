@@ -21,6 +21,8 @@ import { buildTreeItems, hasTreeChildren } from "@/components/document-navigatio
 import type {
   ArchiveDocumentResult,
   ArchiveFolderResult,
+  CreateDocumentAction,
+  CreateFolderAction,
   FavoriteState,
   RenameFolderResult,
 } from "@/components/document-navigation/types";
@@ -28,8 +30,10 @@ import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 const folderErrorToastId = "folder-trash-error";
+const folderCreateErrorToastId = "folder-create-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
+const folderCreateErrorMessage = "Could not create the item. Try again.";
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -43,6 +47,7 @@ export function DocumentNavigation({
   selectedFolderId,
   canWrite,
   createAction,
+  createFolderAction,
   renameFolderAction,
   archiveFolderAction,
   archiveDocumentAction,
@@ -59,7 +64,8 @@ export function DocumentNavigation({
   onSearchQueryChange: (query: string) => void;
   selectedFolderId: string | null;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
+  createAction: CreateDocumentAction;
+  createFolderAction: CreateFolderAction;
   renameFolderAction: (formData: FormData) => Promise<RenameFolderResult>;
   archiveFolderAction: (formData: FormData) => Promise<ArchiveFolderResult>;
   archiveDocumentAction: (formData: FormData) => Promise<ArchiveDocumentResult>;
@@ -68,9 +74,15 @@ export function DocumentNavigation({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [isCreateTransitionPending, startCreateTransition] = useTransition();
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
+  const [pendingFolderCreateAction, setPendingFolderCreateAction] = useState<string | null>(
+    null,
+  );
+  const [clearCreatePendingAfterTransition, setClearCreatePendingAfterTransition] =
+    useState(false);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
@@ -114,6 +126,12 @@ export function DocumentNavigation({
       return next;
     });
   }, [folders]);
+
+  useEffect(() => {
+    if (!clearCreatePendingAfterTransition || isCreateTransitionPending) return;
+    setPendingFolderCreateAction(null);
+    setClearCreatePendingAfterTransition(false);
+  }, [clearCreatePendingAfterTransition, isCreateTransitionPending]);
 
   useEffect(() => {
     if (!folderErrorText) return;
@@ -204,6 +222,68 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
+  async function addFolderChild(folderId: string) {
+    if (pendingFolderCreateAction) return;
+
+    const pendingKey = `folder:${folderId}`;
+    const formData = new FormData();
+    formData.set("parentFolderId", folderId);
+    formData.set("redirect", "false");
+
+    setPendingFolderCreateAction(pendingKey);
+    setOpenMenuId(null);
+    try {
+      const result = await createFolderAction(formData);
+      setClearCreatePendingAfterTransition(true);
+      startCreateTransition(() => {
+        if (result?.folderId) {
+          router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+          return;
+        }
+        router.refresh();
+      });
+    } catch {
+      setClearCreatePendingAfterTransition(false);
+      setPendingFolderCreateAction(null);
+      toast(folderCreateErrorMessage, {
+        id: folderCreateErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
+      });
+    }
+  }
+
+  async function addFolderDocument(folderId: string) {
+    if (pendingFolderCreateAction) return;
+
+    const pendingKey = `document:${folderId}`;
+    const formData = new FormData();
+    formData.set("folderId", folderId);
+    formData.set("redirect", "false");
+
+    setPendingFolderCreateAction(pendingKey);
+    setOpenMenuId(null);
+    try {
+      const result = await createAction(formData);
+      setClearCreatePendingAfterTransition(true);
+      startCreateTransition(() => {
+        if (result?.documentId) {
+          router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+          return;
+        }
+        router.refresh();
+      });
+    } catch {
+      setClearCreatePendingAfterTransition(false);
+      setPendingFolderCreateAction(null);
+      toast(folderCreateErrorMessage, {
+        id: folderCreateErrorToastId,
+        className: folderErrorToastClassName,
+        unstyled: true,
+      });
+    }
+  }
+
   async function archiveFolderFromMenu(formData: FormData) {
     const result = await archiveFolderAction(formData);
     if (result.error) {
@@ -287,15 +367,17 @@ export function DocumentNavigation({
             expanded={isExpanded}
             selected={item.folder.id === selectedFolderId}
             canWrite={canWrite}
-            createAction={createAction}
             renameFolderAction={renameFolderFromMenu}
             archiveFolderAction={archiveFolderFromMenu}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
             isRenaming={renamingFolderId === item.folder.id}
+            pendingCreateAction={pendingFolderCreateAction}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onStartRename={startFolderRename}
             onCancelRename={() => setRenamingFolderId(null)}
+            onAddFolder={addFolderChild}
+            onAddDocument={addFolderDocument}
             onToggleFavorite={toggleFavoriteFolder}
             onToggle={() => {
               setOpenMenuId(null);
