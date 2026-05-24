@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 95
+source_count: 96
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:35:00+09:00 - review follow-up
+
+- Result: PR #61 review feedback에 따라 Markdown import progress status text helper를 단순화했다.
+- Coverage: Import 진행 중 count는 `completedCount + 1`만 사용해 표시하며, redundant `Math.max()` guard를 제거했다. Sequential per-file import의 large batch performance note는 issue #58 설계의 backend job/streaming deferred decision과 일치하는 advisory로 남긴다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #61 Gemini review, `components/workspace-settings-panel.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:25:00+09:00 - feature
 

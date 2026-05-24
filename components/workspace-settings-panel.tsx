@@ -452,7 +452,7 @@ function updateImportRunRow(
 
 function importRunStatusText(run: ImportRun, completedCount: number, totalCount: number) {
   if (run.status === "importing") {
-    return `Importing ${Math.max(completedCount + 1, 1)} / ${totalCount}`;
+    return `Importing ${completedCount + 1} / ${totalCount}`;
   }
 
   if (run.failedCount === 0) {
