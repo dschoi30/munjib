@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-05-11
-source_count: 32
+updated: 2026-05-24
+source_count: 33
 tags:
   - munjib
   - data-model
@@ -95,11 +95,11 @@ Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chev
 
 `New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. `New document`는 현재 선택된 folder id를 hidden input으로 넘기며, folder 선택 상태에서는 새 문서가 해당 folder 아래에 생성된다.
 
-문서 navigation과 quick switcher는 duplicate title을 구분할 수 있도록 `Document.path`를 함께 사용한다. Root title과 path가 일치하는 문서는 title만 표시하고, folder 아래에 같은 title이 있을 수 있는 문서는 `Title · /folder/title` 형태로 context를 보강한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, tree depth와 무관하게 동일한 left padding을 사용한다. 전체 tree section은 `Documents` heading 아래에 표시한다.
+문서 navigation row는 duplicate title이 있어도 화면에는 항상 document `title`만 표시한다. Duplicate title 구분이 필요한 action label이나 내부 identity는 `Document.path`를 사용할 수 있지만, sidebar visible label은 `Title · /folder/title`처럼 path context를 붙이지 않는다. Sidebar tree는 같은 parent 안에서 folder를 document보다 먼저 보여주고, folder name과 document title은 각각 내림차순으로 정렬한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, tree depth와 무관하게 동일한 left padding을 사용한다. 전체 tree section은 `Documents` heading 아래에 표시한다.
 
 Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
 
-Issue #26은 folder/document row interaction을 보강한다. Folder row와 document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다. Folder row는 `...`와 `+` control을 드러내며, row-level `+` control은 해당 folder 안에 blank document를 생성하고 server-action redirect로 생성된 document를 연다. Folder `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공하고, favorite folder row도 Remove from favorites menu를 제공한다. Folder Move to trash는 destructive action이므로 confirm 후 실행한다. Document `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, document write 권한이 있을 때만 trash action을 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다. Rename과 trash는 기존 folder/document service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다. Duplicate title/path 환경에서 action control을 구분할 수 있도록 document/folder row action label은 path context를 포함한다. 비어 있지 않은 folder trash 실패는 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 화면 중앙 하단에 표시하고 3초 뒤 자동으로 사라진다. Row-level folder rename은 현재 URL context를 유지한 채 refresh하고, folder trash 성공은 현재 선택 folder를 삭제한 경우에만 workspace root로 이동한다. Sidebar top-level document/folder creation은 progressive form behavior를 위해 server-action redirect를 유지한다. Sidebar section label과 row text는 더 조밀한 탐색을 위해 기존보다 작은 font size를 사용한다.
+Issue #26은 folder/document row interaction을 보강한다. Folder row와 document row는 hover/focus 상태에서 배경 highlight를 보여주고, 선택된 document row는 고정 highlight를 유지한다. Folder row는 hover/focus 상태에서 `...` action menu만 드러내며, folder-scoped `Add folder`와 `Add document`는 이 menu 안에서 실행한다. Menu-scoped creation은 server-action redirect 대신 client-side action result와 router navigation/refresh를 사용해 sidebar 깜빡임을 줄인다. Folder `...` menu는 Rename, Move to trash, Add/Remove favorites toggle을 제공하고, favorite folder row도 Remove from favorites menu를 제공한다. Folder Move to trash는 destructive action이므로 confirm 후 실행한다. Document `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, document write 권한이 있을 때만 trash action을 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다. Rename과 trash는 기존 folder/document service mutation을 사용하고, folder favorites는 workspace-scoped localStorage state로 유지한다. Duplicate title/path 환경에서 action control을 구분할 수 있도록 document/folder row action label은 path context를 포함한다. 비어 있지 않은 folder trash 실패는 redirect와 `folderError` query 없이 server action result를 받아 shadcn Sonner toast로 화면 중앙 하단에 표시하고 3초 뒤 자동으로 사라진다. Row-level folder rename은 현재 URL context를 유지한 채 refresh하고, folder trash 성공은 현재 선택 folder를 삭제한 경우에만 workspace root로 이동한다. Sidebar top-level document/folder creation은 progressive form behavior를 위해 server-action redirect를 유지한다. Sidebar section label과 row text는 더 조밀한 탐색을 위해 기존보다 작은 font size를 사용한다.
 
 ## 근거
 
