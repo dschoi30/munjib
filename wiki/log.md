@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 92
+source_count: 93
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T18:25:00+09:00 - design
+
+- Result: Issue #58 Markdown import progress panel 설계를 작성했다.
+- Coverage: Existing settings Import form은 file selection과 destination/start command만 담당하고, import 시작 후 별도 progress panel이 진행 요약과 selected-file table을 표시한다. Progress panel은 상단에 destination, completed/total count, progress bar, current file, final summary를 두고 하단에 file table을 둔다. 닫기 control은 text `Close`가 아니라 기존 settings panel과 같은 icon-only `X` button pattern을 사용한다. 진행 상태는 client-side sequential per-file import loop로 `Queued`, `Importing`, `Imported`, `Failed` row status를 갱신한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #58, `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`.
+- Verification: Spec self-review.
 
 ## 2026-05-24T12:55:00+09:00 - review follow-up
 
