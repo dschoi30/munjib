@@ -123,6 +123,26 @@ describe("workspace document actions", () => {
     expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
+  test("createDocumentAction returns a document id instead of redirecting when redirect is false", async () => {
+    mocks.createDocument.mockResolvedValue({ id: "doc-created" });
+    const { createDocumentAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("folderId", "folder-engineering");
+    formData.set("redirect", "false");
+
+    const result = await createDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      actorId: "user-1",
+      folderId: "folder-engineering",
+      title: "Untitled",
+      contentMarkdown: "",
+    });
+    expect(result).toEqual({ documentId: "doc-created" });
+    expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
   test("importMarkdownDocumentAction returns the created document without redirect", async () => {
     mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
     mocks.deriveMarkdownImportTitle.mockReturnValue("Imported");
@@ -314,6 +334,25 @@ describe("workspace document actions", () => {
       "MARKDOWN_IMPORT_FILE_REQUIRED",
     );
     expect(mocks.createDocument).not.toHaveBeenCalled();
+  });
+
+  test("createFolderAction returns a folder id instead of redirecting when redirect is false", async () => {
+    mocks.createFolder.mockResolvedValue({ id: "folder-created" });
+    const { createFolderAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("parentFolderId", "folder-engineering");
+    formData.set("redirect", "false");
+
+    const result = await createFolderAction("company-handbook", formData);
+
+    expect(mocks.createFolder).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      actorId: "user-1",
+      parentFolderId: "folder-engineering",
+      name: "Untitled folder",
+    });
+    expect(result).toEqual({ folderId: "folder-created" });
+    expect(mocks.redirect).not.toHaveBeenCalled();
   });
 
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {

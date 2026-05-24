@@ -53,6 +53,9 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
     contentMarkdown: "",
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
+  if (formData.get("redirect") === "false") {
+    return { documentId: document.id };
+  }
   redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
 
@@ -133,6 +136,9 @@ export async function createFolderAction(workspaceSlug: string, formData: FormDa
     name: "Untitled folder",
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
+  if (formData.get("redirect") === "false") {
+    return { folderId: folder.id };
+  }
   redirect(`/workspaces/${workspaceSlug}?folder=${folder.id}`);
 }
 
