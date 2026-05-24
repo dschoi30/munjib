@@ -16,12 +16,17 @@ describe("workspace tree helpers", () => {
   it("uses document titles as display labels", () => {
     expect(documentDisplayLabel({ title: "Runbook", path: "/runbook" })).toBe("Runbook");
     expect(documentDisplayLabel({ title: "Runbook", path: "/operations/runbook" })).toBe("Runbook");
+    expect(documentDisplayLabel({ title: "", path: "/untitled" })).toBe("Untitled");
   });
 
   it("keeps path context in document action labels", () => {
     expect(documentActionLabel({ title: "Runbook", path: "/runbook" })).toBe("Runbook");
     expect(documentActionLabel({ title: "Runbook", path: "/operations/runbook" })).toBe(
       "Runbook · /operations/runbook",
+    );
+    expect(documentActionLabel({ title: "", path: "/untitled" })).toBe("Untitled");
+    expect(documentActionLabel({ title: "", path: "/operations/untitled" })).toBe(
+      "Untitled · /operations/untitled",
     );
   });
 
