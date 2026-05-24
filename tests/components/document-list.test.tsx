@@ -255,6 +255,40 @@ describe("DocumentList", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  it("maps mixed duplicate markdown import results to one row per result", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-one"],
+      imported: [{ fileName: "duplicate.md", documentId: "doc-one" }],
+      failed: [{ fileName: "duplicate.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+    }));
+    renderList({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [
+          new File(["# Imported"], "duplicate.md", { type: "text/markdown" }),
+          new File(["nope"], "duplicate.md", { type: "text/markdown" }),
+        ],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status").textContent).toBe(
+        "Imported 1 file(s). 1 file(s) failed.",
+      );
+    });
+
+    const duplicateRows = screen
+      .getAllByText("duplicate.md")
+      .map((fileNameCell) => fileNameCell.parentElement?.textContent ?? "");
+
+    expect(duplicateRows).toHaveLength(2);
+    expect(duplicateRows.filter((rowText) => rowText.includes("Imported"))).toHaveLength(1);
+    expect(duplicateRows.filter((rowText) => rowText.includes("Failed"))).toHaveLength(1);
+  });
+
   it("opens search from the toolbar and replaces the document list with matching results", () => {
     renderList();
 
