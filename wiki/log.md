@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 96
+source_count: 97
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:42:00+09:00 - review follow-up
+
+- Result: PR #62 Gemini review feedback에 따라 folder menu creation pending guard를 route transition 완료까지 유지하도록 보강했다.
+- Coverage: `Add folder`와 `Add document`는 server action 성공 후 router push/refresh transition이 settle되기 전까지 pending guard를 유지하고, 실패 시에는 pending state를 즉시 해제한 뒤 toast를 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:40:00+09:00 - review follow-up
 

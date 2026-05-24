@@ -74,12 +74,15 @@ export function DocumentNavigation({
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+  const [isCreateTransitionPending, startCreateTransition] = useTransition();
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [pendingFolderCreateAction, setPendingFolderCreateAction] = useState<string | null>(
     null,
   );
+  const [clearCreatePendingAfterTransition, setClearCreatePendingAfterTransition] =
+    useState(false);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
@@ -123,6 +126,12 @@ export function DocumentNavigation({
       return next;
     });
   }, [folders]);
+
+  useEffect(() => {
+    if (!clearCreatePendingAfterTransition || isCreateTransitionPending) return;
+    setPendingFolderCreateAction(null);
+    setClearCreatePendingAfterTransition(false);
+  }, [clearCreatePendingAfterTransition, isCreateTransitionPending]);
 
   useEffect(() => {
     if (!folderErrorText) return;
@@ -225,7 +234,8 @@ export function DocumentNavigation({
     setOpenMenuId(null);
     try {
       const result = await createFolderAction(formData);
-      startTransition(() => {
+      setClearCreatePendingAfterTransition(true);
+      startCreateTransition(() => {
         if (result?.folderId) {
           router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
           return;
@@ -233,13 +243,13 @@ export function DocumentNavigation({
         router.refresh();
       });
     } catch {
+      setClearCreatePendingAfterTransition(false);
+      setPendingFolderCreateAction(null);
       toast(folderCreateErrorMessage, {
         id: folderCreateErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
       });
-    } finally {
-      setPendingFolderCreateAction(null);
     }
   }
 
@@ -255,7 +265,8 @@ export function DocumentNavigation({
     setOpenMenuId(null);
     try {
       const result = await createAction(formData);
-      startTransition(() => {
+      setClearCreatePendingAfterTransition(true);
+      startCreateTransition(() => {
         if (result?.documentId) {
           router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
           return;
@@ -263,13 +274,13 @@ export function DocumentNavigation({
         router.refresh();
       });
     } catch {
+      setClearCreatePendingAfterTransition(false);
+      setPendingFolderCreateAction(null);
       toast(folderCreateErrorMessage, {
         id: folderCreateErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
       });
-    } finally {
-      setPendingFolderCreateAction(null);
     }
   }
 
