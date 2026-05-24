@@ -1,7 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  useCallback,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { FileText, Settings, Upload, X } from "lucide-react";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
@@ -22,6 +29,23 @@ export type FolderListItem = {
   parentFolderId: string | null;
   name: string;
   path: string;
+};
+
+type MarkdownImportActionResult = {
+  documentIds: string[];
+  imported: Array<{ fileName: string; documentId: string }>;
+  failed: Array<{ fileName: string; error: string }>;
+};
+
+type SelectedImportFile = {
+  id: string;
+  file: File;
+  status: "Ready" | "Importing" | "Imported" | "Failed";
+};
+
+type ImportStatusMessage = {
+  tone: "neutral" | "success" | "error";
+  text: string;
 };
 
 export function DocumentList({
@@ -46,7 +70,7 @@ export function DocumentList({
   canWrite: boolean;
   createAction: (formData: FormData) => Promise<void>;
   createFolderAction: (formData: FormData) => Promise<void>;
-  importMarkdownAction: (formData: FormData) => Promise<{ documentId: string }>;
+  importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
@@ -144,7 +168,6 @@ export function DocumentList({
       />
       {settingsOpen ? (
         <WorkspaceSettingsPanel
-          workspaceSlug={workspaceSlug}
           canWrite={canWrite}
           importMarkdownAction={importMarkdownAction}
           onClose={() => setSettingsOpen(false)}
@@ -155,26 +178,97 @@ export function DocumentList({
 }
 
 function WorkspaceSettingsPanel({
-  workspaceSlug,
   canWrite,
   importMarkdownAction,
   onClose,
 }: {
-  workspaceSlug: string;
   canWrite: boolean;
-  importMarkdownAction: (formData: FormData) => Promise<{ documentId: string }>;
+  importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   onClose: () => void;
 }) {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isImportPending, startImportTransition] = useTransition();
+  const [isImporting, setIsImporting] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
+  const [statusMessage, setStatusMessage] = useState<ImportStatusMessage | null>(null);
+  const importLocked = isImportPending || isImporting;
+  const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
 
-  const handleImportMarkdown = useCallback((formData: FormData) => {
-    startImportTransition(async () => {
-      const { documentId } = await importMarkdownAction(formData);
-      onClose();
-      router.push(workspaceDocumentHref({ workspaceSlug, documentId }));
+  const handleOpenFilePicker = useCallback(() => {
+    if (!canWrite || importLocked) return;
+    fileInputRef.current?.click();
+  }, [canWrite, importLocked]);
+
+  const handleSelectedFilesChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+
+    setSelectedFiles(
+      files.map((file, index) => ({
+        id: `${file.name}-${file.size}-${file.lastModified}-${index}`,
+        file,
+        status: "Ready",
+      })),
+    );
+    setStatusMessage(null);
+  }, []);
+
+  const handleImportMarkdown = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isSubmitDisabled) return;
+
+    const filesToImport = selectedFiles;
+    setIsImporting(true);
+    setStatusMessage({
+      tone: "neutral",
+      text: `Importing ${filesToImport.length} file(s)...`,
     });
-  }, [importMarkdownAction, onClose, router, workspaceSlug]);
+    setSelectedFiles((current) =>
+      current.map((selectedFile) => ({ ...selectedFile, status: "Importing" })),
+    );
+
+    startImportTransition(async () => {
+      const formData = new FormData();
+      filesToImport.forEach(({ file }) => {
+        formData.append("markdownFiles", file);
+      });
+
+      try {
+        const result = await importMarkdownAction(formData);
+        const importedNames = new Set(result.imported.map(({ fileName }) => fileName));
+        const failedNames = new Set(result.failed.map(({ fileName }) => fileName));
+
+        setSelectedFiles((current) =>
+          current.map((selectedFile) => ({
+            ...selectedFile,
+            status: failedNames.has(selectedFile.file.name)
+              ? "Failed"
+              : importedNames.has(selectedFile.file.name)
+                ? "Imported"
+                : selectedFile.status,
+          })),
+        );
+        setStatusMessage({
+          tone: result.failed.length > 0 ? "error" : "success",
+          text:
+            result.failed.length > 0
+              ? `Imported ${result.imported.length} file(s). ${result.failed.length} file(s) failed.`
+              : `Imported ${result.imported.length} Markdown file(s).`,
+        });
+        router.refresh();
+      } catch {
+        setSelectedFiles((current) =>
+          current.map((selectedFile) => ({ ...selectedFile, status: "Failed" })),
+        );
+        setStatusMessage({
+          tone: "error",
+          text: `Import failed for ${filesToImport.length} file(s).`,
+        });
+      } finally {
+        setIsImporting(false);
+      }
+    });
+  }, [importMarkdownAction, isSubmitDisabled, router, selectedFiles]);
 
   return (
     <div
@@ -224,27 +318,80 @@ function WorkspaceSettingsPanel({
               <X className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
-          <form action={handleImportMarkdown} className="space-y-4">
-            <label
-              htmlFor="markdownFile"
-              className="flex min-h-64 cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center"
+          <form onSubmit={handleImportMarkdown} className="space-y-4">
+            <input
+              ref={fileInputRef}
+              id="markdownFiles"
+              name="markdownFiles"
+              type="file"
+              aria-label="Markdown files"
+              accept=".md,.markdown,text/markdown,text/x-markdown"
+              multiple
+              disabled={!canWrite || importLocked}
+              className="sr-only"
+              onChange={handleSelectedFilesChange}
+            />
+            <button
+              type="button"
+              onClick={handleOpenFilePicker}
+              disabled={!canWrite || importLocked}
+              className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
             >
               <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
-              <span className="mt-4 text-base font-semibold text-ink">Markdown file</span>
+              <span className="mt-4 text-base font-semibold text-ink">Markdown files</span>
               <span className="mt-2 text-sm leading-6 text-slate-600">.md or .markdown</span>
-              <input
-                id="markdownFile"
-                name="markdownFile"
-                type="file"
-                aria-label="Markdown file"
-                accept=".md,.markdown,text/markdown,text/x-markdown"
-                disabled={!canWrite || isImportPending}
-                className="mt-5 w-full max-w-md text-sm text-slate-600 file:mr-3 file:rounded-md file:border-0 file:bg-white file:px-3 file:py-2 file:text-sm file:font-medium file:text-ink"
-              />
-            </label>
+            </button>
+            {selectedFiles.length > 0 ? (
+              <div className="overflow-hidden rounded-md border border-slate-200">
+                <table aria-label="Selected Markdown files" className="w-full text-left text-sm">
+                  <thead className="bg-slate-50 text-xs font-medium text-slate-500">
+                    <tr>
+                      <th scope="col" className="px-3 py-2">
+                        File name
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        Size
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {selectedFiles.map((selectedFile) => (
+                      <tr key={selectedFile.id}>
+                        <td className="max-w-0 truncate px-3 py-2 font-medium text-ink">
+                          {selectedFile.file.name}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2">
+                          {formatFileSize(selectedFile.file.size)}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-2">
+                          {selectedFile.status}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            {statusMessage ? (
+              <div
+                role="status"
+                className={
+                  statusMessage.tone === "error"
+                    ? "rounded-md bg-red-50 px-4 py-3 text-center text-sm font-medium text-red-700"
+                    : statusMessage.tone === "success"
+                      ? "rounded-md bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-700"
+                      : "rounded-md bg-slate-50 px-4 py-3 text-center text-sm font-medium text-slate-700"
+                }
+              >
+                {statusMessage.text}
+              </div>
+            ) : null}
             <Button
               type="submit"
-              disabled={!canWrite || isImportPending}
+              disabled={isSubmitDisabled}
               className="h-10 w-full max-w-md"
             >
               Import Markdown
@@ -254,4 +401,11 @@ function WorkspaceSettingsPanel({
       </section>
     </div>
   );
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  const kilobytes = size / 1024;
+  if (kilobytes < 1024) return `${kilobytes.toFixed(1)} KB`;
+  return `${(kilobytes / 1024).toFixed(1)} MB`;
 }
