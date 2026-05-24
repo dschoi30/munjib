@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DocumentList } from "@/components/document-list";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+const toastMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
+}));
+
+vi.mock("sonner", () => ({
+  toast: toastMock,
 }));
 
 const folderFixtures = [
@@ -71,6 +76,7 @@ const baseProps = {
 beforeEach(() => {
   router.push.mockReset();
   router.refresh.mockReset();
+  toastMock.mockReset();
 
   let store: Record<string, string> = {};
 
@@ -159,6 +165,93 @@ describe("DocumentList", () => {
     expect(screen.getByText("Recents")).toBeTruthy();
     expect(screen.getByText("Documents")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
+  });
+
+  it("orders folders before documents and sorts each group by title descending", () => {
+    renderList({
+      folders: [
+        { id: "folder-alpha", parentFolderId: null, name: "Alpha", path: "/alpha" },
+        { id: "folder-zulu", parentFolderId: null, name: "Zulu", path: "/zulu" },
+      ],
+      documents: [
+        {
+          id: "doc-alpha",
+          folderId: null,
+          title: "Alpha Doc",
+          path: "/alpha-doc",
+          contentText: "",
+          canWrite: true,
+        },
+        {
+          id: "doc-zulu",
+          folderId: null,
+          title: "Zulu Doc",
+          path: "/zulu-doc",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    const rowNames = Array.from(
+      allDocumentsNav.querySelectorAll("button[aria-expanded]:not([data-row-action-menu]), a[href]"),
+    ).map((element) => element.textContent?.trim());
+
+    expect(rowNames).toEqual(["Zulu", "Alpha", "Zulu Doc", "Alpha Doc"]);
+  });
+
+  it("shows duplicate document titles without path context in visible rows", () => {
+    renderList({
+      documents: [
+        {
+          id: "doc-root-runbook",
+          folderId: null,
+          title: "Runbook",
+          path: "/runbook",
+          contentText: "",
+          canWrite: true,
+        },
+        {
+          id: "doc-folder-runbook",
+          folderId: null,
+          title: "Runbook",
+          path: "/operations/runbook",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(4);
+    expect(screen.queryByText("Runbook · /operations/runbook")).toBeNull();
+    expect(
+      screen.getAllByRole("button", {
+        name: "Open actions for Runbook · /operations/runbook",
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows a visible fallback label for empty document titles", () => {
+    renderList({
+      documents: [
+        {
+          id: "doc-empty-title",
+          folderId: null,
+          title: "",
+          path: "/untitled",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    expect(screen.getAllByRole("link", { name: "Untitled" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", {
+        name: "Open actions for Untitled",
+      }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("closes the workspace settings panel", () => {
@@ -539,5 +632,159 @@ describe("DocumentList", () => {
 
     const selectedRow = screen.getAllByRole("link", { name: "Welcome" })[0].parentElement;
     expect(selectedRow?.className).toContain("bg-slate-200");
+  });
+
+  it("moves folder-scoped creation into the folder actions menu", () => {
+    renderList();
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+
+    expect(
+      within(allDocumentsNav).queryByRole("button", { name: /New document in Engineering/ }),
+    ).toBeNull();
+
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+
+    expect(screen.getByRole("menuitem", { name: "Add folder" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Add document" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Move to trash" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "Add to favorites" })).toBeTruthy();
+  });
+
+  it("adds a child folder from the folder actions menu without direct form redirect", async () => {
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add folder" }));
+
+    await waitFor(() => {
+      expect(createFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("parentFolderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?folder=folder-created");
+  });
+
+  it("guards folder menu creation against repeated clicks while pending", async () => {
+    let resolveCreateFolder: (result: { folderId: string }) => void = () => {};
+    const createFolderAction = vi.fn(
+      () =>
+        new Promise<{ folderId: string }>((resolve) => {
+          resolveCreateFolder = resolve;
+        }),
+    );
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    const addFolderMenuItem = screen.getByRole("menuitem", { name: "Add folder" });
+
+    fireEvent.click(addFolderMenuItem);
+    fireEvent.click(addFolderMenuItem);
+
+    expect(createFolderAction).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("menuitem", { name: "Add folder" })).toBeNull();
+
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    expect(screen.getByRole("menuitem", { name: "Add folder" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+
+    resolveCreateFolder({ folderId: "folder-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?folder=folder-created",
+      );
+    });
+  });
+
+  it("adds a document from the folder actions menu without direct form redirect", async () => {
+    const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+    renderList({ createAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add document" }));
+
+    await waitFor(() => {
+      expect(createAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("folderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
+  });
+
+  it("shows feedback when folder menu creation fails", async () => {
+    const createFolderAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add folder" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
+  });
+
+  it("shows feedback when folder menu document creation fails", async () => {
+    const createAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Add document" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+    expect(router.refresh).not.toHaveBeenCalled();
   });
 });

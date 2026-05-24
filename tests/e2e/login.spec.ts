@@ -221,7 +221,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
     documentList.getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` }),
   ).toHaveCount(0);
 
-  await productNotesRow.getByRole("button", { name: `New document in ${productNotesDisplayLabel}` }).click();
+  await productNotesRow
+    .getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Add document" }).click();
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   const productNotesDocumentId = new URL(page.url()).searchParams.get("document");
   expect(productNotesDocumentId).toBeTruthy();

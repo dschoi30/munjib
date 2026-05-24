@@ -1,5 +1,6 @@
 import type { Document, Folder, PermissionLevel, WorkspaceRole } from "@prisma/client";
 import { canReadDocument } from "@/lib/permissions/document";
+import { slugifyTitle } from "@/lib/text/slug";
 
 export type WorkspaceTreeDocument = Pick<
   Document,
@@ -28,8 +29,13 @@ export function treeDepth(path: string) {
 }
 
 export function documentDisplayLabel(document: Pick<Document, "title" | "path">) {
-  const rootPath = `/${document.title.trim().toLowerCase().replace(/\s+/g, "-")}`;
-  return document.path === rootPath ? document.title : `${document.title} · ${document.path}`;
+  return document.title.trim() || "Untitled";
+}
+
+export function documentActionLabel(document: Pick<Document, "title" | "path">) {
+  const label = documentDisplayLabel(document);
+  const rootPath = `/${slugifyTitle(label)}`;
+  return document.path === rootPath ? label : `${label} · ${document.path}`;
 }
 
 export function countFolderChildren(input: {
