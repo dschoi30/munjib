@@ -144,7 +144,7 @@ describe("DocumentList", () => {
     );
     expect(fileInput).toHaveProperty("multiple", true);
     expect(fileInput.className).toContain("sr-only");
-    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
+    expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
       "/",
     );
     expect(screen.getByRole("button", { name: "Import Markdown" })).toBeTruthy();
@@ -252,7 +252,7 @@ describe("DocumentList", () => {
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Import destination" }));
+    fireEvent.click(screen.getByRole("button", { name: /Import destination: \// }));
 
     expect(
       screen.getByRole("tree", { name: "Import destination folders" }),
@@ -263,9 +263,10 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("treeitem", { name: "/engineering/runbooks" }));
 
     expect(screen.queryByRole("tree", { name: "Import destination folders" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
-      "/engineering/runbooks",
-    );
+    const selectedDestinationButton = screen.getByRole("button", {
+      name: /Import destination: \/engineering\/runbooks/,
+    });
+    expect(selectedDestinationButton.textContent).toBe("/engineering/runbooks");
 
     const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
     fireEvent.change(screen.getByLabelText("Markdown files"), {
@@ -292,7 +293,7 @@ describe("DocumentList", () => {
     renderList({ importMarkdownAction });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
-    expect(screen.getByRole("button", { name: "Import destination" }).textContent).toBe(
+    expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
       "/",
     );
 
