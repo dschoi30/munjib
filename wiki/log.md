@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 92
+source_count: 93
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T13:15:00+09:00 - design
+
+- Result: Issue #57 folder sidebar action/order refinements 설계를 기록했다.
+- Coverage: Folder/document tree는 folder 우선, 같은 kind 안에서는 title/name 내림차순으로 정렬한다. Folder row hover action은 `...` 메뉴만 노출하고, folder-scoped `Add folder`/`Add document`는 menu action으로 이동해 redirect-style 깜빡임을 줄이는 방향으로 설계했다. Sidebar document row는 duplicate title context를 화면에 붙이지 않고 title만 표시한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #57, `docs/superpowers/specs/2026-05-24-folder-sidebar-actions-ordering-design.md`, `components/document-navigation/tree.ts`, `components/document-navigation/folder-row.tsx`.
+- Verification: Spec self-review.
 
 ## 2026-05-24T12:55:00+09:00 - review follow-up
 
