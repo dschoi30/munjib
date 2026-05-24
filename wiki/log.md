@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 92
+source_count: 93
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T13:35:00+09:00 - design
+
+- Result: Issue #59 underscore wiki link target matching 설계를 기록했다.
+- Coverage: `[[수에즈_운하_위기]]`처럼 target에 underscore가 포함된 body preview link와 frontmatter `links:` entry를 `수에즈 운하 위기` 문서로 resolve하되, source markdown과 `DocumentLink.targetTitleRaw` raw text는 rewrite하지 않는다. Path-qualified target은 segment별로 같은 lookup normalization을 적용하고, global document slug/path 생성 규칙은 유지한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #59, `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/targets.ts`.
+- Verification: Spec self-review.
 
 ## 2026-05-24T12:55:00+09:00 - review follow-up
 
