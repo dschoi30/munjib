@@ -58,26 +58,69 @@ export async function createDocumentAction(workspaceSlug: string, formData: Form
 
 export async function importMarkdownDocumentAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
-  const file = formData.get("markdownFile");
+  const files = markdownImportFilesFromFormData(formData);
+  const folderId = String(formData.get("folderId") || "") || null;
 
-  if (!(file instanceof File) || file.size === 0) {
+  if (files.length === 0) {
     throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED);
   }
 
-  if (!isSupportedMarkdownImportFile(file)) {
-    throw new Error(SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE);
+  const imported: Array<{ fileName: string; documentId: string }> = [];
+  const failed: Array<{ fileName: string; error: string }> = [];
+
+  for (const file of files) {
+    if (file.size === 0) {
+      failed.push({
+        fileName: file.name,
+        error: SERVICE_ERROR_CODES.MARKDOWN_IMPORT_FILE_REQUIRED,
+      });
+      continue;
+    }
+
+    if (!isSupportedMarkdownImportFile(file)) {
+      failed.push({
+        fileName: file.name,
+        error: SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE,
+      });
+      continue;
+    }
+
+    try {
+      const contentMarkdown = await file.text();
+      const document = await createDocument({
+        workspaceSlug,
+        actorId: user.id,
+        folderId,
+        title: deriveMarkdownImportTitle({ fileName: file.name, contentMarkdown }),
+        contentMarkdown,
+      });
+      imported.push({ fileName: file.name, documentId: document.id });
+    } catch (error) {
+      failed.push({
+        fileName: file.name,
+        error: error instanceof Error
+          ? error.message
+          : SERVICE_ERROR_CODES.MARKDOWN_IMPORT_UNSUPPORTED_FILE,
+      });
+    }
   }
 
-  const contentMarkdown = await file.text();
-  const document = await createDocument({
-    workspaceSlug,
-    actorId: user.id,
-    title: deriveMarkdownImportTitle({ fileName: file.name, contentMarkdown }),
-    contentMarkdown,
-  });
-
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  return { documentId: document.id };
+  return {
+    documentIds: imported.map((item) => item.documentId),
+    imported,
+    failed,
+  };
+}
+
+function markdownImportFilesFromFormData(formData: FormData) {
+  const batchFiles = formData
+    .getAll("markdownFiles")
+    .filter((value): value is File => value instanceof File);
+  if (batchFiles.length > 0) return batchFiles;
+
+  const singleFile = formData.get("markdownFile");
+  return singleFile instanceof File ? [singleFile] : [];
 }
 
 export async function createFolderAction(workspaceSlug: string, formData: FormData) {

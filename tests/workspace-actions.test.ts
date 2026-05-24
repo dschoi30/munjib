@@ -140,12 +140,180 @@ describe("workspace document actions", () => {
     expect(mocks.createDocument).toHaveBeenCalledWith({
       workspaceSlug: "company-handbook",
       actorId: "user-1",
+      folderId: null,
       title: "Imported",
       contentMarkdown: "# Imported",
     });
-    expect(result).toEqual({ documentId: "doc-imported" });
+    expect(result).toEqual({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("importMarkdownDocumentAction imports multiple markdown files into a selected folder", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
+    mocks.deriveMarkdownImportTitle
+      .mockReturnValueOnce("First")
+      .mockReturnValueOnce("Second");
+    mocks.createDocument
+      .mockResolvedValueOnce({ id: "doc-first" })
+      .mockResolvedValueOnce({ id: "doc-second" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# First"], "first.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File(["# Second"], "second.markdown", {
+      type: "text/markdown",
+    }));
+    formData.set("folderId", "folder-engineering");
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenNthCalledWith(1, {
+      workspaceSlug: "company-handbook",
+      actorId: "user-1",
+      folderId: "folder-engineering",
+      title: "First",
+      contentMarkdown: "# First",
+    });
+    expect(mocks.createDocument).toHaveBeenNthCalledWith(2, {
+      workspaceSlug: "company-handbook",
+      actorId: "user-1",
+      folderId: "folder-engineering",
+      title: "Second",
+      contentMarkdown: "# Second",
+    });
+    expect(result).toEqual({
+      documentIds: ["doc-first", "doc-second"],
+      imported: [
+        { fileName: "first.md", documentId: "doc-first" },
+        { fileName: "second.markdown", documentId: "doc-second" },
+      ],
+      failed: [],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledTimes(1);
+  });
+
+  test("importMarkdownDocumentAction imports to root when folderId is missing", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
+    mocks.deriveMarkdownImportTitle.mockReturnValue("Root Import");
+    mocks.createDocument.mockResolvedValue({ id: "doc-root" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# Root"], "root.md", {
+      type: "text/markdown",
+    }));
+
+    await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledWith(expect.objectContaining({
+      folderId: null,
+    }));
+  });
+
+  test("importMarkdownDocumentAction reports unsupported files while importing valid files", async () => {
+    mocks.isSupportedMarkdownImportFile
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
+    mocks.deriveMarkdownImportTitle.mockReturnValue("Valid");
+    mocks.createDocument.mockResolvedValue({ id: "doc-valid" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# Valid"], "valid.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File(["nope"], "notes.txt", {
+      type: "text/plain",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      documentIds: ["doc-valid"],
+      imported: [{ fileName: "valid.md", documentId: "doc-valid" }],
+      failed: [{ fileName: "notes.txt", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("importMarkdownDocumentAction reports empty files while importing valid files", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValueOnce(true);
+    mocks.deriveMarkdownImportTitle.mockReturnValue("Valid");
+    mocks.createDocument.mockResolvedValue({ id: "doc-valid" });
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# Valid"], "valid.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File([""], "empty.md", {
+      type: "text/markdown",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledTimes(1);
+    expect(mocks.isSupportedMarkdownImportFile).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      documentIds: ["doc-valid"],
+      imported: [{ fileName: "valid.md", documentId: "doc-valid" }],
+      failed: [{ fileName: "empty.md", error: "MARKDOWN_IMPORT_FILE_REQUIRED" }],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("importMarkdownDocumentAction reports create failures while returning prior imports", async () => {
+    mocks.isSupportedMarkdownImportFile.mockReturnValue(true);
+    mocks.deriveMarkdownImportTitle
+      .mockReturnValueOnce("First")
+      .mockReturnValueOnce("Second");
+    mocks.createDocument
+      .mockResolvedValueOnce({ id: "doc-first" })
+      .mockRejectedValueOnce(new Error("DOCUMENT_SLUG_RETRY_EXHAUSTED"));
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.append("markdownFiles", new File(["# First"], "first.md", {
+      type: "text/markdown",
+    }));
+    formData.append("markdownFiles", new File(["# Second"], "second.md", {
+      type: "text/markdown",
+    }));
+
+    const result = await importMarkdownDocumentAction("company-handbook", formData);
+
+    expect(mocks.createDocument).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      documentIds: ["doc-first"],
+      imported: [{ fileName: "first.md", documentId: "doc-first" }],
+      failed: [{ fileName: "second.md", error: "DOCUMENT_SLUG_RETRY_EXHAUSTED" }],
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("importMarkdownDocumentAction requires a markdown file", async () => {
+    const { importMarkdownDocumentAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+
+    await expect(importMarkdownDocumentAction("company-handbook", formData)).rejects.toThrow(
+      "MARKDOWN_IMPORT_FILE_REQUIRED",
+    );
+    expect(mocks.createDocument).not.toHaveBeenCalled();
   });
 
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
