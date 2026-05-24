@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
-updated: 2026-05-23
+updated: 2026-05-24
 source_count: 12
 tags:
   - munjib
@@ -61,6 +61,9 @@ Planned behavior:
 - Native file input styling은 감추고, 기존 dashed import form 영역을 클릭하면 file picker가 열린다.
 - File input은 `multiple`을 지원한다.
 - 선택한 file 목록은 form 영역 안에 table로 표시한다.
+- Submit row는 약 2/3 너비의 bordered destination path 영역과 더 좁은 Import button으로 나뉜다.
+- Destination path는 기본으로 workspace root를 표시하며, 사용자가 선택하지 않으면 root에 import한다.
+- Destination path 영역을 클릭하면 popup tree가 열리고 root 또는 folder path를 선택한다. 선택한 folder는 batch 전체의 `folderId`로 server action에 전달한다.
 - Import 완료 후 settings panel은 닫지 않고 현재 document route도 바꾸지 않는다.
 - 성공 후 document list refresh만 수행해 새 문서가 navigation에 나타나게 한다.
 - 진행 중, 완료, 실패 또는 부분 실패는 global Sonner 위치를 바꾸지 않고 settings panel 중앙의 toast-like local status message로 표시한다.

@@ -12,6 +12,8 @@ The new behavior keeps the user on the current document after import. The settin
 - Hide the browser-default file input styling.
 - Let the user click anywhere in the existing import form area to open the file picker.
 - Show the selected files in a compact table inside the existing form area.
+- Let the user choose the destination path for imported documents before submitting.
+- Default the destination path to the workspace root when the user does not choose a folder.
 - Keep the current workspace route/document selection after import.
 - Show import progress, completion, and failure feedback as a toast-like message centered inside the settings panel.
 - Keep server-side Markdown validation and document creation aligned with the existing single-file import behavior.
@@ -35,6 +37,8 @@ Before selection, the area shows a concise empty state: Markdown files can be se
 
 Status starts as `Ready`, changes to `Importing` while the request is pending, then becomes `Imported` or `Failed` when the action resolves. The submit button is disabled while import is pending or when no files are selected.
 
+The submit row is split into a destination path control and a narrower Import button. The destination path control takes about two thirds of the row width and has a bordered surface. The Import button takes the remaining width. The path control shows the root path by default. Clicking it opens a popup with the workspace folder tree, including a root option at the top. Selecting a folder updates the displayed path and stores its `folderId`; selecting root clears `folderId`.
+
 Import completion does not call `router.push()`. The settings panel remains open so the user can read the result and selected-file statuses. The client refreshes the workspace data after successful document creation so the document list can include newly imported documents without changing the active document.
 
 ## Panel-Centered Toast
@@ -52,6 +56,8 @@ The message is state-driven React UI, not a separate global toaster. It should b
 ## Server Action Contract
 
 `importMarkdownDocumentAction()` should accept multiple files through repeated `markdownFiles` form fields. The single-file `markdownFile` field can remain supported for backward compatibility in tests or older callers.
+
+The action also accepts an optional `folderId` form field. Empty or missing `folderId` means workspace root. Every imported document in one batch uses the same destination folder.
 
 The action returns a batch result:
 
@@ -71,19 +77,22 @@ Validation remains per file:
 
 The action calls `createDocument()` once per supported file, using the same title derivation and content persistence as the existing import flow. It revalidates the workspace route once after the batch completes.
 
+Each `createDocument()` call receives the selected `folderId` or `null` for root. Existing workspace and folder permission checks should remain inside the document service boundary; the client tree only controls selection, not authorization.
+
 ## Client Data Flow
 
-`WorkspaceSettingsPanel` owns selected files and row statuses.
+`WorkspaceSettingsPanel` owns selected files, row statuses, destination folder state, and the folder tree popup state. It already receives `folders`, so the path picker should reuse that data instead of adding a new server fetch.
 
 1. User clicks the import area.
 2. Hidden file input opens with `multiple`.
 3. `onChange` stores `Array.from(input.files ?? [])`.
 4. The selected-file table renders rows as `Ready`.
-5. Submit builds a new `FormData` and appends each selected file under `markdownFiles`.
-6. The panel sets the toast state to progress and row statuses to `Importing`.
-7. The server action returns imported and failed rows.
-8. Client maps results back to file names and updates row statuses.
-9. Client calls `router.refresh()` and keeps the dialog open.
+5. User may click the bordered destination path area and choose root or a folder from the popup tree.
+6. Submit builds a new `FormData`, appends each selected file under `markdownFiles`, and appends `folderId` only when a folder is selected.
+7. The panel sets the toast state to progress and row statuses to `Importing`.
+8. The server action returns imported and failed rows.
+9. Client maps results back to file names and updates row statuses.
+10. Client calls `router.refresh()` and keeps the dialog open.
 
 If the action throws before returning a batch result, all currently importing rows become `Failed`, and the centered message shows a failure summary.
 
@@ -98,6 +107,8 @@ Per-file errors should use existing service error codes where available. The UI 
 - The hidden file input keeps an accessible label.
 - The clickable import area has button-like keyboard handling or is backed by a visible label associated with the hidden input.
 - The selected-files table has a caption or accessible name.
+- The destination path control is a button with an accessible name such as `Import destination`.
+- The folder popup has a tree or menu-style accessible structure and supports root selection.
 - The centered status message uses a live region so progress and completion are announced.
 - Disabled states should apply to both the input and submit button during pending import.
 
@@ -109,6 +120,10 @@ Unit/component tests should cover:
 - Clicking the form/drop area triggers the hidden file input.
 - Selected files render in a table.
 - Submitting multiple files calls the import action with repeated `markdownFiles`.
+- The destination path control defaults to the workspace root.
+- Clicking the destination path control opens a folder tree popup.
+- Selecting a folder includes its `folderId` in the import `FormData`.
+- Selecting root or leaving the default omits `folderId` or sends an empty root value.
 - Successful import does not call `router.push()` and does call `router.refresh()`.
 - Progress and completion messages render inside the settings panel.
 - Partial failure updates row statuses and shows a failure summary.
@@ -117,6 +132,8 @@ Unit/component tests should cover:
 Action tests should cover:
 
 - Multiple valid Markdown files create multiple documents.
+- Multiple valid Markdown files use the submitted folder destination.
+- Missing `folderId` creates root-level documents.
 - Mixed valid and unsupported files import valid files and report failures.
 - Missing files still throws `MARKDOWN_IMPORT_FILE_REQUIRED`.
 - The workspace path is revalidated once per batch.
@@ -127,3 +144,4 @@ Action tests should cover:
 - The settings panel stays open after import so the user can read batch status.
 - Feedback is panel-centered React UI instead of changing global Sonner placement.
 - Partial success is allowed.
+- Import destination defaults to workspace root and applies to every file in the batch.

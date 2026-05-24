@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-23
-source_count: 88
+updated: 2026-05-24
+source_count: 89
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T00:20:00+09:00 - design
+
+- Result: Issue #55 multiple Markdown file import 설계에 destination path 선택 요건을 추가했다.
+- Coverage: Import submit row는 약 2/3 너비의 bordered destination path 영역과 좁은 Import button으로 구성한다. Destination path는 기본 root를 표시하고, 클릭 시 popup tree에서 root 또는 folder를 선택한다. 선택한 folder는 batch 전체 `folderId`로 전달하며 미선택 시 root에 import한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 추가 요건, `docs/superpowers/specs/2026-05-23-multiple-markdown-file-import-design.md`.
+- Verification: Spec update self-review.
 
 ## 2026-05-23T23:55:00+09:00 - design
 
