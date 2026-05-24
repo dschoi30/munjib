@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 104
+source_count: 107
 tags:
   - log
   - munjib
@@ -27,6 +27,14 @@ links:
 - Source evidence: PR #62 review thread, `lib/workspace-tree.ts`, `components/document-navigation/document-row.tsx`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
+## 2026-05-24T19:45:00+09:00 - review follow-up
+
+- Result: PR #61 Codex review feedback에 따라 importing progress count를 total file count로 clamp했다.
+- Coverage: Import run이 마지막 file 결과를 반영한 직후 completed state로 바뀌기 전 transient render에서도 `Importing 3 / 2` 같은 impossible count가 보이지 않도록 `Math.min(completedCount + 1, totalCount)`를 사용한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #61 Codex review, `components/workspace-settings-panel.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-24T19:42:00+09:00 - review follow-up
 
 - Result: PR #62 Gemini review feedback에 따라 folder menu creation pending guard를 route transition 완료까지 유지하도록 보강했다.
@@ -42,6 +50,14 @@ links:
 - Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
 - Source evidence: PR #62 review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-24T19:35:00+09:00 - review follow-up
+
+- Result: PR #61 review feedback에 따라 Markdown import progress status text helper를 단순화했다.
+- Coverage: Import 진행 중 count는 `completedCount + 1`만 사용해 표시하며, redundant `Math.max()` guard를 제거했다. Sequential per-file import의 large batch performance note는 issue #58 설계의 backend job/streaming deferred decision과 일치하는 advisory로 남긴다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #61 Gemini review, `components/workspace-settings-panel.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:35:00+09:00 - review follow-up
 
@@ -75,6 +91,20 @@ links:
 - Source evidence: PR #60 review threads, `lib/wiki-links/targets.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/wiki-links/reconcile.test.ts`.
 - Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
 
+## 2026-05-24T18:35:00+09:00 - plan
+
+- Result: Issue #58 Markdown import progress panel implementation plan을 작성했다.
+- Coverage: Plan은 progress panel test coverage, `WorkspaceSettingsPanel` sequential per-file import UI/state implementation, wiki/verification/PR workflow를 task 단위로 나눈다. Server action contract는 issue #55 batch result를 유지하고 interactive UI만 one-file batches를 순차 호출한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-24-markdown-import-progress-panel.md`, `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`.
+- Verification: Plan self-review.
+
+## 2026-05-24T18:25:00+09:00 - design
+
+- Result: Issue #58 Markdown import progress panel 설계를 작성했다.
+- Coverage: Existing settings Import form은 file selection과 destination/start command만 담당하고, import 시작 후 별도 progress panel이 진행 요약과 selected-file table을 표시한다. Progress panel은 상단에 destination, completed/total count, progress bar, current file, final summary를 두고 하단에 file table을 둔다. 닫기 control은 text `Close`가 아니라 기존 settings panel과 같은 icon-only `X` button pattern을 사용한다. 진행 상태는 client-side sequential per-file import loop로 `Queued`, `Importing`, `Imported`, `Failed` row status를 갱신한다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #58, `docs/superpowers/specs/2026-05-24-markdown-import-progress-panel-design.md`.
 ## 2026-05-24T14:00:00+09:00 - bugfix
 
 - Result: Issue #59 underscore wiki link target matching을 구현했다.
