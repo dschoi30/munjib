@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 94
+source_count: 95
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T13:55:00+09:00 - review follow-up
+
+- Result: Issue #57 final review에서 document row action label의 duplicate title context를 복원했다.
+- Coverage: Sidebar document row visible label은 계속 title만 표시하지만, row action button label은 duplicate title/path 환경에서 구분할 수 있도록 `Document.path` context를 유지한다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: final branch review, `components/document-navigation/document-row.tsx`, `lib/workspace-tree.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T13:45:00+09:00 - feature
 

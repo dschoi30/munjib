@@ -219,6 +219,11 @@ describe("DocumentList", () => {
 
     expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(4);
     expect(screen.queryByText("Runbook · /operations/runbook")).toBeNull();
+    expect(
+      screen.getAllByRole("button", {
+        name: "Open actions for Runbook · /operations/runbook",
+      }).length,
+    ).toBeGreaterThan(0);
   });
 
   it("closes the workspace settings panel", () => {

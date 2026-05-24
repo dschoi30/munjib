@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { countFolderChildren, documentDisplayLabel, treeDepth } from "@/lib/workspace-tree";
+import {
+  countFolderChildren,
+  documentActionLabel,
+  documentDisplayLabel,
+  treeDepth,
+} from "@/lib/workspace-tree";
 
 describe("workspace tree helpers", () => {
   it("computes folder/document depth from normalized paths", () => {
@@ -11,6 +16,13 @@ describe("workspace tree helpers", () => {
   it("uses document titles as display labels", () => {
     expect(documentDisplayLabel({ title: "Runbook", path: "/runbook" })).toBe("Runbook");
     expect(documentDisplayLabel({ title: "Runbook", path: "/operations/runbook" })).toBe("Runbook");
+  });
+
+  it("keeps path context in document action labels", () => {
+    expect(documentActionLabel({ title: "Runbook", path: "/runbook" })).toBe("Runbook");
+    expect(documentActionLabel({ title: "Runbook", path: "/operations/runbook" })).toBe(
+      "Runbook · /operations/runbook",
+    );
   });
 
   it("counts direct folder children only", () => {
