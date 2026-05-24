@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 25
+source_count: 26
 tags:
   - munjib
   - wiki-links
@@ -58,7 +58,9 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 
 이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown의 frontmatter links와 항상 다시 맞춰지도록 단순하게 만든다.
 
-Issue #59 설계는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정한다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되어야 하지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
+Issue #59는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정했다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
+
+한글처럼 global slug 생성에서 보존되지 않는 title은 wiki-link lookup 전용 Unicode-preserving key로 비교한다. Path-qualified target은 먼저 stored document path와 비교하고, path segment가 `untitled`처럼 title 정보를 잃는 경우 parent path와 마지막 title segment lookup key를 함께 비교해 resolve한다.
 
 ## Autocomplete
 
@@ -128,3 +130,4 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - GitHub issue #59
 - Issue #25 final review blocker fix
 - `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`
+- `docs/superpowers/plans/2026-05-24-underscore-wiki-link-targets.md`

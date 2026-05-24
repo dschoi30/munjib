@@ -1,7 +1,11 @@
 import type { Prisma } from "@prisma/client";
-import { slugifyTitle } from "@/lib/text/slug";
 import { parseFrontmatterWikiLinks } from "@/lib/wiki-links/parser";
-import { pathQualifiedTargetToDocumentPath } from "@/lib/wiki-links/targets";
+import {
+  pathQualifiedCandidateToTitleLookupKey,
+  pathQualifiedTargetToLookupDocumentPath,
+  pathQualifiedTargetToLookupKey,
+  wikiLinkTargetToLookupKey,
+} from "@/lib/wiki-links/targets";
 
 export async function reconcileDocumentLinks(
   tx: Prisma.TransactionClient,
@@ -48,7 +52,7 @@ function resolveLinkTarget(
   targetTitleRaw: string,
 ) {
   if (targetTitleRaw.includes("/")) {
-    const targetPath = pathQualifiedTargetToDocumentPath(targetTitleRaw);
+    const targetPath = pathQualifiedTargetToLookupDocumentPath(targetTitleRaw);
     const target = targets.find((candidate) => candidate.path === targetPath);
     if (target) {
       return {
@@ -57,10 +61,28 @@ function resolveLinkTarget(
         isAmbiguous: false,
       };
     }
+
+    const pathTitleMatches = targets.filter(
+      (candidate) => pathQualifiedCandidateToTitleLookupKey(candidate) === pathQualifiedTargetToLookupKey(targetTitleRaw),
+    );
+    if (pathTitleMatches.length === 1) {
+      return {
+        targetDocumentId: pathTitleMatches[0]?.id ?? null,
+        isBroken: false,
+        isAmbiguous: false,
+      };
+    }
+    if (pathTitleMatches.length > 1) {
+      return {
+        targetDocumentId: null,
+        isBroken: false,
+        isAmbiguous: true,
+      };
+    }
   }
 
-  const targetSlug = slugifyTitle(targetTitleRaw);
-  const matches = targets.filter((candidate) => slugifyTitle(candidate.title) === targetSlug);
+  const targetSlug = wikiLinkTargetToLookupKey(targetTitleRaw);
+  const matches = targets.filter((candidate) => wikiLinkTargetToLookupKey(candidate.title) === targetSlug);
   if (matches.length === 1) {
     return {
       targetDocumentId: matches[0]?.id ?? null,

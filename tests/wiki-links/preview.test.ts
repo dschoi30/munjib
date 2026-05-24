@@ -136,4 +136,34 @@ describe("renderPreviewMarkdownWithWikiLinks", () => {
       "[Q1/Q2 Plan](?document=plan)",
     );
   });
+
+  it("resolves underscore targets to titles with spaces", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/수에즈-운하-위기",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[수에즈_운하_위기]]", candidates)).toBe(
+      "[수에즈_운하_위기](?document=suez)",
+    );
+  });
+
+  it("resolves underscore path-qualified targets segment by segment", () => {
+    const candidates = buildWikiLinkPreviewCandidateMap([
+      {
+        id: "suez",
+        slug: "수에즈-운하-위기",
+        title: "수에즈 운하 위기",
+        path: "/history/untitled",
+      },
+    ]);
+
+    expect(renderPreviewMarkdownWithWikiLinks("[[History/수에즈_운하_위기]]", candidates)).toBe(
+      "[History/수에즈_운하_위기](?document=suez)",
+    );
+  });
 });
