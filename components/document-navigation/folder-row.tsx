@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import type { FolderListItem } from "@/components/document-list";
 import type {
+  AddFolderChildHandler,
+  AddFolderDocumentHandler,
   OpenMenuHandler,
   ToggleFavoriteFolderHandler,
 } from "@/components/document-navigation/types";
@@ -73,15 +75,17 @@ export function FolderToggleRow({
   expanded,
   selected,
   canWrite,
-  createAction,
   renameFolderAction,
   archiveFolderAction,
   isFavorite,
   isRenaming,
+  pendingCreateAction,
   openMenuId,
   onOpenMenu,
   onStartRename,
   onCancelRename,
+  onAddFolder,
+  onAddDocument,
   onToggleFavorite,
   onToggle,
 }: {
@@ -89,21 +93,24 @@ export function FolderToggleRow({
   expanded: boolean;
   selected: boolean;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<void>;
   isFavorite: boolean;
   isRenaming: boolean;
+  pendingCreateAction: string | null;
   openMenuId: string | null;
   onOpenMenu: OpenMenuHandler;
   onStartRename: (folderId: string) => void;
   onCancelRename: () => void;
+  onAddFolder: AddFolderChildHandler;
+  onAddDocument: AddFolderDocumentHandler;
   onToggleFavorite: ToggleFavoriteFolderHandler;
   onToggle: () => void;
 }) {
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;
   const menuId = `folder:${folder.id}`;
   const isMenuOpen = openMenuId === menuId;
+  const isCreatingInFolder = pendingCreateAction?.endsWith(`:${folder.id}`) ?? false;
   const displayLabel = folderDisplayLabel(folder);
   const rowClassName = selected
     ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
@@ -159,17 +166,6 @@ export function FolderToggleRow({
           isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
         }`}
       >
-        <form action={createAction}>
-          <input type="hidden" name="folderId" value={folder.id} />
-          <button
-            type="submit"
-            disabled={!canWrite}
-            aria-label={`New document in ${displayLabel}`}
-            className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </form>
         <button
           type="button"
           aria-label={`Open actions for ${displayLabel}`}
@@ -187,6 +183,24 @@ export function FolderToggleRow({
           data-row-action-menu
           className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
         >
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canWrite || isCreatingInFolder}
+            onClick={() => onAddFolder(folder.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+          >
+            Add folder
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!canWrite || isCreatingInFolder}
+            onClick={() => onAddDocument(folder.id)}
+            className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
+          >
+            Add document
+          </button>
           <button
             type="button"
             role="menuitem"

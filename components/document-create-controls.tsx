@@ -1,5 +1,9 @@
 import { FilePlus2, Folder, FolderPlus, Network, Search, Star } from "lucide-react";
 import type { ReactNode } from "react";
+import type {
+  CreateDocumentFormAction,
+  CreateFolderFormAction,
+} from "@/components/document-navigation/types";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -21,8 +25,8 @@ export function DocumentCreateControls({
 }: {
   selectedFolderId: string | null;
   canWrite: boolean;
-  createAction: (formData: FormData) => Promise<void>;
-  createFolderAction: (formData: FormData) => Promise<void>;
+  createAction: CreateDocumentFormAction;
+  createFolderAction: CreateFolderFormAction;
   activeView: "documents" | "search" | "favorites" | "graph";
   onOpenDocuments: () => void;
   onOpenSearch: () => void;
