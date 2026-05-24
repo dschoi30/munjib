@@ -232,6 +232,28 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("shows a visible fallback label for empty document titles", () => {
+    renderList({
+      documents: [
+        {
+          id: "doc-empty-title",
+          folderId: null,
+          title: "",
+          path: "/untitled",
+          contentText: "",
+          canWrite: true,
+        },
+      ],
+    });
+
+    expect(screen.getAllByRole("link", { name: "Untitled" }).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("button", {
+        name: "Open actions for Untitled",
+      }).length,
+    ).toBeGreaterThan(0);
+  });
+
   it("closes the workspace settings panel", () => {
     renderList();
 

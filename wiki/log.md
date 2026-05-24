@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-24
-source_count: 103
+source_count: 104
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-24T19:55:00+09:00 - review follow-up
+
+- Result: PR #62 Codex review feedback에 따라 empty document title row가 blank clickable target으로 보이지 않도록 fallback label을 추가했다.
+- Coverage: Document sidebar visible label은 title-only 정책을 유지하되 title이 비어 있거나 whitespace-only이면 `Untitled`를 표시한다. Document action label도 같은 fallback을 사용하고 duplicate/path context가 필요한 경우에만 path를 붙인다.
+- Pages: [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: PR #62 review thread, `lib/workspace-tree.ts`, `components/document-navigation/document-row.tsx`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx tests/workspace-actions.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:42:00+09:00 - review follow-up
 
