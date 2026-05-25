@@ -61,14 +61,15 @@ type GraphForceSettings = {
   linkDistance: number;
   repel: number;
 };
+type GraphSettingsGroup = "display" | "filters" | "forces";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 }) as ComponentType<ForceGraph2DProps>;
 
 const DEFAULT_FILTERS: KnowledgeGraphFilters = {
-  tag: true,
-  orphans: true,
+  tag: false,
+  orphans: false,
 };
 
 const NODE_COLORS: Record<KnowledgeGraphNode["kind"], string> = {
@@ -86,6 +87,7 @@ const LABEL_VERTICAL_OFFSET = 8;
 const MIN_LABEL_GLOBAL_SCALE = 0.75;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
+const KNOWLEDGE_GRAPH_STORAGE_VERSION = "v1";
 
 const DEFAULT_DISPLAY_SETTINGS: GraphDisplaySettings = {
   arrows: false,
@@ -130,6 +132,7 @@ export function KnowledgeGraphView({
   const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
   const [display, setDisplay] = useState<GraphDisplaySettings>(DEFAULT_DISPLAY_SETTINGS);
   const [forces, setForces] = useState<GraphForceSettings>(DEFAULT_FORCE_SETTINGS);
+  const [settingsHydrated, setSettingsHydrated] = useState<string | null>(null);
   const [forceGraphReadyVersion, setForceGraphReadyVersion] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -140,6 +143,46 @@ export function KnowledgeGraphView({
       ) as Record<KnowledgeGraphNode["kind"], { b: number; g: number; r: number }>,
     [],
   );
+
+  useEffect(() => {
+    setFilters(
+      readStoredGraphSettings(workspaceSlug, "filters", validateStoredFilters) ??
+        DEFAULT_FILTERS,
+    );
+    setDisplay(
+      readStoredGraphSettings(workspaceSlug, "display", validateStoredDisplay) ??
+        DEFAULT_DISPLAY_SETTINGS,
+    );
+    setForces(
+      readStoredGraphSettings(workspaceSlug, "forces", validateStoredForces) ??
+        DEFAULT_FORCE_SETTINGS,
+    );
+    setSettingsHydrated(workspaceSlug);
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "filters", filters);
+  }, [filters, settingsHydrated, workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "display", display);
+  }, [display, settingsHydrated, workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "forces", forces);
+  }, [forces, settingsHydrated, workspaceSlug]);
 
   const selectedFocus = useMemo(
     () => getKnowledgeGraphFocus(graph, selectedDocumentId),
@@ -588,6 +631,104 @@ function RangeControl({
       />
     </label>
   );
+}
+
+function graphSettingsStorageKey(workspaceSlug: string, group: GraphSettingsGroup) {
+  return `munjib:knowledge-graph:${workspaceSlug}:${KNOWLEDGE_GRAPH_STORAGE_VERSION}:${group}`;
+}
+
+function readStoredGraphSettings<State>(
+  workspaceSlug: string,
+  group: GraphSettingsGroup,
+  validate: (value: unknown) => State | null,
+) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(graphSettingsStorageKey(workspaceSlug, group));
+    if (!raw) {
+      return null;
+    }
+
+    return validate(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredGraphSettings<State>(
+  workspaceSlug: string,
+  group: GraphSettingsGroup,
+  value: State,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      graphSettingsStorageKey(workspaceSlug, group),
+      JSON.stringify(value),
+    );
+  } catch {
+    return;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateStoredFilters(value: unknown): KnowledgeGraphFilters | null {
+  if (!isRecord(value) || typeof value.tag !== "boolean" || typeof value.orphans !== "boolean") {
+    return null;
+  }
+
+  return { tag: value.tag, orphans: value.orphans };
+}
+
+function isNumberInRange(value: unknown, min: number, max: number) {
+  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function validateStoredDisplay(value: unknown): GraphDisplaySettings | null {
+  if (
+    !isRecord(value) ||
+    typeof value.arrows !== "boolean" ||
+    !isNumberInRange(value.linkThickness, 0.5, 5) ||
+    !isNumberInRange(value.nodeSize, 1, 10) ||
+    !isNumberInRange(value.textFadeThreshold, 0.5, 3)
+  ) {
+    return null;
+  }
+
+  return {
+    arrows: value.arrows,
+    linkThickness: value.linkThickness,
+    nodeSize: value.nodeSize,
+    textFadeThreshold: value.textFadeThreshold,
+  };
+}
+
+function validateStoredForces(value: unknown): GraphForceSettings | null {
+  if (
+    !isRecord(value) ||
+    !isNumberInRange(value.center, 0, 1) ||
+    !isNumberInRange(value.link, 0, 1) ||
+    !isNumberInRange(value.linkDistance, 20, 180) ||
+    !isNumberInRange(value.repel, -300, -20)
+  ) {
+    return null;
+  }
+
+  return {
+    center: value.center,
+    link: value.link,
+    linkDistance: value.linkDistance,
+    repel: value.repel,
+  };
 }
 
 function hexToRgb(color: string) {

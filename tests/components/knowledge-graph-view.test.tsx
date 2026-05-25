@@ -114,6 +114,23 @@ function renderGraph(graph = createGraph()) {
   );
 }
 
+function createSessionStorageMock() {
+  const values = new Map<string, string>();
+
+  return {
+    clear: vi.fn(() => values.clear()),
+    getItem: vi.fn((key: string) => values.get(key) ?? null),
+    removeItem: vi.fn((key: string) => values.delete(key)),
+    setItem: vi.fn((key: string, value: string) => {
+      values.set(key, value);
+    }),
+  };
+}
+
+function getInput(label: string) {
+  return screen.getByLabelText(label) as HTMLInputElement;
+}
+
 beforeEach(() => {
   router.push.mockReset();
   forceGraphMock.state.attachRef = true;
@@ -124,6 +141,11 @@ beforeEach(() => {
   forceGraphMock.state.forceMethods.charge.strength.mockClear();
   forceGraphMock.state.forceMethods.link.distance.mockClear();
   forceGraphMock.state.forceMethods.link.strength.mockClear();
+
+  Object.defineProperty(window, "sessionStorage", {
+    configurable: true,
+    value: createSessionStorageMock(),
+  });
 
   Object.defineProperties(HTMLElement.prototype, {
     clientWidth: { configurable: true, get: () => 720 },
@@ -142,8 +164,8 @@ describe("KnowledgeGraphView", () => {
     expect(screen.getByTestId("force-graph")).toBeTruthy();
     expect(screen.getByText("Filters")).toBeTruthy();
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
-    expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
     expect(screen.queryByLabelText("Properties")).toBeNull();
 
     const controls = screen.getByTestId("knowledge-graph-controls");
@@ -173,20 +195,197 @@ describe("KnowledgeGraphView", () => {
       "Forces",
     );
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
-    expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
     expect(screen.queryByLabelText("Properties")).toBeNull();
   });
 
-  it("filters tag links and leaves only document nodes when Tags is unchecked", () => {
+  it("starts tag filtering disabled and restores tag links when Tags is checked", () => {
     const graph = createGraph();
     renderGraph();
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [],
+      links: [],
+    });
 
     fireEvent.click(screen.getByLabelText("Tags"));
 
     expect(forceGraphMock.state.latestProps?.graphData).toEqual({
-      nodes: [graph.nodes[0]],
-      links: [],
+      nodes: graph.nodes,
+      links: graph.links.map((link) => ({
+        ...link,
+        sourceId: link.source,
+        targetId: link.target,
+      })),
+    });
+  });
+
+  it("persists filters, display, and forces in workspace session storage", async () => {
+    renderGraph();
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    fireEvent.change(screen.getByLabelText("Node size"), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    fireEvent.change(screen.getByLabelText("Repel force"), { target: { value: "-180" } });
+
+    await waitFor(() => {
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+        JSON.stringify({ tag: true, orphans: false }),
+      );
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:display",
+        JSON.stringify({
+          arrows: false,
+          linkThickness: 1,
+          nodeSize: 8,
+          textFadeThreshold: 1,
+        }),
+      );
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:forces",
+        JSON.stringify({
+          center: 0.3,
+          link: 0.4,
+          linkDistance: 80,
+          repel: -180,
+        }),
+      );
+    });
+  });
+
+  it("restores valid workspace graph settings from session storage", async () => {
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:filters",
+      JSON.stringify({ tag: true, orphans: true }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:display",
+      JSON.stringify({
+        arrows: true,
+        linkThickness: 3,
+        nodeSize: 8,
+        textFadeThreshold: 2,
+      }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:forces",
+      JSON.stringify({
+        center: 0.6,
+        link: 0.7,
+        linkDistance: 120,
+        repel: -180,
+      }),
+    );
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(getInput("Tags").checked).toBe(true);
+      expect(getInput("Orphans").checked).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(getInput("Arrows").checked).toBe(true);
+    expect(getInput("Node size").value).toBe("8");
+    expect(getInput("Text fade threshold").value).toBe("2");
+    expect(getInput("Link thickness").value).toBe("3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(getInput("Center force").value).toBe("0.6");
+    expect(getInput("Repel force").value).toBe("-180");
+    expect(getInput("Link force").value).toBe("0.7");
+    expect(getInput("Link distance").value).toBe("120");
+  });
+
+  it("ignores invalid session storage settings and keeps defaults", async () => {
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:filters",
+      JSON.stringify({ tag: true, orphans: "yes" }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:display",
+      JSON.stringify({
+        arrows: false,
+        linkThickness: 20,
+        nodeSize: 8,
+        textFadeThreshold: 2,
+      }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:forces",
+      "not-json",
+    );
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+      );
+    });
+
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(getInput("Node size").value).toBe("3");
+    expect(getInput("Link thickness").value).toBe("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(getInput("Repel force").value).toBe("-120");
+  });
+
+  it("keeps rendering when session storage reads throw during mount", () => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        ...createSessionStorageMock(),
+        getItem: vi.fn(() => {
+          throw new Error("session storage blocked");
+        }),
+      },
+    });
+
+    renderGraph();
+
+    expect(screen.getByTestId("force-graph")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    expect(getInput("Tags").checked).toBe(true);
+    expect(forceGraphMock.state.latestProps?.graphData).toMatchObject({
+      links: [expect.objectContaining({ id: "tag:doc-1:design" })],
+    });
+  });
+
+  it("keeps interactions working when session storage writes throw during persistence", async () => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        ...createSessionStorageMock(),
+        setItem: vi.fn(() => {
+          throw new Error("session storage quota exceeded");
+        }),
+      },
+    });
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+      );
+    });
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    expect(getInput("Tags").checked).toBe(true);
+    expect(forceGraphMock.state.latestProps?.graphData).toMatchObject({
+      links: [expect.objectContaining({ id: "tag:doc-1:design" })],
     });
   });
 
@@ -206,6 +405,7 @@ describe("KnowledgeGraphView", () => {
   it("keeps app graph data immutable when force graph mutates rendered links", () => {
     const graph = createGraph();
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const renderedGraph = forceGraphMock.state.latestProps?.graphData as {
       nodes: Array<KnowledgeGraphData["nodes"][number]>;
@@ -217,7 +417,7 @@ describe("KnowledgeGraphView", () => {
     fireEvent.click(screen.getByLabelText("Tags"));
 
     expect(forceGraphMock.state.latestProps?.graphData).toEqual({
-      nodes: [graph.nodes[0]],
+      nodes: [],
       links: [],
     });
     expect(graph.links[0].source).toBe("document:doc-1");
@@ -227,6 +427,7 @@ describe("KnowledgeGraphView", () => {
   it("preserves renderer object identity across filter toggles", () => {
     const graph = createGraph();
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const initialRenderedGraph = forceGraphMock.state.latestProps?.graphData as {
       nodes: Array<KnowledgeGraphData["nodes"][number]>;
