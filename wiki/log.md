@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 108
+source_count: 109
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T12:10:00+09:00 - review follow-up
+
+- Result: PR #64 review feedback에 따라 sidebar navigation의 derived document/folder arrays를 memoized values로 정리했다.
+- Coverage: Favorite folders, favorite documents, and Recents arrays keep stable references when their inputs do not change, while preserving the root creation, ascending sort, and Recents behavior from Issue #63.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #64 review thread, `components/document-navigation.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-25T12:05:00+09:00 - implementation
 
