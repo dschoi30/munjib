@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T14:45:00+09:00 - implementation
+
+- Result: Issue #65 graph controls UI를 Tags/Orphans filter와 새 display 기본값으로 정리했다.
+- Coverage: Graph settings에서 Wiki links와 Properties filter를 제거하고 wiki edges는 항상 표시한다. Display와 Forces section은 기본 닫힘 상태가 되었고, node size 기본값은 3 및 range 1-10, link thickness max는 5로 조정했다. 선택/hover focus는 link width를 변경하지 않고 색상/alpha만 바꾼다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `lib/knowledge-graph/model.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T14:05:00+09:00 - implementation
 
 - Result: Issue #65 graph page wiring now passes markdown content into the graph model.

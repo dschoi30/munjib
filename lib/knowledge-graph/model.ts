@@ -2,8 +2,8 @@ import { slugifyTitle } from "@/lib/text/slug";
 import { parseWikiLinks } from "@/lib/wiki-links/parser";
 import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
 
-export type KnowledgeGraphNodeKind = "document" | "tag" | "wiki" | "property";
-export type KnowledgeGraphLinkKind = "wiki" | "tag" | "property";
+export type KnowledgeGraphNodeKind = "document" | "tag" | "wiki";
+export type KnowledgeGraphLinkKind = "wiki" | "tag";
 
 export type KnowledgeGraphDocumentInput = {
   contentMarkdown?: string;
@@ -29,18 +29,10 @@ export type KnowledgeGraphTagInput = {
   };
 };
 
-export type KnowledgeGraphPropertyInput = {
-  documentId: string;
-  key: string;
-  valueJson: unknown;
-  valueType: string;
-};
-
 export type KnowledgeGraphInput = {
   documents: KnowledgeGraphDocumentInput[];
   links: KnowledgeGraphLinkInput[];
   tags: KnowledgeGraphTagInput[];
-  properties?: KnowledgeGraphPropertyInput[];
 };
 
 export type KnowledgeGraphDocumentNode = Omit<KnowledgeGraphDocumentInput, "contentMarkdown" | "id"> & {
@@ -66,20 +58,10 @@ export type KnowledgeGraphWikiNode = {
   state: "broken" | "ambiguous";
 };
 
-export type KnowledgeGraphPropertyNode = {
-  id: string;
-  kind: "property";
-  label: string;
-  key: string;
-  value: string | number | boolean;
-  valueType: string;
-};
-
 export type KnowledgeGraphNode =
   | KnowledgeGraphDocumentNode
   | KnowledgeGraphTagNode
-  | KnowledgeGraphWikiNode
-  | KnowledgeGraphPropertyNode;
+  | KnowledgeGraphWikiNode;
 
 export type KnowledgeGraphLink = {
   id: string;
@@ -94,10 +76,8 @@ export type KnowledgeGraphData = {
 };
 
 export type KnowledgeGraphFilters = {
-  orphans?: boolean;
+  orphans: boolean;
   tag: boolean;
-  property?: boolean;
-  wiki?: boolean;
 };
 
 export type KnowledgeGraphFocus = {
@@ -265,7 +245,7 @@ export function filterKnowledgeGraph(
         return connectedNodeIds.has(node.id);
       }
 
-      return filters.orphans !== false || connectedNodeIds.has(node.id);
+      return filters.orphans || connectedNodeIds.has(node.id);
     }),
     links,
   };
