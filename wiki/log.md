@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T22:45:00+09:00 - maintenance
+
+- Result: merge 이후 관련 GitHub issue를 항상 닫는 workflow rule을 명시했다.
+- Coverage: PR merge 후 자동 close가 실패하거나 과거 open issue가 남아 있으면 `gh issue close <number> --reason completed`로 수동 close하고, open issue 조회로 남은 issue를 확인하는 절차를 task completion/PR review workflow에 포함했다.
+- Pages: [[Wiki Maintenance Automation]], [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, GitHub open issue cleanup.
+- Verification: `gh issue list --state open --limit 100 --json number,title,url`.
+
 ## 2026-05-25T19:08:00+09:00 - review follow-up
 
 - Result: PR #68 review feedback에 따라 hidden selected focus와 label offset 계산을 보정했다.

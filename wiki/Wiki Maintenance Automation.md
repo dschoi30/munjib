@@ -115,6 +115,8 @@ Semantic lint 결과는 바로 고치거나 `question` page/open question으로 
 
 PR 리뷰 요청 완료 후에는 최소 5분을 기다린 뒤 PR 상태를 다시 확인한다. 확인 대상은 review submission, unresolved review thread, inline comment, CI/check 결과다. Actionable feedback이나 실패 check가 있으면 같은 branch에서 수정하고, 검증과 wiki sync를 다시 수행한 뒤 추가 commit/push로 PR을 갱신하고 review 상태를 다시 확인한다. 리뷰가 아직 도착하지 않았거나 check가 대기 중이면 그 사실을 최종 상태에 명시한다. 인증, tooling, network 문제로 확인할 수 없는 항목은 조용히 건너뛰지 않고 blocker와 필요한 명령/권한을 남긴다.
 
+PR merge가 완료되면 해당 작업과 연결된 GitHub issue를 항상 닫는다. PR body의 `Closes #<number>` 자동 close가 실패했거나 과거 issue가 남아 있으면 `gh issue close <number> --reason completed`로 수동 close하고, `gh issue list --state open`으로 관련 open issue가 남지 않았는지 확인한다. Merge 후 local `main`을 fast-forward하고 feature branch/worktree 정리를 마친 뒤에도 issue close 확인은 task completion 범위에 포함한다.
+
 ## 판단 기준
 
 Wiki 갱신이 필요한 변경:
@@ -156,4 +158,5 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - GitHub issue #25 branch separation recovery
 - User workflow decision on automatic draft PR creation after every task
 - User workflow decision to wait 5 minutes after PR review request and inspect review feedback
+- User workflow decision to close related issues after merge
 - `AGENTS.md` Task Completion and PR Review Workflow
