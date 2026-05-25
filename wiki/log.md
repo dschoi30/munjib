@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T17:58:00+09:00 - implementation
+
+- Result: Issue #67 graph zoom bounds, document-count node sizing, and bounded label rendering을 구현했다.
+- Coverage: Graph renderer는 `minZoom`/`maxZoom`을 받아 zoom range 상한/하한을 제한한다. Node size slider 값은 전체 workspace document count tier baseline과 곱한 effective node size로 전달되어 큰 workspace일수록 compact하게 렌더링된다. Label font size는 zoom scale에서 계산하되 minimum/maximum으로 clamp하고, effective node size와 font size를 기준으로 node 아래에 배치한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
 ## 2026-05-25T17:50:00+09:00 - implementation
 
 - Result: Issue #67 graph option 기본값과 session persistence의 첫 구현을 추가했다.

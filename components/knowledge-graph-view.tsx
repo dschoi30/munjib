@@ -83,8 +83,13 @@ const DIMMED_NODE_ALPHA = "88";
 const HOVER_DIMMED_NODE_ALPHA = "33";
 const DIMMED_LINK_ALPHA = "44";
 const HOVER_DIMMED_LABEL_ALPHA = 0.2;
-const LABEL_VERTICAL_OFFSET = 8;
+const GRAPH_MIN_ZOOM = 0.35;
+const GRAPH_MAX_ZOOM = 3.5;
 const MIN_LABEL_GLOBAL_SCALE = 0.75;
+const MIN_LABEL_FONT_SIZE = 9;
+const MAX_LABEL_FONT_SIZE = 16;
+const BASE_LABEL_FONT_SIZE = 12;
+const LABEL_PADDING = 5;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
 const KNOWLEDGE_GRAPH_STORAGE_VERSION = "v1";
@@ -195,6 +200,11 @@ export function KnowledgeGraphView({
   const hasHoverFocus = hoveredFocus.focusedNodeIds.size > 0;
   const activeFocus = hasHoverFocus ? hoveredFocus : selectedFocus;
   const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
+  const documentNodeCount = useMemo(() => getDocumentNodeCount(graph), [graph]);
+  const effectiveNodeSize = useMemo(
+    () => getEffectiveNodeSize(display.nodeSize, documentNodeCount),
+    [display.nodeSize, documentNodeCount],
+  );
   const renderedGraph = useMemo<ForceGraphData>(() => {
     const nodes = visibleGraph.nodes.map((node) => {
       const existing = renderedNodesRef.current.get(node.id);
@@ -357,7 +367,9 @@ export function KnowledgeGraphView({
           height={dimensions.height}
           backgroundColor="#ffffff"
           nodeLabel={(node: ForceGraphNode) => node.label}
-          nodeRelSize={display.nodeSize}
+          nodeRelSize={effectiveNodeSize}
+          minZoom={GRAPH_MIN_ZOOM}
+          maxZoom={GRAPH_MAX_ZOOM}
           nodeColor={(node: ForceGraphNode) => {
             if (
               node.kind === "document" &&
@@ -385,7 +397,7 @@ export function KnowledgeGraphView({
             }
 
             const label = node.label;
-            const fontSize = 12 / globalScale;
+            const fontSize = getLabelFontSize(globalScale);
             const alpha = globalScale / display.textFadeThreshold;
             if (globalScale < MIN_LABEL_GLOBAL_SCALE || alpha < 0.1) {
               return;
@@ -402,7 +414,7 @@ export function KnowledgeGraphView({
                 : Math.min(1, alpha);
 
             context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${labelAlpha.toFixed(2)})`;
-            const labelY = node.y + (display.nodeSize + LABEL_VERTICAL_OFFSET) / globalScale;
+            const labelY = node.y + getLabelYOffset(effectiveNodeSize, fontSize, globalScale);
             context.fillText(label, node.x, labelY);
           }}
           linkColor={(link: ForceGraphLink) => {
@@ -559,6 +571,46 @@ export function KnowledgeGraphView({
       </div>
     </section>
   );
+}
+
+function getDocumentNodeCount(graph: KnowledgeGraphData) {
+  return graph.nodes.filter((node) => node.kind === "document").length;
+}
+
+function getNodeSizeBaseline(documentCount: number) {
+  if (documentCount >= 250) {
+    return 0.45;
+  }
+
+  if (documentCount >= 100) {
+    return 0.55;
+  }
+
+  if (documentCount >= 25) {
+    return 0.7;
+  }
+
+  return 0.85;
+}
+
+function getEffectiveNodeSize(nodeSize: number, documentCount: number) {
+  return Number((nodeSize * getNodeSizeBaseline(documentCount)).toFixed(2));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getLabelFontSize(globalScale: number) {
+  return clamp(
+    BASE_LABEL_FONT_SIZE / Math.sqrt(globalScale),
+    MIN_LABEL_FONT_SIZE,
+    MAX_LABEL_FONT_SIZE,
+  );
+}
+
+function getLabelYOffset(effectiveNodeSize: number, fontSize: number, globalScale: number) {
+  return (effectiveNodeSize + LABEL_PADDING + fontSize / 2) / globalScale;
 }
 
 function GraphControlSection({
