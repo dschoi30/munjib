@@ -164,7 +164,9 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     }
 
     for (const link of parseWikiLinks(scannableMarkdown)) {
-      const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw);
+      const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw, {
+        allowPathTitleFallback: false,
+      });
       const syntheticTargetId = resolved.targetDocumentId
         ? documentNodeId(resolved.targetDocumentId)
         : wikiNodeId(resolved.isAmbiguous ? "ambiguous" : "broken", link.targetTitleRaw);

@@ -136,6 +136,32 @@ See [[Body Target]].`,
     expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
   });
 
+  it("does not resolve path-qualified body links to unrelated readable titles", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: "See [[Secret/Runbook]].",
+        },
+        { id: "doc-2", title: "Runbook", path: "/public/runbook", contentMarkdown: "" },
+      ],
+      links: [],
+      tags: [],
+    });
+
+    expect(graph.links).toEqual([
+      {
+        id: "wiki:doc-1:wiki:broken:raw:Secret%2FRunbook",
+        source: "document:doc-1",
+        target: "wiki:broken:raw:Secret%2FRunbook",
+        kind: "wiki",
+      },
+    ]);
+    expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
+  });
+
   it("builds typed graph links from resolved links, broken links, and tags", () => {
     const graph = buildKnowledgeGraph(fixture);
 

@@ -29,8 +29,8 @@ links:
 
 ## 2026-05-25T15:15:00+09:00 - review follow-up
 
-- Result: PR #66 review feedback에 따라 graph full-markdown wiki scan에서 YAML frontmatter block을 제외하고 persisted wiki edge id 호환성을 보존했다.
-- Coverage: Persisted frontmatter `links:` rows remain the source of truth for frontmatter wiki edges, while graph-only markdown scanning still registers body wiki links. This avoids adding contradictory resolved graph edges for a frontmatter link whose persisted row is ambiguous or permission-filtered. Persisted graph wiki edges keep the previous `wiki:<documentLinkId>` id format when present, and scanned-only links use synthetic ids. The markdown scan skips documents whose frontmatter-stripped body has no `[[` marker.
+- Result: PR #66 review feedback에 따라 graph full-markdown wiki scan에서 YAML frontmatter block을 제외하고 persisted wiki edge id 호환성과 path-qualified permission semantics를 보존했다.
+- Coverage: Persisted frontmatter `links:` rows remain the source of truth for frontmatter wiki edges, while graph-only markdown scanning still registers body wiki links. This avoids adding contradictory resolved graph edges for a frontmatter link whose persisted row is ambiguous or permission-filtered. Persisted graph wiki edges keep the previous `wiki:<documentLinkId>` id format when present, and scanned-only links use synthetic ids. The markdown scan skips documents whose frontmatter-stripped body has no `[[` marker. For graph-only scanned body links, path-qualified targets that do not match a readable path do not fall back to unrelated readable documents with the same title.
 - Pages: [[log|Wiki Log]].
 - Source evidence: PR #66 review thread, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`.
 - Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.

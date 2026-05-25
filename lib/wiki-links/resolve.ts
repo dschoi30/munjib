@@ -20,6 +20,7 @@ export type ResolvedWikiLinkTarget = {
 export function resolveWikiLinkTarget(
   targets: WikiLinkTargetCandidate[],
   targetTitleRaw: string,
+  options: { allowPathTitleFallback?: boolean } = {},
 ): ResolvedWikiLinkTarget {
   if (targetTitleRaw.includes("/")) {
     const targetPath = pathQualifiedTargetToLookupDocumentPath(targetTitleRaw);
@@ -41,6 +42,10 @@ export function resolveWikiLinkTarget(
     }
     if (pathTitleMatches.length > 1) {
       return { targetDocumentId: null, isBroken: false, isAmbiguous: true };
+    }
+
+    if (options.allowPathTitleFallback === false) {
+      return { targetDocumentId: null, isBroken: true, isAmbiguous: false };
     }
   }
 
