@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T17:50:00+09:00 - implementation
+
+- Result: Issue #67 graph option 기본값과 session persistence의 첫 구현을 추가했다.
+- Coverage: Graph `Tags`와 `Orphans` filters는 기본 unchecked가 되었고, filters/display/forces option은 workspace-scoped `sessionStorage`에서 hydrate/persist된다. 잘못된 stored shape, out-of-range 값, storage API exception은 in-memory 기본값과 현재 상태를 유지하도록 방어한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
 ## 2026-05-25T16:10:00+09:00 - design
 
 - Result: Issue #67 knowledge graph zoom and session display controls 설계를 승인된 범위로 기록했다.
