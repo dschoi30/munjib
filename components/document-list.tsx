@@ -124,7 +124,6 @@ export function DocumentList({
         </div>
       </div>
       <DocumentCreateControls
-        selectedFolderId={selectedFolderId}
         canWrite={canWrite}
         createAction={createAction as CreateDocumentFormAction}
         createFolderAction={createFolderAction as CreateFolderFormAction}

@@ -167,7 +167,7 @@ describe("DocumentList", () => {
     expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
   });
 
-  it("orders folders before documents and sorts each group by title descending", () => {
+  it("orders folders before documents and sorts each group by title ascending", () => {
     renderList({
       folders: [
         { id: "folder-alpha", parentFolderId: null, name: "Alpha", path: "/alpha" },
@@ -198,7 +198,40 @@ describe("DocumentList", () => {
       allDocumentsNav.querySelectorAll("button[aria-expanded]:not([data-row-action-menu]), a[href]"),
     ).map((element) => element.textContent?.trim());
 
-    expect(rowNames).toEqual(["Zulu", "Alpha", "Zulu Doc", "Alpha Doc"]);
+    expect(rowNames).toEqual(["Alpha", "Zulu", "Alpha Doc", "Zulu Doc"]);
+  });
+
+  it("keeps top-level create controls scoped to the workspace root", () => {
+    renderList({ selectedFolderId: "folder-engineering" });
+
+    const newDocumentButton = screen.getByRole("button", { name: "New document" });
+    const newFolderButton = screen.getByRole("button", { name: "New folder" });
+    const documentForm = newDocumentButton.closest("form");
+    const folderForm = newFolderButton.closest("form");
+
+    expect(
+      documentForm?.querySelector<HTMLInputElement>('input[name="folderId"]')?.value,
+    ).toBe("");
+    expect(
+      folderForm?.querySelector<HTMLInputElement>('input[name="parentFolderId"]')?.value,
+    ).toBe("");
+  });
+
+  it("keeps recents populated when a recent document is favorited", async () => {
+    window.localStorage.setItem(
+      "munjib:favorites:company-handbook",
+      JSON.stringify({ documents: ["doc-1"], folders: [] }),
+    );
+
+    renderList();
+
+    const recentsSection = screen.getByText("Recents").closest("section");
+    expect(recentsSection).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        within(recentsSection as HTMLElement).getByRole("link", { name: "Welcome" }),
+      ).toBeTruthy();
+    });
   });
 
   it("shows duplicate document titles without path context in visible rows", () => {
