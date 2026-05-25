@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T14:05:00+09:00 - implementation
+
+- Result: Issue #65 graph page wiring now passes markdown content into the graph model.
+- Coverage: Workspace graph mode no longer loads document properties for graph data, and readable documents passed to `buildKnowledgeGraph()` include `contentMarkdown` so graph-only full-markdown wiki link scanning can affect the rendered graph. Graph controls UI 문서화는 후속 task에서 완료한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `lib/knowledge-graph/model.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/knowledge-graph/model.test.ts`.
+
 ## 2026-05-25T13:25:00+09:00 - implementation
 
 - Result: Issue #65 graph model의 full-markdown wiki link 수집과 property graph output 제거를 구현했다.
