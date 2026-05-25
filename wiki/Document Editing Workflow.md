@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-21
-source_count: 52
+updated: 2026-05-25
+source_count: 55
 tags:
   - munjib
   - workflow
@@ -40,7 +40,7 @@ links:
 
 오른쪽 metadata panel은 상단 icon tab에서 `Attachments`, `Versions`, `Audit log`를 선택할 때 해당 목록만 표시한다. Panel 우측 상단의 close control은 오른쪽 sidebar를 접고, 화면 우측 상단의 reopen icon 하나로 다시 펼친다.
 
-좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
+좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. `Recents`는 workspace page가 내려준 readable document 순서에서 최대 5개를 보여주며, favorites localStorage 상태와 무관하게 같은 최신 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
@@ -56,9 +56,9 @@ Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon
 
 `createDocumentAction()`은 현재 user를 확인한 뒤 `createDocument()`를 호출한다.
 
-Issue #32 이후 `createDocumentAction()`은 template key를 받지 않고 항상 blank document를 만든다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다. Sidebar top-level create control과 folder row `+` creation은 server-action redirect path를 유지해 hydration 전 form submission도 생성된 document/folder URL로 이동한다.
+Issue #32 이후 `createDocumentAction()`은 template key를 받지 않고 항상 blank document를 만든다. Issue #20 구현 이후 folder creation은 document template이 아니라 `createFolderAction()`과 `lib/folders/service.ts`가 담당한다. Sidebar top-level create control은 항상 workspace root를 hidden form value로 제출하고 server-action redirect path를 유지해 hydration 전 form submission도 생성된 document/folder URL로 이동한다. Folder-scoped creation은 folder row action menu의 `Add folder`와 `Add document`가 담당한다.
 
-Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. `New document`는 선택된 folder 또는 workspace root 아래 `Untitled` blank document를 생성한다. `New folder`는 별도 `Folder` row를 생성하는 folder service로 분리된다. Sidebar top-level `Documents`, `New document`, `New folder`, `Search`, `Favorites` controls는 `Company Handbook` 제목 아래의 icon-only toolbar로 표시한다. `Company Handbook` row는 center `DocumentTabs` row와, icon toolbar row는 center `DocumentToolbar` row와 같은 vertical origin/height에 맞춘다. 각 icon button은 shadcn/Radix Tooltip으로 hover 설명을 표시한다.
+Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. Top-level `New document`는 선택된 folder와 무관하게 workspace root 아래 `Untitled` blank document를 생성한다. Top-level `New folder`도 선택된 folder와 무관하게 root `Folder` row를 생성한다. Sidebar top-level `Documents`, `New document`, `New folder`, `Search`, `Favorites` controls는 `Company Handbook` 제목 아래의 icon-only toolbar로 표시한다. `Company Handbook` row는 center `DocumentTabs` row와, icon toolbar row는 center `DocumentToolbar` row와 같은 vertical origin/height에 맞춘다. 각 icon button은 shadcn/Radix Tooltip으로 hover 설명을 표시한다.
 
 `createDocument()`는 다음을 수행한다.
 
