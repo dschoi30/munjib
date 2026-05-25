@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T14:55:00+09:00 - implementation
+
+- Result: Issue #65 knowledge graph filter/link coverage refinement를 wiki durable behavior로 정리했다.
+- Coverage: Graph DTO는 readable documents의 full markdown wiki links를 scan해 persisted frontmatter link rows와 병합하고, Properties Links row/backlinks는 frontmatter `links:` 기반으로 유지한다. Visible graph는 document/tag/wiki nodes와 wiki/tag edges를 사용하며, property graph rendering은 제거되었다. Graph settings는 Tags/Orphans filters와 닫힌 Display/Forces section, node size 3/range 1-10, link thickness max 5, focus color/alpha-only highlight를 제공한다.
+- Pages: [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`, `lib/wiki-links/resolve.ts`, `lib/knowledge-graph/model.ts`, `components/knowledge-graph-view.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T14:45:00+09:00 - implementation
 
 - Result: Issue #65 graph controls UI를 Tags/Orphans filter와 새 display 기본값으로 정리했다.
