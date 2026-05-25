@@ -123,7 +123,7 @@ export default async function WorkspacePage({
       ? (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null)
       : null;
 
-  const [graphLinks, graphTags, graphProperties] = isGraphView
+  const [graphLinks, graphTags] = isGraphView
     ? await Promise.all([
         prisma.documentLink.findMany({
           where: {
@@ -152,32 +152,18 @@ export default async function WorkspacePage({
           },
           orderBy: [{ documentId: "asc" }, { id: "asc" }],
         }),
-        prisma.documentProperty.findMany({
-          where: { documentId: { in: readableDocumentIdList } },
-          select: {
-            documentId: true,
-            key: true,
-            valueJson: true,
-            valueType: true,
-          },
-          orderBy: [
-            { documentId: "asc" },
-            { sortOrder: "asc" },
-            { key: "asc" },
-          ],
-        }),
       ])
-    : [[], [], []];
+    : [[], []];
   const graphData = isGraphView
     ? buildKnowledgeGraph({
         documents: readableDocuments.map((document) => ({
           id: document.id,
           title: document.title,
           path: document.path,
+          contentMarkdown: document.contentMarkdown,
         })),
         links: graphLinks,
         tags: graphTags,
-        properties: graphProperties,
       })
     : { nodes: [], links: [] };
 

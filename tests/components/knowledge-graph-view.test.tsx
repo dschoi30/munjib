@@ -141,9 +141,10 @@ describe("KnowledgeGraphView", () => {
 
     expect(screen.getByTestId("force-graph")).toBeTruthy();
     expect(screen.getByText("Filters")).toBeTruthy();
-    expect(screen.getByLabelText("Wiki links")).toBeTruthy();
+    expect(screen.queryByLabelText("Wiki links")).toBeNull();
     expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Properties")).toBeTruthy();
+    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(screen.queryByLabelText("Properties")).toBeNull();
 
     const controls = screen.getByTestId("knowledge-graph-controls");
     expect(controls.className).toContain("right-4");
@@ -159,17 +160,22 @@ describe("KnowledgeGraphView", () => {
     expect(screen.queryByText("Filters")).toBeNull();
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
     expect(screen.queryByLabelText("Tags")).toBeNull();
+    expect(screen.queryByLabelText("Orphans")).toBeNull();
     expect(screen.queryByLabelText("Properties")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Open graph settings" }));
 
     expect(screen.getByText("Filters")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Collapse display" }).textContent).toContain(
+    expect(screen.getByRole("button", { name: "Expand display" }).textContent).toContain(
       "Display",
     );
-    expect(screen.getByLabelText("Wiki links")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Expand forces" }).textContent).toContain(
+      "Forces",
+    );
+    expect(screen.queryByLabelText("Wiki links")).toBeNull();
     expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Properties")).toBeTruthy();
+    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(screen.queryByLabelText("Properties")).toBeNull();
   });
 
   it("filters tag links and leaves only document nodes when Tags is unchecked", () => {
@@ -277,10 +283,10 @@ describe("KnowledgeGraphView", () => {
     expect(linkColor?.(graph.links[0])).toBe("#64748b");
     expect(
       linkColor?.({
-        id: "property:doc-2:status:active",
+        id: "wiki:doc-2:wiki:broken:missing",
         source: "document:doc-2",
-        target: "property:status:active",
-        kind: "property",
+        target: "wiki:broken:missing",
+        kind: "wiki",
       }),
     ).toBe("#94a3b844");
   });
@@ -311,13 +317,20 @@ describe("KnowledgeGraphView", () => {
     renderGraph();
 
     expect(screen.getByText("Display")).toBeTruthy();
+    expect(screen.queryByLabelText("Arrows")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+
     expect(screen.getByLabelText("Arrows")).toBeTruthy();
     expect(screen.getByLabelText("Text fade threshold")).toBeTruthy();
-    expect(screen.getByLabelText("Node size")).toBeTruthy();
-    expect(screen.getByLabelText("Link thickness")).toBeTruthy();
+    const nodeSizeInput = screen.getByLabelText("Node size");
+    const linkThicknessInput = screen.getByLabelText("Link thickness");
+    expect(nodeSizeInput.getAttribute("min")).toBe("1");
+    expect(nodeSizeInput.getAttribute("max")).toBe("10");
+    expect(linkThicknessInput.getAttribute("max")).toBe("5");
     expect(forceGraphMock.state.latestProps).toMatchObject({
       linkDirectionalArrowLength: 0,
-      nodeRelSize: 5,
+      nodeRelSize: 3,
     });
 
     fireEvent.click(screen.getByLabelText("Arrows"));
@@ -333,7 +346,7 @@ describe("KnowledgeGraphView", () => {
       | ((link: KnowledgeGraphData["links"][number]) => number)
       | undefined;
 
-    expect(linkWidth?.(createGraph().links[0])).toBe(4.5);
+    expect(linkWidth?.(createGraph().links[0])).toBe(3);
 
     fireEvent.click(screen.getByRole("button", { name: "Collapse display" }));
 
@@ -344,6 +357,7 @@ describe("KnowledgeGraphView", () => {
     const graph = createGraph();
     renderGraph(graph);
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
     fireEvent.change(screen.getByLabelText("Text fade threshold"), { target: { value: "2" } });
 
     const context = {
@@ -363,7 +377,7 @@ describe("KnowledgeGraphView", () => {
     expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.50)");
     expect(context.textAlign).toBe("center");
     expect(context.textBaseline).toBe("middle");
-    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 43);
+    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 41);
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.1);
 
@@ -374,6 +388,7 @@ describe("KnowledgeGraphView", () => {
     const graph = createGraph();
     renderGraph(graph);
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
     const context = {
       fillStyle: "",
       font: "",
@@ -393,12 +408,14 @@ describe("KnowledgeGraphView", () => {
   it("resumes graph rendering when text fade threshold changes after force controls update", async () => {
     renderGraph();
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
     fireEvent.change(screen.getByLabelText("Repel force"), { target: { value: "-180" } });
     await waitFor(() => {
       expect(forceGraphMock.state.forceMethods.charge.strength).toHaveBeenLastCalledWith(-180);
     });
     forceGraphMock.state.api.resumeAnimation.mockClear();
 
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
     fireEvent.change(screen.getByLabelText("Text fade threshold"), { target: { value: "2" } });
 
     await waitFor(() => {
@@ -410,6 +427,10 @@ describe("KnowledgeGraphView", () => {
     renderGraph();
 
     expect(screen.getByText("Forces")).toBeTruthy();
+    expect(screen.queryByLabelText("Center force")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+
     expect(screen.getByLabelText("Center force")).toBeTruthy();
     expect(screen.getByLabelText("Repel force")).toBeTruthy();
     expect(screen.getByLabelText("Link force")).toBeTruthy();
@@ -494,21 +515,20 @@ describe("KnowledgeGraphView", () => {
           path: "/unrelated",
         },
         {
-          id: "property:status:active",
-          kind: "property",
-          label: "status: active",
-          key: "status",
-          value: "active",
-          valueType: "string",
+          id: "wiki:broken:missing",
+          kind: "wiki",
+          label: "Missing",
+          targetTitleRaw: "Missing",
+          state: "broken",
         },
       ],
       links: [
         ...createGraph().links,
         {
-          id: "property:doc-2:status:active",
+          id: "wiki:doc-2:wiki:broken:missing",
           source: "document:doc-2",
-          target: "property:status:active",
-          kind: "property",
+          target: "wiki:broken:missing",
+          kind: "wiki",
         },
       ],
     };
@@ -534,7 +554,7 @@ describe("KnowledgeGraphView", () => {
       | undefined;
     expect(nodeColor?.(graph.nodes[0])).toBe("#64748b33");
     expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
-    expect(nodeColor?.(graph.nodes[3])).toBe("#38bdf8");
+    expect(nodeColor?.(graph.nodes[3])).toBe("#8b5cf6");
     expect(linkColor?.(graph.links[0])).toBe("#94a3b844");
     expect(linkColor?.(graph.links[1])).toBe("#64748b");
 

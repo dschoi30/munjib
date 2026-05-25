@@ -12,7 +12,6 @@ import {
   type KnowledgeGraphData,
   type KnowledgeGraphFilters,
   type KnowledgeGraphLink,
-  type KnowledgeGraphLinkKind,
   type KnowledgeGraphNode,
 } from "@/lib/knowledge-graph/model";
 import { cn } from "@/lib/utils";
@@ -68,16 +67,14 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
 }) as ComponentType<ForceGraph2DProps>;
 
 const DEFAULT_FILTERS: KnowledgeGraphFilters = {
-  wiki: true,
   tag: true,
-  property: true,
+  orphans: true,
 };
 
 const NODE_COLORS: Record<KnowledgeGraphNode["kind"], string> = {
   document: "#64748b",
   wiki: "#8b5cf6",
   tag: "#f59e0b",
-  property: "#38bdf8",
 };
 
 const SELECTED_DOCUMENT_COLOR = "#a78bfa";
@@ -93,7 +90,7 @@ const FOCUSED_LINK_COLOR = "#64748b";
 const DEFAULT_DISPLAY_SETTINGS: GraphDisplaySettings = {
   arrows: false,
   linkThickness: 1,
-  nodeSize: 5,
+  nodeSize: 3,
   textFadeThreshold: 1,
 };
 
@@ -105,12 +102,11 @@ const DEFAULT_FORCE_SETTINGS: GraphForceSettings = {
 };
 
 const FILTER_OPTIONS: Array<{
-  key: KnowledgeGraphLinkKind;
+  key: keyof KnowledgeGraphFilters;
   label: string;
 }> = [
-    { key: "wiki", label: "Wiki links" },
     { key: "tag", label: "Tags" },
-    { key: "property", label: "Properties" },
+    { key: "orphans", label: "Orphans" },
   ];
 
 export function KnowledgeGraphView({
@@ -129,8 +125,8 @@ export function KnowledgeGraphView({
   const renderedLinksRef = useRef(new Map<string, ForceGraphLink>());
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(true);
-  const [displayOpen, setDisplayOpen] = useState(true);
-  const [forcesOpen, setForcesOpen] = useState(true);
+  const [displayOpen, setDisplayOpen] = useState(false);
+  const [forcesOpen, setForcesOpen] = useState(false);
   const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
   const [display, setDisplay] = useState<GraphDisplaySettings>(DEFAULT_DISPLAY_SETTINGS);
   const [forces, setForces] = useState<GraphForceSettings>(DEFAULT_FORCE_SETTINGS);
@@ -265,7 +261,7 @@ export function KnowledgeGraphView({
     forceGraphRef.current?.resumeAnimation?.();
   }, [display]);
 
-  const toggleFilter = useCallback((key: KnowledgeGraphLinkKind) => {
+  const toggleFilter = useCallback((key: keyof KnowledgeGraphFilters) => {
     setFilters((current) => ({ ...current, [key]: !current[key] }));
   }, []);
 
@@ -375,11 +371,7 @@ export function KnowledgeGraphView({
               ? FOCUSED_LINK_COLOR
               : `${LINK_COLOR}${DIMMED_LINK_ALPHA}`;
           }}
-          linkWidth={(link: ForceGraphLink) =>
-            activeFocus.focusedLinkIds.has(link.id)
-              ? display.linkThickness + 1.5
-              : display.linkThickness
-          }
+          linkWidth={() => display.linkThickness}
           linkDirectionalArrowLength={display.arrows ? 4 : 0}
           linkDirectionalArrowRelPos={1}
           onNodeClick={routeDocumentNode}
@@ -456,15 +448,15 @@ export function KnowledgeGraphView({
               />
               <RangeControl
                 label="Node size"
-                max={12}
-                min={2}
+                max={10}
+                min={1}
                 step={1}
                 value={display.nodeSize}
                 onChange={(value) => updateDisplay("nodeSize", value)}
               />
               <RangeControl
                 label="Link thickness"
-                max={6}
+                max={5}
                 min={0.5}
                 step={0.5}
                 value={display.linkThickness}
