@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 112
+source_count: 113
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T18:00:00+09:00 - implementation
+
+- Result: Issue #67 knowledge graph zoom and session display controls 구현과 Task 3 verification을 마무리했다.
+- Coverage: Graph `Tags`/`Orphans` filters는 기본 unchecked로 시작하고, filters/display/forces option은 workspace-scoped `sessionStorage`에 hydrate/persist되어 browser session 동안 유지된다. Graph renderer는 `minZoom`/`maxZoom` bounds를 사용하고, node size slider는 document-count tier baseline과 곱한 effective node size로 전달된다. Label font size는 zoom 기반 계산값을 minimum/maximum으로 clamp하며, label은 effective node size와 font size를 기준으로 node 아래에 배치된다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #67, `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-05-25T17:58:00+09:00 - implementation
 

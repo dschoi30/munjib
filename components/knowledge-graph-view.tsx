@@ -741,7 +741,7 @@ function validateStoredFilters(value: unknown): KnowledgeGraphFilters | null {
   return { tag: value.tag, orphans: value.orphans };
 }
 
-function isNumberInRange(value: unknown, min: number, max: number) {
+function isNumberInRange(value: unknown, min: number, max: number): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
 }
 
