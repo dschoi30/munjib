@@ -78,7 +78,7 @@ function getLabelFontSize(globalScale: number) {
 }
 
 function getLabelYOffset(effectiveNodeSize: number, fontSize: number, globalScale: number) {
-  return (effectiveNodeSize + LABEL_PADDING + fontSize / 2) / globalScale;
+  return effectiveNodeSize + fontSize / 2 + LABEL_PADDING / globalScale;
 }
 ```
 
@@ -745,7 +745,7 @@ function getLabelFontSize(globalScale: number) {
 }
 
 function getLabelYOffset(effectiveNodeSize: number, fontSize: number, globalScale: number) {
-  return (effectiveNodeSize + LABEL_PADDING + fontSize / 2) / globalScale;
+  return effectiveNodeSize + fontSize / 2 + LABEL_PADDING / globalScale;
 }
 ```
 
