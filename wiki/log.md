@@ -40,7 +40,7 @@ links:
 - Result: Issue #65 knowledge graph filter/link coverage 설계를 승인된 범위로 기록했다.
 - Coverage: Graph view는 문서 전체 markdown의 wiki link를 graph edge 후보로 삼되 Properties Links row와 backlinks의 frontmatter `links:` 계약은 유지한다. Filters는 Wiki links/Properties를 제거하고 Tags/Orphans 중심으로 단순화하며, Display/Forces 기본 닫힘과 node/link display range 조정을 계획한다.
 - Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`.
+- Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
 - Verification: Spec self-review.
 
 ## 2026-05-24T19:55:00+09:00 - review follow-up
