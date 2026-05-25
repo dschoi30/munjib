@@ -154,6 +154,8 @@ Source 변경을 커밋하기 전에는 `pnpm wiki:sync-plan --staged`를 실행
 
 PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 다음 바로 종료하지 않고 최소 5분 대기한다. 대기 후 PR review thread, review submission, inline comment, CI/check 상태를 확인하고, actionable feedback이나 실패 check가 있으면 같은 branch에서 추가 수정, 검증, wiki update, commit, push까지 수행한 뒤 review 상태를 다시 확인한다. 리뷰나 CI가 아직 없으면 그 상태를 명확히 남긴다. 인증, tooling, network 문제로 리뷰나 CI 확인이 막히면 누락하지 말고 blocker와 필요한 명령/권한을 최종 상태에 적는다.
 
+PR merge 이후에는 관련 GitHub issue가 닫혔는지 반드시 확인한다. 자동 close keyword가 적용되지 않았거나 과거 open issue가 남아 있으면 `gh issue close <number> --reason completed`로 닫고, `gh issue list --state open` 또는 issue-specific 조회로 남은 open issue가 없는지 확인한다. 이 issue close 확인은 local `main` pull, feature branch 삭제, worktree cleanup과 같은 merge 후 정리 절차의 일부다.
+
 ## 근거
 
 - `package.json`
@@ -175,4 +177,5 @@ PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 �
 - GitHub issue #25 branch separation recovery
 - User workflow decision on automatic draft PR creation after every task
 - User workflow decision to wait 5 minutes after PR review request and inspect review feedback
+- User workflow decision to close related issues after merge
 - `AGENTS.md` Task Completion and PR Review Workflow
