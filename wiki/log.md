@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 109
+source_count: 112
 tags:
   - log
   - munjib
@@ -18,6 +18,70 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T15:35:00+09:00 - verification follow-up
+
+- Result: E2E seed 재실행이 canonical fixture document titles를 복구하지 못하던 문제를 수정했다.
+- Coverage: `prisma/seed.ts` upsert update path now resets the seeded Welcome, Engineering Runbook, Operations folder, and Operations Runbook title/slug/folder/status fields in addition to markdown content, so repeated local E2E runs do not inherit renamed or archived fixture data from prior runs. Login E2E now opens Engineering Runbook through the row action new-tab flow, creates the Product Notes child folder through the row action, and no longer expects inline body tags to appear as Properties rows. Playwright E2E runs use one worker because existing specs share the same seeded account and Welcome document.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: E2E failure investigation, `prisma/seed.ts`, `tests/e2e/login.spec.ts`, `playwright.config.ts`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm run db:seed`, `pnpm exec playwright test`.
+
+## 2026-05-25T15:15:00+09:00 - review follow-up
+
+- Result: PR #66 review feedback에 따라 graph full-markdown wiki scan에서 YAML frontmatter block을 제외하고 persisted wiki edge id 호환성을 보존했다.
+- Coverage: Persisted frontmatter `links:` rows remain the source of truth for frontmatter wiki edges, while graph-only markdown scanning still registers body wiki links. This avoids adding contradictory resolved graph edges for a frontmatter link whose persisted row is ambiguous or permission-filtered. Persisted graph wiki edges keep the previous `wiki:<documentLinkId>` id format when present, and scanned-only links use synthetic ids. The markdown scan skips documents whose frontmatter-stripped body has no `[[` marker. Body-scanned graph links keep the shared resolver behavior for slash-containing document titles such as `[[Q1/Q2 Plan]]`.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #66 review thread, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T15:00:00+09:00 - review follow-up
+
+- Result: Issue #65 final review에서 발견한 stale e2e graph filter assertion을 갱신했다.
+- Coverage: Login e2e는 graph settings reopen 후 removed Wiki links filter가 계속 보이지 않고 Tags/Orphans filters가 보이는 새 graph filter contract를 확인한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: final code review, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T14:55:00+09:00 - implementation
+
+- Result: Issue #65 knowledge graph filter/link coverage refinement를 wiki durable behavior로 정리했다.
+- Coverage: Graph DTO는 readable documents의 full markdown wiki links를 scan해 persisted frontmatter link rows와 병합하고, Properties Links row/backlinks는 frontmatter `links:` 기반으로 유지한다. Visible graph는 document/tag/wiki nodes와 wiki/tag edges를 사용하며, property graph rendering은 제거되었다. Graph settings는 Tags/Orphans filters와 닫힌 Display/Forces section, node size 3/range 1-10, link thickness max 5, focus color/alpha-only highlight를 제공한다.
+- Pages: [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`, `lib/wiki-links/resolve.ts`, `lib/knowledge-graph/model.ts`, `components/knowledge-graph-view.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T14:45:00+09:00 - implementation
+
+- Result: Issue #65 graph controls UI를 Tags/Orphans filter와 새 display 기본값으로 정리했다.
+- Coverage: Graph settings에서 Wiki links와 Properties filter를 제거하고 wiki edges는 항상 표시한다. Display와 Forces section은 기본 닫힘 상태가 되었고, node size 기본값은 3 및 range 1-10, link thickness max는 5로 조정했다. 선택/hover focus는 link width를 변경하지 않고 색상/alpha만 바꾼다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `lib/knowledge-graph/model.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T14:05:00+09:00 - implementation
+
+- Result: Issue #65 graph page wiring now passes markdown content into the graph model.
+- Coverage: Workspace graph mode no longer loads document properties for graph data, and readable documents passed to `buildKnowledgeGraph()` include `contentMarkdown` so graph-only full-markdown wiki link scanning can affect the rendered graph. Graph controls UI 문서화는 후속 task에서 완료한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `app/workspaces/[workspaceSlug]/page.tsx`, `lib/knowledge-graph/model.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/knowledge-graph/model.test.ts`.
+
+## 2026-05-25T13:25:00+09:00 - implementation
+
+- Result: Issue #65 graph model의 full-markdown wiki link 수집과 property graph output 제거를 구현했다.
+- Coverage: `buildKnowledgeGraph()`는 persisted frontmatter link rows와 문서 전체 markdown에서 scan한 wiki links를 같은 wiki edge 후보로 병합하고 source-target 중복 edge를 제거한다. Property graph nodes/edges는 graph model output에서 제외되며, Orphans filter는 연결 없는 document node 표시 여부를 제어한다. Page wiring과 graph controls UI 문서화는 후속 task에서 완료한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T12:45:00+09:00 - maintenance
+
+- Result: wiki link target resolution을 `lib/wiki-links/resolve.ts` 순수 helper로 분리해 reconciliation과 Issue #65 graph link construction이 같은 target matching 규칙을 공유할 수 있게 했다.
+- Coverage: path-qualified target, underscore-aware segment matching, title fallback, ambiguous/broken 판정은 기존 `DocumentLink` persistence 의미를 유지한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: `lib/wiki-links/resolve.ts`, `lib/wiki-links/reconcile.ts`, `tests/wiki-links/reconcile.test.ts`, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-25T12:10:00+09:00 - review follow-up
 
@@ -34,6 +98,14 @@ links:
 - Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #63, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `components/document-navigation/tree.ts`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T00:00:00+09:00 - design
+
+- Result: Issue #65 knowledge graph filter/link coverage 설계를 승인된 범위로 기록했다.
+- Coverage: Graph view는 문서 전체 markdown의 wiki link를 graph edge 후보로 삼되 Properties Links row와 backlinks의 frontmatter `links:` 계약은 유지한다. Filters는 Wiki links/Properties를 제거하고 Tags/Orphans 중심으로 단순화하며, Display/Forces 기본 닫힘과 node/link display range 조정을 계획한다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: Spec self-review.
 
 ## 2026-05-24T19:55:00+09:00 - review follow-up
 

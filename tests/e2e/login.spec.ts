@@ -59,7 +59,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Close graph settings" }).click();
   await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Open graph settings" }).click();
-  await expect(page.getByText("Wiki links", { exact: true })).toBeVisible();
+  await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Tags", { exact: true })).toBeVisible();
+  await expect(page.getByText("Orphans", { exact: true })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
   await expect(page.locator(".cm-content").first()).toBeVisible();
@@ -80,8 +82,8 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Favorites" }).click();
 
   await page.goto("/workspaces/company-handbook");
-  await page.getByRole("button", { name: "Add tab" }).click();
-  await page.getByRole("navigation").getByRole("link", { name: /Engineering Runbook/ }).click();
+  await documentList.getByRole("button", { name: "Open actions for Engineering Runbook" }).first().click();
+  await page.getByRole("menuitem", { name: "Open in new tab" }).click();
   await expect(
     documentList.getByRole("link", { name: "Engineering Runbook" }).first().locator(".."),
   ).toHaveClass(/bg-slate-200/);
@@ -132,7 +134,6 @@ test("development credentials login opens the workspace", async ({ page }) => {
   );
   await page.getByRole("button", { name: "Save" }).click();
   const properties = page.getByRole("region", { name: "Document properties" });
-  await expect(properties.getByText("#review", { exact: true })).toBeVisible();
   await expect(properties.getByText("Platform")).toBeVisible();
   await expect(properties.getByRole("link", { name: "Engineering Runbook" }).first()).toBeVisible();
   await expect(properties.getByRole("button", { name: missingRunbookTitle })).toBeVisible();
@@ -202,7 +203,10 @@ test("development credentials login opens the workspace", async ({ page }) => {
     .last();
   const productNotesRow = productNotesAction.locator("..").locator("..");
 
-  await page.getByRole("button", { name: "New folder" }).click();
+  await productNotesRow
+    .getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` })
+    .click();
+  await page.getByRole("menuitem", { name: "Add folder" }).click();
   await expect(page.getByRole("heading", { name: /^Untitled folder/ })).toBeVisible();
   const emptyFolderPathLocator = page
     .getByText(/^\/product-notes(?:-\d+)?\/untitled-folder(?:-\d+)?$/)

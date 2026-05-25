@@ -8,8 +8,19 @@ import {
 
 const fixture: KnowledgeGraphInput = {
   documents: [
-    { id: "doc-1", title: "Welcome", path: "/welcome" },
-    { id: "doc-2", title: "Engineering Runbook", path: "/engineering-runbook" },
+    {
+      id: "doc-1",
+      title: "Welcome",
+      path: "/welcome",
+      contentMarkdown: "See [[Engineering Runbook]] and [[Missing Runbook]].",
+    },
+    {
+      id: "doc-2",
+      title: "Engineering Runbook",
+      path: "/engineering-runbook",
+      contentMarkdown: "",
+    },
+    { id: "doc-3", title: "Orphan", path: "/orphan", contentMarkdown: "" },
   ],
   links: [
     {
@@ -20,22 +31,8 @@ const fixture: KnowledgeGraphInput = {
       isBroken: false,
       isAmbiguous: false,
     },
-    {
-      id: "link-2",
-      sourceDocumentId: "doc-1",
-      targetDocumentId: null,
-      targetTitleRaw: "Missing Runbook",
-      isBroken: true,
-      isAmbiguous: false,
-    },
   ],
   tags: [{ documentId: "doc-1", tag: { name: "Design", normalizedName: "design" } }],
-  properties: [
-    { documentId: "doc-1", key: "status", valueJson: "active", valueType: "string" },
-    { documentId: "doc-1", key: "tags", valueJson: ["Design"], valueType: "array" },
-    { documentId: "doc-1", key: "links", valueJson: ["Engineering Runbook"], valueType: "array" },
-    { documentId: "doc-2", key: "score", valueJson: 5, valueType: "number" },
-  ],
 };
 
 describe("knowledge graph model", () => {
@@ -45,15 +42,13 @@ describe("knowledge graph model", () => {
     expect(graph.nodes.map((node) => node.id)).toEqual([
       "document:doc-1",
       "document:doc-2",
-      "property:score:5",
-      "property:status:active",
+      "document:doc-3",
       "tag:design",
       "wiki:broken:missing-runbook",
     ]);
     expect(graph.nodes.every((node) => typeof node.label === "string")).toBe(true);
     expect(Object.fromEntries(graph.nodes.map((node) => [node.id, node.label]))).toMatchObject({
       "document:doc-1": "Welcome",
-      "property:status:active": "status: active",
       "tag:design": "#Design",
       "wiki:broken:missing-runbook": "Missing Runbook",
     });
@@ -67,22 +62,135 @@ describe("knowledge graph model", () => {
     });
   });
 
-  it("builds typed graph links from resolved links, broken links, tags, and scalar properties", () => {
+  it("builds graph wiki links from full document markdown", () => {
     const graph = buildKnowledgeGraph(fixture);
+
+    expect(graph.links).toEqual(
+      expect.arrayContaining([
+        {
+          id: "wiki:link-1",
+          source: "document:doc-1",
+          target: "document:doc-2",
+          kind: "wiki",
+        },
+        {
+          id: "wiki:doc-1:wiki:broken:missing-runbook",
+          source: "document:doc-1",
+          target: "wiki:broken:missing-runbook",
+          kind: "wiki",
+        },
+      ]),
+    );
+  });
+
+  it("deduplicates persisted and scanned wiki links", () => {
+    const graph = buildKnowledgeGraph(fixture);
+
+    expect(graph.links.filter((link) => link.target === "document:doc-2")).toHaveLength(1);
+  });
+
+  it("does not rescan frontmatter wiki links as body links", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+See [[Body Target]].`,
+        },
+        { id: "doc-2", title: "Runbook", path: "/runbook", contentMarkdown: "" },
+        { id: "doc-3", title: "Body Target", path: "/body-target", contentMarkdown: "" },
+      ],
+      links: [
+        {
+          id: "link-1",
+          sourceDocumentId: "doc-1",
+          targetDocumentId: null,
+          targetTitleRaw: "Runbook",
+          isBroken: false,
+          isAmbiguous: true,
+        },
+      ],
+      tags: [],
+    });
 
     expect(graph.links).toEqual([
       {
-        id: "property:doc-1:status:active",
+        id: "wiki:doc-1:document:doc-3",
         source: "document:doc-1",
-        target: "property:status:active",
-        kind: "property",
+        target: "document:doc-3",
+        kind: "wiki",
       },
       {
-        id: "property:doc-2:score:5",
-        source: "document:doc-2",
-        target: "property:score:5",
-        kind: "property",
+        id: "wiki:link-1",
+        source: "document:doc-1",
+        target: "wiki:ambiguous:runbook",
+        kind: "wiki",
       },
+    ]);
+    expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
+  });
+
+  it("does not resolve path-qualified body links to unrelated readable titles", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: "See [[Secret/Runbook]].",
+        },
+        { id: "doc-2", title: "Runbook", path: "/public/runbook", contentMarkdown: "" },
+      ],
+      links: [],
+      tags: [],
+    });
+
+    expect(graph.links).toEqual([
+      {
+        id: "wiki:doc-1:wiki:broken:raw:Secret%2FRunbook",
+        source: "document:doc-1",
+        target: "wiki:broken:raw:Secret%2FRunbook",
+        kind: "wiki",
+      },
+    ]);
+    expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
+  });
+
+  it("resolves body links to readable slash-containing document titles", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: "See [[Q1/Q2 Plan]].",
+        },
+        { id: "doc-2", title: "Q1/Q2 Plan", path: "/q1q2-plan", contentMarkdown: "" },
+      ],
+      links: [],
+      tags: [],
+    });
+
+    expect(graph.links).toEqual([
+      {
+        id: "wiki:doc-1:document:doc-2",
+        source: "document:doc-1",
+        target: "document:doc-2",
+        kind: "wiki",
+      },
+    ]);
+  });
+
+  it("builds typed graph links from resolved links, broken links, and tags", () => {
+    const graph = buildKnowledgeGraph(fixture);
+
+    expect(graph.links).toEqual([
       {
         id: "tag:doc-1:design",
         source: "document:doc-1",
@@ -90,21 +198,21 @@ describe("knowledge graph model", () => {
         kind: "tag",
       },
       {
+        id: "wiki:doc-1:wiki:broken:missing-runbook",
+        source: "document:doc-1",
+        target: "wiki:broken:missing-runbook",
+        kind: "wiki",
+      },
+      {
         id: "wiki:link-1",
         source: "document:doc-1",
         target: "document:doc-2",
         kind: "wiki",
       },
-      {
-        id: "wiki:link-2",
-        source: "document:doc-1",
-        target: "wiki:broken:missing-runbook",
-        kind: "wiki",
-      },
     ]);
   });
 
-  it("does not merge distinct non-ASCII wiki and property labels", () => {
+  it("does not merge distinct non-ASCII wiki labels", () => {
     const graph = buildKnowledgeGraph({
       documents: [{ id: "doc-1", title: "Welcome", path: "/welcome" }],
       links: [
@@ -126,14 +234,9 @@ describe("knowledge graph model", () => {
         },
       ],
       tags: [],
-      properties: [
-        { documentId: "doc-1", key: "상태", valueJson: "진행", valueType: "string" },
-        { documentId: "doc-1", key: "상태", valueJson: "완료", valueType: "string" },
-      ],
     });
 
     const wikiNodes = graph.nodes.filter((node) => node.kind === "wiki");
-    const propertyNodes = graph.nodes.filter((node) => node.kind === "property");
 
     expect(wikiNodes).toHaveLength(2);
     expect(wikiNodes.map((node) => node.id)).toEqual([
@@ -141,13 +244,20 @@ describe("knowledge graph model", () => {
       "wiki:broken:raw:%EC%9A%B4%EC%98%81%20%EB%AC%B8%EC%84%9C",
     ]);
     expect(wikiNodes.map((node) => node.label)).toEqual(["개발 문서", "운영 문서"]);
+  });
 
-    expect(propertyNodes).toHaveLength(2);
-    expect(propertyNodes.map((node) => node.id)).toEqual([
-      "property:raw:%EC%83%81%ED%83%9C:raw:%EC%99%84%EB%A3%8C",
-      "property:raw:%EC%83%81%ED%83%9C:raw:%EC%A7%84%ED%96%89",
-    ]);
-    expect(propertyNodes.map((node) => node.label)).toEqual(["상태: 완료", "상태: 진행"]);
+  it("does not emit property graph nodes or links", () => {
+    const graph = buildKnowledgeGraph({
+      ...fixture,
+      properties: [
+        { documentId: "doc-1", key: "status", valueJson: "active", valueType: "string" },
+      ],
+    } as KnowledgeGraphInput & {
+      properties: Array<{ documentId: string; key: string; valueJson: unknown; valueType: string }>;
+    });
+
+    expect(graph.nodes.some((node) => node.id.startsWith("property:"))).toBe(false);
+    expect(graph.links.some((link) => link.id.startsWith("property:"))).toBe(false);
   });
 
   it("returns deterministic graph order regardless of input order", () => {
@@ -155,23 +265,19 @@ describe("knowledge graph model", () => {
       ...fixture,
       documents: [...fixture.documents].reverse(),
       links: [...fixture.links].reverse(),
-      properties: [...fixture.properties].reverse(),
     });
 
     expect(graph.nodes.map((node) => node.id)).toEqual([
       "document:doc-1",
       "document:doc-2",
-      "property:score:5",
-      "property:status:active",
+      "document:doc-3",
       "tag:design",
       "wiki:broken:missing-runbook",
     ]);
     expect(graph.links.map((link) => link.id)).toEqual([
-      "property:doc-1:status:active",
-      "property:doc-2:score:5",
       "tag:doc-1:design",
+      "wiki:doc-1:wiki:broken:missing-runbook",
       "wiki:link-1",
-      "wiki:link-2",
     ]);
   });
 
@@ -185,22 +291,22 @@ describe("knowledge graph model", () => {
     expect(focus.focusedLinkIds.has("wiki:link-1")).toBe(true);
   });
 
-  it("filters visible links and keeps documents plus connected non-document nodes", () => {
+  it("always keeps wiki links and filters tags and orphan document nodes", () => {
     const graph = buildKnowledgeGraph(fixture);
-    const filtered = filterKnowledgeGraph(graph, { wiki: false, tag: true, property: false });
+    const filtered = filterKnowledgeGraph(graph, { tag: false, orphans: false });
 
-    expect(filtered.links).toEqual([
-      {
-        id: "tag:doc-1:design",
-        source: "document:doc-1",
-        target: "tag:design",
-        kind: "tag",
-      },
-    ]);
+    expect(filtered.links.map((link) => link.kind)).toEqual(["wiki", "wiki"]);
     expect(filtered.nodes.map((node) => node.id).sort()).toEqual([
       "document:doc-1",
       "document:doc-2",
-      "tag:design",
+      "wiki:broken:missing-runbook",
     ]);
+  });
+
+  it("keeps orphan document nodes when the orphans filter is enabled", () => {
+    const graph = buildKnowledgeGraph(fixture);
+    const filtered = filterKnowledgeGraph(graph, { tag: false, orphans: true });
+
+    expect(filtered.nodes.map((node) => node.id)).toContain("document:doc-3");
   });
 });

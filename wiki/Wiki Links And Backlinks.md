@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-24
-source_count: 26
+updated: 2026-05-25
+source_count: 28
 tags:
   - munjib
   - wiki-links
@@ -54,9 +54,11 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 7. 후보가 없으면 broken link로 저장한다.
 8. 후보가 여러 개면 `isAmbiguous=true`, `isBroken=false`, `targetDocumentId=null`로 저장하고 임의 target을 선택하지 않는다.
 
-본문 content 영역의 `[[...]]`는 preview navigation 대상으로는 렌더링하지만 Properties Links row와 backlink graph의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
+본문 content 영역의 `[[...]]`는 preview navigation 대상으로 렌더링하고 workspace graph view의 graph-only edge 후보로도 사용하지만, Properties Links row와 backlinks의 `DocumentLink` edge로 저장하지 않는다. `DocumentLink.sortOrder`는 YAML `links:` 배열 순서를 보존해 Properties Links row가 markdown 파일 순서와 일치하도록 한다.
 
 이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown의 frontmatter links와 항상 다시 맞춰지도록 단순하게 만든다.
+
+Issue #65 이후 target resolution 규칙은 `lib/wiki-links/resolve.ts`의 순수 helper `resolveWikiLinkTarget()`에 모여 있다. Reconciliation은 이 helper를 호출해 기존 `DocumentLink` 저장 의미를 유지하고, graph 전용 full-markdown link construction도 같은 path-qualified, underscore-aware, ambiguous/broken 판정 규칙을 재사용할 수 있다.
 
 Issue #59는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정했다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
 
@@ -90,7 +92,7 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
-Issue #34 workspace graph view도 같은 frontmatter link source를 사용한다. Resolved frontmatter wiki link는 source document node에서 readable target document node로 향하는 `wiki` edge로 렌더링하고, broken 또는 ambiguous link는 readable target document를 임의 선택하지 않고 raw wiki value node로 연결한다.
+Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki link는 source document node에서 readable target document node로 향하는 `wiki` edge로 렌더링하고, broken 또는 ambiguous link는 readable target document를 임의 선택하지 않고 raw wiki value node로 연결한다.
 
 ## Broken link에서 문서 생성
 
@@ -111,6 +113,7 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 
 - `lib/wiki-links/parser.ts`
 - `lib/wiki-links/reconcile.ts`
+- `lib/wiki-links/resolve.ts`
 - `lib/wiki-links/targets.ts`
 - `lib/wiki-links/service.ts`
 - `lib/knowledge-graph/model.ts`
@@ -128,6 +131,7 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
 - GitHub issue #59
+- `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`
 - Issue #25 final review blocker fix
 - `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`
 - `docs/superpowers/plans/2026-05-24-underscore-wiki-link-targets.md`

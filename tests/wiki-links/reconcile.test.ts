@@ -314,6 +314,40 @@ Read [[Ignored Content Link]].`,
     expect(link.isAmbiguous).toBe(false);
   });
 
+  it("continues to resolve path-qualified links after moving target resolution to a shared helper", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const folder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Runbook",
+      contentMarkdown: "",
+      folderId: folder.id,
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: "---\nlinks:\n  - \"[[Operations/Incident Runbook]]\"\n---\n",
+    });
+
+    const panels = await getDocumentLinkPanels(source.id, fixture.user.id);
+
+    expect(panels.outgoing).toEqual([
+      expect.objectContaining({
+        targetDocument: expect.objectContaining({
+          id: target.id,
+          title: "Incident Runbook",
+        }),
+      }),
+    ]);
+  });
+
   it("resolves frontmatter underscore targets to document titles with spaces", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const target = await createDocument({

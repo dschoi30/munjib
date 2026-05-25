@@ -262,7 +262,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 
 ## Workspace knowledge graph DTO
 
-Issue #34 graph view는 새 storage model을 추가하지 않는다. Workspace page가 readable active `Document`를 source of truth로 삼고, 기존 `DocumentLink`, `DocumentTag`, `DocumentProperty` row를 읽어 document/tag/wiki/property node와 wiki/tag/property typed edge DTO로 변환한다. 이 DTO는 `lib/knowledge-graph/model.ts`에서 구성되고, UI filter와 selected document focus도 저장 상태가 아니라 같은 graph DTO의 파생값이다.
+Issue #34 graph view는 새 storage model을 추가하지 않는다. Workspace page가 readable active `Document`를 source of truth로 삼고, 기존 `DocumentLink`와 `DocumentTag` row를 읽어 document/tag/wiki node와 wiki/tag typed edge DTO로 변환한다. Issue #65 이후 `DocumentLink` 저장은 Properties/backlinks를 위해 frontmatter `links:` 기준으로 유지하지만, graph DTO construction은 readable active documents의 full `contentMarkdown`도 scan해 `[[...]]` wiki link를 graph-only edge 후보로 추가한다. Property graph nodes와 property edges는 visible graph contract에서 제거되었다. 이 DTO는 `lib/knowledge-graph/model.ts`에서 구성되고, UI filter와 selected document focus도 저장 상태가 아니라 같은 graph DTO의 파생값이다.
 
 ## 첨부와 댓글
 
