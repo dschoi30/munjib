@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T19:08:00+09:00 - review follow-up
+
+- Result: PR #68 review feedback에 따라 hidden selected focus와 label offset 계산을 보정했다.
+- Coverage: Selected document가 현재 filter 결과에서 숨겨진 경우 selected focus를 비워 visible graph가 불필요하게 dim 처리되지 않게 했다. Label Y offset은 node radius와 font height를 graph unit으로 유지하고, fixed screen gap인 `LABEL_PADDING`만 `globalScale`로 나눠 zoom-in 상태에서도 node와 label 간격을 보존한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #68 review threads, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T18:00:00+09:00 - implementation
 
 - Result: Issue #67 knowledge graph zoom and session display controls 구현과 Task 3 verification을 마무리했다.
