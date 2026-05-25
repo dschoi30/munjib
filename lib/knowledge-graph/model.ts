@@ -114,6 +114,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   }
 
   const addWikiEdge = (link: {
+    edgeId: string;
     sourceDocumentId: string;
     targetDocumentId: string | null;
     targetTitleRaw: string;
@@ -144,7 +145,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     const key = `${source}->${target}`;
     if (!wikiLinksByKey.has(key)) {
       wikiLinksByKey.set(key, {
-        id: `wiki:${link.sourceDocumentId}:${target}`,
+        id: link.edgeId,
         source,
         target,
         kind: "wiki",
@@ -153,13 +154,22 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   };
 
   for (const link of input.links) {
-    addWikiEdge(link);
+    addWikiEdge({ ...link, edgeId: `wiki:${link.id}` });
   }
 
   for (const document of input.documents) {
-    for (const link of parseWikiLinks(stripDocumentFrontmatter(document.contentMarkdown ?? ""))) {
+    const scannableMarkdown = stripDocumentFrontmatter(document.contentMarkdown ?? "");
+    if (!scannableMarkdown.includes("[[")) {
+      continue;
+    }
+
+    for (const link of parseWikiLinks(scannableMarkdown)) {
       const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw);
+      const syntheticTargetId = resolved.targetDocumentId
+        ? documentNodeId(resolved.targetDocumentId)
+        : wikiNodeId(resolved.isAmbiguous ? "ambiguous" : "broken", link.targetTitleRaw);
       addWikiEdge({
+        edgeId: `wiki:${document.id}:${syntheticTargetId}`,
         sourceDocumentId: document.id,
         targetDocumentId: resolved.targetDocumentId,
         targetTitleRaw: link.targetTitleRaw,

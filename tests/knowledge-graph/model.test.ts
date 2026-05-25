@@ -68,7 +68,7 @@ describe("knowledge graph model", () => {
     expect(graph.links).toEqual(
       expect.arrayContaining([
         {
-          id: "wiki:doc-1:document:doc-2",
+          id: "wiki:link-1",
           source: "document:doc-1",
           target: "document:doc-2",
           kind: "wiki",
@@ -127,7 +127,7 @@ See [[Body Target]].`,
         kind: "wiki",
       },
       {
-        id: "wiki:doc-1:wiki:ambiguous:runbook",
+        id: "wiki:link-1",
         source: "document:doc-1",
         target: "wiki:ambiguous:runbook",
         kind: "wiki",
@@ -147,15 +147,15 @@ See [[Body Target]].`,
         kind: "tag",
       },
       {
-        id: "wiki:doc-1:document:doc-2",
-        source: "document:doc-1",
-        target: "document:doc-2",
-        kind: "wiki",
-      },
-      {
         id: "wiki:doc-1:wiki:broken:missing-runbook",
         source: "document:doc-1",
         target: "wiki:broken:missing-runbook",
+        kind: "wiki",
+      },
+      {
+        id: "wiki:link-1",
+        source: "document:doc-1",
+        target: "document:doc-2",
         kind: "wiki",
       },
     ]);
@@ -225,8 +225,8 @@ See [[Body Target]].`,
     ]);
     expect(graph.links.map((link) => link.id)).toEqual([
       "tag:doc-1:design",
-      "wiki:doc-1:document:doc-2",
       "wiki:doc-1:wiki:broken:missing-runbook",
+      "wiki:link-1",
     ]);
   });
 
@@ -237,7 +237,7 @@ See [[Body Target]].`,
     expect(focus.focusedNodeIds.has("document:doc-1")).toBe(true);
     expect(focus.focusedNodeIds.has("document:doc-2")).toBe(true);
     expect(focus.focusedNodeIds.has("tag:design")).toBe(true);
-    expect(focus.focusedLinkIds.has("wiki:doc-1:document:doc-2")).toBe(true);
+    expect(focus.focusedLinkIds.has("wiki:link-1")).toBe(true);
   });
 
   it("always keeps wiki links and filters tags and orphan document nodes", () => {
