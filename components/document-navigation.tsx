@@ -94,9 +94,7 @@ export function DocumentNavigation({
   const favoriteFolderIds = useMemo(() => new Set(favorites.folders), [favorites.folders]);
   const favoriteDocuments = documents.filter((document) => favoriteDocumentIds.has(document.id));
   const favoriteFolders = folders.filter((folder) => favoriteFolderIds.has(folder.id));
-  const recentDocuments = documents
-    .filter((document) => !favoriteDocumentIds.has(document.id))
-    .slice(0, 5);
+  const recentDocuments = documents.slice(0, 5);
   const searchResults = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return documents;
