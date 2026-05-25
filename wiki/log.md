@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T16:10:00+09:00 - design
+
+- Result: Issue #67 knowledge graph zoom and session display controls 설계를 승인된 범위로 기록했다.
+- Coverage: Graph view는 zoom range 상한/하한으로 node와 label이 과도하게 커지거나 작아지는 것을 방지하고, label font size를 zoom에 따라 bounded scaling하며, label을 effective node size 아래에 배치하는 방향이다. Tags/Orphans filters는 기본 unchecked가 되고, filters/display/forces option은 workspace-scoped `sessionStorage`에 저장되어 browser session 동안 마지막 변경값을 유지한다. Node size slider는 유지하되 `Node size = 1`의 baseline을 더 작게 정의하고 문서 수 tier로 effective node size를 조정한다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #67, `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`.
+- Verification: Spec self-review.
+
 ## 2026-05-25T15:35:00+09:00 - verification follow-up
 
 - Result: E2E seed 재실행이 canonical fixture document titles를 복구하지 못하던 문제를 수정했다.
