@@ -162,6 +162,31 @@ See [[Body Target]].`,
     expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
   });
 
+  it("resolves body links to readable slash-containing document titles", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: "See [[Q1/Q2 Plan]].",
+        },
+        { id: "doc-2", title: "Q1/Q2 Plan", path: "/q1q2-plan", contentMarkdown: "" },
+      ],
+      links: [],
+      tags: [],
+    });
+
+    expect(graph.links).toEqual([
+      {
+        id: "wiki:doc-1:document:doc-2",
+        source: "document:doc-1",
+        target: "document:doc-2",
+        kind: "wiki",
+      },
+    ]);
+  });
+
   it("builds typed graph links from resolved links, broken links, and tags", () => {
     const graph = buildKnowledgeGraph(fixture);
 
