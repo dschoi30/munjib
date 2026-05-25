@@ -104,6 +104,45 @@ function createGraph(): KnowledgeGraphData {
   };
 }
 
+function createDocumentCountGraph(documentCount: number): KnowledgeGraphData {
+  const nodes = Array.from({ length: documentCount }, (_, index) => ({
+    id: `document:doc-${index + 1}`,
+    kind: "document" as const,
+    label: `Document ${index + 1}`,
+    documentId: `doc-${index + 1}`,
+    title: `Document ${index + 1}`,
+    path: `/document-${index + 1}`,
+  }));
+
+  return { nodes, links: [] };
+}
+
+function createTagOnlyDocumentGraph(documentCount: number): KnowledgeGraphData {
+  const tagNode = {
+    id: "tag:hidden",
+    kind: "tag" as const,
+    label: "#Hidden",
+    name: "Hidden",
+    normalizedName: "hidden",
+  };
+  const documentNodes = Array.from({ length: documentCount }, (_, index) => ({
+    id: `document:doc-${index + 1}`,
+    kind: "document" as const,
+    label: `Document ${index + 1}`,
+    documentId: `doc-${index + 1}`,
+    title: `Document ${index + 1}`,
+    path: `/document-${index + 1}`,
+  }));
+  const links = documentNodes.map((node) => ({
+    id: `tag:${node.documentId}:hidden`,
+    source: node.id,
+    target: tagNode.id,
+    kind: "tag" as const,
+  }));
+
+  return { nodes: [...documentNodes, tagNode], links };
+}
+
 function renderGraph(graph = createGraph()) {
   return render(
     <KnowledgeGraphView
@@ -112,6 +151,32 @@ function renderGraph(graph = createGraph()) {
       selectedDocumentId="doc-1"
     />,
   );
+}
+
+function createSessionStorageMock() {
+  const values = new Map<string, string>();
+
+  return {
+    clear: vi.fn(() => values.clear()),
+    getItem: vi.fn((key: string) => values.get(key) ?? null),
+    removeItem: vi.fn((key: string) => values.delete(key)),
+    setItem: vi.fn((key: string, value: string) => {
+      values.set(key, value);
+    }),
+  };
+}
+
+function getInput(label: string) {
+  return screen.getByLabelText(label) as HTMLInputElement;
+}
+
+function parseCanvasFont(font: string) {
+  const match = font.match(/^([0-9.]+)px (.+)$/);
+
+  return {
+    fontSize: match ? Number(match[1]) : Number.NaN,
+    family: match?.[2] ?? "",
+  };
 }
 
 beforeEach(() => {
@@ -124,6 +189,11 @@ beforeEach(() => {
   forceGraphMock.state.forceMethods.charge.strength.mockClear();
   forceGraphMock.state.forceMethods.link.distance.mockClear();
   forceGraphMock.state.forceMethods.link.strength.mockClear();
+
+  Object.defineProperty(window, "sessionStorage", {
+    configurable: true,
+    value: createSessionStorageMock(),
+  });
 
   Object.defineProperties(HTMLElement.prototype, {
     clientWidth: { configurable: true, get: () => 720 },
@@ -142,8 +212,8 @@ describe("KnowledgeGraphView", () => {
     expect(screen.getByTestId("force-graph")).toBeTruthy();
     expect(screen.getByText("Filters")).toBeTruthy();
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
-    expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
     expect(screen.queryByLabelText("Properties")).toBeNull();
 
     const controls = screen.getByTestId("knowledge-graph-controls");
@@ -173,20 +243,197 @@ describe("KnowledgeGraphView", () => {
       "Forces",
     );
     expect(screen.queryByLabelText("Wiki links")).toBeNull();
-    expect(screen.getByLabelText("Tags")).toBeTruthy();
-    expect(screen.getByLabelText("Orphans")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
     expect(screen.queryByLabelText("Properties")).toBeNull();
   });
 
-  it("filters tag links and leaves only document nodes when Tags is unchecked", () => {
+  it("starts tag filtering disabled and restores tag links when Tags is checked", () => {
     const graph = createGraph();
     renderGraph();
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [],
+      links: [],
+    });
 
     fireEvent.click(screen.getByLabelText("Tags"));
 
     expect(forceGraphMock.state.latestProps?.graphData).toEqual({
-      nodes: [graph.nodes[0]],
-      links: [],
+      nodes: graph.nodes,
+      links: graph.links.map((link) => ({
+        ...link,
+        sourceId: link.source,
+        targetId: link.target,
+      })),
+    });
+  });
+
+  it("persists filters, display, and forces in workspace session storage", async () => {
+    renderGraph();
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    fireEvent.change(screen.getByLabelText("Node size"), { target: { value: "8" } });
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    fireEvent.change(screen.getByLabelText("Repel force"), { target: { value: "-180" } });
+
+    await waitFor(() => {
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+        JSON.stringify({ tag: true, orphans: false }),
+      );
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:display",
+        JSON.stringify({
+          arrows: false,
+          linkThickness: 1,
+          nodeSize: 8,
+          textFadeThreshold: 1,
+        }),
+      );
+      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:forces",
+        JSON.stringify({
+          center: 0.3,
+          link: 0.4,
+          linkDistance: 80,
+          repel: -180,
+        }),
+      );
+    });
+  });
+
+  it("restores valid workspace graph settings from session storage", async () => {
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:filters",
+      JSON.stringify({ tag: true, orphans: true }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:display",
+      JSON.stringify({
+        arrows: true,
+        linkThickness: 3,
+        nodeSize: 8,
+        textFadeThreshold: 2,
+      }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:forces",
+      JSON.stringify({
+        center: 0.6,
+        link: 0.7,
+        linkDistance: 120,
+        repel: -180,
+      }),
+    );
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(getInput("Tags").checked).toBe(true);
+      expect(getInput("Orphans").checked).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(getInput("Arrows").checked).toBe(true);
+    expect(getInput("Node size").value).toBe("8");
+    expect(getInput("Text fade threshold").value).toBe("2");
+    expect(getInput("Link thickness").value).toBe("3");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(getInput("Center force").value).toBe("0.6");
+    expect(getInput("Repel force").value).toBe("-180");
+    expect(getInput("Link force").value).toBe("0.7");
+    expect(getInput("Link distance").value).toBe("120");
+  });
+
+  it("ignores invalid session storage settings and keeps defaults", async () => {
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:filters",
+      JSON.stringify({ tag: true, orphans: "yes" }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:display",
+      JSON.stringify({
+        arrows: false,
+        linkThickness: 20,
+        nodeSize: 8,
+        textFadeThreshold: 2,
+      }),
+    );
+    window.sessionStorage.setItem(
+      "munjib:knowledge-graph:company-handbook:v1:forces",
+      "not-json",
+    );
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+      );
+    });
+
+    expect(getInput("Tags").checked).toBe(false);
+    expect(getInput("Orphans").checked).toBe(false);
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(getInput("Node size").value).toBe("3");
+    expect(getInput("Link thickness").value).toBe("1");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(getInput("Repel force").value).toBe("-120");
+  });
+
+  it("keeps rendering when session storage reads throw during mount", () => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        ...createSessionStorageMock(),
+        getItem: vi.fn(() => {
+          throw new Error("session storage blocked");
+        }),
+      },
+    });
+
+    renderGraph();
+
+    expect(screen.getByTestId("force-graph")).toBeTruthy();
+    expect(getInput("Tags").checked).toBe(false);
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    expect(getInput("Tags").checked).toBe(true);
+    expect(forceGraphMock.state.latestProps?.graphData).toMatchObject({
+      links: [expect.objectContaining({ id: "tag:doc-1:design" })],
+    });
+  });
+
+  it("keeps interactions working when session storage writes throw during persistence", async () => {
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      value: {
+        ...createSessionStorageMock(),
+        setItem: vi.fn(() => {
+          throw new Error("session storage quota exceeded");
+        }),
+      },
+    });
+
+    renderGraph();
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
+        "munjib:knowledge-graph:company-handbook:v1:filters",
+      );
+    });
+
+    fireEvent.click(screen.getByLabelText("Tags"));
+
+    expect(getInput("Tags").checked).toBe(true);
+    expect(forceGraphMock.state.latestProps?.graphData).toMatchObject({
+      links: [expect.objectContaining({ id: "tag:doc-1:design" })],
     });
   });
 
@@ -206,6 +453,7 @@ describe("KnowledgeGraphView", () => {
   it("keeps app graph data immutable when force graph mutates rendered links", () => {
     const graph = createGraph();
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const renderedGraph = forceGraphMock.state.latestProps?.graphData as {
       nodes: Array<KnowledgeGraphData["nodes"][number]>;
@@ -217,7 +465,7 @@ describe("KnowledgeGraphView", () => {
     fireEvent.click(screen.getByLabelText("Tags"));
 
     expect(forceGraphMock.state.latestProps?.graphData).toEqual({
-      nodes: [graph.nodes[0]],
+      nodes: [],
       links: [],
     });
     expect(graph.links[0].source).toBe("document:doc-1");
@@ -227,6 +475,7 @@ describe("KnowledgeGraphView", () => {
   it("preserves renderer object identity across filter toggles", () => {
     const graph = createGraph();
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const initialRenderedGraph = forceGraphMock.state.latestProps?.graphData as {
       nodes: Array<KnowledgeGraphData["nodes"][number]>;
@@ -269,6 +518,7 @@ describe("KnowledgeGraphView", () => {
       links: createGraph().links,
     };
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
       | ((node: KnowledgeGraphData["nodes"][number]) => string)
@@ -289,6 +539,80 @@ describe("KnowledgeGraphView", () => {
         kind: "wiki",
       }),
     ).toBe("#94a3b844");
+  });
+
+  it("does not dim visible wiki-linked nodes when the selected document is filtered out", () => {
+    const graph: KnowledgeGraphData = {
+      nodes: [
+        {
+          id: "document:doc-1",
+          kind: "document",
+          label: "Tagged",
+          documentId: "doc-1",
+          title: "Tagged",
+          path: "/tagged",
+        },
+        {
+          id: "tag:hidden",
+          kind: "tag",
+          label: "#Hidden",
+          name: "Hidden",
+          normalizedName: "hidden",
+        },
+        {
+          id: "document:doc-2",
+          kind: "document",
+          label: "Linked",
+          documentId: "doc-2",
+          title: "Linked",
+          path: "/linked",
+        },
+        {
+          id: "wiki:broken:missing",
+          kind: "wiki",
+          label: "Missing",
+          targetTitleRaw: "Missing",
+          state: "broken",
+        },
+      ],
+      links: [
+        {
+          id: "tag:doc-1:hidden",
+          source: "document:doc-1",
+          target: "tag:hidden",
+          kind: "tag",
+        },
+        {
+          id: "wiki:doc-2:wiki:broken:missing",
+          source: "document:doc-2",
+          target: "wiki:broken:missing",
+          kind: "wiki",
+        },
+      ],
+    };
+    renderGraph(graph);
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [graph.nodes[2], graph.nodes[3]],
+      links: [
+        {
+          ...graph.links[1],
+          sourceId: graph.links[1].source,
+          targetId: graph.links[1].target,
+        },
+      ],
+    });
+
+    const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
+      | ((node: KnowledgeGraphData["nodes"][number]) => string)
+      | undefined;
+    const linkColor = forceGraphMock.state.latestProps?.linkColor as
+      | ((link: KnowledgeGraphData["links"][number]) => string)
+      | undefined;
+
+    expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
+    expect(nodeColor?.(graph.nodes[3])).toBe("#8b5cf6");
+    expect(linkColor?.(graph.links[1])).toBe("#94a3b8");
   });
 
   it("does not dim the graph when no document is selected", () => {
@@ -330,7 +654,9 @@ describe("KnowledgeGraphView", () => {
     expect(linkThicknessInput.getAttribute("max")).toBe("5");
     expect(forceGraphMock.state.latestProps).toMatchObject({
       linkDirectionalArrowLength: 0,
-      nodeRelSize: 3,
+      maxZoom: 3.5,
+      minZoom: 0.35,
+      nodeRelSize: 2.55,
     });
 
     fireEvent.click(screen.getByLabelText("Arrows"));
@@ -339,7 +665,7 @@ describe("KnowledgeGraphView", () => {
 
     expect(forceGraphMock.state.latestProps).toMatchObject({
       linkDirectionalArrowLength: 4,
-      nodeRelSize: 8,
+      nodeRelSize: 6.8,
     });
 
     const linkWidth = forceGraphMock.state.latestProps?.linkWidth as
@@ -351,6 +677,48 @@ describe("KnowledgeGraphView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Collapse display" }));
 
     expect(screen.queryByLabelText("Arrows")).toBeNull();
+  });
+
+  it("scales node size baseline down as document count grows", () => {
+    const { rerender } = render(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(20)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(2.55);
+
+    rerender(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(120)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.65);
+
+    rerender(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(260)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.35);
+  });
+
+  it("sizes nodes from the total workspace document count even when filters hide every node", () => {
+    renderGraph(createTagOnlyDocumentGraph(120));
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [],
+      links: [],
+    });
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.65);
   });
 
   it("uses text fade threshold when drawing node labels", () => {
@@ -374,14 +742,30 @@ describe("KnowledgeGraphView", () => {
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 1);
 
+    expect(parseCanvasFont(context.font)).toEqual({
+      fontSize: 12,
+      family: "sans-serif",
+    });
     expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.50)");
     expect(context.textAlign).toBe("center");
     expect(context.textBaseline).toBe("middle");
-    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 41);
+    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 43.55);
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 3.5);
+    expect(parseCanvasFont(context.font)).toEqual({
+      fontSize: 9,
+      family: "sans-serif",
+    });
+    expect(context.fillText).toHaveBeenLastCalledWith("Welcome", 20, 38.47857142857143);
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.75);
+    const expandedFont = parseCanvasFont(context.font);
+    expect(expandedFont.fontSize).toBeCloseTo(13.8564, 4);
+    expect(expandedFont.family).toBe("sans-serif");
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.1);
 
-    expect(context.fillText).toHaveBeenCalledTimes(1);
+    expect(context.fillText).toHaveBeenCalledTimes(3);
   });
 
   it("hides node labels when the graph is zoomed too far out", () => {
@@ -533,6 +917,7 @@ describe("KnowledgeGraphView", () => {
       ],
     };
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const onNodeHover = forceGraphMock.state.latestProps?.onNodeHover as
       | ((node: KnowledgeGraphData["nodes"][number] | null) => void)
@@ -618,7 +1003,7 @@ describe("KnowledgeGraphView", () => {
     const linkColor = forceGraphMock.state.latestProps?.linkColor as
       | ((link: KnowledgeGraphData["links"][number]) => string)
       | undefined;
-    expect(linkColor?.(graph.links[0])).toBe("#64748b");
+    expect(linkColor?.(graph.links[0])).toBe("#94a3b8");
   });
 
   it("routes document node clicks to the selected workspace document", () => {
