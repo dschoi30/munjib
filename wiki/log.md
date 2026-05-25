@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-24
-source_count: 107
+updated: 2026-05-25
+source_count: 108
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T12:05:00+09:00 - implementation
+
+- Result: Issue #63에서 sidebar document tree 정렬, Recents 유지, top-level 생성 위치를 정리했다.
+- Coverage: Folder/document tree는 parent 안에서 folder 우선과 title/name 오름차순을 사용한다. `Recents`는 favorites 상태와 무관하게 workspace page가 내려준 readable document 순서의 앞 5개를 유지한다. Top-level `New document`와 `New folder`는 선택 folder와 무관하게 root hidden value를 제출하고, folder-scoped creation은 folder row action menu에서만 실행한다.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #63, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `components/document-navigation/tree.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-24T19:55:00+09:00 - review follow-up
 

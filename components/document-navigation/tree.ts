@@ -21,7 +21,7 @@ function compareTreeRows(left: TreeRow, right: TreeRow) {
 
   const leftLabel = left.kind === "folder" ? left.folder.name : left.document.title;
   const rightLabel = right.kind === "folder" ? right.folder.name : right.document.title;
-  const labelComparison = rightLabel.localeCompare(leftLabel, undefined, {
+  const labelComparison = leftLabel.localeCompare(rightLabel, undefined, {
     sensitivity: "base",
   });
   if (labelComparison !== 0) return labelComparison;

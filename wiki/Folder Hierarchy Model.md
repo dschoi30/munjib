@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-05-24
-source_count: 33
+updated: 2026-05-25
+source_count: 35
 tags:
   - munjib
   - data-model
@@ -93,9 +93,9 @@ Issue #29 구현은 path model을 center navigation toolbar에 노출한다. Doc
 
 Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chevron icon을 사용한다. 펼쳐진 folder의 하위 row group은 chevron 아래로 이어지는 왼쪽 세로선을 표시해 folder/document 관계를 시각적으로 묶는다.
 
-`New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. `New document`는 현재 선택된 folder id를 hidden input으로 넘기며, folder 선택 상태에서는 새 문서가 해당 folder 아래에 생성된다.
+`New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. Sidebar top-level `New document`와 `New folder`는 현재 선택 folder id를 hidden input으로 넘기지 않고 항상 workspace root에 생성한다. Folder 안의 새 folder/document 생성은 folder row action menu의 `Add folder`와 `Add document`가 담당한다.
 
-문서 navigation row는 duplicate title이 있어도 화면에는 항상 document `title`만 표시한다. Duplicate title 구분이 필요한 action label이나 내부 identity는 `Document.path`를 사용할 수 있지만, sidebar visible label은 `Title · /folder/title`처럼 path context를 붙이지 않는다. Sidebar tree는 같은 parent 안에서 folder를 document보다 먼저 보여주고, folder name과 document title은 각각 내림차순으로 정렬한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, tree depth와 무관하게 동일한 left padding을 사용한다. 전체 tree section은 `Documents` heading 아래에 표시한다.
+문서 navigation row는 duplicate title이 있어도 화면에는 항상 document `title`만 표시한다. Duplicate title 구분이 필요한 action label이나 내부 identity는 `Document.path`를 사용할 수 있지만, sidebar visible label은 `Title · /folder/title`처럼 path context를 붙이지 않는다. Sidebar tree는 같은 parent 안에서 folder를 document보다 먼저 보여주고, folder name과 document title은 각각 오름차순으로 정렬한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, favorites localStorage 상태와 무관하게 workspace page가 내려준 readable document 순서를 유지한다. 전체 tree section은 `Documents` heading 아래에 표시한다.
 
 Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
 
