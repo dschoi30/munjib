@@ -104,6 +104,45 @@ function createGraph(): KnowledgeGraphData {
   };
 }
 
+function createDocumentCountGraph(documentCount: number): KnowledgeGraphData {
+  const nodes = Array.from({ length: documentCount }, (_, index) => ({
+    id: `document:doc-${index + 1}`,
+    kind: "document" as const,
+    label: `Document ${index + 1}`,
+    documentId: `doc-${index + 1}`,
+    title: `Document ${index + 1}`,
+    path: `/document-${index + 1}`,
+  }));
+
+  return { nodes, links: [] };
+}
+
+function createTagOnlyDocumentGraph(documentCount: number): KnowledgeGraphData {
+  const tagNode = {
+    id: "tag:hidden",
+    kind: "tag" as const,
+    label: "#Hidden",
+    name: "Hidden",
+    normalizedName: "hidden",
+  };
+  const documentNodes = Array.from({ length: documentCount }, (_, index) => ({
+    id: `document:doc-${index + 1}`,
+    kind: "document" as const,
+    label: `Document ${index + 1}`,
+    documentId: `doc-${index + 1}`,
+    title: `Document ${index + 1}`,
+    path: `/document-${index + 1}`,
+  }));
+  const links = documentNodes.map((node) => ({
+    id: `tag:${node.documentId}:hidden`,
+    source: node.id,
+    target: tagNode.id,
+    kind: "tag" as const,
+  }));
+
+  return { nodes: [...documentNodes, tagNode], links };
+}
+
 function renderGraph(graph = createGraph()) {
   return render(
     <KnowledgeGraphView
@@ -129,6 +168,15 @@ function createSessionStorageMock() {
 
 function getInput(label: string) {
   return screen.getByLabelText(label) as HTMLInputElement;
+}
+
+function parseCanvasFont(font: string) {
+  const match = font.match(/^([0-9.]+)px (.+)$/);
+
+  return {
+    fontSize: match ? Number(match[1]) : Number.NaN,
+    family: match?.[2] ?? "",
+  };
 }
 
 beforeEach(() => {
@@ -531,7 +579,9 @@ describe("KnowledgeGraphView", () => {
     expect(linkThicknessInput.getAttribute("max")).toBe("5");
     expect(forceGraphMock.state.latestProps).toMatchObject({
       linkDirectionalArrowLength: 0,
-      nodeRelSize: 3,
+      maxZoom: 3.5,
+      minZoom: 0.35,
+      nodeRelSize: 2.55,
     });
 
     fireEvent.click(screen.getByLabelText("Arrows"));
@@ -540,7 +590,7 @@ describe("KnowledgeGraphView", () => {
 
     expect(forceGraphMock.state.latestProps).toMatchObject({
       linkDirectionalArrowLength: 4,
-      nodeRelSize: 8,
+      nodeRelSize: 6.8,
     });
 
     const linkWidth = forceGraphMock.state.latestProps?.linkWidth as
@@ -552,6 +602,48 @@ describe("KnowledgeGraphView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Collapse display" }));
 
     expect(screen.queryByLabelText("Arrows")).toBeNull();
+  });
+
+  it("scales node size baseline down as document count grows", () => {
+    const { rerender } = render(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(20)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(2.55);
+
+    rerender(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(120)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.65);
+
+    rerender(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createDocumentCountGraph(260)}
+        selectedDocumentId={null}
+      />,
+    );
+
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.35);
+  });
+
+  it("sizes nodes from the total workspace document count even when filters hide every node", () => {
+    renderGraph(createTagOnlyDocumentGraph(120));
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [],
+      links: [],
+    });
+    expect(forceGraphMock.state.latestProps?.nodeRelSize).toBe(1.65);
   });
 
   it("uses text fade threshold when drawing node labels", () => {
@@ -575,14 +667,29 @@ describe("KnowledgeGraphView", () => {
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 1);
 
+    expect(parseCanvasFont(context.font)).toEqual({
+      fontSize: 12,
+      family: "sans-serif",
+    });
     expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.50)");
     expect(context.textAlign).toBe("center");
     expect(context.textBaseline).toBe("middle");
-    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 41);
+    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 43.55);
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 3.5);
+    expect(parseCanvasFont(context.font)).toEqual({
+      fontSize: 9,
+      family: "sans-serif",
+    });
+
+    nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.75);
+    const expandedFont = parseCanvasFont(context.font);
+    expect(expandedFont.fontSize).toBeCloseTo(13.8564, 4);
+    expect(expandedFont.family).toBe("sans-serif");
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.1);
 
-    expect(context.fillText).toHaveBeenCalledTimes(1);
+    expect(context.fillText).toHaveBeenCalledTimes(3);
   });
 
   it("hides node labels when the graph is zoomed too far out", () => {
