@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/tooltip";
 
 export function DocumentCreateControls({
-  selectedFolderId,
   canWrite,
   createAction,
   createFolderAction,
@@ -23,7 +22,6 @@ export function DocumentCreateControls({
   onOpenFavorites,
   onOpenGraph,
 }: {
-  selectedFolderId: string | null;
   canWrite: boolean;
   createAction: CreateDocumentFormAction;
   createFolderAction: CreateFolderFormAction;
@@ -66,7 +64,7 @@ export function DocumentCreateControls({
           </Button>
         </ToolbarTooltip>
         <form action={createAction}>
-          <input type="hidden" name="folderId" value={selectedFolderId ?? ""} />
+          <input type="hidden" name="folderId" value="" />
           <ToolbarTooltip label="New document">
             <Button
               type="submit"
@@ -79,7 +77,7 @@ export function DocumentCreateControls({
           </ToolbarTooltip>
         </form>
         <form action={createFolderAction}>
-          <input type="hidden" name="parentFolderId" value={selectedFolderId ?? ""} />
+          <input type="hidden" name="parentFolderId" value="" />
           <ToolbarTooltip label="New folder">
             <Button
               type="submit"

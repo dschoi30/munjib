@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-24
-source_count: 107
+updated: 2026-05-25
+source_count: 109
 tags:
   - log
   - munjib
@@ -19,13 +19,29 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T12:10:00+09:00 - review follow-up
+
+- Result: PR #64 review feedback에 따라 sidebar navigation의 derived document/folder arrays를 memoized values로 정리했다.
+- Coverage: Favorite folders, favorite documents, and Recents arrays keep stable references when their inputs do not change, while preserving the root creation, ascending sort, and Recents behavior from Issue #63.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #64 review thread, `components/document-navigation.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T12:05:00+09:00 - implementation
+
+- Result: Issue #63에서 sidebar document tree 정렬, Recents 유지, top-level 생성 위치를 정리했다.
+- Coverage: Folder/document tree는 parent 안에서 folder 우선과 title/name 오름차순을 사용한다. `Recents`는 favorites 상태와 무관하게 workspace page가 내려준 readable document 순서의 앞 5개를 유지한다. Top-level `New document`와 `New folder`는 선택 folder와 무관하게 root hidden value를 제출하고, folder-scoped creation은 folder row action menu에서만 실행한다.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #63, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `components/document-navigation/tree.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T00:00:00+09:00 - design
 
 - Result: Issue #65 knowledge graph filter/link coverage 설계를 승인된 범위로 기록했다.
 - Coverage: Graph view는 문서 전체 markdown의 wiki link를 graph edge 후보로 삼되 Properties Links row와 backlinks의 frontmatter `links:` 계약은 유지한다. Filters는 Wiki links/Properties를 제거하고 Tags/Orphans 중심으로 단순화하며, Display/Forces 기본 닫힘과 node/link display range 조정을 계획한다.
 - Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #65, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`.
-- Verification: Spec self-review; implementation verification pending.
+- Verification: Spec self-review.
 
 ## 2026-05-24T19:55:00+09:00 - review follow-up
 
