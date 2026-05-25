@@ -61,14 +61,15 @@ type GraphForceSettings = {
   linkDistance: number;
   repel: number;
 };
+type GraphSettingsGroup = "display" | "filters" | "forces";
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 }) as ComponentType<ForceGraph2DProps>;
 
 const DEFAULT_FILTERS: KnowledgeGraphFilters = {
-  tag: true,
-  orphans: true,
+  tag: false,
+  orphans: false,
 };
 
 const NODE_COLORS: Record<KnowledgeGraphNode["kind"], string> = {
@@ -82,10 +83,16 @@ const DIMMED_NODE_ALPHA = "88";
 const HOVER_DIMMED_NODE_ALPHA = "33";
 const DIMMED_LINK_ALPHA = "44";
 const HOVER_DIMMED_LABEL_ALPHA = 0.2;
-const LABEL_VERTICAL_OFFSET = 8;
+const GRAPH_MIN_ZOOM = 0.35;
+const GRAPH_MAX_ZOOM = 3.5;
 const MIN_LABEL_GLOBAL_SCALE = 0.75;
+const MIN_LABEL_FONT_SIZE = 9;
+const MAX_LABEL_FONT_SIZE = 16;
+const BASE_LABEL_FONT_SIZE = 12;
+const LABEL_PADDING = 5;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
+const KNOWLEDGE_GRAPH_STORAGE_VERSION = "v1";
 
 const DEFAULT_DISPLAY_SETTINGS: GraphDisplaySettings = {
   arrows: false,
@@ -130,6 +137,7 @@ export function KnowledgeGraphView({
   const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
   const [display, setDisplay] = useState<GraphDisplaySettings>(DEFAULT_DISPLAY_SETTINGS);
   const [forces, setForces] = useState<GraphForceSettings>(DEFAULT_FORCE_SETTINGS);
+  const [settingsHydrated, setSettingsHydrated] = useState<string | null>(null);
   const [forceGraphReadyVersion, setForceGraphReadyVersion] = useState(0);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -141,17 +149,70 @@ export function KnowledgeGraphView({
     [],
   );
 
-  const selectedFocus = useMemo(
-    () => getKnowledgeGraphFocus(graph, selectedDocumentId),
-    [graph, selectedDocumentId],
-  );
+  useEffect(() => {
+    setFilters(
+      readStoredGraphSettings(workspaceSlug, "filters", validateStoredFilters) ??
+        DEFAULT_FILTERS,
+    );
+    setDisplay(
+      readStoredGraphSettings(workspaceSlug, "display", validateStoredDisplay) ??
+        DEFAULT_DISPLAY_SETTINGS,
+    );
+    setForces(
+      readStoredGraphSettings(workspaceSlug, "forces", validateStoredForces) ??
+        DEFAULT_FORCE_SETTINGS,
+    );
+    setSettingsHydrated(workspaceSlug);
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "filters", filters);
+  }, [filters, settingsHydrated, workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "display", display);
+  }, [display, settingsHydrated, workspaceSlug]);
+
+  useEffect(() => {
+    if (settingsHydrated !== workspaceSlug) {
+      return;
+    }
+
+    writeStoredGraphSettings(workspaceSlug, "forces", forces);
+  }, [forces, settingsHydrated, workspaceSlug]);
+
+  const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
+  const selectedFocus = useMemo(() => {
+    if (
+      !selectedDocumentId ||
+      !visibleGraph.nodes.some(
+        (node) => node.kind === "document" && node.documentId === selectedDocumentId,
+      )
+    ) {
+      return createEmptyFocus();
+    }
+
+    return getKnowledgeGraphFocus(visibleGraph, selectedDocumentId);
+  }, [selectedDocumentId, visibleGraph]);
   const hoveredFocus = useMemo(
-    () => getKnowledgeGraphNodeFocus(graph, hoveredNodeId),
-    [graph, hoveredNodeId],
+    () => getKnowledgeGraphNodeFocus(visibleGraph, hoveredNodeId),
+    [hoveredNodeId, visibleGraph],
   );
   const hasHoverFocus = hoveredFocus.focusedNodeIds.size > 0;
   const activeFocus = hasHoverFocus ? hoveredFocus : selectedFocus;
-  const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
+  const documentNodeCount = useMemo(() => getDocumentNodeCount(graph), [graph]);
+  const effectiveNodeSize = useMemo(
+    () => getEffectiveNodeSize(display.nodeSize, documentNodeCount),
+    [display.nodeSize, documentNodeCount],
+  );
   const renderedGraph = useMemo<ForceGraphData>(() => {
     const nodes = visibleGraph.nodes.map((node) => {
       const existing = renderedNodesRef.current.get(node.id);
@@ -314,7 +375,9 @@ export function KnowledgeGraphView({
           height={dimensions.height}
           backgroundColor="#ffffff"
           nodeLabel={(node: ForceGraphNode) => node.label}
-          nodeRelSize={display.nodeSize}
+          nodeRelSize={effectiveNodeSize}
+          minZoom={GRAPH_MIN_ZOOM}
+          maxZoom={GRAPH_MAX_ZOOM}
           nodeColor={(node: ForceGraphNode) => {
             if (
               node.kind === "document" &&
@@ -342,7 +405,7 @@ export function KnowledgeGraphView({
             }
 
             const label = node.label;
-            const fontSize = 12 / globalScale;
+            const fontSize = getLabelFontSize(globalScale);
             const alpha = globalScale / display.textFadeThreshold;
             if (globalScale < MIN_LABEL_GLOBAL_SCALE || alpha < 0.1) {
               return;
@@ -359,7 +422,7 @@ export function KnowledgeGraphView({
                 : Math.min(1, alpha);
 
             context.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${labelAlpha.toFixed(2)})`;
-            const labelY = node.y + (display.nodeSize + LABEL_VERTICAL_OFFSET) / globalScale;
+            const labelY = node.y + getLabelYOffset(effectiveNodeSize, fontSize, globalScale);
             context.fillText(label, node.x, labelY);
           }}
           linkColor={(link: ForceGraphLink) => {
@@ -518,6 +581,53 @@ export function KnowledgeGraphView({
   );
 }
 
+function getDocumentNodeCount(graph: KnowledgeGraphData) {
+  return graph.nodes.filter((node) => node.kind === "document").length;
+}
+
+function getNodeSizeBaseline(documentCount: number) {
+  if (documentCount >= 250) {
+    return 0.45;
+  }
+
+  if (documentCount >= 100) {
+    return 0.55;
+  }
+
+  if (documentCount >= 25) {
+    return 0.7;
+  }
+
+  return 0.85;
+}
+
+function getEffectiveNodeSize(nodeSize: number, documentCount: number) {
+  return Number((nodeSize * getNodeSizeBaseline(documentCount)).toFixed(2));
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getLabelFontSize(globalScale: number) {
+  return clamp(
+    BASE_LABEL_FONT_SIZE / Math.sqrt(globalScale),
+    MIN_LABEL_FONT_SIZE,
+    MAX_LABEL_FONT_SIZE,
+  );
+}
+
+function getLabelYOffset(effectiveNodeSize: number, fontSize: number, globalScale: number) {
+  return effectiveNodeSize + fontSize / 2 + LABEL_PADDING / globalScale;
+}
+
+function createEmptyFocus() {
+  return {
+    focusedNodeIds: new Set<string>(),
+    focusedLinkIds: new Set<string>(),
+  };
+}
+
 function GraphControlSection({
   children,
   className,
@@ -588,6 +698,104 @@ function RangeControl({
       />
     </label>
   );
+}
+
+function graphSettingsStorageKey(workspaceSlug: string, group: GraphSettingsGroup) {
+  return `munjib:knowledge-graph:${workspaceSlug}:${KNOWLEDGE_GRAPH_STORAGE_VERSION}:${group}`;
+}
+
+function readStoredGraphSettings<State>(
+  workspaceSlug: string,
+  group: GraphSettingsGroup,
+  validate: (value: unknown) => State | null,
+) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(graphSettingsStorageKey(workspaceSlug, group));
+    if (!raw) {
+      return null;
+    }
+
+    return validate(JSON.parse(raw));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredGraphSettings<State>(
+  workspaceSlug: string,
+  group: GraphSettingsGroup,
+  value: State,
+) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.sessionStorage.setItem(
+      graphSettingsStorageKey(workspaceSlug, group),
+      JSON.stringify(value),
+    );
+  } catch {
+    return;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function validateStoredFilters(value: unknown): KnowledgeGraphFilters | null {
+  if (!isRecord(value) || typeof value.tag !== "boolean" || typeof value.orphans !== "boolean") {
+    return null;
+  }
+
+  return { tag: value.tag, orphans: value.orphans };
+}
+
+function isNumberInRange(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
+}
+
+function validateStoredDisplay(value: unknown): GraphDisplaySettings | null {
+  if (
+    !isRecord(value) ||
+    typeof value.arrows !== "boolean" ||
+    !isNumberInRange(value.linkThickness, 0.5, 5) ||
+    !isNumberInRange(value.nodeSize, 1, 10) ||
+    !isNumberInRange(value.textFadeThreshold, 0.5, 3)
+  ) {
+    return null;
+  }
+
+  return {
+    arrows: value.arrows,
+    linkThickness: value.linkThickness,
+    nodeSize: value.nodeSize,
+    textFadeThreshold: value.textFadeThreshold,
+  };
+}
+
+function validateStoredForces(value: unknown): GraphForceSettings | null {
+  if (
+    !isRecord(value) ||
+    !isNumberInRange(value.center, 0, 1) ||
+    !isNumberInRange(value.link, 0, 1) ||
+    !isNumberInRange(value.linkDistance, 20, 180) ||
+    !isNumberInRange(value.repel, -300, -20)
+  ) {
+    return null;
+  }
+
+  return {
+    center: value.center,
+    link: value.link,
+    linkDistance: value.linkDistance,
+    repel: value.repel,
+  };
 }
 
 function hexToRgb(color: string) {

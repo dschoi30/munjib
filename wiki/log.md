@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 112
+source_count: 113
 tags:
   - log
   - munjib
@@ -18,6 +18,46 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T19:08:00+09:00 - review follow-up
+
+- Result: PR #68 review feedback에 따라 hidden selected focus와 label offset 계산을 보정했다.
+- Coverage: Selected document가 현재 filter 결과에서 숨겨진 경우 selected focus를 비워 visible graph가 불필요하게 dim 처리되지 않게 했다. Label Y offset은 node radius와 font height를 graph unit으로 유지하고, fixed screen gap인 `LABEL_PADDING`만 `globalScale`로 나눠 zoom-in 상태에서도 node와 label 간격을 보존한다. 후속 final review에서 implementation plan의 label offset helper snippet도 같은 공식으로 정정했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #68 review threads, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-25T18:00:00+09:00 - implementation
+
+- Result: Issue #67 knowledge graph zoom and session display controls 구현과 Task 3 verification을 마무리했다.
+- Coverage: Graph `Tags`/`Orphans` filters는 기본 unchecked로 시작하고, filters/display/forces option은 workspace-scoped `sessionStorage`에 hydrate/persist되어 browser session 동안 유지된다. Graph renderer는 `minZoom`/`maxZoom` bounds를 사용하고, node size slider는 document-count tier baseline과 곱한 effective node size로 전달된다. Label font size는 zoom 기반 계산값을 minimum/maximum으로 clamp하며, label은 effective node size와 font size를 기준으로 node 아래에 배치된다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #67, `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-05-25T17:58:00+09:00 - implementation
+
+- Result: Issue #67 graph zoom bounds, document-count node sizing, and bounded label rendering을 구현했다.
+- Coverage: Graph renderer는 `minZoom`/`maxZoom`을 받아 zoom range 상한/하한을 제한한다. Node size slider 값은 전체 workspace document count tier baseline과 곱한 effective node size로 전달되어 큰 workspace일수록 compact하게 렌더링된다. Label font size는 zoom scale에서 계산하되 minimum/maximum으로 clamp하고, effective node size와 font size를 기준으로 node 아래에 배치한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
+## 2026-05-25T17:50:00+09:00 - implementation
+
+- Result: Issue #67 graph option 기본값과 session persistence의 첫 구현을 추가했다.
+- Coverage: Graph `Tags`와 `Orphans` filters는 기본 unchecked가 되었고, filters/display/forces option은 workspace-scoped `sessionStorage`에서 hydrate/persist된다. 잘못된 stored shape, out-of-range 값, storage API exception은 in-memory 기본값과 현재 상태를 유지하도록 방어한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/plans/2026-05-25-knowledge-graph-zoom-and-session-display-controls.md`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
+## 2026-05-25T16:10:00+09:00 - design
+
+- Result: Issue #67 knowledge graph zoom and session display controls 설계를 승인된 범위로 기록했다.
+- Coverage: Graph view는 zoom range 상한/하한으로 node와 label이 과도하게 커지거나 작아지는 것을 방지하고, label font size를 zoom에 따라 bounded scaling하며, label을 effective node size 아래에 배치하는 방향이다. Tags/Orphans filters는 기본 unchecked가 되고, filters/display/forces option은 workspace-scoped `sessionStorage`에 저장되어 browser session 동안 마지막 변경값을 유지한다. Node size slider는 유지하되 `Node size = 1`의 baseline을 더 작게 정의하고 문서 수 tier로 effective node size를 조정한다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #67, `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`.
+- Verification: Spec self-review.
 
 ## 2026-05-25T15:35:00+09:00 - verification follow-up
 
