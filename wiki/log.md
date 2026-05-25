@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T13:25:00+09:00 - implementation
+
+- Result: Issue #65 graph model의 full-markdown wiki link 수집과 property graph output 제거를 구현했다.
+- Coverage: `buildKnowledgeGraph()`는 persisted frontmatter link rows와 문서 전체 markdown에서 scan한 wiki links를 같은 wiki edge 후보로 병합하고 source-target 중복 edge를 제거한다. Property graph nodes/edges는 graph model output에서 제외되며, Orphans filter는 연결 없는 document node 표시 여부를 제어한다. Page wiring과 graph controls UI 문서화는 후속 task에서 완료한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `docs/superpowers/plans/2026-05-25-knowledge-graph-filter-link-coverage.md`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T12:45:00+09:00 - maintenance
 
 - Result: wiki link target resolution을 `lib/wiki-links/resolve.ts` 순수 helper로 분리해 reconciliation과 Issue #65 graph link construction이 같은 target matching 규칙을 공유할 수 있게 했다.

@@ -1,9 +1,12 @@
 import { slugifyTitle } from "@/lib/text/slug";
+import { parseWikiLinks } from "@/lib/wiki-links/parser";
+import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
 
 export type KnowledgeGraphNodeKind = "document" | "tag" | "wiki" | "property";
 export type KnowledgeGraphLinkKind = "wiki" | "tag" | "property";
 
 export type KnowledgeGraphDocumentInput = {
+  contentMarkdown?: string;
   id: string;
   title: string;
   path: string;
@@ -37,10 +40,10 @@ export type KnowledgeGraphInput = {
   documents: KnowledgeGraphDocumentInput[];
   links: KnowledgeGraphLinkInput[];
   tags: KnowledgeGraphTagInput[];
-  properties: KnowledgeGraphPropertyInput[];
+  properties?: KnowledgeGraphPropertyInput[];
 };
 
-export type KnowledgeGraphDocumentNode = Omit<KnowledgeGraphDocumentInput, "id"> & {
+export type KnowledgeGraphDocumentNode = Omit<KnowledgeGraphDocumentInput, "contentMarkdown" | "id"> & {
   id: string;
   kind: "document";
   label: string;
@@ -90,7 +93,12 @@ export type KnowledgeGraphData = {
   links: KnowledgeGraphLink[];
 };
 
-export type KnowledgeGraphFilters = Record<KnowledgeGraphLinkKind, boolean>;
+export type KnowledgeGraphFilters = {
+  orphans?: boolean;
+  tag: boolean;
+  property?: boolean;
+  wiki?: boolean;
+};
 
 export type KnowledgeGraphFocus = {
   focusedNodeIds: Set<string>;
@@ -105,6 +113,13 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   const nodesById = new Map<string, KnowledgeGraphNode>();
   const links: KnowledgeGraphLink[] = [];
   const readableDocumentIds = new Set(input.documents.map((document) => document.id));
+  const targetCandidates = input.documents.map((document) => ({
+    id: document.id,
+    path: document.path,
+    title: document.title,
+  }));
+  const wikiLinksByKey = new Map<string, KnowledgeGraphLink>();
+  const unresolvedWikiNodesById = new Map<string, KnowledgeGraphWikiNode>();
 
   for (const document of input.documents) {
     nodesById.set(documentNodeId(document.id), {
@@ -117,39 +132,66 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     });
   }
 
-  for (const link of input.links) {
+  const addWikiEdge = (link: {
+    sourceDocumentId: string;
+    targetDocumentId: string | null;
+    targetTitleRaw: string;
+    isBroken: boolean;
+    isAmbiguous: boolean;
+  }) => {
     if (!readableDocumentIds.has(link.sourceDocumentId)) {
-      continue;
+      return;
     }
 
     const source = documentNodeId(link.sourceDocumentId);
+    let target: string;
 
     if (link.targetDocumentId && readableDocumentIds.has(link.targetDocumentId)) {
-      links.push({
-        id: `wiki:${link.id}`,
-        source,
-        target: documentNodeId(link.targetDocumentId),
+      target = documentNodeId(link.targetDocumentId);
+    } else {
+      const state = link.isAmbiguous ? "ambiguous" : "broken";
+      target = wikiNodeId(state, link.targetTitleRaw);
+      unresolvedWikiNodesById.set(target, {
+        id: target,
         kind: "wiki",
+        label: link.targetTitleRaw,
+        targetTitleRaw: link.targetTitleRaw,
+        state,
       });
-      continue;
     }
 
-    const state = link.isAmbiguous ? "ambiguous" : "broken";
-    const target = wikiNodeId(state, link.targetTitleRaw);
-    addNode(nodesById, {
-      id: target,
-      kind: "wiki",
-      label: link.targetTitleRaw,
-      targetTitleRaw: link.targetTitleRaw,
-      state,
-    });
-    links.push({
-      id: `wiki:${link.id}`,
-      source,
-      target,
-      kind: "wiki",
-    });
+    const key = `${source}->${target}`;
+    if (!wikiLinksByKey.has(key)) {
+      wikiLinksByKey.set(key, {
+        id: `wiki:${link.sourceDocumentId}:${target}`,
+        source,
+        target,
+        kind: "wiki",
+      });
+    }
+  };
+
+  for (const link of input.links) {
+    addWikiEdge(link);
   }
+
+  for (const document of input.documents) {
+    for (const link of parseWikiLinks(document.contentMarkdown ?? "")) {
+      const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw);
+      addWikiEdge({
+        sourceDocumentId: document.id,
+        targetDocumentId: resolved.targetDocumentId,
+        targetTitleRaw: link.targetTitleRaw,
+        isBroken: resolved.isBroken,
+        isAmbiguous: resolved.isAmbiguous,
+      });
+    }
+  }
+
+  for (const node of unresolvedWikiNodesById.values()) {
+    addNode(nodesById, node);
+  }
+  links.push(...wikiLinksByKey.values());
 
   for (const tag of input.tags) {
     if (!readableDocumentIds.has(tag.documentId)) {
@@ -169,33 +211,6 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
       source: documentNodeId(tag.documentId),
       target,
       kind: "tag",
-    });
-  }
-
-  for (const property of input.properties) {
-    if (!readableDocumentIds.has(property.documentId) || isCanonicalPropertyKey(property.key)) {
-      continue;
-    }
-
-    const value = scalarPropertyValue(property.valueJson);
-    if (value === null) {
-      continue;
-    }
-
-    const target = propertyNodeId(property.key, value);
-    addNode(nodesById, {
-      id: target,
-      kind: "property",
-      label: `${property.key}: ${value}`,
-      key: property.key,
-      value,
-      valueType: property.valueType,
-    });
-    links.push({
-      id: `property:${property.documentId}:${idComponent(property.key)}:${idComponent(String(value))}`,
-      source: documentNodeId(property.documentId),
-      target,
-      kind: "property",
     });
   }
 
@@ -236,7 +251,7 @@ export function filterKnowledgeGraph(
   graph: KnowledgeGraphData,
   filters: KnowledgeGraphFilters,
 ): KnowledgeGraphData {
-  const links = graph.links.filter((link) => filters[link.kind]);
+  const links = graph.links.filter((link) => link.kind === "wiki" || filters.tag);
   const connectedNodeIds = new Set<string>();
 
   for (const link of links) {
@@ -245,7 +260,13 @@ export function filterKnowledgeGraph(
   }
 
   return {
-    nodes: graph.nodes.filter((node) => node.kind === "document" || connectedNodeIds.has(node.id)),
+    nodes: graph.nodes.filter((node) => {
+      if (node.kind !== "document") {
+        return connectedNodeIds.has(node.id);
+      }
+
+      return filters.orphans !== false || connectedNodeIds.has(node.id);
+    }),
     links,
   };
 }
@@ -262,22 +283,6 @@ function tagNodeId(normalizedName: string) {
 
 function wikiNodeId(state: "broken" | "ambiguous", targetTitleRaw: string) {
   return `wiki:${state}:${idComponent(targetTitleRaw)}`;
-}
-
-function propertyNodeId(key: string, value: string | number | boolean) {
-  return `property:${idComponent(key)}:${idComponent(String(value))}`;
-}
-
-function isCanonicalPropertyKey(key: string) {
-  return key === "tags" || key === "links";
-}
-
-function scalarPropertyValue(value: unknown): string | number | boolean | null {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-
-  return null;
 }
 
 function idComponent(value: string) {
