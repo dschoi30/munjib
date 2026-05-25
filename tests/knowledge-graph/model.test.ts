@@ -89,6 +89,53 @@ describe("knowledge graph model", () => {
     expect(graph.links.filter((link) => link.target === "document:doc-2")).toHaveLength(1);
   });
 
+  it("does not rescan frontmatter wiki links as body links", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: `---
+links:
+  - "[[Runbook]]"
+---
+
+See [[Body Target]].`,
+        },
+        { id: "doc-2", title: "Runbook", path: "/runbook", contentMarkdown: "" },
+        { id: "doc-3", title: "Body Target", path: "/body-target", contentMarkdown: "" },
+      ],
+      links: [
+        {
+          id: "link-1",
+          sourceDocumentId: "doc-1",
+          targetDocumentId: null,
+          targetTitleRaw: "Runbook",
+          isBroken: false,
+          isAmbiguous: true,
+        },
+      ],
+      tags: [],
+    });
+
+    expect(graph.links).toEqual([
+      {
+        id: "wiki:doc-1:document:doc-3",
+        source: "document:doc-1",
+        target: "document:doc-3",
+        kind: "wiki",
+      },
+      {
+        id: "wiki:doc-1:wiki:ambiguous:runbook",
+        source: "document:doc-1",
+        target: "wiki:ambiguous:runbook",
+        kind: "wiki",
+      },
+    ]);
+    expect(graph.links.some((link) => link.target === "document:doc-2")).toBe(false);
+  });
+
   it("builds typed graph links from resolved links, broken links, and tags", () => {
     const graph = buildKnowledgeGraph(fixture);
 

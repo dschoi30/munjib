@@ -59,6 +59,10 @@ async function main() {
   const welcome = await prisma.document.upsert({
     where: { workspaceId_path: { workspaceId: workspace.id, path: "/welcome" } },
     update: {
+      folderId: null,
+      title: "Welcome",
+      slug: "welcome",
+      status: "ACTIVE",
       contentMarkdown:
         "# Welcome\n\nThis is the first company handbook document.\n\nRead [[Engineering Runbook]] and [[Missing Policy]].",
       contentText:
@@ -81,6 +85,10 @@ async function main() {
   const engineeringRunbook = await prisma.document.upsert({
     where: { workspaceId_path: { workspaceId: workspace.id, path: "/engineering-runbook" } },
     update: {
+      folderId: null,
+      title: "Engineering Runbook",
+      slug: "engineering-runbook",
+      status: "ACTIVE",
       contentMarkdown: "# Engineering Runbook\n\nBacklinked from [[Welcome]].",
       contentText: "Engineering Runbook Backlinked from Welcome.",
     },
@@ -98,7 +106,7 @@ async function main() {
 
   const operationsFolder = await prisma.folder.upsert({
     where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations" } },
-    update: {},
+    update: { status: "ACTIVE" },
     create: {
       workspaceId: workspace.id,
       name: "Operations",
@@ -113,6 +121,9 @@ async function main() {
     where: { workspaceId_path: { workspaceId: workspace.id, path: "/operations/operations-runbook" } },
     update: {
       folderId: operationsFolder.id,
+      title: "Operations Runbook",
+      slug: "operations-runbook",
+      status: "ACTIVE",
       contentMarkdown: "# Operations Runbook\n\nA folder-based runbook linked from [[Welcome]].",
       contentText: "Operations Runbook A folder-based runbook linked from Welcome.",
     },

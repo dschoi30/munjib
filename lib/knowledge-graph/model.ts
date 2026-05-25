@@ -1,3 +1,4 @@
+import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { slugifyTitle } from "@/lib/text/slug";
 import { parseWikiLinks } from "@/lib/wiki-links/parser";
 import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
@@ -156,7 +157,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   }
 
   for (const document of input.documents) {
-    for (const link of parseWikiLinks(document.contentMarkdown ?? "")) {
+    for (const link of parseWikiLinks(stripDocumentFrontmatter(document.contentMarkdown ?? ""))) {
       const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw);
       addWikiEdge({
         sourceDocumentId: document.id,

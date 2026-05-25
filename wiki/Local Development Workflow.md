@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-05-18
-source_count: 20
+updated: 2026-05-25
+source_count: 22
 tags:
   - munjib
   - workflow
@@ -104,7 +104,7 @@ docker compose run --rm tools pnpm run db:seed
 
 ## Seed와 로그인
 
-`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
+`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. Seed는 반복 실행된 로컬 E2E가 fixture document/folder를 rename/archive한 뒤에도 Welcome, Engineering Runbook, Operations folder, Operations Runbook의 canonical title/slug/path/status를 복구한다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
 
 ## Feature start
 
@@ -132,7 +132,7 @@ pnpm wiki:feature-start "Markdown heading folding"
 
 현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
 
-E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
+E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
 
 ## Service error codes
 
@@ -166,6 +166,8 @@ PR을 만든 뒤에는 ready-for-review 또는 review request 상태를 만든 �
 - `public/.gitkeep`
 - `tests/docker/compose.test.ts`
 - `prisma/seed.ts`
+- `playwright.config.ts`
+- `tests/e2e/login.spec.ts`
 - `lib/wiki/sync.ts`
 - `lib/wiki/feature-start.ts`
 - `lib/service-errors.ts`

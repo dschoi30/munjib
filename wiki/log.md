@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 109
+source_count: 112
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-25T15:35:00+09:00 - verification follow-up
+
+- Result: E2E seed 재실행이 canonical fixture document titles를 복구하지 못하던 문제를 수정했다.
+- Coverage: `prisma/seed.ts` upsert update path now resets the seeded Welcome, Engineering Runbook, Operations folder, and Operations Runbook title/slug/folder/status fields in addition to markdown content, so repeated local E2E runs do not inherit renamed or archived fixture data from prior runs. Login E2E now opens Engineering Runbook through the row action new-tab flow, creates the Product Notes child folder through the row action, and no longer expects inline body tags to appear as Properties rows. Playwright E2E runs use one worker because existing specs share the same seeded account and Welcome document.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: E2E failure investigation, `prisma/seed.ts`, `tests/e2e/login.spec.ts`, `playwright.config.ts`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm run db:seed`, `pnpm exec playwright test`.
+
+## 2026-05-25T15:15:00+09:00 - review follow-up
+
+- Result: PR #66 review feedback에 따라 graph full-markdown wiki scan에서 YAML frontmatter block을 제외했다.
+- Coverage: Persisted frontmatter `links:` rows remain the source of truth for frontmatter wiki edges, while graph-only markdown scanning still registers body wiki links. This avoids adding contradictory resolved graph edges for a frontmatter link whose persisted row is ambiguous or permission-filtered.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #66 review thread, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-25T15:00:00+09:00 - review follow-up
 
