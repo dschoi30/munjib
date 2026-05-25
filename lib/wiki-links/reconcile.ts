@@ -1,12 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { parseFrontmatterWikiLinks } from "@/lib/wiki-links/parser";
-import {
-  pathQualifiedCandidateToTitleLookupKey,
-  pathQualifiedTargetToLookupDocumentPath,
-  pathQualifiedTargetToLookupKey,
-  pathQualifiedTargetToTitleLookupKey,
-  wikiLinkTargetToLookupKey,
-} from "@/lib/wiki-links/targets";
+import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
 
 export async function reconcileDocumentLinks(
   tx: Prisma.TransactionClient,
@@ -33,7 +27,7 @@ export async function reconcileDocumentLinks(
 
   await tx.documentLink.createMany({
     data: parsedLinks.map((link, index) => {
-      const resolved = resolveLinkTarget(targets, link.targetTitleRaw);
+      const resolved = resolveWikiLinkTarget(targets, link.targetTitleRaw);
       return {
         workspaceId: input.workspaceId,
         sourceDocumentId: input.sourceDocumentId,
@@ -46,66 +40,6 @@ export async function reconcileDocumentLinks(
       };
     }),
   });
-}
-
-function resolveLinkTarget(
-  targets: Array<{ id: string; path: string; title: string }>,
-  targetTitleRaw: string,
-) {
-  if (targetTitleRaw.includes("/")) {
-    const targetPath = pathQualifiedTargetToLookupDocumentPath(targetTitleRaw);
-    const target = targets.find((candidate) => candidate.path === targetPath);
-    if (target) {
-      return {
-        targetDocumentId: target.id,
-        isBroken: false,
-        isAmbiguous: false,
-      };
-    }
-
-    const targetLookupKey = pathQualifiedTargetToTitleLookupKey(targetTitleRaw);
-    const pathTitleMatches = targets.filter(
-      (candidate) => pathQualifiedCandidateToTitleLookupKey(candidate) === targetLookupKey,
-    );
-    if (pathTitleMatches.length === 1) {
-      return {
-        targetDocumentId: pathTitleMatches[0]?.id ?? null,
-        isBroken: false,
-        isAmbiguous: false,
-      };
-    }
-    if (pathTitleMatches.length > 1) {
-      return {
-        targetDocumentId: null,
-        isBroken: false,
-        isAmbiguous: true,
-      };
-    }
-  }
-
-  const targetSlug = wikiLinkTargetToLookupKey(targetTitleRaw);
-  const matches = targets.filter((candidate) => wikiLinkTargetToLookupKey(candidate.title) === targetSlug);
-  if (matches.length === 1) {
-    return {
-      targetDocumentId: matches[0]?.id ?? null,
-      isBroken: false,
-      isAmbiguous: false,
-    };
-  }
-
-  if (matches.length > 1) {
-    return {
-      targetDocumentId: null,
-      isBroken: false,
-      isAmbiguous: true,
-    };
-  }
-
-  return {
-    targetDocumentId: null,
-    isBroken: true,
-    isAmbiguous: false,
-  };
 }
 
 export async function repairBrokenLinksForTarget(

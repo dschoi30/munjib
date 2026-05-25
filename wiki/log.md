@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T12:45:00+09:00 - maintenance
+
+- Result: wiki link target resolution을 `lib/wiki-links/resolve.ts` 순수 helper로 분리해 reconciliation과 Issue #65 graph link construction이 같은 target matching 규칙을 공유할 수 있게 했다.
+- Coverage: path-qualified target, underscore-aware segment matching, title fallback, ambiguous/broken 판정은 기존 `DocumentLink` persistence 의미를 유지한다.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: `lib/wiki-links/resolve.ts`, `lib/wiki-links/reconcile.ts`, `tests/wiki-links/reconcile.test.ts`, `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`.
+- Verification: `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm exec vitest run tests/wiki-links/reconcile.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T12:10:00+09:00 - review follow-up
 
 - Result: PR #64 review feedback에 따라 sidebar navigation의 derived document/folder arrays를 memoized values로 정리했다.
