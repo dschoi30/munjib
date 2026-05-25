@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-25T15:00:00+09:00 - review follow-up
+
+- Result: Issue #65 final review에서 발견한 stale e2e graph filter assertion을 갱신했다.
+- Coverage: Login e2e는 graph settings reopen 후 removed Wiki links filter가 계속 보이지 않고 Tags/Orphans filters가 보이는 새 graph filter contract를 확인한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: final code review, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-25T14:55:00+09:00 - implementation
 
 - Result: Issue #65 knowledge graph filter/link coverage refinement를 wiki durable behavior로 정리했다.

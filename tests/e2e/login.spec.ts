@@ -59,7 +59,9 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Close graph settings" }).click();
   await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Open graph settings" }).click();
-  await expect(page.getByText("Wiki links", { exact: true })).toBeVisible();
+  await expect(page.getByText("Wiki links", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Tags", { exact: true })).toBeVisible();
+  await expect(page.getByText("Orphans", { exact: true })).toBeVisible();
   await documentList.getByRole("link", { name: "Welcome" }).first().click();
   await expect(page.locator("[name='title']")).toHaveValue("Welcome");
   await expect(page.locator(".cm-content").first()).toBeVisible();
