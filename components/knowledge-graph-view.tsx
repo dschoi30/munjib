@@ -189,17 +189,25 @@ export function KnowledgeGraphView({
     writeStoredGraphSettings(workspaceSlug, "forces", forces);
   }, [forces, settingsHydrated, workspaceSlug]);
 
-  const selectedFocus = useMemo(
-    () => getKnowledgeGraphFocus(graph, selectedDocumentId),
-    [graph, selectedDocumentId],
-  );
+  const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
+  const selectedFocus = useMemo(() => {
+    if (
+      !selectedDocumentId ||
+      !visibleGraph.nodes.some(
+        (node) => node.kind === "document" && node.documentId === selectedDocumentId,
+      )
+    ) {
+      return createEmptyFocus();
+    }
+
+    return getKnowledgeGraphFocus(visibleGraph, selectedDocumentId);
+  }, [selectedDocumentId, visibleGraph]);
   const hoveredFocus = useMemo(
-    () => getKnowledgeGraphNodeFocus(graph, hoveredNodeId),
-    [graph, hoveredNodeId],
+    () => getKnowledgeGraphNodeFocus(visibleGraph, hoveredNodeId),
+    [hoveredNodeId, visibleGraph],
   );
   const hasHoverFocus = hoveredFocus.focusedNodeIds.size > 0;
   const activeFocus = hasHoverFocus ? hoveredFocus : selectedFocus;
-  const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
   const documentNodeCount = useMemo(() => getDocumentNodeCount(graph), [graph]);
   const effectiveNodeSize = useMemo(
     () => getEffectiveNodeSize(display.nodeSize, documentNodeCount),
@@ -610,7 +618,14 @@ function getLabelFontSize(globalScale: number) {
 }
 
 function getLabelYOffset(effectiveNodeSize: number, fontSize: number, globalScale: number) {
-  return (effectiveNodeSize + LABEL_PADDING + fontSize / 2) / globalScale;
+  return effectiveNodeSize + fontSize / 2 + LABEL_PADDING / globalScale;
+}
+
+function createEmptyFocus() {
+  return {
+    focusedNodeIds: new Set<string>(),
+    focusedLinkIds: new Set<string>(),
+  };
 }
 
 function GraphControlSection({

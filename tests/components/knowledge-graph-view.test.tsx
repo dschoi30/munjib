@@ -518,6 +518,7 @@ describe("KnowledgeGraphView", () => {
       links: createGraph().links,
     };
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
       | ((node: KnowledgeGraphData["nodes"][number]) => string)
@@ -538,6 +539,80 @@ describe("KnowledgeGraphView", () => {
         kind: "wiki",
       }),
     ).toBe("#94a3b844");
+  });
+
+  it("does not dim visible wiki-linked nodes when the selected document is filtered out", () => {
+    const graph: KnowledgeGraphData = {
+      nodes: [
+        {
+          id: "document:doc-1",
+          kind: "document",
+          label: "Tagged",
+          documentId: "doc-1",
+          title: "Tagged",
+          path: "/tagged",
+        },
+        {
+          id: "tag:hidden",
+          kind: "tag",
+          label: "#Hidden",
+          name: "Hidden",
+          normalizedName: "hidden",
+        },
+        {
+          id: "document:doc-2",
+          kind: "document",
+          label: "Linked",
+          documentId: "doc-2",
+          title: "Linked",
+          path: "/linked",
+        },
+        {
+          id: "wiki:broken:missing",
+          kind: "wiki",
+          label: "Missing",
+          targetTitleRaw: "Missing",
+          state: "broken",
+        },
+      ],
+      links: [
+        {
+          id: "tag:doc-1:hidden",
+          source: "document:doc-1",
+          target: "tag:hidden",
+          kind: "tag",
+        },
+        {
+          id: "wiki:doc-2:wiki:broken:missing",
+          source: "document:doc-2",
+          target: "wiki:broken:missing",
+          kind: "wiki",
+        },
+      ],
+    };
+    renderGraph(graph);
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [graph.nodes[2], graph.nodes[3]],
+      links: [
+        {
+          ...graph.links[1],
+          sourceId: graph.links[1].source,
+          targetId: graph.links[1].target,
+        },
+      ],
+    });
+
+    const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
+      | ((node: KnowledgeGraphData["nodes"][number]) => string)
+      | undefined;
+    const linkColor = forceGraphMock.state.latestProps?.linkColor as
+      | ((link: KnowledgeGraphData["links"][number]) => string)
+      | undefined;
+
+    expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
+    expect(nodeColor?.(graph.nodes[3])).toBe("#8b5cf6");
+    expect(linkColor?.(graph.links[1])).toBe("#94a3b8");
   });
 
   it("does not dim the graph when no document is selected", () => {
@@ -681,6 +756,7 @@ describe("KnowledgeGraphView", () => {
       fontSize: 9,
       family: "sans-serif",
     });
+    expect(context.fillText).toHaveBeenLastCalledWith("Welcome", 20, 38.47857142857143);
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.75);
     const expandedFont = parseCanvasFont(context.font);
@@ -841,6 +917,7 @@ describe("KnowledgeGraphView", () => {
       ],
     };
     renderGraph(graph);
+    fireEvent.click(screen.getByLabelText("Tags"));
 
     const onNodeHover = forceGraphMock.state.latestProps?.onNodeHover as
       | ((node: KnowledgeGraphData["nodes"][number] | null) => void)
@@ -926,7 +1003,7 @@ describe("KnowledgeGraphView", () => {
     const linkColor = forceGraphMock.state.latestProps?.linkColor as
       | ((link: KnowledgeGraphData["links"][number]) => string)
       | undefined;
-    expect(linkColor?.(graph.links[0])).toBe("#64748b");
+    expect(linkColor?.(graph.links[0])).toBe("#94a3b8");
   });
 
   it("routes document node clicks to the selected workspace document", () => {
