@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 121
+source_count: 122
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:25:00+09:00 - review follow-up
+
+- Result: Preview tag click coverage now includes formatted and structured markdown text.
+- Coverage: `MarkdownPreview` recursively converts nested inline children and applies tag search rendering to headings, blockquotes, and table cells, so `**#tag**`, heading tags, quote tags, and table-cell tags can all trigger sidebar tag search.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "formatted and structured preview tags"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T01:20:00+09:00 - review follow-up
 
