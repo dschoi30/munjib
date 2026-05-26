@@ -31,6 +31,10 @@ Use #incident and #platform notes.`),
     expect(parseDocumentMetadata("#one #one\n```md\n#ignored\n```").tags).toEqual(["one"]);
   });
 
+  it("ignores inline code tags", () => {
+    expect(parseDocumentMetadata("Use #actual and `#ignored` tags").tags).toEqual(["actual"]);
+  });
+
   it("extracts Korean inline tags", () => {
     expect(parseDocumentMetadata("관련 내용 #LangChain #로드맵 #AI_요약").tags).toEqual([
       "LangChain",

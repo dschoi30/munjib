@@ -327,6 +327,8 @@ function renderTagSearchChildren(
       if (
         child.type === "a" ||
         child.type === "button" ||
+        child.type === "code" ||
+        child.type === "pre" ||
         child.type === Link ||
         typeof childProps.href === "string"
       ) {

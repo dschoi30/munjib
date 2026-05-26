@@ -1332,6 +1332,30 @@ describe("DocumentEditor properties", () => {
     expect(screen.queryByRole("button", { name: "Search tag #링크" })).toBeNull();
   });
 
+  it("does not rewrite tags inside inline code into buttons", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "Use `#코드` and #본문",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Search tag #코드" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Search tag #본문" })).toBeTruthy();
+  });
+
   it("preserves markdown table alignment while linking table cell tags", () => {
     render(
       <AppShell
