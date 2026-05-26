@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 120
+source_count: 121
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:20:00+09:00 - review follow-up
+
+- Result: Korean tag clicks now populate sidebar search results and graph tag nodes.
+- Coverage: `parseDocumentMetadata()` now merges YAML frontmatter `tags:` and body inline tags with Unicode tag matching. Workspace sidebar search and graph data derive readable document tag inputs from current markdown at render time instead of depending on previously persisted `DocumentTag` rows, so existing Korean tags are reflected immediately.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/document-metadata/parser.ts`, `tests/document-metadata/parser.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx -t "frontmatter tags|Korean tag queries|Korean inline tags"`, `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T01:18:00+09:00 - review follow-up
 

@@ -8,6 +8,7 @@ import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
 import {
   canWriteDocument,
@@ -116,16 +117,12 @@ export default async function WorkspacePage({
   });
   const readableDocumentIds = new Set(readableDocuments.map((document) => document.id));
   const readableDocumentIdList = Array.from(readableDocumentIds);
-  const documentTagsForList = readableDocumentIdList.length > 0
-    ? await prisma.documentTag.findMany({
-        where: { documentId: { in: readableDocumentIdList } },
-        select: {
-          documentId: true,
-          tag: { select: { name: true, normalizedName: true } },
-        },
-        orderBy: [{ documentId: "asc" }, { id: "asc" }],
-      })
-    : [];
+  const documentTagsForList = readableDocuments.flatMap((document) =>
+    parseDocumentMetadata(document.contentMarkdown).tags.map((tagName) => ({
+      documentId: document.id,
+      tag: { name: tagName, normalizedName: normalizeTag(tagName) },
+    })),
+  );
   const tagNamesByDocumentId = new Map<string, string[]>();
   for (const documentTag of documentTagsForList) {
     const tagNames = tagNamesByDocumentId.get(documentTag.documentId) ?? [];
