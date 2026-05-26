@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useTagSearch } from "@/components/app-shell";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import type { KnowledgeGraphData } from "@/lib/knowledge-graph/model";
 
@@ -151,6 +152,32 @@ function renderGraph(graph = createGraph()) {
       workspaceSlug="company-handbook"
       graph={graph}
       selectedDocumentId="doc-1"
+    />,
+  );
+}
+
+function TagSearchReceiver() {
+  const tagSearch = useTagSearch();
+
+  return (
+    <span data-testid="tag-search-request">
+      {tagSearch?.latestTagSearchRequest?.tagName ?? ""}
+    </span>
+  );
+}
+
+function renderGraphInShell(graph = createGraph()) {
+  return render(
+    <AppShell
+      left={<TagSearchReceiver />}
+      center={
+        <KnowledgeGraphView
+          workspaceSlug="company-handbook"
+          graph={graph}
+          selectedDocumentId="doc-1"
+        />
+      }
+      right={<div />}
     />,
   );
 }
@@ -1089,5 +1116,21 @@ describe("KnowledgeGraphView", () => {
     onNodeClick?.(graph.nodes[0]);
 
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
+  });
+
+  it("requests sidebar tag search when a tag node is clicked", async () => {
+    const graph = createGraph();
+    renderGraphInShell(graph);
+
+    const onNodeClick = forceGraphMock.state.latestProps?.onNodeClick as
+      | ((node: (typeof graph.nodes)[number]) => void)
+      | undefined;
+
+    onNodeClick?.(graph.nodes[1]);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("tag-search-request").textContent).toBe("Design");
+    });
+    expect(router.push).not.toHaveBeenCalled();
   });
 });
