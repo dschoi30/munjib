@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-26
-source_count: 114
+updated: 2026-05-27
+source_count: 115
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T00:05:00+09:00 - design
+
+- Result: Issue #71 tag click search 설계를 승인된 범위로 기록했다.
+- Coverage: Existing sidebar Search panel에 `tag:#name` literal query를 추가하고, query는 exact normalized tag match로 처리한다. Frontmatter tag chip과 preview mode body `#tag` click은 Search panel을 열고 input을 `tag:#<tag>`로 채운다. 검색 결과는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties tags row는 frontmatter-only source policy를 유지한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #71, `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`.
+- Verification: Spec self-review.
 
 ## 2026-05-26T23:36:00+09:00 - implementation
 
