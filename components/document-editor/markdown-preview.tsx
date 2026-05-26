@@ -306,7 +306,7 @@ function renderTagSearchText(
   keyPrefix: string,
 ) {
   const parts: ReactNode[] = [];
-  const pattern = /(^|[\s([>])#([A-Za-z0-9][A-Za-z0-9_-]*)\b/g;
+  const pattern = /(^|[\s([>])#([\p{L}\p{N}][\p{L}\p{N}_-]*)/gu;
   let lastIndex = 0;
 
   for (const match of text.matchAll(pattern)) {
