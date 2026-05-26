@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import { useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
@@ -74,6 +74,7 @@ export function DocumentList({
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const handledTagSearchTokenRef = useRef<number | null>(null);
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
 
@@ -113,10 +114,12 @@ export function DocumentList({
   useEffect(() => {
     const request = tagSearch?.latestTagSearchRequest;
     if (!request) return;
+    if (handledTagSearchTokenRef.current === request.token) return;
 
     const tagName = request.tagName.trim().replace(/^#+/, "");
     if (!tagName) return;
 
+    handledTagSearchTokenRef.current = request.token;
     setSettingsOpen(false);
     setActivePanel("search");
     setSearchQuery(`tag:#${tagName}`);

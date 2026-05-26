@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -74,6 +74,13 @@ export function AppShell({
     useState<TagSearchRequest | null>(null);
   const headingNavigatorRef = useRef<HeadingNavigator>(null);
   const nextTagSearchTokenRef = useRef(0);
+  const requestTagSearch = useCallback((tagName: string) => {
+    nextTagSearchTokenRef.current += 1;
+    setLatestTagSearchRequest({
+      tagName,
+      token: nextTagSearchTokenRef.current,
+    });
+  }, []);
   const rightPanelControls = useMemo(
     () => ({
       collapse: () => setRightPanelOpen(false),
@@ -100,15 +107,9 @@ export function AppShell({
   const tagSearchControls = useMemo<TagSearchControls>(
     () => ({
       latestTagSearchRequest,
-      requestTagSearch: (tagName) => {
-        nextTagSearchTokenRef.current += 1;
-        setLatestTagSearchRequest({
-          tagName,
-          token: nextTagSearchTokenRef.current,
-        });
-      },
+      requestTagSearch,
     }),
-    [latestTagSearchRequest],
+    [latestTagSearchRequest, requestTagSearch],
   );
   const rightContent =
     typeof right === "function" ? right(rightPanelControls) : right;
