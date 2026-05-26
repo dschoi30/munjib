@@ -737,6 +737,35 @@ describe("DocumentList", () => {
     );
   });
 
+  it("does not replay an old tag search request after later document navigation", () => {
+    const { rerender } = render(
+      <AppShell
+        left={<DocumentList {...baseProps} selectedDocumentId="doc-1" />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#LangChain",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+    expect(screen.queryByLabelText("Search documents")).toBeNull();
+
+    rerender(
+      <AppShell
+        left={<DocumentList {...baseProps} selectedDocumentId="doc-2" />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div />}
+      />,
+    );
+
+    expect(screen.queryByLabelText("Search documents")).toBeNull();
+    expect(screen.getByText("Recents")).toBeTruthy();
+  });
+
   it("filters search results with exact case-insensitive tag queries", () => {
     renderList();
 

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 117
+source_count: 118
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T00:50:00+09:00 - review follow-up
+
+- Result: PR #72 review feedback을 반영해 tag click search 구현을 보강했다.
+- Coverage: `requestTagSearch`를 stable callback으로 분리해 markdown preview component memoization이 불필요하게 흔들리지 않게 했고, DocumentList는 tag search request token을 한 번만 처리해 이후 document navigation이 이전 tag search를 재실행하지 않게 했다. Workspace page는 readable document tag query에서 `name`과 `normalizedName`을 함께 선택하고 graph view tag data에도 재사용해 중복 `DocumentTag` 조회를 제거했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/app-shell.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T00:35:00+09:00 - implementation
 

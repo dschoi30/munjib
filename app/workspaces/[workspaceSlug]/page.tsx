@@ -121,7 +121,7 @@ export default async function WorkspacePage({
         where: { documentId: { in: readableDocumentIdList } },
         select: {
           documentId: true,
-          tag: { select: { normalizedName: true } },
+          tag: { select: { name: true, normalizedName: true } },
         },
         orderBy: [{ documentId: "asc" }, { id: "asc" }],
       })
@@ -139,37 +139,28 @@ export default async function WorkspacePage({
       ? (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null)
       : null;
 
-  const [graphLinks, graphTags] = isGraphView
-    ? await Promise.all([
-        prisma.documentLink.findMany({
-          where: {
-            workspaceId: workspace.id,
-            sourceDocumentId: { in: readableDocumentIdList },
-          },
-          select: {
-            id: true,
-            sourceDocumentId: true,
-            targetDocumentId: true,
-            targetTitleRaw: true,
-            isBroken: true,
-            isAmbiguous: true,
-          },
-          orderBy: [
-            { sourceDocumentId: "asc" },
-            { sortOrder: "asc" },
-            { id: "asc" },
-          ],
-        }),
-        prisma.documentTag.findMany({
-          where: { documentId: { in: readableDocumentIdList } },
-          select: {
-            documentId: true,
-            tag: { select: { name: true, normalizedName: true } },
-          },
-          orderBy: [{ documentId: "asc" }, { id: "asc" }],
-        }),
-      ])
-    : [[], []];
+  const graphLinks = isGraphView
+    ? await prisma.documentLink.findMany({
+        where: {
+          workspaceId: workspace.id,
+          sourceDocumentId: { in: readableDocumentIdList },
+        },
+        select: {
+          id: true,
+          sourceDocumentId: true,
+          targetDocumentId: true,
+          targetTitleRaw: true,
+          isBroken: true,
+          isAmbiguous: true,
+        },
+        orderBy: [
+          { sourceDocumentId: "asc" },
+          { sortOrder: "asc" },
+          { id: "asc" },
+        ],
+      })
+    : [];
+  const graphTags = isGraphView ? documentTagsForList : [];
   const graphData = isGraphView
     ? buildKnowledgeGraph({
         documents: readableDocuments.map((document) => ({
