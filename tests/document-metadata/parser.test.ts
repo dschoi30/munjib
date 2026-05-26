@@ -39,6 +39,18 @@ Use #incident and #platform notes.`),
     ]);
   });
 
+  it("extracts frontmatter tags and deduplicates them with inline tags", () => {
+    expect(
+      parseDocumentMetadata(`---
+tags:
+  - LangChain
+  - "#로드맵"
+---
+
+본문 #로드맵 #AI_요약`).tags,
+    ).toEqual(["LangChain", "로드맵", "AI_요약"]);
+  });
+
   it("accepts CRLF frontmatter from browser editors", () => {
     expect(parseDocumentMetadata("---\r\nowner: Platform\r\n---\r\n# Title").properties).toEqual([
       { key: "owner", value: "Platform", valueType: "string" },

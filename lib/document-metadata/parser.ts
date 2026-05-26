@@ -20,7 +20,10 @@ export type ParsedDocumentMetadata = {
 
 export function parseDocumentMetadata(markdown: string): ParsedDocumentMetadata {
   const properties = parseFrontmatter(markdown);
-  const tags = parseTags(markdown);
+  const tags = collectUniqueTags([
+    ...parseFrontmatterTags(properties),
+    ...parseInlineTags(stripDocumentFrontmatter(markdown)),
+  ]);
 
   return { tags, properties };
 }
@@ -63,7 +66,7 @@ function parseFrontmatter(markdown: string): ParsedDocumentProperty[] {
   return properties;
 }
 
-function parseTags(markdown: string) {
+function parseInlineTags(markdown: string) {
   const tags: string[] = [];
   const seen = new Set<string>();
   const withoutCodeBlocks = markdown.replace(/```[\s\S]*?```/g, "");
@@ -77,6 +80,41 @@ function parseTags(markdown: string) {
   }
 
   return tags;
+}
+
+function parseFrontmatterTags(properties: ParsedDocumentProperty[]) {
+  return properties
+    .filter((property) => property.key === "tags")
+    .flatMap((property) => propertyTags(property.value));
+}
+
+function propertyTags(value: ParsedDocumentPropertyValue): string[] {
+  if (typeof value === "string") {
+    return value
+      .split(/[,\s]+/)
+      .map((tag) => tag.replace(/^#/, "").trim())
+      .filter(Boolean);
+  }
+
+  if (Array.isArray(value)) {
+    return value.flatMap(propertyTags);
+  }
+
+  return [];
+}
+
+function collectUniqueTags(tags: string[]) {
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const tag of tags) {
+    const normalized = normalizeTag(tag);
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(tag);
+  }
+
+  return result;
 }
 
 function normalizePropertyKey(key: string) {

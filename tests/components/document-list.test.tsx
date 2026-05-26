@@ -809,6 +809,24 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("link", { name: /Engineering Runbook/ })).toBeNull();
   });
 
+  it("filters search results with Korean tag queries", () => {
+    renderList({
+      documents: [
+        { ...baseProps.documents[0], tagNames: ["로드맵"] },
+        { ...baseProps.documents[1], tagNames: ["engineering"] },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "tag:#로드맵" },
+    });
+
+    expect(screen.getByText("1 result")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Welcome/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Engineering Runbook/ })).toBeNull();
+  });
+
   it("does not partially match tag queries", () => {
     renderList();
 
