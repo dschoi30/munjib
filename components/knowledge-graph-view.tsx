@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Settings2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTagSearch } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   filterKnowledgeGraph,
@@ -129,6 +130,7 @@ export function KnowledgeGraphView({
   selectedDocumentId: string | null;
 }) {
   const router = useRouter();
+  const tagSearch = useTagSearch();
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
   const forceGraphRef = useRef<ForceGraphApi | null>(null);
   const initialZoomAppliedRef = useRef(false);
@@ -373,15 +375,20 @@ export function KnowledgeGraphView({
     setForces((current) => ({ ...current, [key]: value }));
   }, []);
 
-  const routeDocumentNode = useCallback(
+  const handleNodeClick = useCallback(
     (node: ForceGraphNode) => {
+      if (node.kind === "tag") {
+        tagSearch?.requestTagSearch(node.name);
+        return;
+      }
+
       if (node.kind !== "document") {
         return;
       }
 
       router.push(workspaceDocumentHref({ workspaceSlug, documentId: node.documentId }));
     },
-    [router, workspaceSlug],
+    [router, tagSearch, workspaceSlug],
   );
 
   if (graph.nodes.length === 0) {
@@ -471,7 +478,7 @@ export function KnowledgeGraphView({
           linkWidth={() => display.linkThickness}
           linkDirectionalArrowLength={display.arrows ? 4 : 0}
           linkDirectionalArrowRelPos={1}
-          onNodeClick={routeDocumentNode}
+          onNodeClick={handleNodeClick}
           onNodeHover={(node: ForceGraphNode | null) => setHoveredNodeId(node?.id ?? null)}
           enableNodeDrag
           cooldownTicks={80}

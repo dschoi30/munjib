@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-27T01:05:00+09:00 - review follow-up
+
+- Result: Graph view tag node click도 Issue #71 tag search trigger에 연결했다.
+- Coverage: `KnowledgeGraphView` node click handler는 document node 클릭은 기존처럼 selected workspace document route로 이동하고, tag node 클릭은 `AppShell` tag search context에 tag name을 전달해 좌측 Search panel이 `tag:#<tag>` 결과 목록을 보여주게 한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
 ## 2026-05-27T00:50:00+09:00 - review follow-up
 
 - Result: PR #72 review feedback을 반영해 tag click search 구현을 보강했다.
