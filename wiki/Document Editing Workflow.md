@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-26
-source_count: 56
+updated: 2026-05-27
+source_count: 57
 tags:
   - munjib
   - workflow
@@ -41,6 +41,8 @@ links:
 오른쪽 metadata panel은 상단 icon tab에서 `Attachments`, `Versions`, `Audit log`를 선택할 때 해당 목록만 표시한다. Panel 우측 상단의 close control은 오른쪽 sidebar를 접고, 화면 우측 상단의 reopen icon 하나로 다시 펼친다.
 
 좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. `Recents`는 workspace page가 내려준 readable document 순서에서 최대 5개를 보여주며, favorites localStorage 상태와 무관하게 같은 최신 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
+
+Issue #71 설계는 같은 Search panel에 Obsidian-style tag query를 추가하는 계획이다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip이나 preview mode 본문 `#tag`를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
@@ -117,7 +119,7 @@ Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다. Preview paragraph는 CSS `white-space: pre-wrap`으로 렌더링하고, ReactMarkdown remark transform이 paragraph 내부 soft line break를 explicit break node로 바꿔 edit mode에서 입력한 단일 개행과 외부 텍스트 paste 개행을 preview에 안정적으로 반영한다.
 
-Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
+Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Issue #71 설계 이후 frontmatter tag chip은 클릭 가능한 tag search trigger가 될 예정이지만, 표시 source는 여전히 frontmatter `tags:`로 제한한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
 우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 
