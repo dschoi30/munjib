@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { DocumentProperty, Tag } from "@prisma/client";
 import { MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
+import { useTagSearch } from "@/components/app-shell";
 import type { EditableDocument, CommentItem } from "@/components/document-editor/types";
 import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
@@ -107,13 +108,21 @@ export function DocumentProperties({
 }
 
 function TagsPropertyRow({ tags }: { tags: string[] }) {
+  const tagSearch = useTagSearch();
+
   return (
     <PropertyRow label="tags">
       {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
       {tags.map((tag) => (
-        <span key={tag} className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600">
+        <button
+          key={tag}
+          type="button"
+          onClick={() => tagSearch?.requestTagSearch(tag)}
+          className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600 hover:bg-violet-100 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+          aria-label={`Search tag #${tag}`}
+        >
           #{tag}
-        </span>
+        </button>
       ))}
     </PropertyRow>
   );
