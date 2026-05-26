@@ -766,6 +766,23 @@ describe("DocumentList", () => {
     expect(screen.getByText("Recents")).toBeTruthy();
   });
 
+  it("opens tag search from graph view without leaving graph mode", () => {
+    render(
+      <AppShell
+        left={<DocumentList {...baseProps} isGraphView selectedDocumentId="doc-1" />}
+        center={<TagSearchRequester tag="Design" />}
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#Design",
+    );
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
   it("filters search results with exact case-insensitive tag queries", () => {
     renderList();
 

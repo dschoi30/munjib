@@ -123,8 +123,7 @@ export function DocumentList({
     setSettingsOpen(false);
     setActivePanel("search");
     setSearchQuery(`tag:#${tagName}`);
-    clearGraphRoute();
-  }, [clearGraphRoute, tagSearch?.latestTagSearchRequest]);
+  }, [tagSearch?.latestTagSearchRequest]);
 
   return (
     <div>

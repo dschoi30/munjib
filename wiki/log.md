@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 118
+source_count: 119
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:12:00+09:00 - review follow-up
+
+- Result: Graph tag click search가 graph route를 빠져나가 selected document로 이동하던 regression을 수정했다.
+- Coverage: Tag search request를 처리하는 `DocumentList` effect는 좌측 Search panel과 query만 갱신하고 더 이상 `clearGraphRoute()`를 호출하지 않는다. Toolbar Search/Favorites/Documents controls는 기존처럼 graph route를 clear하지만, tag click search는 graph view를 유지한 채 좌측 검색 결과만 노출한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "opens tag search from graph view|does not replay|opens sidebar search"`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T01:05:00+09:00 - review follow-up
 
