@@ -21,6 +21,7 @@ const forceGraphMock = vi.hoisted(() => {
     }),
     d3ReheatSimulation: vi.fn(),
     resumeAnimation: vi.fn(),
+    zoom: vi.fn(),
   };
   const state = {
     api,
@@ -186,6 +187,7 @@ beforeEach(() => {
   forceGraphMock.state.api.d3Force.mockClear();
   forceGraphMock.state.api.d3ReheatSimulation.mockClear();
   forceGraphMock.state.api.resumeAnimation.mockClear();
+  forceGraphMock.state.api.zoom.mockClear();
   forceGraphMock.state.forceMethods.charge.strength.mockClear();
   forceGraphMock.state.forceMethods.link.distance.mockClear();
   forceGraphMock.state.forceMethods.link.strength.mockClear();
@@ -679,6 +681,34 @@ describe("KnowledgeGraphView", () => {
     expect(screen.queryByLabelText("Arrows")).toBeNull();
   });
 
+  it("sets the initial graph zoom once after the graph is ready", async () => {
+    const { rerender } = renderGraph();
+
+    expect(forceGraphMock.state.api.zoom).not.toHaveBeenCalled();
+
+    const onRenderFramePost = forceGraphMock.state.latestProps?.onRenderFramePost as
+      | (() => void)
+      | undefined;
+    onRenderFramePost?.();
+
+    expect(forceGraphMock.state.api.zoom).toHaveBeenCalledWith(2.5, 0);
+    expect(forceGraphMock.state.api.zoom).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <KnowledgeGraphView
+        workspaceSlug="company-handbook"
+        graph={createGraph()}
+        selectedDocumentId="doc-1"
+      />,
+    );
+    const nextOnRenderFramePost = forceGraphMock.state.latestProps?.onRenderFramePost as
+      | (() => void)
+      | undefined;
+    nextOnRenderFramePost?.();
+
+    expect(forceGraphMock.state.api.zoom).toHaveBeenCalledTimes(1);
+  });
+
   it("scales node size baseline down as document count grows", () => {
     const { rerender } = render(
       <KnowledgeGraphView
@@ -743,24 +773,24 @@ describe("KnowledgeGraphView", () => {
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 1);
 
     expect(parseCanvasFont(context.font)).toEqual({
-      fontSize: 12,
+      fontSize: 8,
       family: "sans-serif",
     });
     expect(context.fillStyle).toBe("rgba(100, 116, 139, 0.50)");
     expect(context.textAlign).toBe("center");
     expect(context.textBaseline).toBe("middle");
-    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 43.55);
+    expect(context.fillText).toHaveBeenCalledWith("Welcome", 20, 41.55);
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 3.5);
     expect(parseCanvasFont(context.font)).toEqual({
-      fontSize: 9,
+      fontSize: 4.27617987059879,
       family: "sans-serif",
     });
-    expect(context.fillText).toHaveBeenLastCalledWith("Welcome", 20, 38.47857142857143);
+    expect(context.fillText).toHaveBeenLastCalledWith("Welcome", 20, 36.116661363870826);
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.75);
     const expandedFont = parseCanvasFont(context.font);
-    expect(expandedFont.fontSize).toBeCloseTo(13.8564, 4);
+    expect(expandedFont.fontSize).toBeCloseTo(9.2376, 4);
     expect(expandedFont.family).toBe("sans-serif");
 
     nodeCanvasObject?.({ ...graph.nodes[0], x: 20, y: 30 }, context, 0.1);
