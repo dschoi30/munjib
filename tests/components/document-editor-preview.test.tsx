@@ -1274,6 +1274,40 @@ describe("DocumentEditor properties", () => {
     expect(screen.getByTestId("tag-search-request").textContent).toBe("로드맵");
   });
 
+  it("requests sidebar tag search from formatted and structured preview tags", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown:
+                  "# #제목\n\nUse **#강조** today\n\n> #인용\n\n| Column |\n| --- |\n| #표 |",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #제목" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("제목");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #강조" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("강조");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #인용" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("인용");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #표" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("표");
+  });
+
   it("renders object and null frontmatter property values without placeholder strings", () => {
     renderEditor("---\nsettings:\n  enabled: true\nempty:\n---\n\nBody", {
       properties: [

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
   Children,
+  cloneElement,
   isValidElement,
   useCallback,
   useEffect,
@@ -62,6 +63,33 @@ export function MarkdownPreview({
       ),
       li: ({ children }) => (
         <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</li>
+      ),
+      h1: ({ children }) => (
+        <h1>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h1>
+      ),
+      h2: ({ children }) => (
+        <h2>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h2>
+      ),
+      h3: ({ children }) => (
+        <h3>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h3>
+      ),
+      h4: ({ children }) => (
+        <h4>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h4>
+      ),
+      h5: ({ children }) => (
+        <h5>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h5>
+      ),
+      h6: ({ children }) => (
+        <h6>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h6>
+      ),
+      blockquote: ({ children }) => (
+        <blockquote>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</blockquote>
+      ),
+      td: ({ children }) => (
+        <td>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</td>
+      ),
+      th: ({ children }) => (
+        <th>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</th>
       ),
       a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
@@ -282,7 +310,7 @@ function getPreviewHeadingSectionClassName(level: number) {
 function renderTagSearchChildren(
   children: ReactNode,
   requestTagSearch?: (tagName: string) => void,
-) {
+): ReactNode[] {
   return Children.toArray(children).flatMap((child, childIndex) => {
     if (typeof child === "string") {
       return renderTagSearchText(child, requestTagSearch, `tag-${childIndex}`);
@@ -293,7 +321,16 @@ function renderTagSearchChildren(
     }
 
     if (isValidElement(child)) {
-      return child;
+      const childProps = child.props as { children?: ReactNode };
+      if (!("children" in childProps)) {
+        return child;
+      }
+
+      return cloneElement(
+        child,
+        undefined,
+        renderTagSearchChildren(childProps.children, requestTagSearch),
+      );
     }
 
     return child;
@@ -304,7 +341,7 @@ function renderTagSearchText(
   text: string,
   requestTagSearch: ((tagName: string) => void) | undefined,
   keyPrefix: string,
-) {
+): ReactNode[] {
   const parts: ReactNode[] = [];
   const pattern = /(^|[\s([>])#([\p{L}\p{N}][\p{L}\p{N}_-]*)/gu;
   let lastIndex = 0;
