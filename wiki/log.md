@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 123
+source_count: 124
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:35:00+09:00 - review follow-up
+
+- Result: Preview tag recursion now skips inline code and code blocks.
+- Coverage: Recursive preview tag conversion leaves `code` and `pre` elements untouched, so backticked `#tag` text does not become a misleading tag search button while normal body tags remain clickable.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review thread, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/document-metadata/parser.test.ts`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-editor-preview.test.tsx -t "inline code tags|inline code into buttons"`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`.
 
 ## 2026-05-27T01:30:00+09:00 - review follow-up
 
