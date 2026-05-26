@@ -44,6 +44,7 @@ type ForceGraphApi = {
   d3Force?: (name: string, force?: CenterGravityForce | null) => ForceGraphForce | ForceGraphApi | undefined;
   d3ReheatSimulation?: () => void;
   resumeAnimation?: () => void;
+  zoom?: (value: number, durationMs?: number) => void;
 };
 type CenterGravityForce = {
   (alpha: number): void;
@@ -85,10 +86,11 @@ const DIMMED_LINK_ALPHA = "44";
 const HOVER_DIMMED_LABEL_ALPHA = 0.2;
 const GRAPH_MIN_ZOOM = 0.35;
 const GRAPH_MAX_ZOOM = 3.5;
+const INITIAL_GRAPH_ZOOM = 2.5;
 const MIN_LABEL_GLOBAL_SCALE = 0.75;
-const MIN_LABEL_FONT_SIZE = 9;
+const MIN_LABEL_FONT_SIZE = 4;
 const MAX_LABEL_FONT_SIZE = 16;
-const BASE_LABEL_FONT_SIZE = 12;
+const BASE_LABEL_FONT_SIZE = 8;
 const LABEL_PADDING = 5;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
@@ -128,6 +130,7 @@ export function KnowledgeGraphView({
   const router = useRouter();
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
   const forceGraphRef = useRef<ForceGraphApi | null>(null);
+  const initialZoomAppliedRef = useRef(false);
   const renderedNodesRef = useRef(new Map<string, ForceGraphNode>());
   const renderedLinksRef = useRef(new Map<string, ForceGraphLink>());
   const [settingsOpen, setSettingsOpen] = useState(true);
@@ -318,6 +321,20 @@ export function KnowledgeGraphView({
     graphApi.d3ReheatSimulation?.();
   }, [forceGraphReadyVersion, forces]);
 
+  const applyInitialGraphZoom = useCallback(() => {
+    if (initialZoomAppliedRef.current || !dimensions.width || !dimensions.height) {
+      return;
+    }
+
+    const graphApi = forceGraphRef.current;
+    if (!graphApi?.zoom) {
+      return;
+    }
+
+    graphApi.zoom(INITIAL_GRAPH_ZOOM, 0);
+    initialZoomAppliedRef.current = true;
+  }, [dimensions.height, dimensions.width]);
+
   useEffect(() => {
     forceGraphRef.current?.resumeAnimation?.();
   }, [display]);
@@ -376,6 +393,7 @@ export function KnowledgeGraphView({
           backgroundColor="#ffffff"
           nodeLabel={(node: ForceGraphNode) => node.label}
           nodeRelSize={effectiveNodeSize}
+          onRenderFramePost={applyInitialGraphZoom}
           minZoom={GRAPH_MIN_ZOOM}
           maxZoom={GRAPH_MAX_ZOOM}
           nodeColor={(node: ForceGraphNode) => {
