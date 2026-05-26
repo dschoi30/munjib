@@ -2,6 +2,7 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
@@ -40,6 +41,7 @@ const baseProps = {
       title: "Welcome",
       path: "/welcome",
       contentText: "Welcome body",
+      tagNames: ["welcome", "langchain"],
       canWrite: true,
     },
     {
@@ -48,6 +50,7 @@ const baseProps = {
       title: "Engineering Runbook",
       path: "/engineering-runbook",
       contentText: "Engineering body",
+      tagNames: ["engineering"],
       canWrite: true,
     },
   ],
@@ -103,6 +106,16 @@ afterEach(() => {
 
 function renderList(props: Partial<Parameters<typeof DocumentList>[0]> = {}) {
   return render(<DocumentList {...baseProps} {...props} />);
+}
+
+function TagSearchRequester({ tag }: { tag: string }) {
+  const tagSearch = useTagSearch();
+
+  return (
+    <button type="button" onClick={() => tagSearch?.requestTagSearch(tag)}>
+      Search tag
+    </button>
+  );
 }
 
 describe("DocumentList", () => {
@@ -180,6 +193,7 @@ describe("DocumentList", () => {
           title: "Alpha Doc",
           path: "/alpha-doc",
           contentText: "",
+          tagNames: [],
           canWrite: true,
         },
         {
@@ -188,6 +202,7 @@ describe("DocumentList", () => {
           title: "Zulu Doc",
           path: "/zulu-doc",
           contentText: "",
+          tagNames: [],
           canWrite: true,
         },
       ],
@@ -243,6 +258,7 @@ describe("DocumentList", () => {
           title: "Runbook",
           path: "/runbook",
           contentText: "",
+          tagNames: [],
           canWrite: true,
         },
         {
@@ -251,6 +267,7 @@ describe("DocumentList", () => {
           title: "Runbook",
           path: "/operations/runbook",
           contentText: "",
+          tagNames: [],
           canWrite: true,
         },
       ],
@@ -274,6 +291,7 @@ describe("DocumentList", () => {
           title: "",
           path: "/untitled",
           contentText: "",
+          tagNames: [],
           canWrite: true,
         },
       ],
@@ -701,6 +719,60 @@ describe("DocumentList", () => {
     expect(screen.queryByText("Recents")).toBeNull();
     expect(screen.queryByText("Documents")).toBeNull();
     expect(screen.queryByRole("link", { name: "Welcome" })).toBeNull();
+  });
+
+  it("opens sidebar search with a literal tag query from AppShell tag search requests", () => {
+    render(
+      <AppShell
+        left={<DocumentList {...baseProps} />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#LangChain",
+    );
+  });
+
+  it("filters search results with exact case-insensitive tag queries", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "tag:#LANGCHAIN" },
+    });
+
+    expect(screen.getByText("1 result")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Welcome/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Engineering Runbook/ })).toBeNull();
+  });
+
+  it("filters tag queries without a leading hash", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "tag:langchain" },
+    });
+
+    expect(screen.getByText("1 result")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Welcome/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Engineering Runbook/ })).toBeNull();
+  });
+
+  it("does not partially match tag queries", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "tag:#lang" },
+    });
+
+    expect(screen.getByText("0 results")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Welcome/ })).toBeNull();
   });
 
   it("opens search with Ctrl K", () => {

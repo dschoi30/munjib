@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 30
+source_count: 31
 tags:
   - munjib
   - source
@@ -81,7 +81,7 @@ Issue #48 설계는 현재 구현된 document editor와 sidebar navigation 동�
 
 Issue #65 설계는 graph 탐색의 링크 coverage와 filter surface를 조정하는 계획이다. Graph view는 문서 내 모든 wiki link를 graph edge 후보로 삼되 `DocumentLink` 저장 정책, Properties Links row, backlinks는 frontmatter `links:` 기준으로 유지한다. Filter surface는 wiki links를 항상 적용하고 Tags/Orphans만 사용자 토글로 남기며, property graph rendering은 제거하는 방향이다. 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`이다. Issue #67 설계는 graph zoom range 상한/하한, zoom에 따른 bounded label scaling, node 아래 label placement, sessionStorage 기반 graph option persistence, 기본 off Tags/Orphans filter, 문서 수에 따른 node size baseline을 계획한다. 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`이다.
 
-Issue #71 설계는 Obsidian-style tag navigation을 기존 sidebar search에 얹는 계획이다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip과 preview body `#tag`를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
+Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip과 preview body `#tag`를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
 ## 현재 구현 근거
 
@@ -112,7 +112,7 @@ Issue #71 설계는 Obsidian-style tag navigation을 기존 sidebar search에 �
 - GitHub issue #48와 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`: document editor/navigation 구조 리팩토링 설계.
 - GitHub issue #65와 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`: knowledge graph filter/link coverage 조정 설계.
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
-- GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계.
+- GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 

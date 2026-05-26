@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 116
+source_count: 117
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T00:35:00+09:00 - implementation
+
+- Result: Issue #71 tag click search를 구현했다.
+- Coverage: `AppShell` tag search context로 center editor에서 sidebar search를 요청하고, `DocumentList`는 요청을 받아 Search panel을 열며 input을 `tag:#<tag>`로 채운다. Search panel은 typed `tag:#name`과 `tag:name`을 exact normalized tag match로 처리하고 partial match를 하지 않는다. Readable document의 reconciled tag index를 sidebar document data에 포함해 YAML frontmatter `tags:`와 body `#tag` 기반 결과를 모두 검색한다. Properties frontmatter tag chip과 preview body `#tag`가 click trigger가 되었고, edit mode raw markdown은 클릭 대상이 아니다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #71, `components/app-shell.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-editor/document-properties.tsx`, `components/document-editor/markdown-preview.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T00:20:00+09:00 - planning
 

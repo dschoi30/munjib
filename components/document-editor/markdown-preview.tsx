@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Children,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useTagSearch } from "@/components/app-shell";
 import {
   getMarkdownBeforeFirstHeading,
   getSharedMarkdownDefinitions,
@@ -41,12 +50,19 @@ export function MarkdownPreview({
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
+  const tagSearch = useTagSearch();
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
   const markdownComponents = useMemo<Components>(
     () => ({
+      p: ({ children }) => (
+        <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</p>
+      ),
+      li: ({ children }) => (
+        <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</li>
+      ),
       a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
         return href?.startsWith("?document=") ? (
@@ -60,7 +76,7 @@ export function MarkdownPreview({
         );
       },
     }),
-    [],
+    [tagSearch?.requestTagSearch],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
@@ -261,4 +277,65 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
+}
+
+function renderTagSearchChildren(
+  children: ReactNode,
+  requestTagSearch?: (tagName: string) => void,
+) {
+  return Children.toArray(children).flatMap((child, childIndex) => {
+    if (typeof child === "string") {
+      return renderTagSearchText(child, requestTagSearch, `tag-${childIndex}`);
+    }
+
+    if (typeof child === "number") {
+      return child;
+    }
+
+    if (isValidElement(child)) {
+      return child;
+    }
+
+    return child;
+  });
+}
+
+function renderTagSearchText(
+  text: string,
+  requestTagSearch: ((tagName: string) => void) | undefined,
+  keyPrefix: string,
+) {
+  const parts: ReactNode[] = [];
+  const pattern = /(^|[\s([>])#([A-Za-z0-9][A-Za-z0-9_-]*)\b/g;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    const prefix = match[1] ?? "";
+    const tagName = match[2] ?? "";
+    const tagStart = index + prefix.length;
+
+    if (tagStart > lastIndex) {
+      parts.push(text.slice(lastIndex, tagStart));
+    }
+
+    parts.push(
+      <button
+        key={`${keyPrefix}-${tagName}-${tagStart}`}
+        type="button"
+        onClick={() => requestTagSearch?.(tagName)}
+        className="rounded px-0.5 text-violet-600 underline underline-offset-2 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+        aria-label={`Search tag #${tagName}`}
+      >
+        #{tagName}
+      </button>,
+    );
+    lastIndex = tagStart + tagName.length + 1;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
 }

@@ -116,6 +116,22 @@ export default async function WorkspacePage({
   });
   const readableDocumentIds = new Set(readableDocuments.map((document) => document.id));
   const readableDocumentIdList = Array.from(readableDocumentIds);
+  const documentTagsForList = readableDocumentIdList.length > 0
+    ? await prisma.documentTag.findMany({
+        where: { documentId: { in: readableDocumentIdList } },
+        select: {
+          documentId: true,
+          tag: { select: { normalizedName: true } },
+        },
+        orderBy: [{ documentId: "asc" }, { id: "asc" }],
+      })
+    : [];
+  const tagNamesByDocumentId = new Map<string, string[]>();
+  for (const documentTag of documentTagsForList) {
+    const tagNames = tagNamesByDocumentId.get(documentTag.documentId) ?? [];
+    tagNames.push(documentTag.tag.normalizedName);
+    tagNamesByDocumentId.set(documentTag.documentId, tagNames);
+  }
   const selectedFolder =
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
   const selectedDocument =
@@ -260,6 +276,7 @@ export default async function WorkspacePage({
             title: document.title,
             path: document.path,
             contentText: document.contentText,
+            tagNames: tagNamesByDocumentId.get(document.id) ?? [],
             canWrite: canWriteDocument({
               workspaceRole: role,
               explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,

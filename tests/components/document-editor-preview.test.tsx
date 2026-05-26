@@ -3,7 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
-import { AppShell, useHeadingNavigation } from "@/components/app-shell";
+import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 
@@ -108,6 +108,16 @@ function renderEditor(markdown: string, props: Partial<Parameters<typeof Documen
         document={{ id: "doc-1", title: "Foldable", contentMarkdown: markdown }}
       />
     </DocumentViewModeProvider>,
+  );
+}
+
+function TagSearchReceiver() {
+  const tagSearch = useTagSearch();
+
+  return (
+    <span data-testid="tag-search-request">
+      {tagSearch?.latestTagSearchRequest?.tagName ?? ""}
+    </span>
   );
 }
 
@@ -1184,6 +1194,59 @@ describe("DocumentEditor properties", () => {
     expect(within(properties).getByText("#platform")).toBeTruthy();
     expect(within(properties).getByText("#review")).toBeTruthy();
     expect(within(properties).queryByText("#graph-only")).toBeNull();
+  });
+
+  it("requests sidebar tag search when a frontmatter tag chip is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "---\ntags:\n  - LangChain\n---\n\nBody",
+              }}
+              properties={[
+                { id: "property-tags", key: "tags", valueJson: ["LangChain"] },
+              ]}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #LangChain" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("LangChain");
+  });
+
+  it("requests sidebar tag search when a preview body tag is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "Use #LangChain today",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #LangChain" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("LangChain");
   });
 
   it("renders object and null frontmatter property values without placeholder strings", () => {

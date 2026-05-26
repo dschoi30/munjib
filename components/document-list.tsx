@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Settings } from "lucide-react";
+import { useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
 import type {
@@ -24,6 +25,7 @@ export type DocumentListItem = {
   title: string;
   path: string;
   contentText: string;
+  tagNames: string[];
   canWrite: boolean;
 };
 
@@ -66,6 +68,7 @@ export function DocumentList({
   isGraphView?: boolean;
 }) {
   const router = useRouter();
+  const tagSearch = useTagSearch();
   const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
     "documents",
   );
@@ -106,6 +109,19 @@ export function DocumentList({
     setSettingsOpen(false);
     router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
   }, [router, selectedDocumentId, workspaceSlug]);
+
+  useEffect(() => {
+    const request = tagSearch?.latestTagSearchRequest;
+    if (!request) return;
+
+    const tagName = request.tagName.trim().replace(/^#+/, "");
+    if (!tagName) return;
+
+    setSettingsOpen(false);
+    setActivePanel("search");
+    setSearchQuery(`tag:#${tagName}`);
+    clearGraphRoute();
+  }, [clearGraphRoute, tagSearch?.latestTagSearchRequest]);
 
   return (
     <div>
