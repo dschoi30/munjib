@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 119
+source_count: 120
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:18:00+09:00 - review follow-up
+
+- Result: Korean inline tags now become clickable preview tag search links.
+- Coverage: Body tag extraction and preview body tag linking now use Unicode letter/number matching, so `#로드맵` and mixed tags such as `#AI_요약` are parsed as complete tag names instead of being skipped or truncated.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `lib/document-metadata/parser.ts`, `components/document-editor/markdown-preview.tsx`, `tests/document-metadata/parser.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts -t "Korean inline tags"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "Korean preview body tag"`, `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-editor-preview.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-27T01:12:00+09:00 - review follow-up
 

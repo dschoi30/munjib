@@ -68,7 +68,7 @@ function parseTags(markdown: string) {
   const seen = new Set<string>();
   const withoutCodeBlocks = markdown.replace(/```[\s\S]*?```/g, "");
 
-  for (const match of withoutCodeBlocks.matchAll(/(^|[\s([>])#([A-Za-z0-9][A-Za-z0-9_-]*)\b/g)) {
+  for (const match of withoutCodeBlocks.matchAll(/(^|[\s([>])#([\p{L}\p{N}][\p{L}\p{N}_-]*)/gu)) {
     const tag = match[2] ?? "";
     const normalized = normalizeTag(tag);
     if (!normalized || seen.has(normalized)) continue;

@@ -1249,6 +1249,31 @@ describe("DocumentEditor properties", () => {
     expect(screen.getByTestId("tag-search-request").textContent).toBe("LangChain");
   });
 
+  it("requests sidebar tag search when a Korean preview body tag is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "관련 내용 #로드맵 확인",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #로드맵" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("로드맵");
+  });
+
   it("renders object and null frontmatter property values without placeholder strings", () => {
     renderEditor("---\nsettings:\n  enabled: true\nempty:\n---\n\nBody", {
       properties: [

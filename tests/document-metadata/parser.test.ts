@@ -31,6 +31,14 @@ Use #incident and #platform notes.`),
     expect(parseDocumentMetadata("#one #one\n```md\n#ignored\n```").tags).toEqual(["one"]);
   });
 
+  it("extracts Korean inline tags", () => {
+    expect(parseDocumentMetadata("관련 내용 #LangChain #로드맵 #AI_요약").tags).toEqual([
+      "LangChain",
+      "로드맵",
+      "AI_요약",
+    ]);
+  });
+
   it("accepts CRLF frontmatter from browser editors", () => {
     expect(parseDocumentMetadata("---\r\nowner: Platform\r\n---\r\n# Title").properties).toEqual([
       { key: "owner", value: "Platform", valueType: "string" },
