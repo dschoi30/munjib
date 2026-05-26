@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 115
+source_count: 116
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T00:20:00+09:00 - planning
+
+- Result: Issue #71 tag click search 구현 계획을 작성했다.
+- Coverage: AppShell tag search context, DocumentList sidebar search request handling, typed `tag:#name` exact matching, Properties tag chip click, preview body tag click, server-side readable document tag wiring, focused component tests, wiki/PR verification loop로 task를 나누었다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-27-tag-click-search.md`.
+- Verification: Plan self-review.
 
 ## 2026-05-27T00:05:00+09:00 - design
 
