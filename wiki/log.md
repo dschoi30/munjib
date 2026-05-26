@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-27
-source_count: 122
+source_count: 123
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:30:00+09:00 - review follow-up
+
+- Result: Preview tag recursion now avoids invalid nested interactive markup and preserves table cell props.
+- Coverage: Recursive preview tag conversion skips link/button elements so markdown links containing `#tag` remain plain links, and table header/cell renderers forward incoming props so GFM alignment is preserved while table-cell tags remain clickable.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "markdown links|table alignment|formatted and structured preview tags"`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`.
 
 ## 2026-05-27T01:25:00+09:00 - review follow-up
 

@@ -64,32 +64,34 @@ export function MarkdownPreview({
       li: ({ children }) => (
         <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</li>
       ),
-      h1: ({ children }) => (
-        <h1>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h1>
+      h1: ({ node: _node, children, ...props }) => (
+        <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h1>
       ),
-      h2: ({ children }) => (
-        <h2>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h2>
+      h2: ({ node: _node, children, ...props }) => (
+        <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h2>
       ),
-      h3: ({ children }) => (
-        <h3>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h3>
+      h3: ({ node: _node, children, ...props }) => (
+        <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h3>
       ),
-      h4: ({ children }) => (
-        <h4>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h4>
+      h4: ({ node: _node, children, ...props }) => (
+        <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h4>
       ),
-      h5: ({ children }) => (
-        <h5>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h5>
+      h5: ({ node: _node, children, ...props }) => (
+        <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h5>
       ),
-      h6: ({ children }) => (
-        <h6>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h6>
+      h6: ({ node: _node, children, ...props }) => (
+        <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h6>
       ),
-      blockquote: ({ children }) => (
-        <blockquote>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</blockquote>
+      blockquote: ({ node: _node, children, ...props }) => (
+        <blockquote {...props}>
+          {renderTagSearchChildren(children, tagSearch?.requestTagSearch)}
+        </blockquote>
       ),
-      td: ({ children }) => (
-        <td>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</td>
+      td: ({ node: _node, children, ...props }) => (
+        <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</td>
       ),
-      th: ({ children }) => (
-        <th>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</th>
+      th: ({ node: _node, children, ...props }) => (
+        <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</th>
       ),
       a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
@@ -321,7 +323,16 @@ function renderTagSearchChildren(
     }
 
     if (isValidElement(child)) {
-      const childProps = child.props as { children?: ReactNode };
+      const childProps = child.props as { children?: ReactNode; href?: unknown };
+      if (
+        child.type === "a" ||
+        child.type === "button" ||
+        child.type === Link ||
+        typeof childProps.href === "string"
+      ) {
+        return child;
+      }
+
       if (!("children" in childProps)) {
         return child;
       }

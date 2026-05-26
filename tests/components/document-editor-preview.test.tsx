@@ -1308,6 +1308,62 @@ describe("DocumentEditor properties", () => {
     expect(screen.getByTestId("tag-search-request").textContent).toBe("표");
   });
 
+  it("does not rewrite tags inside markdown links into nested buttons", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "See [docs #링크](https://example.com)",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "docs #링크" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Search tag #링크" })).toBeNull();
+  });
+
+  it("preserves markdown table alignment while linking table cell tags", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "| Column |\n| :---: |\n| #표 |",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    const header = screen.getByRole("columnheader", { name: "Column" }) as HTMLElement;
+    const cell = screen.getByRole("cell") as HTMLElement;
+
+    expect(header.getAttribute("align") === "center" || header.style.textAlign === "center").toBe(
+      true,
+    );
+    expect(cell.getAttribute("align") === "center" || cell.style.textAlign === "center").toBe(
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Search tag #표" })).toBeTruthy();
+  });
+
   it("renders object and null frontmatter property values without placeholder strings", () => {
     renderEditor("---\nsettings:\n  enabled: true\nempty:\n---\n\nBody", {
       properties: [
