@@ -41,6 +41,7 @@ type ForceGraphForce = {
   strength?: (value: number) => unknown;
 };
 type ForceGraphApi = {
+  centerAt?: (x?: number, y?: number, durationMs?: number) => void;
   d3Force?: (name: string, force?: CenterGravityForce | null) => ForceGraphForce | ForceGraphApi | undefined;
   d3ReheatSimulation?: () => void;
   resumeAnimation?: () => void;
@@ -331,9 +332,24 @@ export function KnowledgeGraphView({
       return;
     }
 
+    const selectedNode = selectedDocumentId
+      ? renderedGraph.nodes.find(
+          (node) => node.kind === "document" && node.documentId === selectedDocumentId,
+        )
+      : null;
+    if (
+      selectedDocumentId &&
+      (typeof selectedNode?.x !== "number" || typeof selectedNode.y !== "number")
+    ) {
+      return;
+    }
+
     graphApi.zoom(INITIAL_GRAPH_ZOOM, 0);
+    if (typeof selectedNode?.x === "number" && typeof selectedNode.y === "number") {
+      graphApi.centerAt?.(selectedNode.x, selectedNode.y, 0);
+    }
     initialZoomAppliedRef.current = true;
-  }, [dimensions.height, dimensions.width]);
+  }, [dimensions.height, dimensions.width, renderedGraph.nodes, selectedDocumentId]);
 
   useEffect(() => {
     forceGraphRef.current?.resumeAnimation?.();

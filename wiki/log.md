@@ -21,10 +21,10 @@ links:
 
 ## 2026-05-26T23:36:00+09:00 - implementation
 
-- Result: Issue #69에서 knowledge graph 초기 zoom level을 `2.5`로 설정했다.
-- Coverage: `react-force-graph-2d` 첫 render frame 이후 `zoom(2.5, 0)`을 최초 1회만 호출하며, 기존 `minZoom=0.35`와 `maxZoom=3.5` bounds는 유지한다.
+- Result: Issue #70에서 knowledge graph 초기 zoom을 selected document 중심의 `2.5`로 설정했다.
+- Coverage: `react-force-graph-2d` 첫 render frame 이후 selected document 좌표가 준비되면 `zoom(2.5, 0)`과 `centerAt(selected.x, selected.y, 0)`을 최초 1회만 호출하며, 기존 `minZoom=0.35`와 `maxZoom=3.5` bounds는 유지한다.
 - Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #69, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Source evidence: GitHub issue #70, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
 - Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-25T22:45:00+09:00 - maintenance
