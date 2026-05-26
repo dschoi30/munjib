@@ -21,6 +21,7 @@ const forceGraphMock = vi.hoisted(() => {
     }),
     d3ReheatSimulation: vi.fn(),
     resumeAnimation: vi.fn(),
+    centerAt: vi.fn(),
     zoom: vi.fn(),
   };
   const state = {
@@ -187,6 +188,7 @@ beforeEach(() => {
   forceGraphMock.state.api.d3Force.mockClear();
   forceGraphMock.state.api.d3ReheatSimulation.mockClear();
   forceGraphMock.state.api.resumeAnimation.mockClear();
+  forceGraphMock.state.api.centerAt.mockClear();
   forceGraphMock.state.api.zoom.mockClear();
   forceGraphMock.state.forceMethods.charge.strength.mockClear();
   forceGraphMock.state.forceMethods.link.distance.mockClear();
@@ -681,8 +683,35 @@ describe("KnowledgeGraphView", () => {
     expect(screen.queryByLabelText("Arrows")).toBeNull();
   });
 
-  it("sets the initial graph zoom once after the graph is ready", async () => {
-    const { rerender } = renderGraph();
+  it("sets the initial graph zoom around the selected document once after coordinates are ready", async () => {
+    const graph: KnowledgeGraphData = {
+      nodes: [
+        {
+          id: "document:doc-1",
+          kind: "document",
+          label: "Welcome",
+          documentId: "doc-1",
+          title: "Welcome",
+          path: "/welcome",
+        },
+        {
+          id: "wiki:broken:missing",
+          kind: "wiki",
+          label: "Missing",
+          targetTitleRaw: "Missing",
+          state: "broken",
+        },
+      ],
+      links: [
+        {
+          id: "wiki:doc-1:wiki:broken:missing",
+          source: "document:doc-1",
+          target: "wiki:broken:missing",
+          kind: "wiki",
+        },
+      ],
+    };
+    const { rerender } = renderGraph(graph);
 
     expect(forceGraphMock.state.api.zoom).not.toHaveBeenCalled();
 
@@ -691,13 +720,25 @@ describe("KnowledgeGraphView", () => {
       | undefined;
     onRenderFramePost?.();
 
+    expect(forceGraphMock.state.api.zoom).not.toHaveBeenCalled();
+    expect(forceGraphMock.state.api.centerAt).not.toHaveBeenCalled();
+
+    const renderedGraph = forceGraphMock.state.latestProps?.graphData as {
+      nodes: Array<KnowledgeGraphData["nodes"][number] & { x?: number; y?: number }>;
+    };
+    renderedGraph.nodes[0].x = 42;
+    renderedGraph.nodes[0].y = -16;
+    onRenderFramePost?.();
+
     expect(forceGraphMock.state.api.zoom).toHaveBeenCalledWith(2.5, 0);
+    expect(forceGraphMock.state.api.centerAt).toHaveBeenCalledWith(42, -16, 0);
     expect(forceGraphMock.state.api.zoom).toHaveBeenCalledTimes(1);
+    expect(forceGraphMock.state.api.centerAt).toHaveBeenCalledTimes(1);
 
     rerender(
       <KnowledgeGraphView
         workspaceSlug="company-handbook"
-        graph={createGraph()}
+        graph={graph}
         selectedDocumentId="doc-1"
       />,
     );
@@ -707,6 +748,7 @@ describe("KnowledgeGraphView", () => {
     nextOnRenderFramePost?.();
 
     expect(forceGraphMock.state.api.zoom).toHaveBeenCalledTimes(1);
+    expect(forceGraphMock.state.api.centerAt).toHaveBeenCalledTimes(1);
   });
 
   it("scales node size baseline down as document count grows", () => {
