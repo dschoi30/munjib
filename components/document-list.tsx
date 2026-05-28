@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Settings } from "lucide-react";
+import { useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
 import type {
@@ -24,6 +25,7 @@ export type DocumentListItem = {
   title: string;
   path: string;
   contentText: string;
+  tagNames: string[];
   canWrite: boolean;
 };
 
@@ -66,11 +68,13 @@ export function DocumentList({
   isGraphView?: boolean;
 }) {
   const router = useRouter();
+  const tagSearch = useTagSearch();
   const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
     "documents",
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const handledTagSearchTokenRef = useRef<number | null>(null);
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
 
@@ -106,6 +110,20 @@ export function DocumentList({
     setSettingsOpen(false);
     router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
   }, [router, selectedDocumentId, workspaceSlug]);
+
+  useEffect(() => {
+    const request = tagSearch?.latestTagSearchRequest;
+    if (!request) return;
+    if (handledTagSearchTokenRef.current === request.token) return;
+
+    const tagName = request.tagName.trim().replace(/^#+/, "");
+    if (!tagName) return;
+
+    handledTagSearchTokenRef.current = request.token;
+    setSettingsOpen(false);
+    setActivePanel("search");
+    setSearchQuery(`tag:#${tagName}`);
+  }, [tagSearch?.latestTagSearchRequest]);
 
   return (
     <div>

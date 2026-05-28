@@ -8,6 +8,7 @@ import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
 import {
   canWriteDocument,
@@ -116,6 +117,18 @@ export default async function WorkspacePage({
   });
   const readableDocumentIds = new Set(readableDocuments.map((document) => document.id));
   const readableDocumentIdList = Array.from(readableDocumentIds);
+  const documentTagsForList = readableDocuments.flatMap((document) =>
+    parseDocumentMetadata(document.contentMarkdown).tags.map((tagName) => ({
+      documentId: document.id,
+      tag: { name: tagName, normalizedName: normalizeTag(tagName) },
+    })),
+  );
+  const tagNamesByDocumentId = new Map<string, string[]>();
+  for (const documentTag of documentTagsForList) {
+    const tagNames = tagNamesByDocumentId.get(documentTag.documentId) ?? [];
+    tagNames.push(documentTag.tag.normalizedName);
+    tagNamesByDocumentId.set(documentTag.documentId, tagNames);
+  }
   const selectedFolder =
     workspace.folders.find((folder) => folder.id === selectedFolderIdParam) ?? null;
   const selectedDocument =
@@ -123,37 +136,28 @@ export default async function WorkspacePage({
       ? (readableDocuments.find((document) => document.id === selectedDocumentId) ?? null)
       : null;
 
-  const [graphLinks, graphTags] = isGraphView
-    ? await Promise.all([
-        prisma.documentLink.findMany({
-          where: {
-            workspaceId: workspace.id,
-            sourceDocumentId: { in: readableDocumentIdList },
-          },
-          select: {
-            id: true,
-            sourceDocumentId: true,
-            targetDocumentId: true,
-            targetTitleRaw: true,
-            isBroken: true,
-            isAmbiguous: true,
-          },
-          orderBy: [
-            { sourceDocumentId: "asc" },
-            { sortOrder: "asc" },
-            { id: "asc" },
-          ],
-        }),
-        prisma.documentTag.findMany({
-          where: { documentId: { in: readableDocumentIdList } },
-          select: {
-            documentId: true,
-            tag: { select: { name: true, normalizedName: true } },
-          },
-          orderBy: [{ documentId: "asc" }, { id: "asc" }],
-        }),
-      ])
-    : [[], []];
+  const graphLinks = isGraphView
+    ? await prisma.documentLink.findMany({
+        where: {
+          workspaceId: workspace.id,
+          sourceDocumentId: { in: readableDocumentIdList },
+        },
+        select: {
+          id: true,
+          sourceDocumentId: true,
+          targetDocumentId: true,
+          targetTitleRaw: true,
+          isBroken: true,
+          isAmbiguous: true,
+        },
+        orderBy: [
+          { sourceDocumentId: "asc" },
+          { sortOrder: "asc" },
+          { id: "asc" },
+        ],
+      })
+    : [];
+  const graphTags = isGraphView ? documentTagsForList : [];
   const graphData = isGraphView
     ? buildKnowledgeGraph({
         documents: readableDocuments.map((document) => ({
@@ -260,6 +264,7 @@ export default async function WorkspacePage({
             title: document.title,
             path: document.path,
             contentText: document.contentText,
+            tagNames: tagNamesByDocumentId.get(document.id) ?? [],
             canWrite: canWriteDocument({
               workspaceRole: role,
               explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,

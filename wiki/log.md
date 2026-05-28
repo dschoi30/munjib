@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-26
-source_count: 114
+updated: 2026-05-27
+source_count: 124
 tags:
   - log
   - munjib
@@ -18,6 +18,94 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-27T01:35:00+09:00 - review follow-up
+
+- Result: Preview tag recursion now skips inline code and code blocks.
+- Coverage: Recursive preview tag conversion leaves `code` and `pre` elements untouched, so backticked `#tag` text does not become a misleading tag search button while normal body tags remain clickable.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review thread, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/document-metadata/parser.test.ts`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-editor-preview.test.tsx -t "inline code tags|inline code into buttons"`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`.
+
+## 2026-05-27T01:30:00+09:00 - review follow-up
+
+- Result: Preview tag recursion now avoids invalid nested interactive markup and preserves table cell props.
+- Coverage: Recursive preview tag conversion skips link/button elements so markdown links containing `#tag` remain plain links, and table header/cell renderers forward incoming props so GFM alignment is preserved while table-cell tags remain clickable.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "markdown links|table alignment|formatted and structured preview tags"`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`.
+
+## 2026-05-27T01:25:00+09:00 - review follow-up
+
+- Result: Preview tag click coverage now includes formatted and structured markdown text.
+- Coverage: `MarkdownPreview` recursively converts nested inline children and applies tag search rendering to headings, blockquotes, and table cells, so `**#tag**`, heading tags, quote tags, and table-cell tags can all trigger sidebar tag search.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/document-editor/markdown-preview.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "formatted and structured preview tags"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T01:20:00+09:00 - review follow-up
+
+- Result: Korean tag clicks now populate sidebar search results and graph tag nodes.
+- Coverage: `parseDocumentMetadata()` now merges YAML frontmatter `tags:` and body inline tags with Unicode tag matching. Workspace sidebar search and graph data derive readable document tag inputs from current markdown at render time instead of depending on previously persisted `DocumentTag` rows, so existing Korean tags are reflected immediately.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/document-metadata/parser.ts`, `tests/document-metadata/parser.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx -t "frontmatter tags|Korean tag queries|Korean inline tags"`, `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/knowledge-graph-view.test.tsx tests/knowledge-graph/model.test.ts tests/documents/service.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T01:18:00+09:00 - review follow-up
+
+- Result: Korean inline tags now become clickable preview tag search links.
+- Coverage: Body tag extraction and preview body tag linking now use Unicode letter/number matching, so `#로드맵` and mixed tags such as `#AI_요약` are parsed as complete tag names instead of being skipped or truncated.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `lib/document-metadata/parser.ts`, `components/document-editor/markdown-preview.tsx`, `tests/document-metadata/parser.test.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/document-metadata/parser.test.ts -t "Korean inline tags"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "Korean preview body tag"`, `pnpm exec vitest run tests/document-metadata/parser.test.ts tests/components/document-editor-preview.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T01:12:00+09:00 - review follow-up
+
+- Result: Graph tag click search가 graph route를 빠져나가 selected document로 이동하던 regression을 수정했다.
+- Coverage: Tag search request를 처리하는 `DocumentList` effect는 좌측 Search panel과 query만 갱신하고 더 이상 `clearGraphRoute()`를 호출하지 않는다. Toolbar Search/Favorites/Documents controls는 기존처럼 graph route를 clear하지만, tag click search는 graph view를 유지한 채 좌측 검색 결과만 노출한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: 사용자 보고, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "opens tag search from graph view|does not replay|opens sidebar search"`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T01:05:00+09:00 - review follow-up
+
+- Result: Graph view tag node click도 Issue #71 tag search trigger에 연결했다.
+- Coverage: `KnowledgeGraphView` node click handler는 document node 클릭은 기존처럼 selected workspace document route로 이동하고, tag node 클릭은 `AppShell` tag search context에 tag name을 전달해 좌측 Search panel이 `tag:#<tag>` 결과 목록을 보여주게 한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/knowledge-graph-view.test.tsx`.
+
+## 2026-05-27T00:50:00+09:00 - review follow-up
+
+- Result: PR #72 review feedback을 반영해 tag click search 구현을 보강했다.
+- Coverage: `requestTagSearch`를 stable callback으로 분리해 markdown preview component memoization이 불필요하게 흔들리지 않게 했고, DocumentList는 tag search request token을 한 번만 처리해 이후 document navigation이 이전 tag search를 재실행하지 않게 했다. Workspace page는 readable document tag query에서 `name`과 `normalizedName`을 함께 선택하고 graph view tag data에도 재사용해 중복 `DocumentTag` 조회를 제거했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #72 review threads, `components/app-shell.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/knowledge-graph-view.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T00:35:00+09:00 - implementation
+
+- Result: Issue #71 tag click search를 구현했다.
+- Coverage: `AppShell` tag search context로 center editor에서 sidebar search를 요청하고, `DocumentList`는 요청을 받아 Search panel을 열며 input을 `tag:#<tag>`로 채운다. Search panel은 typed `tag:#name`과 `tag:name`을 exact normalized tag match로 처리하고 partial match를 하지 않는다. Readable document의 reconciled tag index를 sidebar document data에 포함해 YAML frontmatter `tags:`와 body `#tag` 기반 결과를 모두 검색한다. Properties frontmatter tag chip과 preview body `#tag`가 click trigger가 되었고, edit mode raw markdown은 클릭 대상이 아니다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #71, `components/app-shell.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-editor/document-properties.tsx`, `components/document-editor/markdown-preview.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-27T00:20:00+09:00 - planning
+
+- Result: Issue #71 tag click search 구현 계획을 작성했다.
+- Coverage: AppShell tag search context, DocumentList sidebar search request handling, typed `tag:#name` exact matching, Properties tag chip click, preview body tag click, server-side readable document tag wiring, focused component tests, wiki/PR verification loop로 task를 나누었다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-05-27-tag-click-search.md`.
+- Verification: Plan self-review.
+
+## 2026-05-27T00:05:00+09:00 - design
+
+- Result: Issue #71 tag click search 설계를 승인된 범위로 기록했다.
+- Coverage: Existing sidebar Search panel에 `tag:#name` literal query를 추가하고, query는 exact normalized tag match로 처리한다. Frontmatter tag chip과 preview mode body `#tag` click은 Search panel을 열고 input을 `tag:#<tag>`로 채운다. 검색 결과는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties tags row는 frontmatter-only source policy를 유지한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #71, `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`.
+- Verification: Spec self-review.
 
 ## 2026-05-26T23:36:00+09:00 - implementation
 
