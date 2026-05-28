@@ -3,7 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
-import { AppShell, useHeadingNavigation } from "@/components/app-shell";
+import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 
@@ -108,6 +108,16 @@ function renderEditor(markdown: string, props: Partial<Parameters<typeof Documen
         document={{ id: "doc-1", title: "Foldable", contentMarkdown: markdown }}
       />
     </DocumentViewModeProvider>,
+  );
+}
+
+function TagSearchReceiver() {
+  const tagSearch = useTagSearch();
+
+  return (
+    <span data-testid="tag-search-request">
+      {tagSearch?.latestTagSearchRequest?.tagName ?? ""}
+    </span>
   );
 }
 
@@ -1184,6 +1194,198 @@ describe("DocumentEditor properties", () => {
     expect(within(properties).getByText("#platform")).toBeTruthy();
     expect(within(properties).getByText("#review")).toBeTruthy();
     expect(within(properties).queryByText("#graph-only")).toBeNull();
+  });
+
+  it("requests sidebar tag search when a frontmatter tag chip is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "---\ntags:\n  - LangChain\n---\n\nBody",
+              }}
+              properties={[
+                { id: "property-tags", key: "tags", valueJson: ["LangChain"] },
+              ]}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #LangChain" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("LangChain");
+  });
+
+  it("requests sidebar tag search when a preview body tag is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "Use #LangChain today",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #LangChain" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("LangChain");
+  });
+
+  it("requests sidebar tag search when a Korean preview body tag is clicked", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "관련 내용 #로드맵 확인",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #로드맵" }));
+
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("로드맵");
+  });
+
+  it("requests sidebar tag search from formatted and structured preview tags", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown:
+                  "# #제목\n\nUse **#강조** today\n\n> #인용\n\n| Column |\n| --- |\n| #표 |",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #제목" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("제목");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #강조" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("강조");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #인용" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("인용");
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag #표" }));
+    expect(screen.getByTestId("tag-search-request").textContent).toBe("표");
+  });
+
+  it("does not rewrite tags inside markdown links into nested buttons", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "See [docs #링크](https://example.com)",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "docs #링크" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Search tag #링크" })).toBeNull();
+  });
+
+  it("does not rewrite tags inside inline code into buttons", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "Use `#코드` and #본문",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Search tag #코드" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Search tag #본문" })).toBeTruthy();
+  });
+
+  it("preserves markdown table alignment while linking table cell tags", () => {
+    render(
+      <AppShell
+        left={<TagSearchReceiver />}
+        center={
+          <DocumentViewModeProvider>
+            <DocumentEditor
+              {...baseProps}
+              document={{
+                id: "doc-1",
+                title: "Tagged",
+                contentMarkdown: "| Column |\n| :---: |\n| #표 |",
+              }}
+            />
+          </DocumentViewModeProvider>
+        }
+        right={<div />}
+      />,
+    );
+
+    const header = screen.getByRole("columnheader", { name: "Column" }) as HTMLElement;
+    const cell = screen.getByRole("cell") as HTMLElement;
+
+    expect(header.getAttribute("align") === "center" || header.style.textAlign === "center").toBe(
+      true,
+    );
+    expect(cell.getAttribute("align") === "center" || cell.style.textAlign === "center").toBe(
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Search tag #표" })).toBeTruthy();
   });
 
   it("renders object and null frontmatter property values without placeholder strings", () => {

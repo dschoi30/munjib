@@ -102,7 +102,16 @@ export function DocumentNavigation({
   );
   const recentDocuments = useMemo(() => documents.slice(0, 5), [documents]);
   const searchResults = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim();
+    const trimmedQuery = searchQuery.trim();
+    const tagQuery = parseTagSearchQuery(trimmedQuery);
+    if (tagQuery !== null) {
+      if (!tagQuery) return [];
+      return documents.filter((document) =>
+        document.tagNames.some((tagName) => normalizeTagName(tagName) === tagQuery),
+      );
+    }
+
+    const query = trimmedQuery.toLowerCase();
     if (!query) return documents;
     return documents.filter(
       (document) =>
@@ -467,4 +476,15 @@ function folderErrorMessage(folderError: string) {
   if (folderError === "FOLDER_NOT_EMPTY") return "Empty this folder before moving it to trash.";
   if (folderError === "FOLDER_NAME_REQUIRED") return "Folder name is required.";
   return "The folder action could not be completed.";
+}
+
+function parseTagSearchQuery(query: string) {
+  const match = query.match(/^tag:\s*#?(.+)$/i);
+  if (!match) return null;
+
+  return normalizeTagName(match[1] ?? "");
+}
+
+function normalizeTagName(tagName: string) {
+  return tagName.trim().replace(/^#/, "").toLowerCase();
 }

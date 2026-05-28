@@ -2,9 +2,19 @@
 
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Children,
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { useTagSearch } from "@/components/app-shell";
 import {
   getMarkdownBeforeFirstHeading,
   getSharedMarkdownDefinitions,
@@ -41,12 +51,48 @@ export function MarkdownPreview({
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
+  const tagSearch = useTagSearch();
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
   const markdownComponents = useMemo<Components>(
     () => ({
+      p: ({ children }) => (
+        <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</p>
+      ),
+      li: ({ children }) => (
+        <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</li>
+      ),
+      h1: ({ node: _node, children, ...props }) => (
+        <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h1>
+      ),
+      h2: ({ node: _node, children, ...props }) => (
+        <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h2>
+      ),
+      h3: ({ node: _node, children, ...props }) => (
+        <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h3>
+      ),
+      h4: ({ node: _node, children, ...props }) => (
+        <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h4>
+      ),
+      h5: ({ node: _node, children, ...props }) => (
+        <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h5>
+      ),
+      h6: ({ node: _node, children, ...props }) => (
+        <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h6>
+      ),
+      blockquote: ({ node: _node, children, ...props }) => (
+        <blockquote {...props}>
+          {renderTagSearchChildren(children, tagSearch?.requestTagSearch)}
+        </blockquote>
+      ),
+      td: ({ node: _node, children, ...props }) => (
+        <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</td>
+      ),
+      th: ({ node: _node, children, ...props }) => (
+        <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</th>
+      ),
       a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
         return href?.startsWith("?document=") ? (
@@ -60,7 +106,7 @@ export function MarkdownPreview({
         );
       },
     }),
-    [],
+    [tagSearch?.requestTagSearch],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
@@ -261,4 +307,85 @@ function getPreviewHeadingSectionClassName(level: number) {
   }
 
   return "mt-3";
+}
+
+function renderTagSearchChildren(
+  children: ReactNode,
+  requestTagSearch?: (tagName: string) => void,
+): ReactNode[] {
+  return Children.toArray(children).flatMap((child, childIndex) => {
+    if (typeof child === "string") {
+      return renderTagSearchText(child, requestTagSearch, `tag-${childIndex}`);
+    }
+
+    if (typeof child === "number") {
+      return child;
+    }
+
+    if (isValidElement(child)) {
+      const childProps = child.props as { children?: ReactNode; href?: unknown };
+      if (
+        child.type === "a" ||
+        child.type === "button" ||
+        child.type === "code" ||
+        child.type === "pre" ||
+        child.type === Link ||
+        typeof childProps.href === "string"
+      ) {
+        return child;
+      }
+
+      if (!("children" in childProps)) {
+        return child;
+      }
+
+      return cloneElement(
+        child,
+        undefined,
+        renderTagSearchChildren(childProps.children, requestTagSearch),
+      );
+    }
+
+    return child;
+  });
+}
+
+function renderTagSearchText(
+  text: string,
+  requestTagSearch: ((tagName: string) => void) | undefined,
+  keyPrefix: string,
+): ReactNode[] {
+  const parts: ReactNode[] = [];
+  const pattern = /(^|[\s([>])#([\p{L}\p{N}][\p{L}\p{N}_-]*)/gu;
+  let lastIndex = 0;
+
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index ?? 0;
+    const prefix = match[1] ?? "";
+    const tagName = match[2] ?? "";
+    const tagStart = index + prefix.length;
+
+    if (tagStart > lastIndex) {
+      parts.push(text.slice(lastIndex, tagStart));
+    }
+
+    parts.push(
+      <button
+        key={`${keyPrefix}-${tagName}-${tagStart}`}
+        type="button"
+        onClick={() => requestTagSearch?.(tagName)}
+        className="rounded px-0.5 text-violet-600 underline underline-offset-2 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+        aria-label={`Search tag #${tagName}`}
+      >
+        #{tagName}
+      </button>,
+    );
+    lastIndex = tagStart + tagName.length + 1;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
 }
