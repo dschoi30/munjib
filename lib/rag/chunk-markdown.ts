@@ -67,7 +67,7 @@ function splitIntoSections(markdown: string): Section[] {
   };
 
   for (const line of lines) {
-    const openingFence = activeFence ? null : parseFenceMarker(line);
+    const openingFence: FenceMarker | null = activeFence ? null : parseFenceMarker(line);
     if (openingFence) {
       activeFence = openingFence;
     } else if (activeFence && isFenceClose(line, activeFence)) {
