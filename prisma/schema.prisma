@@ -163,6 +163,7 @@ model Document {
   createdBy       User              @relation("DocumentCreatedBy", fields: [createdById], references: [id])
   updatedBy       User              @relation("DocumentUpdatedBy", fields: [updatedById], references: [id])
   versions        DocumentVersion[]
+  chunks          DocumentChunk[]
   outgoingLinks   DocumentLink[]     @relation("DocumentOutgoingLinks")
   incomingLinks   DocumentLink[]     @relation("DocumentIncomingLinks")
   tags            DocumentTag[]
@@ -189,6 +190,27 @@ model DocumentVersion {
   createdBy       User     @relation(fields: [createdById], references: [id])
 
   @@unique([documentId, versionNumber])
+}
+
+model DocumentChunk {
+  id              String   @id @default(cuid())
+  workspaceId     String
+  documentId      String
+  chunkIndex      Int
+  headingPath     String?
+  content         String
+  contentHash     String
+  sourceUpdatedAt DateTime
+  tokenCount      Int
+  embeddingModel  String
+  embedding       Unsupported("vector(1024)")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, embeddingModel, chunkIndex])
+  @@index([workspaceId, embeddingModel])
+  @@index([documentId])
 }
 
 model DocumentLink {

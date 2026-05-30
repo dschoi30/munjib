@@ -24,6 +24,12 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("web_storage:");
   });
 
+  test("uses a pgvector-enabled postgres image", () => {
+    const compose = read("docker-compose.yml");
+
+    expect(compose).toContain("pgvector/pgvector:0.8.2-pg16");
+  });
+
   test("development override runs next dev from the dev image target", () => {
     const compose = read("docker-compose.dev.yml");
 

@@ -21,7 +21,8 @@
     "wiki:sync-check": "tsx scripts/wiki/sync-check.ts",
     "wiki:sync-plan": "tsx scripts/wiki/sync-plan.ts",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev",
+    "db:migrate": "prisma migrate dev && pnpm run db:rag:index",
+    "db:rag:index": "tsx scripts/db/ensure-rag-vector-index.ts",
     "db:seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
