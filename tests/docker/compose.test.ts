@@ -19,6 +19,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("NEXTAUTH_URL");
     expect(compose).toContain("localhost:3000");
     expect(compose).toContain("NEXTAUTH_SECRET");
+    expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");
