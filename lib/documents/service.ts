@@ -22,6 +22,7 @@ import type {
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
 import { pathQualifiedTargetToCreateInput } from "@/lib/wiki-links/targets";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -172,6 +173,10 @@ async function runWithDocumentSlugRetry<T>(operation: () => Promise<T>) {
   throw new Error(SERVICE_ERROR_CODES.DOCUMENT_SLUG_RETRY_EXHAUSTED);
 }
 
+function logRagIndexFailure(documentId: string, error: unknown) {
+  console.error("Failed to refresh RAG index", { documentId, error });
+}
+
 async function createDocumentWithInitialVersion(
   tx: Prisma.TransactionClient,
   input: {
@@ -220,7 +225,7 @@ export async function createDocument(input: CreateDocumentInput) {
   const { workspace, role } = await getWorkspaceMembership(input.workspaceSlug, input.actorId);
   assertCanWriteWorkspace(role);
 
-  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+  const created = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const document = await createDocumentWithInitialVersion(tx, {
       workspaceId: workspace.id,
       actorId: input.actorId,
@@ -252,6 +257,9 @@ export async function createDocument(input: CreateDocumentInput) {
 
     return document;
   }));
+
+  await safeIndexSavedDocument({ documentId: created.id, logger: logRagIndexFailure });
+  return created;
 }
 
 export async function updateDocument(input: UpdateDocumentInput) {
@@ -268,7 +276,7 @@ export async function updateDocument(input: UpdateDocumentInput) {
 
   const contentText = markdownToPlainText(input.contentMarkdown);
 
-  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+  const updatedDocument = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const slug = await nextAvailableDocumentSlug(
       tx,
       workspace.id,
@@ -322,6 +330,9 @@ export async function updateDocument(input: UpdateDocumentInput) {
 
     return updated;
   }));
+
+  await safeIndexSavedDocument({ documentId: updatedDocument.id, logger: logRagIndexFailure });
+  return updatedDocument;
 }
 
 export async function archiveDocument(input: ArchiveDocumentInput) {
@@ -390,7 +401,7 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
 
   const contentText = markdownToPlainText(version.contentMarkdown);
 
-  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+  const restoredDocument = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const slug = await nextAvailableDocumentSlug(
       tx,
       version.document.workspaceId,
@@ -452,6 +463,9 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
 
     return restored;
   }));
+
+  await safeIndexSavedDocument({ documentId: restoredDocument.id, logger: logRagIndexFailure });
+  return restoredDocument;
 }
 
 export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrokenLinkInput) {
@@ -474,7 +488,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
 
   const contentMarkdown = "";
 
-  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+  const created = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const targetCreateInput = await getBrokenLinkCreateInput(tx, {
       workspaceId: link.workspaceId,
       targetTitleRaw: link.targetTitleRaw,
@@ -510,6 +524,9 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
 
     return document;
   }));
+
+  await safeIndexSavedDocument({ documentId: created.id, logger: logRagIndexFailure });
+  return created;
 }
 
 async function getBrokenLinkCreateInput(
