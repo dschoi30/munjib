@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T16:35:00+09:00 - review follow-up
+
+- Result: Issue #73 editor assistant panel의 dirty-state warning과 document switch state isolation을 보강했다.
+- Coverage: AI assistant warning은 title/markdown draft divergence뿐 아니라 pending clipboard image paste upload도 saved-content-only warning 대상으로 본다. Assistant panel은 document id로 keying되어 문서 전환 시 이전 질문, 답변, citation state를 다음 문서에 보여주지 않는다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "saved-content warning|resets assistant panel"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "saved-content warning|resets assistant panel|opens the AI assistant"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T16:30:00+09:00 - implementation
 
 - Result: Issue #73 Document Editor assistant UI를 추가했다.

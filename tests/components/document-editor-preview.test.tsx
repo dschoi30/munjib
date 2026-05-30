@@ -344,6 +344,87 @@ describe("DocumentEditor heading preview folding", () => {
     expect(requestBody).not.toContain("Draft body");
   });
 
+  it("shows the saved-content warning while an image paste is still pending", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+
+    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+  });
+
+  it("resets assistant panel state when switching documents", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ answer: "Answer for first document", citations: [] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const { rerender } = render(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          document={{ id: "doc-1", title: "First", contentMarkdown: "First" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "Question for first" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    await screen.findByText("Answer for first document");
+
+    rerender(
+      <DocumentViewModeProvider>
+        <TestModeControls />
+        <DocumentEditor
+          {...baseProps}
+          document={{ id: "doc-2", title: "Second", contentMarkdown: "Second" }}
+        />
+      </DocumentViewModeProvider>,
+    );
+
+    expect(screen.queryByText("Answer for first document")).toBeNull();
+    expect((screen.getByLabelText("AI question") as HTMLTextAreaElement).value).toBe("");
+  });
+
   it("folds and unfolds a preview heading section", () => {
     renderEditor("# A\nVisible body\n# B\nOther body");
 
