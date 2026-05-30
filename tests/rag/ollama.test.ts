@@ -35,7 +35,7 @@ describe("RAG Ollama client", () => {
   it("posts chat requests to Ollama", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ message: { content: "answer" } }),
+      json: async () => ({ message: { content: "\n answer \n" } }),
     });
     vi.stubGlobal("fetch", fetchMock);
 
