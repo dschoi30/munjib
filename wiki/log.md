@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 125
+source_count: 126
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T11:50:00+09:00 - design review
+
+- Result: Issue #73 RAG assistant 설계와 구현 계획에 review follow-up을 반영했다.
+- Coverage: pgvector raw SQL cast를 `CAST($n AS vector(1024))`로 명시하고, vector 값은 static SQL positional parameter로만 전달하도록 계획을 보강했다. `bge-m3`와 `vector(1024)` dimension coupling, retriever weighted score constants, unsaved draft 안내 UX, AGENTS PR review loop 체크리스트도 구현 계획에 추가했다.
+- Pages: [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: 사용자 review feedback, `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`, `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`.
+- Verification: plan self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-30T11:30:00+09:00 - design
 
