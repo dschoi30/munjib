@@ -71,9 +71,11 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 const baseProps = {
+  workspaceSlug: "company-handbook",
   canWrite: true,
   action: async () => {},
   uploadAttachmentAction: async () => {},
@@ -295,6 +297,51 @@ describe("DocumentEditor heading preview folding", () => {
 
     expect(titleInput.className).toContain("border-0");
     expect(titleInput.className).toContain("text-[1.75rem]");
+  });
+
+  it("opens the AI assistant and asks from saved document content only", async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
+      ok: true,
+      json: async () => ({
+        answer: "Follow the handbook process.",
+        citations: [{ documentId: "doc-1", title: "Foldable", headingPath: ["Process"] }],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody");
+
+    fireEvent.change(screen.getByDisplayValue("Foldable"), {
+      target: { value: "Unsaved title" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+    codeMirrorHarness.changeHandlers[0]("Draft body", {
+      state: { selection: { main: { head: "Draft body".length } } },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+
+    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "  What should I do?  " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    await screen.findByText("Follow the handbook process.");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: "What should I do?" }),
+      },
+    );
+    const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
+    expect(requestBody).not.toContain("Unsaved title");
+    expect(requestBody).not.toContain("Draft body");
   });
 
   it("folds and unfolds a preview heading section", () => {
