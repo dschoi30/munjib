@@ -7,11 +7,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ workspaceSlug: string; documentId: string }> },
 ) {
+  const user = await requireCurrentUser();
+  const { workspaceSlug, documentId } = await params;
+  const body = (await request.json().catch(() => ({}))) as { question?: unknown };
+  const question = typeof body.question === "string" ? body.question : "";
+
   try {
-    const user = await requireCurrentUser();
-    const { workspaceSlug, documentId } = await params;
-    const body = (await request.json()) as { question?: unknown };
-    const question = typeof body.question === "string" ? body.question : "";
     const result = await askDocumentQuestion({
       workspaceSlug,
       documentId,
