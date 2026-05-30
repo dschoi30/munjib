@@ -107,7 +107,10 @@ MUNJIB_RAG_EMBED_MODEL=bge-m3
 `gemma4:e4b` is the first chat model, but the code should treat it as a
 configuration value rather than a hard-coded business rule. `bge-m3` should also
 be configurable, but changing it requires rebuilding embeddings because the
-stored vector dimension and semantic space are model-specific.
+stored vector dimension and semantic space are model-specific. `bge-m3` produces
+1024-dimensional dense embeddings for this design. If a later embedding model
+uses a different dimension, the `DocumentChunk.embedding` column and pgvector
+index must be migrated before the model is enabled.
 
 Ollama failures should surface as assistant errors without breaking document
 editing. The editor should remain usable if Ollama is offline.
@@ -162,7 +165,10 @@ USING hnsw (embedding vector_cosine_ops);
 ```
 
 Keep pgvector operations behind `lib/rag/vector-store.ts` because Prisma Client
-does not natively support vector values.
+does not natively support vector values. Raw SQL must use static SQL strings
+with positional parameters for all user/document/vector values. Cast vector
+parameters with `CAST($n AS vector(1024))` instead of interpolating vector text
+into SQL.
 
 ## Chunking Strategy
 
@@ -226,6 +232,26 @@ Scoring should combine:
 - same tag boost
 - lightweight keyword overlap
 - MMR-style diversity so one long document does not consume all context slots
+
+Initial weighted score formula:
+
+```text
+score = (1 - cosine_distance)
+  + current_document_boost
+  + graph_scope_boost
+  + keyword_overlap_boost
+```
+
+Boost defaults:
+
+- current document: `0.50`
+- outgoing wiki link target: `0.30`
+- backlink source: `0.25`
+- same-tag document: `0.15`
+- keyword overlap: `min(0.20, matching_query_terms * 0.05)`
+
+Keep these as named constants in the retriever so tuning is visible and covered
+by tests.
 
 Initial context budget:
 
