@@ -5,13 +5,11 @@ import {
   rerankRetrievedChunks,
 } from "@/lib/rag/retriever";
 // @ts-expect-error ReadableDocument is an internal retriever input type.
-import type { ReadableDocument } from "@/lib/rag/retriever";
+type _ReadableDocumentIsInternal = import("@/lib/rag/retriever").ReadableDocument;
 // @ts-expect-error PersistedLink is an internal retriever input type.
-import type { PersistedLink } from "@/lib/rag/retriever";
+type _PersistedLinkIsInternal = import("@/lib/rag/retriever").PersistedLink;
 // @ts-expect-error RankedRerankChunk is an internal retriever return helper type.
-import type { RankedRerankChunk } from "@/lib/rag/retriever";
-
-void (undefined as unknown as ReadableDocument | PersistedLink | RankedRerankChunk);
+type _RankedRerankChunkIsInternal = import("@/lib/rag/retriever").RankedRerankChunk;
 
 const documents = [
   { id: "current", title: "Current", path: "/current", contentMarkdown: "See [[Linked]] #ops" },
@@ -63,6 +61,26 @@ describe("RAG retriever", () => {
     });
 
     expect(ranked.map((chunk) => chunk.id)).toEqual(["current", "linked"]);
+  });
+
+  it("filters chunks outside all retrieval scopes", () => {
+    const ranked = rerankRetrievedChunks({
+      chunks: [
+        { id: "unscoped", documentId: "unscoped", distance: 0.01, content: "alpha" },
+        { id: "current", documentId: "current", distance: 0.5, content: "alpha" },
+      ],
+      scopes: {
+        currentDocumentIds: ["current"],
+        linkedDocumentIds: [],
+        backlinkDocumentIds: [],
+        sameTagDocumentIds: [],
+        fallbackDocumentIds: [],
+      },
+      query: "alpha",
+      limit: 2,
+    });
+
+    expect(ranked.map((chunk) => chunk.id)).toEqual(["current"]);
   });
 
   it("exposes explicit scoring weights for tuning", () => {
@@ -195,5 +213,45 @@ describe("RAG retriever", () => {
     });
 
     expect(ranked.map((chunk) => chunk.id)).toEqual(["closer", "keyword-rich"]);
+  });
+
+  it("normalizes punctuation when computing keyword overlap", () => {
+    const ranked = rerankRetrievedChunks({
+      chunks: [
+        { id: "punctuated-match", documentId: "fallback", distance: 0.21, content: "Alpha." },
+        { id: "closer-miss", documentId: "fallback", distance: 0.2, content: "beta" },
+      ],
+      scopes: {
+        currentDocumentIds: [],
+        linkedDocumentIds: [],
+        backlinkDocumentIds: [],
+        sameTagDocumentIds: [],
+        fallbackDocumentIds: ["fallback"],
+      },
+      query: "alpha?",
+      limit: 2,
+    });
+
+    expect(ranked.map((chunk) => chunk.id)).toEqual(["punctuated-match", "closer-miss"]);
+  });
+
+  it("ignores stop words and very short terms when computing keyword overlap", () => {
+    const ranked = rerankRetrievedChunks({
+      chunks: [
+        { id: "stopword-match", documentId: "fallback", distance: 0.2, content: "to be or ai" },
+        { id: "keyword-match", documentId: "fallback", distance: 0.2, content: "alpha" },
+      ],
+      scopes: {
+        currentDocumentIds: [],
+        linkedDocumentIds: [],
+        backlinkDocumentIds: [],
+        sameTagDocumentIds: [],
+        fallbackDocumentIds: ["fallback"],
+      },
+      query: "to be or ai alpha",
+      limit: 2,
+    });
+
+    expect(ranked.map((chunk) => chunk.id)).toEqual(["keyword-match", "stopword-match"]);
   });
 });

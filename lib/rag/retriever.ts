@@ -58,6 +58,37 @@ export const RETRIEVAL_SCORE_WEIGHTS = {
   keywordMaximum: 0.2,
 } as const;
 
+const MIN_KEYWORD_TERM_LENGTH = 3;
+const KEYWORD_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "for",
+  "from",
+  "if",
+  "in",
+  "is",
+  "it",
+  "of",
+  "on",
+  "or",
+  "that",
+  "the",
+  "then",
+  "this",
+  "to",
+  "was",
+  "we",
+  "with",
+  "you",
+  "your",
+]);
+
 export function buildRetrievalScopes(input: BuildRetrievalScopesInput): RetrievalScopes {
   const readableById = new Map(input.readableDocuments.map((document) => [document.id, document]));
   const selectedDocument = readableById.get(input.selectedDocumentId);
@@ -144,9 +175,11 @@ export function rerankRetrievedChunks<TChunk extends RerankChunk>(
 ): RankedRerankChunk<TChunk>[] {
   if (input.limit <= 0) return [];
 
-  const terms = uniqueLowercaseTerms(input.query);
+  const terms = normalizedKeywordTerms(input.query);
+  const scopedDocumentIds = retrievalScopeDocumentIds(input.scopes);
 
   return input.chunks
+    .filter((chunk) => scopedDocumentIds.has(chunk.documentId))
     .map((chunk, index) => ({
       chunk,
       index,
@@ -220,11 +253,11 @@ function scopeBoost(documentId: string, scopes: RetrievalScopes) {
 function keywordBoost(content: string, terms: Set<string>) {
   if (terms.size === 0) return 0;
 
-  const contentLower = content.toLowerCase();
+  const contentTerms = normalizedKeywordTerms(content);
   let matches = 0;
 
   for (const term of terms) {
-    if (contentLower.includes(term)) matches += 1;
+    if (contentTerms.has(term)) matches += 1;
   }
 
   return Math.min(
@@ -233,6 +266,22 @@ function keywordBoost(content: string, terms: Set<string>) {
   );
 }
 
-function uniqueLowercaseTerms(query: string) {
-  return new Set(query.toLowerCase().split(/\s+/).filter(Boolean));
+function retrievalScopeDocumentIds(scopes: RetrievalScopes) {
+  return new Set([
+    ...scopes.currentDocumentIds,
+    ...scopes.linkedDocumentIds,
+    ...scopes.backlinkDocumentIds,
+    ...scopes.sameTagDocumentIds,
+    ...scopes.fallbackDocumentIds,
+  ]);
+}
+
+function normalizedKeywordTerms(text: string) {
+  const tokens = text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+
+  return new Set(tokens.filter(isKeywordCandidate));
+}
+
+function isKeywordCandidate(term: string) {
+  return term.length >= MIN_KEYWORD_TERM_LENGTH && !KEYWORD_STOP_WORDS.has(term);
 }
