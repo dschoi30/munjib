@@ -344,6 +344,54 @@ describe("DocumentEditor heading preview folding", () => {
     expect(requestBody).not.toContain("Draft body");
   });
 
+  it("shows an AI error when a successful response body is not valid JSON", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("bad json");
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody");
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "What should I do?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    expect(await screen.findByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+  });
+
+  it("omits the heading separator for empty AI citation heading paths", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        answer: "Use the saved handbook.",
+        citations: [
+          { documentId: "doc-1", title: "Foldable", headingPath: [] },
+          { documentId: "doc-2", title: "Policy", headingPath: ["Process"] },
+        ],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody");
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "What should I do?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    await screen.findByText("Use the saved handbook.");
+    const citationItems = within(screen.getByRole("list")).getAllByRole("listitem");
+
+    expect(citationItems[0]?.textContent).toBe("[1] Foldable");
+    expect(citationItems[1]?.textContent).toBe("[2] Policy > Process");
+  });
+
   it("shows the saved-content warning while an image paste is still pending", async () => {
     const upload = createDeferred<{ markdown: string }>();
     const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);

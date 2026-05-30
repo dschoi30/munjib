@@ -73,7 +73,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
 7. `document.created` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 fire-and-forget으로 예약한다.
+8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다.
 9. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
 10. server action이 생성 문서 URL로 redirect한다.
 
@@ -94,7 +94,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
 7. `document.updated` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 fire-and-forget으로 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
+8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
 
 ## Version restore, attachment, comment
 
