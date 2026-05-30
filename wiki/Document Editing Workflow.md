@@ -79,7 +79,7 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 
 `importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
 
-`moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다.
+`moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다. Move는 `Document.updatedAt`을 바꾸므로 commit 뒤 RAG chunk refresh를 예약해 `sourceUpdatedAt` freshness를 유지한다.
 
 ## 수정 흐름
 

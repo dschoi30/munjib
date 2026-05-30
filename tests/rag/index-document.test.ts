@@ -54,6 +54,7 @@ describe("document RAG indexing", () => {
     expect(replaceDocumentChunks).toHaveBeenCalledWith(expect.objectContaining({
       documentId: "doc-1",
       embeddingModel: "bge-m3",
+      sourceUpdatedAt: savedDocument.updatedAt,
       chunks: [
         expect.objectContaining({
           workspaceId: "workspace-1",
@@ -83,6 +84,7 @@ describe("document RAG indexing", () => {
     expect(replaceDocumentChunks).toHaveBeenCalledWith({
       documentId: "doc-1",
       embeddingModel: "bge-m3",
+      sourceUpdatedAt: savedDocument.updatedAt,
       chunks: [],
     });
   });
@@ -165,6 +167,20 @@ describe("document RAG indexing", () => {
 
     expect(embedText).toHaveBeenCalledWith(savedDocument.contentMarkdown);
     expect(replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
+  it("returns false when guarded chunk replacement detects a stale document", async () => {
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(false);
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+
+    await expect(
+      indexSavedDocument({
+        document: savedDocument,
+        embeddingModel: "bge-m3",
+        embedText,
+        replaceDocumentChunks,
+      }),
+    ).resolves.toBe(false);
   });
 
   it("schedules safe indexing without awaiting completion", () => {

@@ -33,6 +33,7 @@ export type RetrievedChunk = {
 type ReplaceDocumentChunksInput = {
   documentId: string;
   embeddingModel: string;
+  sourceUpdatedAt?: Date;
   chunks: VectorChunkInput[];
 };
 
@@ -87,6 +88,16 @@ INSERT INTO "DocumentChunk"
   ("id", "workspaceId", "documentId", "chunkIndex", "headingPath", "content", "contentHash", "sourceUpdatedAt", "tokenCount", "embeddingModel", "embedding", "updatedAt")
 VALUES
   ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CAST($11 AS vector(1024)), CURRENT_TIMESTAMP)
+  `.trim();
+}
+
+export function buildCurrentDocumentLockSql() {
+  return `
+SELECT "id"
+FROM "Document"
+WHERE "id" = $1
+  AND "updatedAt" = $2
+FOR UPDATE
 `.trim();
 }
 
@@ -101,6 +112,17 @@ export async function replaceDocumentChunks(tx: Prisma.TransactionClient, input:
       vectorLiteral: toPgVectorLiteral(chunk.embedding),
     };
   });
+  const sourceUpdatedAt = input.sourceUpdatedAt ?? rows[0]?.chunk.sourceUpdatedAt;
+  if (sourceUpdatedAt) {
+    const lockedCurrentDocument = await tx.$queryRawUnsafe<Array<{ id: string }>>(
+      buildCurrentDocumentLockSql(),
+      input.documentId,
+      sourceUpdatedAt,
+    );
+    if (lockedCurrentDocument.length === 0) {
+      return false;
+    }
+  }
 
   await tx.documentChunk.deleteMany({
     where: { documentId: input.documentId, embeddingModel: input.embeddingModel },
@@ -122,6 +144,7 @@ export async function replaceDocumentChunks(tx: Prisma.TransactionClient, input:
       vectorLiteral,
     );
   }
+  return true;
 }
 
 export async function searchSimilarChunks(input: SearchSimilarChunksInput) {

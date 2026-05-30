@@ -5,6 +5,7 @@ import {
   toPgVectorLiteral,
   buildVectorInsertSql,
   buildVectorSearchSql,
+  buildCurrentDocumentLockSql,
   replaceDocumentChunks,
   searchSimilarChunks,
   type VectorChunkInput,
@@ -54,6 +55,12 @@ describe("vector store helpers", () => {
     expect(buildVectorSearchSql()).toContain(
       '"DocumentChunk"."sourceUpdatedAt" = "Document"."updatedAt"',
     );
+  });
+
+  it("locks the current document row before guarded replacement", () => {
+    expect(buildCurrentDocumentLockSql()).toContain('WHERE "id" = $1');
+    expect(buildCurrentDocumentLockSql()).toContain('AND "updatedAt" = $2');
+    expect(buildCurrentDocumentLockSql()).toContain("FOR UPDATE");
   });
 
   it("keeps readable document ids parameterized in static search SQL", () => {
@@ -123,6 +130,28 @@ describe("vector store helpers", () => {
     expect(params[10]).toBe("[0.1,0.2]");
   });
 
+  it("does not delete chunks when the expected source timestamp is stale", async () => {
+    const tx = createTransactionMock();
+    tx.$queryRawUnsafe.mockResolvedValueOnce([]);
+
+    await expect(
+      replaceDocumentChunks(tx as unknown as Prisma.TransactionClient, {
+        documentId: "doc-1",
+        embeddingModel: "bge-m3",
+        sourceUpdatedAt: new Date("2026-05-30T00:00:00.000Z"),
+        chunks: [createChunk()],
+      }),
+    ).resolves.toBe(false);
+
+    expect(tx.$queryRawUnsafe).toHaveBeenCalledWith(
+      buildCurrentDocumentLockSql(),
+      "doc-1",
+      new Date("2026-05-30T00:00:00.000Z"),
+    );
+    expect(tx.documentChunk.deleteMany).not.toHaveBeenCalled();
+    expect(tx.$executeRawUnsafe).not.toHaveBeenCalled();
+  });
+
   it("returns no search results when no readable document ids are provided", async () => {
     const results = await searchSimilarChunks({
       workspaceId: "workspace-1",
@@ -183,6 +212,7 @@ function createTransactionMock() {
     documentChunk: {
       deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    $queryRawUnsafe: vi.fn().mockResolvedValue([{ id: "doc-1" }]),
     $executeRawUnsafe: vi.fn().mockResolvedValue(1),
   };
 }

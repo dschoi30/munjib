@@ -158,6 +158,7 @@ Track #review work.`,
       title: "Runbook",
       contentMarkdown: "",
     });
+    vi.clearAllMocks();
 
     const moved = await moveDocument({
       documentId: document.id,
@@ -166,6 +167,9 @@ Track #review work.`,
     });
 
     expect(moved.path).toBe("/operations/runbook");
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: moved.id }),
+    );
   });
 
   it("updates a document with a new version and audit log", async () => {
