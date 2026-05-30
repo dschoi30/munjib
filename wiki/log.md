@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-27
-source_count: 124
+updated: 2026-05-30
+source_count: 125
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T11:30:00+09:00 - design
+
+- Result: Issue #73 `Document AI RAG assistant` 설계를 추가했다.
+- Coverage: `DocumentEditor` title row 우측 `AI에게 묻기` button, saved-content-only ask route, Ollama `gemma4:e4b` chat model, `bge-m3` embedding model, PostgreSQL pgvector `vector(1024)` chunk store, HNSW cosine index, current-document-centered graph-aware retriever, 테스트와 implementation decision 범위.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #73, `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`, `components/document-editor.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/knowledge-graph/model.ts`, `prisma/schema.prisma`, `docker-compose.yml`.
+- Verification: spec self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-27T01:35:00+09:00 - review follow-up
 
