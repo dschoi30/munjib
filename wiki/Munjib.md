@@ -47,6 +47,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - attachments, versions, audit log를 tab으로 전환하고 닫힘 상태에서는 reopen icon만 남기는 metadata panel.
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
+- document title row의 `AI에게 묻기` assistant, saved DB content 기반 RAG answer, pgvector chunk index.
 
 ## Folder hierarchy
 
@@ -68,7 +69,7 @@ Issue #65 설계는 workspace knowledge graph를 Obsidian-style 탐색에 더 �
 
 Issue #71은 tag click search를 추가해 frontmatter tag chip, preview mode body `#tag`, graph view tag node를 기존 sidebar Search panel의 `tag:#name` exact search로 연결했다. 검색 결과는 YAML frontmatter `tags:`와 body `#tag`에서 reconcile된 tag index를 모두 사용하지만, Properties tags row는 계속 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
-Issue #73 설계는 document editor title row 우측 `AI에게 묻기` button과 saved-content-only RAG assistant를 계획한다. 답변은 저장된 DB 문서 내용만 근거로 삼고, 현재 문서에서 wiki link target, backlink source, same-tag document, workspace fallback 순서로 context를 확장한다. 첫 모델 구성은 Ollama `gemma4:e4b`, `bge-m3`, PostgreSQL pgvector chunk index다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
+Issue #73은 document editor title row 우측 `AI에게 묻기` button과 saved-content-only RAG assistant를 추가했다. 답변은 저장된 DB 문서 내용만 근거로 삼고, 현재 문서에서 wiki link target, backlink source, same-tag document, workspace fallback 순서로 context를 확장한다. 첫 모델 구성은 Ollama `gemma4:e4b`, `bge-m3`, PostgreSQL pgvector chunk index다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
 Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. 일반 문서 선택은 현재 탭을 교체하고, 마지막 tab 바로 오른쪽의 `+` button 또는 sidebar row `...` menu의 Open in new tab만 새 탭을 만든다. Tab width는 row 공간이 부족해질 때 함께 줄어든다. Toolbar는 document navigation history 기반 back/forward와 현재 document 또는 folder path 표시를 제공하며, forward 대상 document가 없거나 readable하지 않으면 forward button을 비활성화한다.
 
@@ -97,10 +98,14 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `lib/permissions/document.ts`
 - `app/workspaces/[workspaceSlug]/*`
 - `components/document-editor.tsx`
+- `components/document-editor/ai-assistant-panel.tsx`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
 - `components/folder-detail.tsx`
 - `components/metadata-panel.tsx`
+- `lib/rag/ask.ts`
+- `lib/rag/retriever.ts`
+- `lib/rag/vector-store.ts`
 - GitHub issue #20
 - GitHub issue #25
 - GitHub issue #29
