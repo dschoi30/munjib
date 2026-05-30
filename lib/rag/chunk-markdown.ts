@@ -74,11 +74,10 @@ function splitIntoSections(markdown: string): Section[] {
       activeFence = null;
     }
 
-    const heading = !activeFence ? line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/) : null;
+    const heading = !activeFence ? parseHeading(line) : null;
     if (heading) {
       pushCurrent();
-      const level = heading[1].length;
-      const text = heading[2].trim();
+      const { level, text } = heading;
       while (headingStack.length > 0 && headingStack[headingStack.length - 1]!.level >= level) {
         headingStack.pop();
       }
@@ -103,24 +102,69 @@ function splitSection(section: string, maxTokens: number, overlapTokens: number)
   const chunks: string[] = [];
   const currentBlocks: string[] = [];
   let currentTokenCount = 0;
+  let currentHasPayload = false;
+  let pendingOverlap: string | null = null;
 
   const flushCurrent = () => {
     const content = joinBlocks(currentBlocks);
-    if (content) chunks.push(content);
+    if (content && currentHasPayload) {
+      chunks.push(content);
+      pendingOverlap = trailingTokenText(content, overlapTokens);
+    }
     currentBlocks.length = 0;
     currentTokenCount = 0;
+    currentHasPayload = false;
+  };
+
+  const startWithPendingOverlap = () => {
+    if (!pendingOverlap) return;
+
+    currentBlocks.push(pendingOverlap);
+    currentTokenCount = estimateTokens(pendingOverlap);
+    pendingOverlap = null;
+  };
+
+  const pushStandaloneChunk = (content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+
+    chunks.push(trimmed);
+    pendingOverlap = trailingTokenText(trimmed, overlapTokens);
+  };
+
+  const addBlock = (content: string, tokenCount: number) => {
+    if (currentBlocks.length === 0) {
+      startWithPendingOverlap();
+    }
+
+    if (currentHasPayload && currentTokenCount + tokenCount > maxTokens) {
+      flushCurrent();
+      startWithPendingOverlap();
+    }
+
+    currentBlocks.push(content);
+    currentTokenCount += tokenCount;
+    currentHasPayload = true;
   };
 
   for (const block of splitMarkdownBlocks(section)) {
     if (block.tokenCount > maxTokens) {
       if (block.kind === "fence" || block.kind === "table") {
         flushCurrent();
-        chunks.push(block.content);
+        for (const chunk of splitOversizedStructuralBlock(block, maxTokens, overlapTokens)) {
+          pushStandaloneChunk(chunk);
+        }
         continue;
       }
 
       if (currentBlocks.length === 0) {
-        chunks.push(...splitTokenText(block.content, maxTokens, maxTokens, overlapTokens));
+        startWithPendingOverlap();
+      }
+
+      if (currentBlocks.length === 0) {
+        for (const piece of splitTokenText(block.content, maxTokens, maxTokens, overlapTokens)) {
+          pushStandaloneChunk(piece);
+        }
         continue;
       }
 
@@ -128,20 +172,21 @@ function splitSection(section: string, maxTokens: number, overlapTokens: number)
       const [firstPiece, ...remainingPieces] = splitTokenText(block.content, firstLimit, maxTokens, overlapTokens);
       if (firstPiece) {
         currentBlocks.push(firstPiece);
-        chunks.push(joinBlocks(currentBlocks));
+        currentHasPayload = true;
+        const content = joinBlocks(currentBlocks);
+        chunks.push(content);
+        pendingOverlap = trailingTokenText(content, overlapTokens);
       }
       currentBlocks.length = 0;
       currentTokenCount = 0;
-      chunks.push(...remainingPieces);
+      currentHasPayload = false;
+      for (const piece of remainingPieces) {
+        pushStandaloneChunk(piece);
+      }
       continue;
     }
 
-    if (currentTokenCount > 0 && currentTokenCount + block.tokenCount > maxTokens) {
-      flushCurrent();
-    }
-
-    currentBlocks.push(block.content);
-    currentTokenCount += block.tokenCount;
+    addBlock(block.content, block.tokenCount);
   }
 
   flushCurrent();
@@ -211,7 +256,8 @@ function splitTokenText(text: string, firstMaxTokens: number, maxTokens: number,
   const tokens = tokenize(text);
   const chunks: string[] = [];
   let start = 0;
-  let limit = firstMaxTokens;
+  let limit = Math.max(1, firstMaxTokens);
+  const normalLimit = Math.max(1, maxTokens);
 
   while (start < tokens.length) {
     const end = Math.min(tokens.length, start + limit);
@@ -220,10 +266,132 @@ function splitTokenText(text: string, firstMaxTokens: number, maxTokens: number,
 
     const nextStart = end - overlapTokens;
     start = nextStart <= start ? end : nextStart;
-    limit = maxTokens;
+    limit = normalLimit;
   }
 
   return chunks;
+}
+
+function splitOversizedStructuralBlock(block: MarkdownBlock, maxTokens: number, overlapTokens: number) {
+  if (block.kind === "table") {
+    return splitOversizedTable(block.content, maxTokens);
+  }
+
+  if (block.kind === "fence") {
+    return splitOversizedFence(block.content, maxTokens, overlapTokens);
+  }
+
+  return splitTokenText(block.content, maxTokens, maxTokens, overlapTokens);
+}
+
+function splitOversizedTable(table: string, maxTokens: number) {
+  const lines = table.split("\n");
+  const header = lines[0];
+  const delimiter = lines[1];
+  if (!header || !delimiter) {
+    return splitTokenText(table, maxTokens, maxTokens, 0);
+  }
+
+  const headerContent = [header, delimiter].join("\n");
+  const headerTokenCount = estimateTokens(headerContent);
+  if (headerTokenCount >= maxTokens) {
+    return splitTokenText(table, maxTokens, maxTokens, 0);
+  }
+
+  const chunks: string[] = [];
+  let currentRows: string[] = [];
+  let currentTokenCount = headerTokenCount;
+
+  const flushRows = () => {
+    if (currentRows.length === 0) return;
+
+    chunks.push([header, delimiter, ...currentRows].join("\n"));
+    currentRows = [];
+    currentTokenCount = headerTokenCount;
+  };
+
+  for (const row of lines.slice(2)) {
+    const rowTokenCount = estimateTokens(row);
+    if (headerTokenCount + rowTokenCount > maxTokens) {
+      flushRows();
+      const rowLimit = maxTokens - headerTokenCount;
+      for (const rowPiece of splitTokenText(row, rowLimit, rowLimit, 0)) {
+        chunks.push([header, delimiter, rowPiece].join("\n"));
+      }
+      continue;
+    }
+
+    if (currentRows.length > 0 && currentTokenCount + rowTokenCount > maxTokens) {
+      flushRows();
+    }
+
+    currentRows.push(row);
+    currentTokenCount += rowTokenCount;
+  }
+
+  flushRows();
+  return chunks;
+}
+
+function splitOversizedFence(fence: string, maxTokens: number, overlapTokens: number) {
+  const lines = fence.split("\n");
+  const opening = lines[0];
+  if (!opening) {
+    return splitTokenText(fence, maxTokens, maxTokens, overlapTokens);
+  }
+
+  const parsedFence = parseFenceMarker(opening);
+  const fallbackClosing = parsedFence?.marker ?? "```";
+  const lastLine = lines[lines.length - 1];
+  const hasClosing = parsedFence ? isFenceClose(lastLine, parsedFence) : false;
+  const closing = hasClosing ? lastLine : fallbackClosing;
+  const bodyLines = lines.slice(1, hasClosing ? -1 : undefined);
+  const wrapperTokenCount = estimateTokens(opening) + estimateTokens(closing);
+  const bodyLimit = maxTokens - wrapperTokenCount;
+
+  if (bodyLimit < 1) {
+    return splitTokenText(fence, maxTokens, maxTokens, overlapTokens);
+  }
+
+  const chunks: string[] = [];
+  let currentLines: string[] = [];
+  let currentTokenCount = wrapperTokenCount;
+
+  const flushLines = () => {
+    if (currentLines.length === 0) return;
+
+    chunks.push([opening, ...currentLines, closing].join("\n"));
+    currentLines = [];
+    currentTokenCount = wrapperTokenCount;
+  };
+
+  for (const line of bodyLines) {
+    const lineTokenCount = estimateTokens(line);
+    if (lineTokenCount > bodyLimit) {
+      flushLines();
+      for (const linePiece of splitTokenText(line, bodyLimit, bodyLimit, overlapTokens)) {
+        chunks.push([opening, linePiece, closing].join("\n"));
+      }
+      continue;
+    }
+
+    if (currentLines.length > 0 && currentTokenCount + lineTokenCount > maxTokens) {
+      flushLines();
+    }
+
+    currentLines.push(line);
+    currentTokenCount += lineTokenCount;
+  }
+
+  flushLines();
+  return chunks;
+}
+
+function trailingTokenText(value: string, overlapTokens: number) {
+  if (overlapTokens <= 0) return null;
+
+  const tokens = tokenize(value);
+  return tokens.slice(-overlapTokens).join(" ") || null;
 }
 
 function tokenize(value: string) {
@@ -249,6 +417,17 @@ function normalizeOverlapTokens(overlapTokens: number, maxTokens: number) {
 function parseFenceMarker(line: string): FenceMarker | null {
   const marker = line.trim().match(/^(`{3,}|~{3,})/)?.[1];
   return marker ? { marker } : null;
+}
+
+function parseHeading(line: string) {
+  const heading = line.match(/^(#{1,6})[ \t]+(.+?)\s*$/);
+  if (!heading) return null;
+
+  const closingMarker = heading[2].match(/^(.*?)[ \t]+#+[ \t]*$/);
+  return {
+    level: heading[1].length,
+    text: (closingMarker?.[1] ?? heading[2]).trim(),
+  };
 }
 
 function isFenceClose(line: string, fence: FenceMarker) {
