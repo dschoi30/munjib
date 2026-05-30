@@ -8,6 +8,11 @@ export function resolveAuthSecret() {
   return "obsidian-clone-development-secret";
 }
 
+export function resolveAuthCookieSecure() {
+  if (process.env.NEXTAUTH_COOKIE_SECURE === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
+
 export const authOptions: NextAuthOptions = {
   secret: resolveAuthSecret(),
   session: { strategy: "jwt" },
@@ -18,7 +23,7 @@ export const authOptions: NextAuthOptions = {
         httpOnly: true,
         sameSite: "lax",
         path: "/",
-        secure: process.env.NODE_ENV === "production",
+        secure: resolveAuthCookieSecure(),
       },
     },
   },

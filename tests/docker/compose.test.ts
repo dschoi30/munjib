@@ -51,6 +51,8 @@ describe("Docker web service configuration", () => {
     expect(dockerfile).toContain("FROM deps AS dev");
     expect(dockerfile).toContain("pnpm run build");
     expect(dockerfile).toContain("COPY --from=builder /app/public ./public");
+    expect(dockerfile).toContain("COPY --from=builder /app/next.config.mjs ./next.config.mjs");
+    expect(dockerfile).not.toContain("next.config.ts");
     expect(dockerfile).toContain("pnpm prune --prod");
     expect(dockerfile).toContain('CMD ["pnpm", "start"]');
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
