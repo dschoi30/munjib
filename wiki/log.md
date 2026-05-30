@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T15:46:00+09:00 - review follow-up
+
+- Result: Issue #73 saved document indexing lifecycle의 stale replacement result propagation을 보정했다.
+- Coverage: `replaceDocumentChunksInTransaction()`이 pgvector replacement transaction callback의 boolean result를 반환하도록 해, `FOR UPDATE` + expected `updatedAt` guard가 stale job을 감지한 `false` 결과를 `indexSavedDocument()` caller까지 보존한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `tests/rag/index-document.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/index-document.test.ts -t "preserves stale replacement results"`, `pnpm exec vitest run tests/rag/index-document.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T15:42:00+09:00 - review follow-up
 
 - Result: Issue #73 graph-aware retriever의 reranking boundary와 keyword overlap을 보강했다.

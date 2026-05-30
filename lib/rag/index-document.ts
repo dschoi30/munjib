@@ -128,5 +128,5 @@ function shouldSkipDefaultScheduledIndex(input: SafeIndexSavedDocumentInput) {
 }
 
 async function replaceDocumentChunksInTransaction(input: ReplaceDocumentChunksInput) {
-  await prisma.$transaction((tx) => defaultReplaceDocumentChunks(tx, input));
+  return prisma.$transaction((tx) => defaultReplaceDocumentChunks(tx, input));
 }
