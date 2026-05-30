@@ -547,7 +547,7 @@ export function DocumentEditor({
   }, [document?.id, setOutlineDocument]);
   const editorMarkdownReady = contentDocumentId === document?.id;
   const hasUnsavedChanges = document
-    ? title !== document.title || contentMarkdown !== document.contentMarkdown
+    ? title !== document.title || contentMarkdown !== document.contentMarkdown || hasPendingImagePaste
     : false;
 
   if (!document) {
@@ -597,6 +597,7 @@ export function DocumentEditor({
       </div>
       {isAiAssistantOpen ? (
         <AiAssistantPanel
+          key={document.id}
           workspaceSlug={workspaceSlug}
           documentId={document.id}
           hasUnsavedChanges={hasUnsavedChanges}
