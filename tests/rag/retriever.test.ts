@@ -4,6 +4,14 @@ import {
   buildRetrievalScopes,
   rerankRetrievedChunks,
 } from "@/lib/rag/retriever";
+// @ts-expect-error ReadableDocument is an internal retriever input type.
+import type { ReadableDocument } from "@/lib/rag/retriever";
+// @ts-expect-error PersistedLink is an internal retriever input type.
+import type { PersistedLink } from "@/lib/rag/retriever";
+// @ts-expect-error RankedRerankChunk is an internal retriever return helper type.
+import type { RankedRerankChunk } from "@/lib/rag/retriever";
+
+void (undefined as unknown as ReadableDocument | PersistedLink | RankedRerankChunk);
 
 const documents = [
   { id: "current", title: "Current", path: "/current", contentMarkdown: "See [[Linked]] #ops" },
