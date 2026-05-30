@@ -40,13 +40,13 @@ MVP의 핵심 위험은 분산 시스템이 아니라 제품 흐름 검증이다
 
 `prd.md`도 빠른 MVP에는 Next.js App Router, Server Actions/Route Handlers, Prisma, PostgreSQL을 추천하고, API 복잡도가 커지면 NestJS 같은 backend 분리를 고려하는 방향을 제시한다.
 
-Issue #73의 RAG chunk refresh도 현재는 monolith 안에서 best-effort service call로 처리한다. Document create/update/version restore/broken-link creation과 manual attachment upload transaction이 commit된 뒤 `safeIndexSavedDocument({ documentId })`가 saved DB document를 다시 load하고 pgvector chunk를 교체한다. 실패는 mutation 성공을 막지 않고 logger에만 남긴다.
+Issue #73의 RAG chunk refresh도 현재는 monolith 안에서 best-effort service call로 처리한다. Document create/update/version restore/broken-link creation과 manual attachment upload transaction이 commit된 뒤 `scheduleSavedDocumentIndex({ documentId })`가 fire-and-forget으로 `safeIndexSavedDocument()`를 시작한다. Indexer는 saved DB document를 다시 load하고 pgvector chunk를 교체하지만, replacement 직전 현재 `Document.updatedAt`을 다시 확인해 stale job이 최신 chunk를 덮지 못하게 한다. Indexing latency와 실패는 mutation 성공을 막지 않고 logger에만 남긴다.
 
 ## 비용
 
 - service boundary가 커지면 server action과 domain service 사이의 책임 구분을 계속 관리해야 한다.
 - 실시간 협업, search indexing, notification, attachment processing 같은 기능이 커지면 별도 worker/service가 필요할 수 있다.
-- RAG embedding/indexing이 느려지거나 retry/queue/backfill이 필요해지면 현재 inline best-effort refresh를 background job으로 분리해야 한다.
+- RAG embedding/indexing retry, queue durability, backfill, progress tracking이 필요해지면 현재 fire-and-forget best-effort refresh를 durable background job으로 분리해야 한다.
 - 권한 모델이 document/folder/team 단위로 확장되면 현재 workspace role helper만으로는 부족하다.
 
 ## 재검토 기준

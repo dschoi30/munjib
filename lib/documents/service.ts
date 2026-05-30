@@ -22,7 +22,7 @@ import type {
 } from "@/lib/documents/types";
 import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
 import { pathQualifiedTargetToCreateInput } from "@/lib/wiki-links/targets";
-import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -258,7 +258,7 @@ export async function createDocument(input: CreateDocumentInput) {
     return document;
   }));
 
-  await safeIndexSavedDocument({ documentId: created.id, logger: logRagIndexFailure });
+  scheduleSavedDocumentIndex({ documentId: created.id, logger: logRagIndexFailure });
   return created;
 }
 
@@ -331,7 +331,7 @@ export async function updateDocument(input: UpdateDocumentInput) {
     return updated;
   }));
 
-  await safeIndexSavedDocument({ documentId: updatedDocument.id, logger: logRagIndexFailure });
+  scheduleSavedDocumentIndex({ documentId: updatedDocument.id, logger: logRagIndexFailure });
   return updatedDocument;
 }
 
@@ -464,7 +464,7 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
     return restored;
   }));
 
-  await safeIndexSavedDocument({ documentId: restoredDocument.id, logger: logRagIndexFailure });
+  scheduleSavedDocumentIndex({ documentId: restoredDocument.id, logger: logRagIndexFailure });
   return restoredDocument;
 }
 
@@ -525,7 +525,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
     return document;
   }));
 
-  await safeIndexSavedDocument({ documentId: created.id, logger: logRagIndexFailure });
+  scheduleSavedDocumentIndex({ documentId: created.id, logger: logRagIndexFailure });
   return created;
 }
 

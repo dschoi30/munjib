@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T15:09:00+09:00 - review follow-up
+
+- Result: Issue #73 saved document indexing lifecycle의 review blocker를 수정했다.
+- Coverage: save/update/restore/broken-link creation과 manual attachment upload는 이제 `scheduleSavedDocumentIndex()`로 RAG refresh를 fire-and-forget 예약해 저장 응답을 Ollama/pgvector latency에 묶지 않는다. Index replacement 직전 현재 `Document.updatedAt`을 다시 확인해 stale indexing job이 최신 chunks를 덮지 못하게 했고, pasted-image upload에는 no-reindex negative test를 추가했다. Vitest 기본 service save path에서는 automatic scheduler를 no-op 처리해 기존 DB-backed test suite가 local pgvector table state에 의존하지 않는다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `lib/documents/service.ts`, `lib/attachments/service.ts`, `tests/rag/index-document.test.ts`, `tests/documents/service.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/index-document.test.ts tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`, `pnpm test`.
+
 ## 2026-05-30T14:05:00+09:00 - implementation
 
 - Result: Issue #73 RAG assistant의 saved document indexing lifecycle을 추가했다.

@@ -2,6 +2,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/rag/index-document", () => ({
+  scheduleSavedDocumentIndex: vi.fn(),
   safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
 }));
 
@@ -11,7 +12,7 @@ import {
 } from "@/lib/attachments/service";
 import { prisma } from "@/lib/db/client";
 import { createDocument } from "@/lib/documents/service";
-import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -46,7 +47,7 @@ describe("attachment service", () => {
       where: { resourceType: "attachment", resourceId: attachment.id },
     });
     expect(auditLogs).toHaveLength(1);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: document.id }),
     );
   });
@@ -85,6 +86,7 @@ describe("attachment service", () => {
       title: "Paste Target",
       contentMarkdown: "# Paste Target",
     });
+    vi.clearAllMocks();
 
     const attachment = await uploadPastedDocumentImageAttachment({
       documentId: document.id,
@@ -119,6 +121,7 @@ describe("attachment service", () => {
       mimeType: "image/png",
       size: 4,
     });
+    expect(scheduleSavedDocumentIndex).not.toHaveBeenCalled();
   });
 
   it("uses a fallback file name for unnamed pasted images", async () => {

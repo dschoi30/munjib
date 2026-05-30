@@ -2,6 +2,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/rag/index-document", () => ({
+  scheduleSavedDocumentIndex: vi.fn(),
   safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
 }));
 
@@ -15,7 +16,7 @@ import {
 } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
 import { createFolder } from "@/lib/folders/service";
-import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("document service", () => {
@@ -46,7 +47,7 @@ describe("document service", () => {
       where: { resourceId: document.id, action: "document.created" },
     });
     expect(auditLogs).toHaveLength(1);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: document.id }),
     );
   });
@@ -196,7 +197,7 @@ Track #review work.`,
       where: { resourceId: document.id, action: "document.updated" },
     });
     expect(auditLogs).toHaveLength(1);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: updated.id }),
     );
   });
@@ -334,7 +335,7 @@ Track #review work.`,
       include: { tag: true },
     });
     expect(tags.map((documentTag) => documentTag.tag.normalizedName)).toEqual(["old"]);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: restored.id }),
     );
   });
@@ -365,7 +366,7 @@ links:
     });
 
     expect(created.title).toBe("Missing Target");
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: created.id }),
     );
   });

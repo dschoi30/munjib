@@ -1,6 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/db/client";
-import { indexSavedDocument, safeIndexSavedDocument } from "@/lib/rag/index-document";
+import {
+  indexSavedDocument,
+  safeIndexSavedDocument,
+  scheduleSavedDocumentIndex,
+} from "@/lib/rag/index-document";
+import type { SavedDocumentForIndex } from "@/lib/rag/index-document";
 
 vi.mock("@/lib/db/client", () => ({
   prisma: {
@@ -110,11 +115,12 @@ describe("document RAG indexing", () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
     const findUnique = prisma.document.findUnique as unknown as ReturnType<typeof vi.fn>;
-    findUnique.mockResolvedValue({
+    findUnique.mockResolvedValueOnce({
       ...savedDocument,
       id: "saved-doc",
       workspaceId: "saved-workspace",
     });
+    findUnique.mockResolvedValueOnce({ updatedAt: savedDocument.updatedAt });
 
     await expect(
       safeIndexSavedDocument({
@@ -141,6 +147,38 @@ describe("document RAG indexing", () => {
         workspaceId: "saved-workspace",
       }),
     );
+  });
+
+  it("skips replacing chunks when the saved document changed during indexing", async () => {
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+
+    await expect(
+      indexSavedDocument({
+        document: savedDocument,
+        embeddingModel: "bge-m3",
+        embedText,
+        replaceDocumentChunks,
+        isDocumentCurrent: async () => false,
+      }),
+    ).resolves.toBe(false);
+
+    expect(embedText).toHaveBeenCalledWith(savedDocument.contentMarkdown);
+    expect(replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
+  it("schedules safe indexing without awaiting completion", () => {
+    const loadDocument = vi.fn(() => new Promise<SavedDocumentForIndex>(() => undefined));
+
+    expect(scheduleSavedDocumentIndex({ documentId: "doc-1", loadDocument })).toBeUndefined();
+    expect(loadDocument).toHaveBeenCalledWith("doc-1");
+  });
+
+  it("does not run default scheduled indexing in test environments", () => {
+    const findUnique = prisma.document.findUnique as unknown as ReturnType<typeof vi.fn>;
+
+    expect(scheduleSavedDocumentIndex({ documentId: "doc-1" })).toBeUndefined();
+    expect(findUnique).not.toHaveBeenCalled();
   });
 
   it("does not throw from the safe wrapper", async () => {
