@@ -1,16 +1,23 @@
 import { WorkspaceRole } from "@prisma/client";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/rag/index-document", () => ({
+  safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
+}));
+
 import {
   uploadDocumentAttachment,
   uploadPastedDocumentImageAttachment,
 } from "@/lib/attachments/service";
 import { prisma } from "@/lib/db/client";
 import { createDocument } from "@/lib/documents/service";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("attachment service", () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     await resetTestData();
   });
 
@@ -22,6 +29,7 @@ describe("attachment service", () => {
       title: "Attachment Target",
       contentMarkdown: "# Attachment Target",
     });
+    vi.clearAllMocks();
 
     const attachment = await uploadDocumentAttachment({
       documentId: document.id,
@@ -38,6 +46,9 @@ describe("attachment service", () => {
       where: { resourceType: "attachment", resourceId: attachment.id },
     });
     expect(auditLogs).toHaveLength(1);
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: document.id }),
+    );
   });
 
   it("prevents viewers from uploading attachments", async () => {

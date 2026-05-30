@@ -54,7 +54,7 @@ Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu�
 
 Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 
-Issue #73 설계는 `DocumentEditor` title input 우측에 `AI에게 묻기` button을 추가하는 계획이다. Ask route는 질문과 선택 문서 id만 받고, 현재 editor의 unsaved title/content draft는 POST하지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이며, pgvector 기반 chunk index는 구현 후 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
+Issue #73 설계는 `DocumentEditor` title input 우측에 `AI에게 묻기` button을 추가하는 계획이다. Ask route는 질문과 선택 문서 id만 받고, 현재 editor의 unsaved title/content draft는 POST하지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이다. pgvector 기반 chunk index는 saved `Document`에서만 파생하며 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
 ## 생성 흐름
 
@@ -73,7 +73,9 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
 7. `document.created` audit log를 남긴다.
-8. 생성 문서 URL로 redirect한다.
+8. transaction commit 뒤 `safeIndexSavedDocument({ documentId })`로 saved DB content 기반 RAG chunk를 refresh한다.
+9. indexing failure는 save 성공을 막지 않고 service logger에만 남긴다.
+10. server action이 생성 문서 URL로 redirect한다.
 
 `importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
 
@@ -92,14 +94,15 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
 7. `document.updated` audit log를 남긴다.
+8. transaction commit 뒤 `safeIndexSavedDocument({ documentId })`로 saved DB content 기반 RAG chunk를 refresh한다. Indexing failure는 update 성공을 막지 않는다.
 
 ## Version restore, attachment, comment
 
-`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다.
+`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. Commit 뒤에는 복원된 saved content로 RAG chunk를 refresh하고, failure는 복원 성공을 막지 않는다.
 
-`uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다.
+`uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk를 refresh한다.
 
-Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 clipboard image paste에서 attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. Clipboard image file paste, HTML `<img>` paste, remote image URL server fetch, pending draft, Save guard 세부 흐름은 [[Markdown Import And Clipboard Paste Workflow]]에서 본다.
+Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 clipboard image paste에서 attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. Clipboard image paste는 service layer에서 saved markdown을 바꾸지 않으므로 RAG indexing도 실행하지 않고, markdown insertion은 editor draft와 이후 Save 흐름에 맡긴다. Clipboard image file paste, HTML `<img>` paste, remote image URL server fetch, pending draft, Save guard 세부 흐름은 [[Markdown Import And Clipboard Paste Workflow]]에서 본다.
 
 `createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다. Comment 저장도 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행해 DocumentEditor remount와 화면 깜빡임을 피한다.
 
@@ -111,7 +114,7 @@ Sidebar row-level document trash는 `archiveDocumentAction()`의 반환값을 �
 
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
-`createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다.
+`createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다. 생성 transaction이 commit된 뒤 새 blank document의 saved content 기준으로 RAG chunk replacement를 실행해 기존 stale chunk가 있으면 비운다.
 
 ## UI 세부 사항
 
@@ -182,7 +185,10 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/wiki-links/preview.ts`
 - GitHub issue #73
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
+- `lib/rag/index-document.ts`
 - `lib/attachments/service.ts`
+- `tests/rag/index-document.test.ts`
+- `tests/attachments/service.test.ts`
 - `lib/comments/service.ts`
 - `lib/document-metadata/display.ts`
 - `lib/document-metadata/parser.ts`

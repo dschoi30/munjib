@@ -5,7 +5,7 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-18
+updated: 2026-05-30
 source_count: 17
 tags:
   - munjib
@@ -106,6 +106,21 @@ erDiagram
     String changeSummary
     DateTime createdAt
   }
+  DocumentChunk {
+    String id PK
+    String workspaceId
+    String documentId FK
+    Int chunkIndex
+    String headingPath
+    String content
+    String contentHash
+    DateTime sourceUpdatedAt
+    Int tokenCount
+    String embeddingModel
+    vector embedding
+    DateTime createdAt
+    DateTime updatedAt
+  }
   DocumentLink {
     String id PK
     String workspaceId FK
@@ -196,6 +211,7 @@ erDiagram
   Folder ||--o{ Document : contains
   Document ||--o{ Document : parents
   Document ||--o{ DocumentVersion : snapshots
+  Document ||--o{ DocumentChunk : indexes
   User ||--o{ DocumentVersion : authors
   Document ||--o{ DocumentLink : source
   Document ||--o{ DocumentLink : target
@@ -232,6 +248,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `status`는 `ACTIVE` 또는 `ARCHIVED`다.
 - `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
+- `DocumentChunk`: saved `Document.contentMarkdown`에서 만든 RAG retrieval chunk다. `workspaceId`는 denormalized field지만 caller/draft 값이 아니라 DB에서 다시 읽은 saved `Document.workspaceId`에서만 파생한다.
 
 현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 
@@ -259,6 +276,14 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `DocumentProperty`: YAML frontmatter에서 추출한 key/value property다.
 
 `lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `DocumentProperty.sortOrder`는 YAML frontmatter에 적힌 key 순서를 보존해 Properties UI가 markdown 파일의 속성 순서와 일치하도록 한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
+
+## Document RAG chunks
+
+Issue #73의 saved-content-only RAG assistant는 `DocumentChunk`를 pgvector-backed retrieval index로 사용한다. Chunk source는 저장된 DB 문서의 `title`, `contentMarkdown`, `workspaceId`, `updatedAt`이며, editor의 unsaved draft title/content는 indexing input에 포함하지 않는다.
+
+`lib/rag/index-document.ts`의 `safeIndexSavedDocument({ documentId })`는 document id만 받아 DB에서 saved document fields를 load한 뒤 markdown chunking, Ollama embedding, `replaceDocumentChunks()`를 수행한다. Chunk row는 `sourceUpdatedAt`과 `embeddingModel`을 저장하고, vector search는 saved `Document.updatedAt`과 `sourceUpdatedAt`이 같은 current chunk만 사용한다. Empty saved markdown도 replacement를 실행해 기존 chunk를 삭제한다.
+
+RAG chunk refresh는 document create/update/version restore/broken-link creation과 manual attachment upload가 commit된 뒤 best-effort로 실행된다. Embedding 서버나 pgvector write가 실패해도 saved document mutation은 성공으로 유지되고, failure는 service logger에만 남긴다.
 
 ## Workspace knowledge graph DTO
 
@@ -290,5 +315,10 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `lib/comments/service.ts`
 - `lib/permissions/document.ts`
 - `tests/documents/service.test.ts`
+- `tests/attachments/service.test.ts`
+- `lib/rag/index-document.ts`
+- `lib/rag/vector-store.ts`
+- `tests/rag/index-document.test.ts`
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
+- GitHub issue #73

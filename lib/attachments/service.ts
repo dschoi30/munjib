@@ -11,6 +11,7 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
@@ -25,6 +26,10 @@ const allowedMimeTypes = new Set([
   "text/plain",
   "text/markdown",
 ]);
+
+function logAttachmentRagIndexFailure(documentId: string, error: unknown) {
+  console.error("Failed to refresh attachment RAG index", { documentId, error });
+}
 
 export type UploadDocumentAttachmentInput = {
   documentId: string;
@@ -58,7 +63,7 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
   await writeFile(absolutePath, input.bytes);
 
   try {
-    return await prisma.$transaction(async (tx) => {
+    const attachment = await prisma.$transaction(async (tx) => {
       const attachment = await tx.attachment.create({
         data: {
           documentId: document.id,
@@ -129,6 +134,12 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
 
       return attachment;
     });
+
+    await safeIndexSavedDocument({
+      documentId: document.id,
+      logger: logAttachmentRagIndexFailure,
+    });
+    return attachment;
   } catch (error) {
     await unlink(absolutePath).catch(() => undefined);
     throw error;

@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T14:05:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 saved document indexing lifecycle을 추가했다.
+- Coverage: `lib/rag/index-document.ts`는 saved DB document fields를 chunking/embedding source로 사용하고, `DocumentChunk.workspaceId`도 saved document에서만 파생한다. Empty saved markdown은 replacement with empty chunks로 stale index를 비우며, `safeIndexSavedDocument({ documentId })`는 DB load/indexing 실패를 logger에 남기고 false를 반환한다. Document create/update/version restore/broken-link creation과 manual attachment upload는 transaction commit 뒤 best-effort로 RAG chunk refresh를 실행하고, clipboard pasted image upload는 saved markdown을 변경하지 않아 indexing을 실행하지 않는다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `lib/documents/service.ts`, `lib/attachments/service.ts`, `tests/rag/index-document.test.ts`, `tests/documents/service.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/index-document.test.ts`, `pnpm exec vitest run tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec vitest run tests/rag/index-document.test.ts tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T13:55:00+09:00 - review follow-up
 
 - Result: RAG Markdown chunking helper의 TypeScript inference blocker를 정리했다.
