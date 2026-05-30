@@ -58,7 +58,8 @@ export const RETRIEVAL_SCORE_WEIGHTS = {
   keywordMaximum: 0.2,
 } as const;
 
-const MIN_KEYWORD_TERM_LENGTH = 3;
+const LATIN_KEYWORD_TERM_MIN_LENGTH = 3;
+const CJK_KEYWORD_TERM_MIN_LENGTH = 2;
 const KEYWORD_STOP_WORDS = new Set([
   "a",
   "an",
@@ -283,5 +284,11 @@ function normalizedKeywordTerms(text: string) {
 }
 
 function isKeywordCandidate(term: string) {
-  return term.length >= MIN_KEYWORD_TERM_LENGTH && !KEYWORD_STOP_WORDS.has(term);
+  if (KEYWORD_STOP_WORDS.has(term)) return false;
+
+  if (/[\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(term)) {
+    return term.length >= CJK_KEYWORD_TERM_MIN_LENGTH;
+  }
+
+  return term.length >= LATIN_KEYWORD_TERM_MIN_LENGTH;
 }

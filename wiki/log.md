@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T15:42:00+09:00 - review follow-up
+
+- Result: Issue #73 graph-aware retriever의 reranking boundary와 keyword overlap을 보강했다.
+- Coverage: `rerankRetrievedChunks()`는 retrieval scopes 밖의 document chunk를 prompt/citation 후보에서 제외한다. Keyword overlap은 punctuation-normalized Unicode token set으로 계산하고, English stop words와 too-short Latin terms를 무시하되 Korean/CJK 2글자 terms는 질문 keyword로 유지한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T15:31:00+09:00 - review follow-up
 
 - Result: Issue #73 graph-aware retriever의 public export surface를 요청 범위로 좁혔다.

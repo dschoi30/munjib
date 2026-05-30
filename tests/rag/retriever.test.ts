@@ -254,4 +254,24 @@ describe("RAG retriever", () => {
 
     expect(ranked.map((chunk) => chunk.id)).toEqual(["keyword-match", "stopword-match"]);
   });
+
+  it("keeps short CJK keywords eligible for Korean questions", () => {
+    const ranked = rerankRetrievedChunks({
+      chunks: [
+        { id: "korean-match", documentId: "fallback", distance: 0.21, content: "저장 문서" },
+        { id: "closer-miss", documentId: "fallback", distance: 0.2, content: "draft" },
+      ],
+      scopes: {
+        currentDocumentIds: [],
+        linkedDocumentIds: [],
+        backlinkDocumentIds: [],
+        sameTagDocumentIds: [],
+        fallbackDocumentIds: ["fallback"],
+      },
+      query: "문서?",
+      limit: 2,
+    });
+
+    expect(ranked.map((chunk) => chunk.id)).toEqual(["korean-match", "closer-miss"]);
+  });
 });
