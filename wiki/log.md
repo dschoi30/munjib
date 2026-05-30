@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 126
+source_count: 130
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T12:15:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 Ollama configuration과 client wrapper를 추가했다.
+- Coverage: `getRagConfig()`는 local Ollama base URL, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimension `1024`를 env override 가능한 기본값으로 제공한다. `embedText()`는 Ollama `/api/embed`에 embedding request를 보내고, `chatWithContext()`는 non-streaming `/api/chat`에 system/user message를 보낸다. Non-ok response와 empty embedding/chat content는 recoverable RAG error code로 구분한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/config.ts`, `lib/rag/ollama.ts`, `tests/rag/ollama.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/ollama.test.ts`.
 
 ## 2026-05-30T11:50:00+09:00 - design review
 
