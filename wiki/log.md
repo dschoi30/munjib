@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T16:15:00+09:00 - review follow-up
+
+- Result: Issue #73 ask route wrapper의 error boundary를 보정했다.
+- Coverage: `requireCurrentUser()`와 params/body parsing을 service error catch 밖으로 옮겨 Next auth redirect control flow를 generic 500으로 삼키지 않게 했다. Malformed JSON body는 empty object로 처리해 missing `question`과 같은 `QUESTION_REQUIRED` 400 response를 반환한다. Route는 계속 JSON body에서 `question`만 service input으로 전달한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/ask-route.test.ts`, `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T16:00:00+09:00 - implementation
 
 - Result: Issue #73 RAG assistant의 prompt builder와 saved-document-only ask service/API route를 추가했다.
