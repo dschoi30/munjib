@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-27
-source_count: 31
+updated: 2026-05-30
+source_count: 40
 tags:
   - munjib
   - source
@@ -83,6 +83,8 @@ Issue #65 설계는 graph 탐색의 링크 coverage와 filter surface를 조정�
 
 Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip, preview body `#tag`, graph view tag node를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
+Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추가하고, 저장된 문서 내용만 기반으로 답변하는 문서 중심 RAG assistant를 구현했다. `AiAssistantPanel`은 ask route에 trimmed `question`만 POST하고 현재 editor draft title/contentMarkdown을 보내지 않으며, dirty title/markdown 또는 pending clipboard image paste가 있을 때 saved-content-only warning을 표시한다. Ask service는 workspace page와 같은 readable document 계산으로 selected document access를 확인한 뒤 saved document indexing, pgvector search, graph-aware reranking, prompt builder, Ollama chat을 연결한다. Retrieval은 현재 문서, wiki link target, backlink source, same-tag 문서, workspace fallback 순서로 확장하며, 기본 chat model은 Ollama `gemma4:e4b`, embedding model은 `bge-m3`다. Embedding 저장과 similarity search는 PostgreSQL 안의 pgvector `vector(1024)`와 HNSW cosine index를 사용한다. 구현은 pgvector chunk schema와 `lib/rag/config.ts`, `lib/rag/ollama.ts`를 추가해 Ollama base URL, chat model, embedding model, embedding dimension을 config-driven 기본값으로 관리하고 `/api/embed`, non-streaming `/api/chat` request를 작은 client wrapper로 감싼다. Ollama client는 offline/network failure와 invalid JSON을 recoverable request error로 정규화하고, embedding payload가 configured dimension과 finite numeric value contract를 만족하는지 검증한다. `lib/rag/vector-store.ts`는 Prisma가 직접 다루지 못하는 pgvector 저장/검색 seam을 맡고, vector literal을 raw SQL 실행 전에 검증한 뒤 static SQL과 positional parameter만 사용한다. Search SQL은 `CAST($1 AS vector(1024))`, readable document id array parameter, saved document `updatedAt`과 일치하는 stale-safe chunk filter를 유지한다. HNSW index creation은 Prisma Migrate가 unsupported vector index를 drop migration으로 되돌리려는 drift를 피하기 위해 `lib/rag/vector-index.ts`와 `pnpm run db:rag:index`의 idempotent setup step으로 분리한다. `lib/rag/index-document.ts`는 replacement transaction의 stale `false` 결과를 `indexSavedDocument()` caller까지 전파해 outdated indexing job이 성공으로 기록되지 않게 한다. `lib/rag/retriever.ts`는 saved/readable documents만 입력으로 받아 selected current document, saved markdown wiki links resolved through the shared resolver, persisted outgoing links, persisted backlinks, same normalized tags, fallback readable documents 순서로 scopes를 만든다. Reranking score는 `(1 - cosine distance) + scope boost + bounded keyword overlap boost`이며 explicit tuning weights는 current `0.5`, linked `0.3`, backlink `0.25`, same-tag `0.15`, keyword term `0.05`, keyword max `0.2`다. Reranker는 모든 scope 밖의 chunk를 prompt/citation 후보에서 제외하고, punctuation-normalized Unicode token overlap을 사용하되 English stop words와 too-short Latin terms를 무시하고 Korean/CJK 2글자 terms는 keyword boost 후보로 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`에 둔다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -98,8 +100,17 @@ Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다
 - `lib/document-metadata/*`: tags와 YAML frontmatter properties extraction.
 - `lib/attachments/service.ts`: attachment upload/download와 markdown link append.
 - `lib/comments/service.ts`: document comment creation.
+- `lib/rag/config.ts`: Ollama base URL, chat model, embedding model, embedding dimension defaults, trimmed env overrides, invalid dimension guard.
+- `lib/rag/ollama.ts`: local Ollama embedding/chat POST client, recoverable RAG error codes, embedding dimension/finite-value validation.
+- `lib/rag/vector-store.ts`: pgvector `DocumentChunk` replacement and similarity search helpers using static raw SQL, `CAST($n AS vector(1024))`, stale chunk filtering, and bound vector/readable-document parameters.
+- `lib/rag/vector-index.ts`: idempotent HNSW cosine index setup SQL kept outside Prisma migration history.
+- `lib/rag/retriever.ts`: graph-aware retrieval scopes and deterministic reranking for saved/readable documents.
+- `lib/rag/prompt.ts`: saved context only prompt, insufficient evidence instruction, question language matching, citation labels.
+- `lib/rag/ask.ts`: saved-document-only ask service with readable document filtering, indexing refresh, vector search, reranking, prompt, and Ollama chat.
+- `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`: route handler that accepts only `question` from JSON body and maps service errors to JSON responses.
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
+- `components/document-editor/ai-assistant-panel.tsx`: title-row assistant panel that posts only trimmed questions and renders answer/citations/error state.
 - `lib/markdown/folding.ts`: heading hierarchy fold tree와 stored fold key parsing.
 - `components/document-navigation.tsx`: search, quick switcher, recent/favorites navigation.
 - `components/folder-detail.tsx`: selected folder detail state.
@@ -113,6 +124,14 @@ Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다
 - GitHub issue #65와 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`: knowledge graph filter/link coverage 조정 설계.
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
+- GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
+- `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
+- `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
+- `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.
+- `tests/rag/vector-index.test.ts`: Prisma migrate-dev-safe HNSW index setup SQL and migration-history guard coverage.
+- `tests/rag/retriever.test.ts`: current/wiki/backlink/tag/fallback scope coverage, path-qualified resolver coverage, duplicate scope suppression, and bounded keyword boost coverage.
+- `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`: saved-context prompt, service permission/input contract, and route error mapping coverage.
+- `tests/components/document-editor-preview.test.tsx`: assistant button/panel, question-only POST, saved-content warning, pending paste warning, and document-switch state reset coverage.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 

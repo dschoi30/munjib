@@ -1,18 +1,27 @@
 import { WorkspaceRole } from "@prisma/client";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/rag/index-document", () => ({
+  scheduleSavedDocumentIndex: vi.fn(),
+  safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
+}));
+
 import {
   archiveDocument,
   createDocument,
+  createDocumentFromBrokenLink,
   moveDocument,
   restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
 import { createFolder } from "@/lib/folders/service";
+import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("document service", () => {
   beforeEach(async () => {
+    vi.clearAllMocks();
     await resetTestData();
   });
 
@@ -38,6 +47,9 @@ describe("document service", () => {
       where: { resourceId: document.id, action: "document.created" },
     });
     expect(auditLogs).toHaveLength(1);
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: document.id }),
+    );
   });
 
   it("extracts tags and frontmatter properties when creating a document", async () => {
@@ -146,6 +158,7 @@ Track #review work.`,
       title: "Runbook",
       contentMarkdown: "",
     });
+    vi.clearAllMocks();
 
     const moved = await moveDocument({
       documentId: document.id,
@@ -154,6 +167,9 @@ Track #review work.`,
     });
 
     expect(moved.path).toBe("/operations/runbook");
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: moved.id }),
+    );
   });
 
   it("updates a document with a new version and audit log", async () => {
@@ -164,6 +180,7 @@ Track #review work.`,
       title: "Runbook",
       contentMarkdown: "# Runbook",
     });
+    vi.clearAllMocks();
 
     const updated = await updateDocument({
       documentId: document.id,
@@ -184,6 +201,9 @@ Track #review work.`,
       where: { resourceId: document.id, action: "document.updated" },
     });
     expect(auditLogs).toHaveLength(1);
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: updated.id }),
+    );
   });
 
   it("creates a unique slug when updating to an existing title", async () => {
@@ -294,6 +314,7 @@ Track #review work.`,
     const firstVersion = await prisma.documentVersion.findFirstOrThrow({
       where: { documentId: document.id, versionNumber: 1 },
     });
+    vi.clearAllMocks();
 
     const restored = await restoreDocumentVersion({
       versionId: firstVersion.id,
@@ -318,5 +339,39 @@ Track #review work.`,
       include: { tag: true },
     });
     expect(tags.map((documentTag) => documentTag.tag.normalizedName)).toEqual(["old"]);
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: restored.id }),
+    );
+  });
+
+  it("creates a missing target document from a broken link and refreshes its RAG index", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Source",
+      contentMarkdown: `---
+links:
+  - "[[Missing Target]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: {
+        sourceDocumentId: source.id,
+        targetTitleRaw: "Missing Target",
+        isBroken: true,
+      },
+    });
+    vi.clearAllMocks();
+
+    const created = await createDocumentFromBrokenLink({
+      linkId: broken.id,
+      actorId: fixture.user.id,
+    });
+
+    expect(created.title).toBe("Missing Target");
+    expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: created.id }),
+    );
   });
 });
