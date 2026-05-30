@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-05-27
-source_count: 60
+updated: 2026-05-30
+source_count: 61
 tags:
   - munjib
   - workflow
@@ -53,6 +53,8 @@ Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 
 Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. `Favorites` icon button은 document list 영역을 favorites-only panel로 전환하며, favorite section은 더 이상 `Recents` 위에 상시 노출되지 않는다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
 
 Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
+
+Issue #73 설계는 `DocumentEditor` title input 우측에 `AI에게 묻기` button을 추가하는 계획이다. Ask route는 질문과 선택 문서 id만 받고, 현재 editor의 unsaved title/content draft는 POST하지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이며, pgvector 기반 chunk index는 구현 후 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
 ## 생성 흐름
 
@@ -178,6 +180,8 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/markdown/folding.ts`
 - `lib/markdown/html-to-markdown.ts`
 - `lib/wiki-links/preview.ts`
+- GitHub issue #73
+- `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `lib/attachments/service.ts`
 - `lib/comments/service.ts`
 - `lib/document-metadata/display.ts`
