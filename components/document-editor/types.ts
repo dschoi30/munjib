@@ -21,6 +21,7 @@ export type CommentItem = {
 };
 
 export type DocumentEditorProps = {
+  workspaceSlug: string;
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;

@@ -7,12 +7,14 @@ import dynamic from "next/dynamic";
 import {
   Paperclip,
   Save,
+  Sparkles,
   Upload,
 } from "lucide-react";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
+import { AiAssistantPanel } from "@/components/document-editor/ai-assistant-panel";
 import type { DocumentEditorProps } from "@/components/document-editor/types";
 import { DocumentProperties } from "@/components/document-editor/document-properties";
 import {
@@ -200,6 +202,7 @@ function withImageExtension(fileName: string, mimeType: string) {
 }
 
 export function DocumentEditor({
+  workspaceSlug,
   document,
   canWrite,
   action,
@@ -217,6 +220,7 @@ export function DocumentEditor({
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
   const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${document.id}` : null;
   const editorFoldContextRef = useRef<{
@@ -542,6 +546,9 @@ export function DocumentEditor({
     return () => setOutlineDocument(null);
   }, [document?.id, setOutlineDocument]);
   const editorMarkdownReady = contentDocumentId === document?.id;
+  const hasUnsavedChanges = document
+    ? title !== document.title || contentMarkdown !== document.contentMarkdown
+    : false;
 
   if (!document) {
     return (
@@ -568,16 +575,33 @@ export function DocumentEditor({
         <input type="hidden" name="documentId" value={document.id} />
         <input type="hidden" name="contentMarkdown" value={contentMarkdown} />
       </form>
-      <div>
+      <div className="flex items-center gap-3">
         <input
+          aria-label="Document title"
           form={`document-save-${document.id}`}
           name="title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           disabled={!canWrite}
-          className="w-full border-0 bg-transparent px-0 py-1 text-[1.75rem] font-bold leading-tight text-ink outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70"
+          className="min-w-0 flex-1 border-0 bg-transparent px-0 py-1 text-[1.75rem] font-bold leading-tight text-ink outline-none placeholder:text-slate-400 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-70"
         />
+        <Button
+          type="button"
+          onClick={() => setIsAiAssistantOpen((isOpen) => !isOpen)}
+          aria-expanded={isAiAssistantOpen}
+          className="h-8 shrink-0 px-2 text-xs"
+        >
+          <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+          AI에게 묻기
+        </Button>
       </div>
+      {isAiAssistantOpen ? (
+        <AiAssistantPanel
+          workspaceSlug={workspaceSlug}
+          documentId={document.id}
+          hasUnsavedChanges={hasUnsavedChanges}
+        />
+      ) : null}
       <DocumentProperties
         document={document}
         tags={tags}

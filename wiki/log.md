@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 134
+source_count: 135
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T16:30:00+09:00 - implementation
+
+- Result: Issue #73 Document Editor assistant UI를 추가했다.
+- Coverage: `DocumentEditor` title row 우측에 `AI에게 묻기` button을 추가하고, `AiAssistantPanel`이 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed `question`만 POST하도록 했다. Current title 또는 markdown draft가 selected saved document와 다르면 saved-content warning을 표시하며, answer, citations, loading, error state를 처리한다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/document-editor/types.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "opens the AI assistant"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "opens the AI assistant"`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-30T16:15:00+09:00 - review follow-up
 

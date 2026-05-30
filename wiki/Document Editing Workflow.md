@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 61
+source_count: 62
 tags:
   - munjib
   - workflow
@@ -54,7 +54,7 @@ Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu�
 
 Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 
-Issue #73 설계는 `DocumentEditor` title input 우측에 `AI에게 묻기` button을 추가하는 계획이다. Ask route는 질문과 선택 문서 id만 받고, 현재 editor의 unsaved title/content draft는 POST하지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이다. pgvector 기반 chunk index는 saved `Document`에서만 파생하며 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
+Issue #73 이후 `DocumentEditor` title input 우측에는 `AI에게 묻기` button이 있고, 선택 문서가 있을 때 작은 assistant panel을 열고 닫는다. Panel은 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed question만 POST하며, 현재 editor의 unsaved title/content draft는 request body에 넣지 않는다. 현재 title 또는 markdown state가 선택된 saved document와 다르면 `저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.` warning을 보여 saved DB content 기준 답변임을 알린다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이다. pgvector 기반 chunk index는 saved `Document`에서만 파생하며 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
 ## 생성 흐름
 
@@ -154,6 +154,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `app/workspaces/[workspaceSlug]/actions.ts`
 - GitHub issue #26
 - `components/document-editor.tsx`
+- `components/document-editor/ai-assistant-panel.tsx`
 - `components/document-editor/markdown-preview.tsx`
 - `components/document-editor/document-properties.tsx`
 - `components/document-editor/folding-storage.ts`
