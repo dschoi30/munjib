@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 130
+source_count: 131
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T13:50:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 pgvector store helper를 추가했다.
+- Coverage: `lib/rag/vector-store.ts`는 `DocumentChunk` replacement와 similarity search를 raw SQL seam으로 격리한다. Vector literal은 empty, non-number, NaN, Infinity를 raw SQL 실행 전에 거절하고, insert/search SQL은 static string과 positional parameter를 사용하며 pgvector cast는 `CAST($n AS vector(1024))` 형식만 쓴다. Search는 readable document id array를 bound parameter로 받고 saved `Document.updatedAt`과 chunk `sourceUpdatedAt`이 맞는 current chunks만 반환한다.
+- Pages: [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/vector-store.ts`, `tests/rag/vector-store.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/vector-store.test.ts`, `pnpm exec vitest run tests/rag/vector-store.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts`.
 
 ## 2026-05-30T12:46:00+09:00 - review follow-up
 
