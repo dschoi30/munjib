@@ -6,7 +6,8 @@ import { FolderDetail } from "@/components/folder-detail";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { LoginForm } from "@/app/login/login-form";
+import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
@@ -44,7 +45,14 @@ export default async function WorkspacePage({
     graph?: string;
   }>;
 }) {
-  const user = await requireCurrentUser();
+  const user = await getCurrentUser();
+  if (!user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted px-6">
+        <LoginForm />
+      </main>
+    );
+  }
   const { workspaceSlug } = await params;
   const {
     document: selectedDocumentId,
