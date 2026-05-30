@@ -5,7 +5,11 @@ import { useState } from "react";
 
 const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
 
-export function LoginForm() {
+type LoginFormProps = {
+  callbackUrl?: string;
+};
+
+export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: LoginFormProps) {
   const [email, setEmail] = useState("owner@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +21,7 @@ export function LoginForm() {
     const result = await signIn("credentials", {
       email,
       redirect: false,
-      callbackUrl: "/workspaces/company-handbook",
+      callbackUrl,
     });
 
     if (result?.url) {
