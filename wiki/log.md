@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 131
+source_count: 133
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T15:26:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 graph-aware retriever를 추가했다.
+- Coverage: `lib/rag/retriever.ts`는 selected saved/readable document를 current scope로 두고 saved markdown wiki links, non-broken/non-ambiguous persisted outgoing links, backlinks, same normalized tags, fallback readable documents 순서로 retrieval scopes를 만든다. Lower-priority scopes는 이미 assigned된 document id를 다시 포함하지 않는다. Reranking은 `(1 - cosine distance) + scope boost + bounded keyword overlap boost` 공식을 쓰며 current `0.5`, linked `0.3`, backlink `0.25`, same-tag `0.15`, keyword term `0.05`, keyword max `0.2`를 exported constants로 노출한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/retriever.test.ts` red missing-module check, `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-30T15:09:00+09:00 - review follow-up
 

@@ -140,7 +140,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 48,
+      "source_count": 50,
       "searchPriority": 5
     },
     {
@@ -182,7 +182,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 131,
+      "source_count": 133,
       "searchPriority": 1
     },
     {
@@ -274,7 +274,7 @@
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 38,
+      "source_count": 40,
       "searchPriority": 30
     },
     {

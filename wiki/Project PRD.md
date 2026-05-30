@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 38
+source_count: 40
 tags:
   - munjib
   - source
@@ -83,7 +83,7 @@ Issue #65 설계는 graph 탐색의 링크 coverage와 filter surface를 조정�
 
 Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip, preview body `#tag`, graph view tag node를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
-Issue #73 설계는 document editor title row 우측에 `AI에게 묻기` 버튼을 추가하고, 저장된 문서 내용만 기반으로 답변하는 문서 중심 RAG assistant를 계획한다. Retrieval은 현재 문서, wiki link target, backlink source, same-tag 문서, workspace fallback 순서로 확장하며, 기본 chat model은 Ollama `gemma4:e4b`, embedding model은 `bge-m3`다. Embedding 저장과 similarity search는 PostgreSQL 안의 pgvector `vector(1024)`와 HNSW cosine index를 사용한다. 첫 구현 task들은 pgvector chunk schema와 `lib/rag/config.ts`, `lib/rag/ollama.ts`를 추가해 Ollama base URL, chat model, embedding model, embedding dimension을 config-driven 기본값으로 관리하고 `/api/embed`, non-streaming `/api/chat` request를 작은 client wrapper로 감싼다. Ollama client는 offline/network failure와 invalid JSON을 recoverable request error로 정규화하고, embedding payload가 configured dimension과 finite numeric value contract를 만족하는지 검증한다. `lib/rag/vector-store.ts`는 Prisma가 직접 다루지 못하는 pgvector 저장/검색 seam을 맡고, vector literal을 raw SQL 실행 전에 검증한 뒤 static SQL과 positional parameter만 사용한다. Search SQL은 `CAST($1 AS vector(1024))`, readable document id array parameter, saved document `updatedAt`과 일치하는 stale-safe chunk filter를 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`에 둔다.
+Issue #73 설계는 document editor title row 우측에 `AI에게 묻기` 버튼을 추가하고, 저장된 문서 내용만 기반으로 답변하는 문서 중심 RAG assistant를 계획한다. Retrieval은 현재 문서, wiki link target, backlink source, same-tag 문서, workspace fallback 순서로 확장하며, 기본 chat model은 Ollama `gemma4:e4b`, embedding model은 `bge-m3`다. Embedding 저장과 similarity search는 PostgreSQL 안의 pgvector `vector(1024)`와 HNSW cosine index를 사용한다. 첫 구현 task들은 pgvector chunk schema와 `lib/rag/config.ts`, `lib/rag/ollama.ts`를 추가해 Ollama base URL, chat model, embedding model, embedding dimension을 config-driven 기본값으로 관리하고 `/api/embed`, non-streaming `/api/chat` request를 작은 client wrapper로 감싼다. Ollama client는 offline/network failure와 invalid JSON을 recoverable request error로 정규화하고, embedding payload가 configured dimension과 finite numeric value contract를 만족하는지 검증한다. `lib/rag/vector-store.ts`는 Prisma가 직접 다루지 못하는 pgvector 저장/검색 seam을 맡고, vector literal을 raw SQL 실행 전에 검증한 뒤 static SQL과 positional parameter만 사용한다. Search SQL은 `CAST($1 AS vector(1024))`, readable document id array parameter, saved document `updatedAt`과 일치하는 stale-safe chunk filter를 유지한다. `lib/rag/retriever.ts`는 saved/readable documents만 입력으로 받아 selected current document, saved markdown wiki links resolved through the shared resolver, persisted outgoing links, persisted backlinks, same normalized tags, fallback readable documents 순서로 scopes를 만든다. Reranking score는 `(1 - cosine distance) + scope boost + bounded keyword overlap boost`이며 explicit tuning weights는 current `0.5`, linked `0.3`, backlink `0.25`, same-tag `0.15`, keyword term `0.05`, keyword max `0.2`다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`에 둔다.
 
 ## 현재 구현 근거
 
@@ -103,6 +103,7 @@ Issue #73 설계는 document editor title row 우측에 `AI에게 묻기` 버튼
 - `lib/rag/config.ts`: Ollama base URL, chat model, embedding model, embedding dimension defaults, trimmed env overrides, invalid dimension guard.
 - `lib/rag/ollama.ts`: local Ollama embedding/chat POST client, recoverable RAG error codes, embedding dimension/finite-value validation.
 - `lib/rag/vector-store.ts`: pgvector `DocumentChunk` replacement and similarity search helpers using static raw SQL, `CAST($n AS vector(1024))`, stale chunk filtering, and bound vector/readable-document parameters.
+- `lib/rag/retriever.ts`: graph-aware retrieval scopes and deterministic reranking for saved/readable documents.
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
 - `lib/markdown/folding.ts`: heading hierarchy fold tree와 stored fold key parsing.
@@ -122,6 +123,7 @@ Issue #73 설계는 document editor title row 우측에 `AI에게 묻기` 버튼
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
 - `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.
+- `tests/rag/retriever.test.ts`: current/wiki/backlink/tag/fallback scope coverage, path-qualified resolver coverage, duplicate scope suppression, and bounded keyword boost coverage.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 
