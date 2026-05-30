@@ -43,7 +43,7 @@ MVP의 핵심 위험은 분산 시스템이 아니라 제품 흐름 검증이다
 
 Issue #73의 RAG chunk refresh도 현재는 monolith 안에서 best-effort service call로 처리한다. Document create/update/move/version restore/broken-link creation과 manual attachment upload transaction이 commit된 뒤 `scheduleSavedDocumentIndex({ documentId })`가 fire-and-forget으로 `safeIndexSavedDocument()`를 시작한다. Indexer는 saved DB document를 다시 load하고 pgvector chunk를 교체하지만, replacement transaction이 `Document` row를 `FOR UPDATE`로 lock하고 expected `updatedAt`을 확인한 뒤 delete/insert를 수행하므로 stale job이 최신 chunk를 덮지 못한다. Indexing latency와 실패는 mutation 성공을 막지 않고 logger에만 남긴다.
 
-pgvector integration도 별도 vector service로 분리하지 않고 PostgreSQL 안에서 시작한다. Prisma schema는 `DocumentChunk.embedding`을 `Unsupported("vector(1024)")`로 선언하고, `lib/rag/vector-store.ts`가 static raw SQL과 positional parameters로 `CAST($n AS vector(1024))` 저장/검색을 맡는다. Retrieval quality tuning은 application layer의 `lib/rag/retriever.ts`에서 처리하며, default model은 config-driven `gemma4:e4b` chat과 `bge-m3` embedding이다.
+pgvector integration도 별도 vector service로 분리하지 않고 PostgreSQL 안에서 시작한다. Prisma schema는 `DocumentChunk.embedding`을 `Unsupported("vector(1024)")`로 선언하고, `lib/rag/vector-store.ts`가 static raw SQL과 positional parameters로 `CAST($n AS vector(1024))` 저장/검색을 맡는다. HNSW cosine index는 Prisma Migrate drift를 피하기 위해 migration file 안의 unmanaged index가 아니라 `lib/rag/vector-index.ts`의 idempotent setup SQL과 `pnpm run db:rag:index`로 만든다. Retrieval quality tuning은 application layer의 `lib/rag/retriever.ts`에서 처리하며, default model은 config-driven `gemma4:e4b` chat과 `bge-m3` embedding이다.
 
 ## 비용
 

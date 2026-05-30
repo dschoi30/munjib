@@ -27,10 +27,6 @@ ON "DocumentChunk"("workspaceId", "embeddingModel");
 CREATE INDEX "DocumentChunk_documentId_idx"
 ON "DocumentChunk"("documentId");
 
-CREATE INDEX "DocumentChunk_embedding_hnsw_idx"
-ON "DocumentChunk"
-USING hnsw ("embedding" vector_cosine_ops);
-
 ALTER TABLE "DocumentChunk"
 ADD CONSTRAINT "DocumentChunk_documentId_fkey"
 FOREIGN KEY ("documentId") REFERENCES "Document"("id")

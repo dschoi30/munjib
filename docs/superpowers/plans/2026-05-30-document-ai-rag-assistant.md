@@ -12,7 +12,8 @@
 
 ## File Structure
 
-- Create `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`: enable pgvector, add `DocumentChunk`, and create HNSW cosine index.
+- Create `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`: enable pgvector and add `DocumentChunk`.
+- Create an idempotent HNSW cosine index setup helper outside Prisma migration history so `prisma migrate dev` does not propose dropping an unsupported vector index.
 - Modify `prisma/schema.prisma`: add `Document.chunks` relation and `DocumentChunk` model with `Unsupported("vector(1024)")`.
 - Modify `docker-compose.yml`: use a pgvector-enabled PostgreSQL 16 image.
 - Modify `tests/docker/compose.test.ts`: assert the compose file uses the pgvector image.
@@ -162,14 +163,19 @@ ON "DocumentChunk"("workspaceId", "embeddingModel");
 CREATE INDEX "DocumentChunk_documentId_idx"
 ON "DocumentChunk"("documentId");
 
-CREATE INDEX "DocumentChunk_embedding_hnsw_idx"
-ON "DocumentChunk"
-USING hnsw ("embedding" vector_cosine_ops);
-
 ALTER TABLE "DocumentChunk"
 ADD CONSTRAINT "DocumentChunk_documentId_fkey"
 FOREIGN KEY ("documentId") REFERENCES "Document"("id")
 ON DELETE CASCADE ON UPDATE CASCADE;
+```
+
+Create the HNSW cosine index outside Prisma migration history with
+`lib/rag/vector-index.ts` / `pnpm run db:rag:index`:
+
+```sql
+CREATE INDEX IF NOT EXISTS "DocumentChunk_embedding_hnsw_idx"
+ON "DocumentChunk"
+USING hnsw ("embedding" vector_cosine_ops);
 ```
 
 - [ ] **Step 6: Run schema tests and generate Prisma**
@@ -1925,7 +1931,9 @@ Record these implementation facts:
 Issue #73 implements `AI에게 묻기` as a saved-content-only document assistant.
 The assistant stores Markdown chunks in `DocumentChunk`, embeds with `bge-m3`,
 uses pgvector `vector(1024)` with HNSW cosine search, and answers with Ollama
-`gemma4:e4b` by default.
+`gemma4:e4b` by default. Because Prisma does not round-trip the HNSW index on
+`Unsupported("vector(1024)")`, the migration creates the extension/table and
+`pnpm run db:rag:index` creates the HNSW index idempotently.
 ```
 
 Add the DB model summary to `wiki/Document Knowledge Model.md`, the UI/request
