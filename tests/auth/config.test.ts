@@ -26,8 +26,22 @@ describe("authOptions", () => {
 
   it("allows secure session cookies to be disabled for HTTP deployments", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv("NEXTAUTH_COOKIE_SECURE", "false");
+    vi.stubEnv("NEXTAUTH_COOKIE_SECURE", " FALSE ");
 
     expect(resolveAuthCookieSecure()).toBe(false);
+  });
+
+  it("allows secure session cookies to be forced in development", () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("NEXTAUTH_COOKIE_SECURE", " TRUE ");
+
+    expect(resolveAuthCookieSecure()).toBe(true);
+  });
+
+  it("defaults to secure cookies in production when no override is set", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXTAUTH_COOKIE_SECURE", "");
+
+    expect(resolveAuthCookieSecure()).toBe(true);
   });
 });

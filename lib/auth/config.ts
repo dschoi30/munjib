@@ -9,7 +9,9 @@ export function resolveAuthSecret() {
 }
 
 export function resolveAuthCookieSecure() {
-  if (process.env.NEXTAUTH_COOKIE_SECURE === "false") return false;
+  const secureOverride = process.env.NEXTAUTH_COOKIE_SECURE?.trim().toLowerCase();
+  if (secureOverride === "true") return true;
+  if (secureOverride === "false") return false;
   return process.env.NODE_ENV === "production";
 }
 
