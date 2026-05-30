@@ -106,11 +106,6 @@ export async function askDocumentQuestion(
       isBroken: true,
       isAmbiguous: true,
     },
-    orderBy: [
-      { sourceDocumentId: "asc" },
-      { sortOrder: "asc" },
-      { id: "asc" },
-    ],
   });
 
   await safeIndexSavedDocument({ documentId: selectedDocument.id });

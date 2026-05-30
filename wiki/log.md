@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T17:20:00+09:00 - review follow-up
+
+- Result: PR #74 review threads for Issue #73 RAG assistant를 반영했다.
+- Coverage: AI assistant panel은 HTTP 200이어도 response JSON parse가 실패하면 오류 상태를 보여주고, empty citation heading path는 dangling separator를 표시하지 않는다. Saved document indexing은 chunk embedding을 순차 처리하고, mutation commit 뒤 refresh는 Next.js `after()` hook에 등록한다. Ask service의 persisted `DocumentLink` lookup은 retrieval scope에 필요하지 않은 ordering을 제거했다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `lib/rag/index-document.ts`, `lib/rag/ask.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/rag/index-document.test.ts`, `tests/rag/ask.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/ask.test.ts tests/components/document-editor-preview.test.tsx tests/rag/index-document.test.ts`, green `pnpm exec vitest run tests/rag/ask.test.ts tests/components/document-editor-preview.test.tsx tests/rag/index-document.test.ts`.
+
 ## 2026-05-30T17:00:00+09:00 - review follow-up
 
 - Result: Issue #73 pgvector migration workflow를 `prisma migrate dev`와 호환되게 보정했다.

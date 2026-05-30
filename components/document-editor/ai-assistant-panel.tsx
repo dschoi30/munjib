@@ -53,7 +53,7 @@ export function AiAssistantPanel({
           body: JSON.stringify({ question: trimmedQuestion }),
         },
       );
-      const body = (await response.json().catch(() => ({}))) as AskResponse;
+      const body = (await response.json()) as AskResponse;
 
       if (!response.ok) {
         throw new Error(body.error || "AI_REQUEST_FAILED");
@@ -114,8 +114,8 @@ export function AiAssistantPanel({
 }
 
 function formatHeadingPath(headingPath: AssistantCitation["headingPath"]) {
-  if (Array.isArray(headingPath) && headingPath.length > 0) {
-    return ` > ${headingPath.join(" > ")}`;
+  if (Array.isArray(headingPath)) {
+    return headingPath.length > 0 ? ` > ${headingPath.join(" > ")}` : "";
   }
 
   return headingPath ? ` > ${headingPath}` : "";

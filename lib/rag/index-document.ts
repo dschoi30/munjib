@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { after as scheduleAfterRequest } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { getRagConfig } from "@/lib/rag/config";
@@ -18,6 +19,7 @@ type EmbedText = (text: string) => Promise<number[]>;
 type ReplaceDocumentChunksInput = Parameters<typeof defaultReplaceDocumentChunks>[1];
 type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<unknown>;
 type IsDocumentCurrent = (document: SavedDocumentForIndex) => Promise<boolean>;
+type ScheduleAfter = (task: () => unknown | Promise<unknown>) => void;
 
 type IndexSavedDocumentInput = {
   document: SavedDocumentForIndex;
@@ -33,6 +35,10 @@ type SafeIndexSavedDocumentInput = Omit<IndexSavedDocumentInput, "document"> & {
   logger?: (documentId: string, error: unknown) => void;
 };
 
+type ScheduleSavedDocumentIndexInput = SafeIndexSavedDocumentInput & {
+  scheduleAfter?: ScheduleAfter;
+};
+
 export async function indexSavedDocument(input: IndexSavedDocumentInput) {
   const document = input.document;
   const embeddingModel = input.embeddingModel ?? getRagConfig().embedModel;
@@ -42,8 +48,9 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
     documentTitle: document.title,
     contentMarkdown: document.contentMarkdown,
   });
-  const embeddedChunks = await Promise.all(
-    chunks.map(async (chunk) => ({
+  const embeddedChunks = [];
+  for (const chunk of chunks) {
+    embeddedChunks.push({
       id: randomUUID(),
       workspaceId: document.workspaceId,
       documentId: document.id,
@@ -55,8 +62,8 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
       tokenCount: chunk.tokenCount,
       embeddingModel,
       embedding: await embedText(chunk.content),
-    })),
-  );
+    });
+  }
 
   if (input.isDocumentCurrent && !(await input.isDocumentCurrent(document))) {
     return false;
@@ -90,9 +97,10 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
   }
 }
 
-export function scheduleSavedDocumentIndex(input: SafeIndexSavedDocumentInput) {
+export function scheduleSavedDocumentIndex(input: ScheduleSavedDocumentIndexInput) {
   if (shouldSkipDefaultScheduledIndex(input)) return;
-  void safeIndexSavedDocument(input);
+  const { scheduleAfter = scheduleAfterRequest, ...indexInput } = input;
+  scheduleAfter(() => safeIndexSavedDocument(indexInput));
 }
 
 async function loadSavedDocument(documentId: string) {
@@ -117,13 +125,14 @@ async function isSavedDocumentCurrent(document: SavedDocumentForIndex) {
   return current?.updatedAt.getTime() === document.updatedAt.getTime();
 }
 
-function shouldSkipDefaultScheduledIndex(input: SafeIndexSavedDocumentInput) {
+function shouldSkipDefaultScheduledIndex(input: ScheduleSavedDocumentIndexInput) {
   return (
     process.env.NODE_ENV === "test" &&
     !input.loadDocument &&
     !input.embedText &&
     !input.replaceDocumentChunks &&
-    !input.isDocumentCurrent
+    !input.isDocumentCurrent &&
+    !input.scheduleAfter
   );
 }
 

@@ -66,6 +66,32 @@ describe("document RAG indexing", () => {
     }));
   });
 
+  it("embeds chunks sequentially to avoid overloading local Ollama", async () => {
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
+    let activeEmbeddingRequests = 0;
+    let maxActiveEmbeddingRequests = 0;
+    const embedText = vi.fn(async () => {
+      activeEmbeddingRequests += 1;
+      maxActiveEmbeddingRequests = Math.max(maxActiveEmbeddingRequests, activeEmbeddingRequests);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      activeEmbeddingRequests -= 1;
+      return Array.from({ length: 1024 }, () => 0.01);
+    });
+
+    await indexSavedDocument({
+      document: {
+        ...savedDocument,
+        contentMarkdown: "# One\n\nFirst\n\n# Two\n\nSecond\n\n# Three\n\nThird",
+      },
+      embeddingModel: "bge-m3",
+      embedText,
+      replaceDocumentChunks,
+    });
+
+    expect(embedText).toHaveBeenCalledTimes(3);
+    expect(maxActiveEmbeddingRequests).toBe(1);
+  });
+
   it("clears existing chunks for an empty saved document", async () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
@@ -201,10 +227,18 @@ describe("document RAG indexing", () => {
     ).resolves.toBe(false);
   });
 
-  it("schedules safe indexing without awaiting completion", () => {
+  it("schedules safe indexing through a request after hook without awaiting completion", () => {
+    const scheduledTasks: Array<() => unknown | Promise<unknown>> = [];
+    const scheduleAfter = vi.fn((task: () => unknown | Promise<unknown>) => {
+      scheduledTasks.push(task);
+    });
     const loadDocument = vi.fn(() => new Promise<SavedDocumentForIndex>(() => undefined));
 
-    expect(scheduleSavedDocumentIndex({ documentId: "doc-1", loadDocument })).toBeUndefined();
+    expect(scheduleSavedDocumentIndex({ documentId: "doc-1", loadDocument, scheduleAfter })).toBeUndefined();
+    expect(scheduleAfter).toHaveBeenCalledTimes(1);
+    expect(loadDocument).not.toHaveBeenCalled();
+
+    void scheduledTasks[0]?.();
     expect(loadDocument).toHaveBeenCalledWith("doc-1");
   });
 

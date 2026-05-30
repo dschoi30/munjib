@@ -186,6 +186,10 @@ describe("RAG ask service", () => {
 
   it("refreshes only the selected saved document id before retrieval", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const originalFindMany = prisma.documentLink.findMany.bind(prisma.documentLink);
+    const linkFindMany = vi
+      .spyOn(prisma.documentLink, "findMany")
+      .mockImplementation((args) => originalFindMany(args));
     const selected = await createSavedDocument({
       workspaceId: fixture.workspace.id,
       userId: fixture.user.id,
@@ -208,6 +212,7 @@ describe("RAG ask service", () => {
 
     expect(safeIndexSavedDocument).toHaveBeenCalledTimes(1);
     expect(safeIndexSavedDocument).toHaveBeenCalledWith({ documentId: selected.id });
+    expect(linkFindMany.mock.calls[0]?.[0]).not.toHaveProperty("orderBy");
   });
 });
 
