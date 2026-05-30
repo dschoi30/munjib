@@ -2,14 +2,14 @@ import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/par
 import { parseWikiLinks } from "@/lib/wiki-links/parser";
 import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
 
-export type ReadableDocument = {
+type ReadableDocument = {
   id: string;
   title: string;
   path: string;
   contentMarkdown: string;
 };
 
-export type PersistedLink = {
+type PersistedLink = {
   sourceDocumentId: string;
   targetDocumentId: string | null;
   targetTitleRaw: string;
@@ -32,7 +32,7 @@ export type RerankChunk = {
   content: string;
 };
 
-export type RankedRerankChunk<TChunk extends RerankChunk = RerankChunk> = TChunk & {
+type RankedRerankChunk<TChunk extends RerankChunk = RerankChunk> = TChunk & {
   score: number;
 };
 

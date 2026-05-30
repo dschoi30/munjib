@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-05-30
-source_count: 133
+source_count: 134
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-05-30T15:31:00+09:00 - review follow-up
+
+- Result: Issue #73 graph-aware retriever의 public export surface를 요청 범위로 좁혔다.
+- Coverage: `ReadableDocument`, `PersistedLink`, `RankedRerankChunk`는 internal type으로 유지하고, 외부 import 가능한 retriever API는 `RETRIEVAL_SCORE_WEIGHTS`, `buildRetrievalScopes`, `rerankRetrievedChunks`, `RetrievalScopes`, `RerankChunk`만 남겼다. `tests/rag/retriever.test.ts`는 extra type exports가 다시 열리면 `tsc`에서 unused `@ts-expect-error`로 실패하는 compile-time regression guard를 포함한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec tsc --noEmit` red unused `@ts-expect-error` check, `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
 
 ## 2026-05-30T15:26:00+09:00 - implementation
 
