@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T16:40:00+09:00 - documentation
+
+- Result: Issue #73 saved-content-only document AI RAG assistant의 최종 wiki 설명을 구현 완료 기준으로 정리했다.
+- Coverage: `DocumentChunk` pgvector `vector(1024)` 모델, `bge-m3` dimension coupling과 migration 경고, monolith 내 pgvector/raw SQL seam, editor assistant request contract, ask service/retriever/prompt 구현 근거를 보강했다.
+- Pages: [[Munjib]], [[Document Knowledge Model]], [[Next.js Prisma Monolith]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `prisma/schema.prisma`, `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`, `lib/rag/config.ts`, `lib/rag/vector-store.ts`, `lib/rag/retriever.ts`, `lib/rag/ask.ts`, `components/document-editor/ai-assistant-panel.tsx`.
+- Verification: `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/index-document.test.ts tests/rag/vector-store.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm test`.
+
 ## 2026-05-30T16:35:00+09:00 - review follow-up
 
 - Result: Issue #73 editor assistant panel의 dirty-state warning과 document switch state isolation을 보강했다.
