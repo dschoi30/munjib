@@ -73,8 +73,8 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
 7. `document.created` audit log를 남긴다.
-8. transaction commit 뒤 `safeIndexSavedDocument({ documentId })`로 saved DB content 기반 RAG chunk를 refresh한다.
-9. indexing failure는 save 성공을 막지 않고 service logger에만 남긴다.
+8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 fire-and-forget으로 예약한다.
+9. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
 10. server action이 생성 문서 URL로 redirect한다.
 
 `importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
@@ -94,13 +94,13 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
 7. `document.updated` audit log를 남긴다.
-8. transaction commit 뒤 `safeIndexSavedDocument({ documentId })`로 saved DB content 기반 RAG chunk를 refresh한다. Indexing failure는 update 성공을 막지 않는다.
+8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 fire-and-forget으로 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
 
 ## Version restore, attachment, comment
 
-`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. Commit 뒤에는 복원된 saved content로 RAG chunk를 refresh하고, failure는 복원 성공을 막지 않는다.
+`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
 
-`uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk를 refresh한다.
+`uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk refresh를 예약한다.
 
 Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 clipboard image paste에서 attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. Clipboard image paste는 service layer에서 saved markdown을 바꾸지 않으므로 RAG indexing도 실행하지 않고, markdown insertion은 editor draft와 이후 Save 흐름에 맡긴다. Clipboard image file paste, HTML `<img>` paste, remote image URL server fetch, pending draft, Save guard 세부 흐름은 [[Markdown Import And Clipboard Paste Workflow]]에서 본다.
 

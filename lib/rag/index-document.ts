@@ -17,12 +17,14 @@ export type SavedDocumentForIndex = {
 type EmbedText = (text: string) => Promise<number[]>;
 type ReplaceDocumentChunksInput = Parameters<typeof defaultReplaceDocumentChunks>[1];
 type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<void>;
+type IsDocumentCurrent = (document: SavedDocumentForIndex) => Promise<boolean>;
 
 type IndexSavedDocumentInput = {
   document: SavedDocumentForIndex;
   embeddingModel?: string;
   embedText?: EmbedText;
   replaceDocumentChunks?: ReplaceDocumentChunks;
+  isDocumentCurrent?: IsDocumentCurrent;
 };
 
 type SafeIndexSavedDocumentInput = Omit<IndexSavedDocumentInput, "document"> & {
@@ -40,26 +42,32 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
     documentTitle: document.title,
     contentMarkdown: document.contentMarkdown,
   });
+  const embeddedChunks = await Promise.all(
+    chunks.map(async (chunk) => ({
+      id: randomUUID(),
+      workspaceId: document.workspaceId,
+      documentId: document.id,
+      chunkIndex: chunk.chunkIndex,
+      headingPath: chunk.headingPath,
+      content: chunk.content,
+      contentHash: chunk.contentHash,
+      sourceUpdatedAt: document.updatedAt,
+      tokenCount: chunk.tokenCount,
+      embeddingModel,
+      embedding: await embedText(chunk.content),
+    })),
+  );
+
+  if (input.isDocumentCurrent && !(await input.isDocumentCurrent(document))) {
+    return false;
+  }
 
   await replaceDocumentChunks({
     documentId: document.id,
     embeddingModel,
-    chunks: await Promise.all(
-      chunks.map(async (chunk) => ({
-        id: randomUUID(),
-        workspaceId: document.workspaceId,
-        documentId: document.id,
-        chunkIndex: chunk.chunkIndex,
-        headingPath: chunk.headingPath,
-        content: chunk.content,
-        contentHash: chunk.contentHash,
-        sourceUpdatedAt: document.updatedAt,
-        tokenCount: chunk.tokenCount,
-        embeddingModel,
-        embedding: await embedText(chunk.content),
-      })),
-    ),
+    chunks: embeddedChunks,
   });
+  return true;
 }
 
 export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput) {
@@ -68,17 +76,22 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
     const document = await loadDocument(input.documentId);
     if (!document) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
 
-    await indexSavedDocument({
+    return await indexSavedDocument({
       document,
       embeddingModel: input.embeddingModel,
       embedText: input.embedText,
       replaceDocumentChunks: input.replaceDocumentChunks,
+      isDocumentCurrent: input.isDocumentCurrent ?? isSavedDocumentCurrent,
     });
-    return true;
   } catch (error) {
     input.logger?.(input.documentId, error);
     return false;
   }
+}
+
+export function scheduleSavedDocumentIndex(input: SafeIndexSavedDocumentInput) {
+  if (shouldSkipDefaultScheduledIndex(input)) return;
+  void safeIndexSavedDocument(input);
 }
 
 async function loadSavedDocument(documentId: string) {
@@ -92,6 +105,25 @@ async function loadSavedDocument(documentId: string) {
       updatedAt: true,
     },
   });
+}
+
+async function isSavedDocumentCurrent(document: SavedDocumentForIndex) {
+  const current = await prisma.document.findUnique({
+    where: { id: document.id },
+    select: { updatedAt: true },
+  });
+
+  return current?.updatedAt.getTime() === document.updatedAt.getTime();
+}
+
+function shouldSkipDefaultScheduledIndex(input: SafeIndexSavedDocumentInput) {
+  return (
+    process.env.NODE_ENV === "test" &&
+    !input.loadDocument &&
+    !input.embedText &&
+    !input.replaceDocumentChunks &&
+    !input.isDocumentCurrent
+  );
 }
 
 async function replaceDocumentChunksInTransaction(input: ReplaceDocumentChunksInput) {

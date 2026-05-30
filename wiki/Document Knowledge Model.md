@@ -281,9 +281,9 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 
 Issue #73의 saved-content-only RAG assistant는 `DocumentChunk`를 pgvector-backed retrieval index로 사용한다. Chunk source는 저장된 DB 문서의 `title`, `contentMarkdown`, `workspaceId`, `updatedAt`이며, editor의 unsaved draft title/content는 indexing input에 포함하지 않는다.
 
-`lib/rag/index-document.ts`의 `safeIndexSavedDocument({ documentId })`는 document id만 받아 DB에서 saved document fields를 load한 뒤 markdown chunking, Ollama embedding, `replaceDocumentChunks()`를 수행한다. Chunk row는 `sourceUpdatedAt`과 `embeddingModel`을 저장하고, vector search는 saved `Document.updatedAt`과 `sourceUpdatedAt`이 같은 current chunk만 사용한다. Empty saved markdown도 replacement를 실행해 기존 chunk를 삭제한다.
+`lib/rag/index-document.ts`의 `safeIndexSavedDocument({ documentId })`는 document id만 받아 DB에서 saved document fields를 load한 뒤 markdown chunking, Ollama embedding, `replaceDocumentChunks()`를 수행한다. Service save paths는 `scheduleSavedDocumentIndex({ documentId })`를 호출해 저장 응답을 indexing latency에 묶지 않는다. Chunk row는 `sourceUpdatedAt`과 `embeddingModel`을 저장하고, vector search는 saved `Document.updatedAt`과 `sourceUpdatedAt`이 같은 current chunk만 사용한다. Replacement 직전에도 현재 `Document.updatedAt`을 다시 확인해 stale indexing job이 최신 chunk를 덮지 못하게 한다. Empty saved markdown도 replacement를 실행해 기존 chunk를 삭제한다.
 
-RAG chunk refresh는 document create/update/version restore/broken-link creation과 manual attachment upload가 commit된 뒤 best-effort로 실행된다. Embedding 서버나 pgvector write가 실패해도 saved document mutation은 성공으로 유지되고, failure는 service logger에만 남긴다.
+RAG chunk refresh는 document create/update/version restore/broken-link creation과 manual attachment upload가 commit된 뒤 fire-and-forget best-effort로 실행된다. Embedding 서버나 pgvector write가 실패해도 saved document mutation은 성공으로 유지되고, failure는 service logger에만 남긴다. Vitest 환경의 기본 service save path에서는 자동 scheduler를 no-op 처리해 기존 DB-backed tests가 Ollama/pgvector local state에 의존하지 않게 한다.
 
 ## Workspace knowledge graph DTO
 

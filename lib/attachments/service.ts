@@ -11,7 +11,7 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
-import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
@@ -135,7 +135,7 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
       return attachment;
     });
 
-    await safeIndexSavedDocument({
+    scheduleSavedDocumentIndex({
       documentId: document.id,
       logger: logAttachmentRagIndexFailure,
     });
