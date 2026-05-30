@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T12:46:00+09:00 - review follow-up
+
+- Result: Issue #73 Ollama RAG client의 configuration과 response validation을 보강했다.
+- Coverage: blank env values는 기본값으로 fallback하고 invalid embedding dimension은 stable config error로 거절한다. Ollama network failure와 invalid JSON은 recoverable request error로 정규화하며, embedding은 configured dimension과 finite numeric value contract를 통과해야 pgvector 저장 단계로 넘어간다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/config.ts`, `lib/rag/ollama.ts`, `tests/rag/ollama.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts`.
+
 ## 2026-05-30T12:15:00+09:00 - implementation
 
 - Result: Issue #73 RAG assistant의 Ollama configuration과 client wrapper를 추가했다.
