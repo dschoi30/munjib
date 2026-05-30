@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T13:55:00+09:00 - review follow-up
+
+- Result: RAG Markdown chunking helper의 TypeScript inference blocker를 정리했다.
+- Coverage: fenced-code tracking의 `openingFence`에 explicit `FenceMarker | null` annotation을 추가해 runtime behavior 변경 없이 `pnpm exec tsc --noEmit` 검증이 통과하도록 했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/rag/chunk-markdown.ts`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/chunk-markdown.test.ts tests/rag/vector-store.test.ts tests/rag/ollama.test.ts`.
+
 ## 2026-05-30T13:50:00+09:00 - implementation
 
 - Result: Issue #73 RAG assistant의 pgvector store helper를 추가했다.
