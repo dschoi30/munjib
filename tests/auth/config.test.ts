@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { authOptions, resolveAuthSecret } from "@/lib/auth/config";
+import { authOptions, resolveAuthCookieSecure, resolveAuthSecret } from "@/lib/auth/config";
 
 describe("authOptions", () => {
   afterEach(() => {
@@ -22,5 +22,12 @@ describe("authOptions", () => {
 
   it("uses the current app-specific session cookie name", () => {
     expect(authOptions.cookies?.sessionToken?.name).toBe("munjib.session-token");
+  });
+
+  it("allows secure session cookies to be disabled for HTTP deployments", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXTAUTH_COOKIE_SECURE", "false");
+
+    expect(resolveAuthCookieSecure()).toBe(false);
   });
 });

@@ -31,7 +31,9 @@ Munjib의 현재 인증은 NextAuth 기반이며, 개발 환경에서는 credent
 
 NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 이름은 이전 `obsidian-clone.session-token` stale cookie가 `/login`에서 `JWT_SESSION_ERROR`를 일으키던 문제를 피하기 위해 분리된 것이다.
 
-관련 테스트는 cookie 이름과 dev fallback secret 동작을 검증한다.
+운영 환경에서는 기본적으로 secure cookie를 사용한다. HTTP-only IP 배포처럼 HTTPS가 아직 붙지 않은 임시 환경에서는 `NEXTAUTH_COOKIE_SECURE=false`로 session cookie의 secure flag를 끌 수 있다.
+
+관련 테스트는 cookie 이름, dev fallback secret, HTTP 배포용 secure cookie override 동작을 검증한다.
 
 ## Workspace role
 

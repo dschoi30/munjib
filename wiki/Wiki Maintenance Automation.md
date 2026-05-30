@@ -141,7 +141,7 @@ Wiki 갱신이 필요 없을 수 있는 변경:
 - `lib/wiki-links/*`, `tests/wiki-links/*` -> [[Wiki Links And Backlinks]], [[Document Editing Workflow]]
 - `lib/documents/*`, `components/document-*`, `app/workspaces/*` -> [[Document Editing Workflow]], [[Document Knowledge Model]]
 - 인증, 권한, `middleware.ts` -> [[Auth And Permissions Workflow]], [[Document Knowledge Model]]
-- `package.json`, `pnpm-lock.yaml`, `next.config.ts`, `prisma/*`, e2e -> [[Local Development Workflow]]
+- `package.json`, `pnpm-lock.yaml`, `next.config.mjs`, `prisma/*`, e2e -> [[Local Development Workflow]]
 - `prd.md`, `docs/*` -> [[Project PRD]], [[Munjib]]
 
 ## 근거
