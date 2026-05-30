@@ -281,7 +281,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 
 Issue #73의 saved-content-only RAG assistant는 `DocumentChunk`를 pgvector-backed retrieval index로 사용한다. Chunk source는 저장된 DB 문서의 `title`, `contentMarkdown`, `workspaceId`, `updatedAt`이며, editor의 unsaved draft title/content는 indexing input에 포함하지 않는다.
 
-`DocumentChunk.embedding`은 Prisma schema에서 `Unsupported("vector(1024)")`로 선언된다. Prisma Client가 pgvector 타입을 직접 다루지 않으므로 vector 저장과 similarity search는 `lib/rag/vector-store.ts`의 raw SQL seam으로 격리하고, SQL text는 static string과 positional parameter만 사용한다. pgvector cast는 `$n::vector` shorthand가 아니라 `CAST($n AS vector(1024))` 형식으로 유지해 Prisma/PostgreSQL parser 차이를 피한다. Local Docker PostgreSQL은 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 migration은 `vector` extension과 HNSW cosine index를 만든다.
+`DocumentChunk.embedding`은 Prisma schema에서 `Unsupported("vector(1024)")`로 선언된다. Prisma Client가 pgvector 타입을 직접 다루지 않으므로 vector 저장과 similarity search는 `lib/rag/vector-store.ts`의 raw SQL seam으로 격리하고, SQL text는 static string과 positional parameter만 사용한다. pgvector cast는 `$n::vector` shorthand가 아니라 `CAST($n AS vector(1024))` 형식으로 유지해 Prisma/PostgreSQL parser 차이를 피한다. Local Docker PostgreSQL은 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 migration은 `vector` extension과 chunk table/indexes를 만든다. Prisma Migrate가 `Unsupported("vector(1024)")` field의 HNSW index를 datamodel로 round-trip하지 못하므로 cosine HNSW index는 `lib/rag/vector-index.ts`와 `pnpm run db:rag:index`의 idempotent `CREATE INDEX IF NOT EXISTS` step으로 관리한다.
 
 첫 embedding schema는 Ollama `bge-m3`의 1024-dimensional dense vector에 맞춘다. `MUNJIB_RAG_EMBED_MODEL`을 다른 차원의 model로 바꾸는 경우에는 단순 env 변경으로 끝나지 않고 `DocumentChunk.embedding` vector dimension migration, pgvector index rebuild, 기존 chunk reindexing이 함께 필요하다.
 

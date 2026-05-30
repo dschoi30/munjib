@@ -156,13 +156,20 @@ before vector ranking. `contentHash` lets the indexer skip unchanged chunks.
 `sourceUpdatedAt` records the saved document timestamp used to build the chunk,
 so retrieval can exclude stale chunks after a document save if reindexing fails.
 
-Add a raw SQL HNSW index for cosine distance:
+Create the HNSW cosine index through an idempotent setup step outside Prisma
+migration history:
 
 ```sql
-CREATE INDEX "DocumentChunk_embedding_hnsw_idx"
+CREATE INDEX IF NOT EXISTS "DocumentChunk_embedding_hnsw_idx"
 ON "DocumentChunk"
-USING hnsw (embedding vector_cosine_ops);
+USING hnsw ("embedding" vector_cosine_ops);
 ```
+
+Prisma Migrate can create the pgvector extension and `vector(1024)` column, but
+the HNSW index on an `Unsupported("vector(1024)")` field does not round-trip
+through Prisma's datamodel. Keeping this index in a migration makes
+`prisma migrate dev` propose a follow-up migration that drops it. Manage the
+index with `lib/rag/vector-index.ts` and `pnpm run db:rag:index` instead.
 
 Keep pgvector operations behind `lib/rag/vector-store.ts` because Prisma Client
 does not natively support vector values. Raw SQL must use static SQL strings

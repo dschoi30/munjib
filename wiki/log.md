@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T17:00:00+09:00 - review follow-up
+
+- Result: Issue #73 pgvector migration workflow를 `prisma migrate dev`와 호환되게 보정했다.
+- Coverage: HNSW vector index를 Prisma migration history 밖의 `lib/rag/vector-index.ts` idempotent setup SQL과 `pnpm run db:rag:index` script로 분리했다. `20260530023000_add_document_chunks_pgvector` migration은 pgvector extension, `DocumentChunk` table, relational/current chunk indexes만 만들며, local pgvector image/port guidance를 [[Local Development Workflow]]에 추가했다.
+- Pages: [[Document Knowledge Model]], [[Next.js Prisma Monolith]], [[Project PRD]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`, `lib/rag/vector-index.ts`, `scripts/db/ensure-rag-vector-index.ts`, `package.json`, `tests/rag/vector-index.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/vector-index.test.ts`, `pnpm exec vitest run tests/rag/vector-index.test.ts tests/rag/vector-store.test.ts tests/docker/compose.test.ts`, `pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url 'postgresql://obsidian:obsidian@localhost:55433/obsidian_clone_shadow?schema=public' --script`, `pnpm run db:rag:index`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/index-document.test.ts tests/rag/vector-store.test.ts tests/rag/vector-index.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts tests/components/document-editor-preview.test.tsx tests/docker/compose.test.ts`.
+
 ## 2026-05-30T16:40:00+09:00 - documentation
 
 - Result: Issue #73 saved-content-only document AI RAG assistant의 최종 wiki 설명을 구현 완료 기준으로 정리했다.
