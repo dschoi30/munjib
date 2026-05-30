@@ -45,15 +45,15 @@ export default async function WorkspacePage({
     graph?: string;
   }>;
 }) {
+  const { workspaceSlug } = await params;
   const user = await getCurrentUser();
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-muted px-6">
-        <LoginForm />
+        <LoginForm callbackUrl={`/workspaces/${workspaceSlug}`} />
       </main>
     );
   }
-  const { workspaceSlug } = await params;
   const {
     document: selectedDocumentId,
     folder: selectedFolderIdParam,
