@@ -183,6 +183,24 @@ describe("document RAG indexing", () => {
     ).resolves.toBe(false);
   });
 
+  it("preserves stale replacement results from the default transaction wrapper", async () => {
+    const transaction = prisma.$transaction as unknown as ReturnType<typeof vi.fn>;
+    transaction.mockImplementationOnce(async (callback) =>
+      callback({
+        $queryRawUnsafe: vi.fn().mockResolvedValue([]),
+      }),
+    );
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+
+    await expect(
+      indexSavedDocument({
+        document: savedDocument,
+        embeddingModel: "bge-m3",
+        embedText,
+      }),
+    ).resolves.toBe(false);
+  });
+
   it("schedules safe indexing without awaiting completion", () => {
     const loadDocument = vi.fn(() => new Promise<SavedDocumentForIndex>(() => undefined));
 
