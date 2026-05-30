@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-05-30T16:00:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 prompt builder와 saved-document-only ask service/API route를 추가했다.
+- Coverage: `buildRagPrompt()`는 saved document context만 쓰도록 지시하고 unsaved editor drafts/outside knowledge 금지, saved docs insufficient evidence response, question language matching, `[n] Document Title > Heading` citation label을 만든다. `askDocumentQuestion()`은 caller input을 `workspaceSlug`, `documentId`, `actorId`, `question`으로 제한하고, workspace page와 같은 explicit document permission/readability 계산으로 selected document access를 확인한 뒤 `safeIndexSavedDocument({ documentId })`, scoped pgvector search, rerank, prompt, Ollama chat을 연결한다. Ask route는 `body.question`만 읽고 posted draft title/content fields를 무시한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-05-30T15:46:00+09:00 - review follow-up
 
 - Result: Issue #73 saved document indexing lifecycle의 stale replacement result propagation을 보정했다.
