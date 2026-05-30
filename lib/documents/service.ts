@@ -562,7 +562,7 @@ export async function moveDocument(input: MoveDocumentInput) {
     userPermission: access.userPermission,
   });
 
-  return runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
+  const movedDocument = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
     const slug = await nextAvailableDocumentSlug(
       tx,
       workspace.id,
@@ -593,4 +593,6 @@ export async function moveDocument(input: MoveDocumentInput) {
 
     return moved;
   }));
+  scheduleSavedDocumentIndex({ documentId: movedDocument.id, logger: logRagIndexFailure });
+  return movedDocument;
 }

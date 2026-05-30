@@ -16,7 +16,7 @@ export type SavedDocumentForIndex = {
 
 type EmbedText = (text: string) => Promise<number[]>;
 type ReplaceDocumentChunksInput = Parameters<typeof defaultReplaceDocumentChunks>[1];
-type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<void>;
+type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<unknown>;
 type IsDocumentCurrent = (document: SavedDocumentForIndex) => Promise<boolean>;
 
 type IndexSavedDocumentInput = {
@@ -62,12 +62,13 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
     return false;
   }
 
-  await replaceDocumentChunks({
+  const replaced = await replaceDocumentChunks({
     documentId: document.id,
     embeddingModel,
+    sourceUpdatedAt: document.updatedAt,
     chunks: embeddedChunks,
   });
-  return true;
+  return replaced !== false;
 }
 
 export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput) {
