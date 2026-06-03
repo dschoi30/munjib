@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
+import { RAG_ERROR_CODES } from "@/lib/rag/ollama";
 
 vi.mock("@/lib/auth/session", () => ({
   requireCurrentUser: vi.fn(),
@@ -75,6 +76,19 @@ describe("RAG ask route", () => {
       actorId: "user-1",
       question: "What is saved?",
     });
+  });
+
+  it("returns a generic unavailable response for RAG runtime failures", async () => {
+    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(
+      new Error(RAG_ERROR_CODES.OLLAMA_REQUEST_FAILED),
+    );
+
+    const response = await POST(jsonRequest({ question: "What is saved?" }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    expect(response.status).toBe(503);
   });
 });
 

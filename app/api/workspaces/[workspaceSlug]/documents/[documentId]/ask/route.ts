@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
+import { RAG_ERROR_CODES } from "@/lib/rag/ollama";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 export async function POST(
@@ -32,7 +33,16 @@ export async function POST(
     ) {
       return NextResponse.json({ error: message }, { status: 404 });
     }
+    if (isRagRuntimeError(message)) {
+      return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
+    }
 
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   }
+}
+
+const RAG_RUNTIME_ERRORS = new Set<string>(Object.values(RAG_ERROR_CODES));
+
+function isRagRuntimeError(message: string) {
+  return RAG_RUNTIME_ERRORS.has(message);
 }
