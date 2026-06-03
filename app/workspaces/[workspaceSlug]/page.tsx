@@ -61,6 +61,8 @@ export default async function WorkspacePage({
     graph,
   } = await searchParams;
   const isGraphView = graph === "1";
+  const hasRequestedDocument = typeof selectedDocumentId === "string";
+  const hasRequestedFolder = typeof selectedFolderIdParam === "string";
 
   const workspace = await prisma.workspace.findFirst({
     where: { slug: workspaceSlug },
@@ -311,6 +313,7 @@ export default async function WorkspacePage({
           }
           selectedFolder={selectedCenterFolder}
           isGraphView={isGraphView}
+          restoreStoredActiveTab={!hasRequestedDocument && !hasRequestedFolder && !isGraphView}
         >
           {isGraphView ? (
             <KnowledgeGraphView

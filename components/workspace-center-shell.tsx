@@ -19,6 +19,7 @@ type WorkspaceCenterShellProps = {
   selectedDocument: DocumentTabDocument | null;
   selectedFolder: { path: string } | null;
   isGraphView?: boolean;
+  restoreStoredActiveTab?: boolean;
   children: React.ReactNode;
 };
 
@@ -28,6 +29,7 @@ export function WorkspaceCenterShell({
   selectedDocument,
   selectedFolder,
   isGraphView = false,
+  restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
   return (
@@ -38,6 +40,7 @@ export function WorkspaceCenterShell({
         selectedDocument={selectedDocument}
         selectedFolder={selectedFolder}
         isGraphView={isGraphView}
+        restoreStoredActiveTab={restoreStoredActiveTab}
       >
         {children}
       </WorkspaceCenterShellContent>
@@ -51,6 +54,7 @@ function WorkspaceCenterShellContent({
   selectedDocument,
   selectedFolder,
   isGraphView = false,
+  restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
   const router = useRouter();
@@ -93,12 +97,26 @@ function WorkspaceCenterShellContent({
   }, [selectedDocument]);
 
   useEffect(() => {
-    if (isGraphView || selectedDocument || selectedFolder || !activeDocumentId) {
+    if (
+      !restoreStoredActiveTab ||
+      isGraphView ||
+      selectedDocument ||
+      selectedFolder ||
+      !activeDocumentId
+    ) {
       return;
     }
 
     router.replace(workspaceDocumentHref({ workspaceSlug, documentId: activeDocumentId }));
-  }, [activeDocumentId, isGraphView, router, selectedDocument, selectedFolder, workspaceSlug]);
+  }, [
+    activeDocumentId,
+    isGraphView,
+    restoreStoredActiveTab,
+    router,
+    selectedDocument,
+    selectedFolder,
+    workspaceSlug,
+  ]);
 
   const canNavigateBack =
     documentHistory.index > 0 &&
