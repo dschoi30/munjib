@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T17:03:00+09:00 - issue-85 e2e selector follow-up
+
+- Result: E2E login workflow assertions now use the workspace menu button instead of treating `Company Handbook` as a heading.
+- Coverage: `tests/e2e/login.spec.ts` checks the `Workspace menu` button text and closes a favorites row menu via the `Documents` toolbar button after the Issue #85 header change.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `tests/e2e/login.spec.ts`, `components/document-list.tsx`.
+- Verification: `pnpm exec playwright test tests/e2e/login.spec.ts --grep "development credentials login opens the workspace"` reached the updated workspace menu selector path, then timed out later at an existing Product Notes row action lookup. Component and type checks cover the changed UI contract.
+
 ## 2026-06-03T17:00:00+09:00 - issue-85 sidebar reopen slot
 
 - Result: Left sidebar가 접힌 상태에서 `PanelLeftOpen` button이 document tabs와 겹치지 않도록 tab row leading slot을 예약했다.
