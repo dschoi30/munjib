@@ -109,7 +109,6 @@ export function DocumentNavigation({
   );
   const recentDocuments = useMemo(() => {
     const orderedDocumentIds = [
-      ...(selectedDocumentId ? [selectedDocumentId] : []),
       ...recentDocumentIds,
       ...documents.map((document) => document.id),
     ];
@@ -118,6 +117,7 @@ export function DocumentNavigation({
 
     for (const documentId of orderedDocumentIds) {
       if (seenDocumentIds.has(documentId)) continue;
+      if (documentId === selectedDocumentId) continue;
       const document = documentsById.get(documentId);
       if (!document) continue;
 
@@ -165,21 +165,12 @@ export function DocumentNavigation({
       loadedDocumentIds,
       documentsById,
     );
-    if (!selectedDocumentId) {
-      setRecentDocumentIds(readableLoadedDocumentIds);
-      if (!areDocumentIdsEqual(readableLoadedDocumentIds, loadedDocumentIds)) {
-        window.localStorage.setItem(
-          recentDocumentStorageKey,
-          JSON.stringify(readableLoadedDocumentIds),
-        );
-      }
-      return;
-    }
-
     const nextDocumentIds = [
-      selectedDocumentId,
-      ...readableLoadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
-    ].slice(0, maxRecentDocuments);
+      ...(selectedDocumentId ? [selectedDocumentId] : []),
+      ...readableLoadedDocumentIds,
+    ]
+      .filter(uniqueDocumentId)
+      .slice(0, maxRecentDocuments);
     setRecentDocumentIds(nextDocumentIds);
 
     if (!areDocumentIdsEqual(nextDocumentIds, loadedDocumentIds)) {
@@ -529,6 +520,10 @@ export function DocumentNavigation({
       </div>
     </>
   );
+}
+
+function uniqueDocumentId(documentId: string, index: number, documentIds: string[]) {
+  return documentIds.indexOf(documentId) === index;
 }
 
 function folderErrorMessage(folderError: string) {

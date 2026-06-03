@@ -11,6 +11,7 @@ import {
 } from "@/components/document-view-mode";
 import { useDocumentTabs } from "@/components/use-document-tabs";
 import type { DocumentTabDocument } from "@/lib/document-tabs";
+import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type WorkspaceCenterShellProps = {
   workspaceSlug: string;
@@ -18,6 +19,7 @@ type WorkspaceCenterShellProps = {
   selectedDocument: DocumentTabDocument | null;
   selectedFolder: { path: string } | null;
   isGraphView?: boolean;
+  restoreStoredActiveTab?: boolean;
   children: React.ReactNode;
 };
 
@@ -27,6 +29,7 @@ export function WorkspaceCenterShell({
   selectedDocument,
   selectedFolder,
   isGraphView = false,
+  restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
   return (
@@ -37,6 +40,7 @@ export function WorkspaceCenterShell({
         selectedDocument={selectedDocument}
         selectedFolder={selectedFolder}
         isGraphView={isGraphView}
+        restoreStoredActiveTab={restoreStoredActiveTab}
       >
         {children}
       </WorkspaceCenterShellContent>
@@ -50,13 +54,14 @@ function WorkspaceCenterShellContent({
   selectedDocument,
   selectedFolder,
   isGraphView = false,
+  restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
   const router = useRouter();
   const { setMode } = useDocumentViewMode();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTopBeforeModeChangeRef = useRef<number | null>(null);
-  const { tabs, activeTabId, closeTab, selectTab, createNewTab } = useDocumentTabs({
+  const { tabs, activeTabId, activeDocumentId, closeTab, selectTab, createNewTab } = useDocumentTabs({
     workspaceSlug,
     documents,
     selectedDocument,
@@ -90,6 +95,28 @@ function WorkspaceCenterShellContent({
       return { ids: nextIds, index: nextIds.length - 1 };
     });
   }, [selectedDocument]);
+
+  useEffect(() => {
+    if (
+      !restoreStoredActiveTab ||
+      isGraphView ||
+      selectedDocument ||
+      selectedFolder ||
+      !activeDocumentId
+    ) {
+      return;
+    }
+
+    router.replace(workspaceDocumentHref({ workspaceSlug, documentId: activeDocumentId }));
+  }, [
+    activeDocumentId,
+    isGraphView,
+    restoreStoredActiveTab,
+    router,
+    selectedDocument,
+    selectedFolder,
+    workspaceSlug,
+  ]);
 
   const canNavigateBack =
     documentHistory.index > 0 &&
