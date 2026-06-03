@@ -1,5 +1,6 @@
 services:
   web:
+    image: ${WEB_DEV_IMAGE:-munjib-web-dev}
     build:
       context: .
       target: dev

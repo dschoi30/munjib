@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 153
+source_count: 154
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T13:20:00+00:00 - implementation
+
+- Result: Issue #88 GitHub Actions CI/CD workflow를 구현했다.
+- Coverage: `.github/workflows/ci-cd.yml`은 PR/`main` CI에서 pnpm install, Prisma generate, Vitest, Next build, Docker `runner` target build를 실행한다. `main` push는 GHCR에 SHA/latest image를 publish하고 SSH로 production compose project에서 `git pull --ff-only`, `docker compose pull web`, Prisma migration deploy, RAG vector index setup, `docker compose up -d web`을 실행한다. `docker-compose.yml`의 `web` service는 `WEB_IMAGE`로 published image tag를 받을 수 있고, `docker-compose.dev.yml`은 dev build tag를 `WEB_DEV_IMAGE`로 분리한다.
+- Pages: [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #88, `.github/workflows/ci-cd.yml`, `docker-compose.yml`, `docker-compose.dev.yml`, `tests/github-actions/ci-cd.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm run db:generate`; `DATABASE_URL=postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public pnpm test` passed 50 files / 514 tests; `DATABASE_URL=postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public pnpm run build`; `sudo docker build --target runner --tag munjib-ci-cd-verify .`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`. PR CI inspection is pending.
 
 ## 2026-06-03T09:20:00+00:00 - design
 
