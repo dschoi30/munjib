@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T17:17:00+09:00 - issue-85 PR review keyboard follow-up
+
+- Result: Workspace menu Escape handling now closes the dropdown without capture-phase global cancellation and outside-click handling guards missing event targets.
+- Coverage: `tests/components/document-list.test.tsx` verifies Escape closes the workspace menu without calling `preventDefault` or `stopPropagation`.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #86 Gemini review thread on `components/document-list.tsx`, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "workspace menu|collapses and reopens"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, and `pnpm exec tsc --noEmit` passed after the PR review fix.
+
 ## 2026-06-03T17:03:00+09:00 - issue-85 e2e selector follow-up
 
 - Result: E2E login workflow assertions now use the workspace menu button instead of treating `Company Handbook` as a heading.

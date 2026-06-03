@@ -158,24 +158,23 @@ export function DocumentList({
     if (!workspaceMenuOpen) return;
 
     function handleMouseDown(event: MouseEvent) {
+      if (!event.target) return;
       if (workspaceMenuRef.current?.contains(event.target as Node)) return;
       closeWorkspaceMenu();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
         closeWorkspaceMenu();
       }
     }
 
     document.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   }, [closeWorkspaceMenu, workspaceMenuOpen]);
 
@@ -245,6 +244,7 @@ export function DocumentList({
           folders={folders}
           documents={documents}
           activePanel={activePanel}
+          isWorkspaceMenuOpen={workspaceMenuOpen}
           searchQuery={searchQuery}
           onOpenSearch={openSearch}
           onOpenDocuments={openDocuments}

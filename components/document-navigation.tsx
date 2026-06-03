@@ -41,6 +41,7 @@ export function DocumentNavigation({
   folders,
   documents,
   activePanel,
+  isWorkspaceMenuOpen,
   searchQuery,
   onOpenSearch,
   onOpenDocuments,
@@ -59,6 +60,7 @@ export function DocumentNavigation({
   folders: FolderListItem[];
   documents: DocumentListItem[];
   activePanel: "documents" | "search" | "favorites";
+  isWorkspaceMenuOpen: boolean;
   searchQuery: string;
   onOpenSearch: () => void;
   onOpenDocuments: () => void;
@@ -236,7 +238,7 @@ export function DocumentNavigation({
       if (event.key === "Escape") {
         setOpenMenuId(null);
         setRenamingFolderId(null);
-        if (activePanel !== "documents") {
+        if (!isWorkspaceMenuOpen && activePanel !== "documents") {
           onOpenDocuments();
         }
       }
@@ -244,7 +246,7 @@ export function DocumentNavigation({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePanel, onOpenDocuments, onOpenSearch]);
+  }, [activePanel, isWorkspaceMenuOpen, onOpenDocuments, onOpenSearch]);
 
   function toggleFavoriteDocument(documentId: string) {
     setFavorites((current) => ({

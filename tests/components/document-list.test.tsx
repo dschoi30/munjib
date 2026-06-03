@@ -248,9 +248,20 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
     expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
 
-    fireEvent.keyDown(window, { key: "Escape" });
+    const event = new KeyboardEvent("keydown", {
+      bubbles: true,
+      cancelable: true,
+      key: "Escape",
+    });
+    const preventDefault = vi.spyOn(event, "preventDefault");
+    const stopPropagation = vi.spyOn(event, "stopPropagation");
+
+    fireEvent(window, event);
 
     expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(event.defaultPrevented).toBe(false);
+    expect(preventDefault).not.toHaveBeenCalled();
+    expect(stopPropagation).not.toHaveBeenCalled();
   });
 
   it("closes only the workspace menu on Escape while a replacement sidebar view is active", () => {
