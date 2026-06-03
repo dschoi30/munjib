@@ -152,13 +152,14 @@
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
+        "[[Production Observability Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 54,
+      "source_count": 58,
       "searchPriority": 5
     },
     {
@@ -180,7 +181,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 22,
+      "source_count": 23,
       "searchPriority": 50
     },
     {
@@ -200,7 +201,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 142,
+      "source_count": 152,
       "searchPriority": 1
     },
     {
@@ -273,6 +274,28 @@
       "searchPriority": 40
     },
     {
+      "id": "workflow-production-observability",
+      "path": "wiki/Production Observability Workflow.md",
+      "title": "Production Observability Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "observability",
+        "sentry"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Local Development Workflow]]"
+      ],
+      "source_count": 20,
+      "searchPriority": 50
+    },
+    {
       "id": "source-project-prd",
       "path": "wiki/Project PRD.md",
       "title": "Project PRD",
@@ -290,9 +313,10 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
-        "[[Next.js Prisma Monolith]]"
+        "[[Next.js Prisma Monolith]]",
+        "[[Production Observability Workflow]]"
       ],
-      "source_count": 40,
+      "source_count": 43,
       "searchPriority": 30
     },
     {
