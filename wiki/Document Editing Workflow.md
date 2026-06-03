@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 68
+source_count: 69
 tags:
   - munjib
   - workflow
@@ -42,7 +42,7 @@ links:
 
 좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #79와 Issue #83 이후 `Recents`는 workspace-scoped `munjib:recents:<workspaceSlug>` localStorage selection history에서 최대 5개를 보여주되, 현재 editor에 표시 중인 selected document는 visible Recents 목록에서 제외한다. Selected document id는 session/reload 보존을 위해 history에 저장하지만 UI에서 필터되므로, 다른 document로 이동한 뒤에야 직전 selected document가 Recents 맨 앞에 보인다. Stored id가 더 이상 readable documents에 없으면 화면에서 제외하며, history가 5개보다 짧으면 workspace page가 내려준 readable document 순서로 나머지를 채운다. Favorites localStorage 상태와는 무관하게 같은 recent 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
-Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip, preview mode 본문 `#tag`, graph view의 tag node를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다. Body inline tag parsing and preview linking support Unicode letter/number tag names, so Korean tags such as `#로드맵` and mixed tags such as `#AI_요약` are clickable and searchable. Workspace sidebar search and graph tag nodes derive their tag list from the current readable document markdown at render time, so existing documents with Korean tags are searchable without waiting for a save/reconcile cycle.
+Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip, preview mode 본문 `#tag`, graph view의 tag node를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다. Issue #85 이후 left sidebar가 접혀 있어도 tag search request는 sidebar를 다시 열고 같은 Search panel/input state를 적용한다. Body inline tag parsing and preview linking support Unicode letter/number tag names, so Korean tags such as `#로드맵` and mixed tags such as `#AI_요약` are clickable and searchable. Workspace sidebar search and graph tag nodes derive their tag list from the current readable document markdown at render time, so existing documents with Korean tags are searchable without waiting for a save/reconcile cycle.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 

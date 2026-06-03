@@ -311,6 +311,30 @@ describe("DocumentList", () => {
     );
   });
 
+  it("reopens the left sidebar for AppShell tag search requests while collapsed", () => {
+    render(
+      <AppShell
+        left={<DocumentList {...baseProps} />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
+
+    expect(screen.queryByRole("button", { name: "Workspace menu" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Open sidebar" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+
+    expect(screen.getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Open sidebar" })).toBeNull();
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#LangChain",
+    );
+    expect(screen.queryByText("Recents")).toBeNull();
+  });
+
   it("orders folders before documents and sorts each group by title ascending", () => {
     renderList({
       folders: [
