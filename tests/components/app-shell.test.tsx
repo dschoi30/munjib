@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppShell, useHeadingNavigation } from "@/components/app-shell";
+import { AppShell, useHeadingNavigation, useLeftPanel } from "@/components/app-shell";
 
 afterEach(() => {
   cleanup();
@@ -25,6 +25,15 @@ function HeadingNavigationProbe({ onNavigate }: { onNavigate: () => void }) {
       onClick={() => headingNavigation?.navigateToHeading({ id: "heading", lineNumber: 1 })}
     >
       Navigate heading
+    </button>
+  );
+}
+
+function LeftPanelProbe() {
+  const leftPanel = useLeftPanel();
+  return (
+    <button type="button" onClick={() => leftPanel?.collapse()}>
+      Close sidebar
     </button>
   );
 }
@@ -96,5 +105,29 @@ describe("AppShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Navigate heading" }));
 
     expect(onNavigate).toHaveBeenCalledOnce();
+  });
+
+  it("can collapse and reopen the left sidebar", () => {
+    render(
+      <AppShell
+        left={<LeftPanelProbe />}
+        center={<div>Center</div>}
+        right={<div>Right</div>}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
+
+    expect(screen.queryByRole("button", { name: "Close sidebar" })).toBeNull();
+    const openButton = screen.getByRole("button", { name: "Open sidebar" });
+    expect(openButton).toBeTruthy();
+    expect(openButton.className).toContain("left-4");
+    expect(openButton.className).toContain("top-1.5");
+    expect(screen.getAllByRole("complementary")).toHaveLength(1);
+
+    fireEvent.click(openButton);
+
+    expect(screen.getByRole("button", { name: "Close sidebar" })).toBeTruthy();
+    expect(screen.getAllByRole("complementary")).toHaveLength(2);
   });
 });

@@ -5,8 +5,8 @@ type: index
 status: active
 summary: GitHub UI 이슈별 Excalidraw 와이어프레임과 참고 이미지 모음.
 created: 2026-04-29
-updated: 2026-05-05
-source_count: 13
+updated: 2026-06-03
+source_count: 14
 tags:
   - ui
   - design
@@ -34,3 +34,4 @@ UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임과 참고 
 - #12: [Image upload and attachment links](issue-12-attachments-upload.excalidraw)
 - #13: [Templates, comments, review operations](issue-13-templates-comments-review.excalidraw)
 - #26: [Folder row hover actions reference](notion1.png) - Notion-style folder hover highlight, `...` action menu, and `+` child document action reference.
+- #85: [Sidebar workspace menu and close button](sidebar.md) - Workspace name dropdown trigger, Settings menu item, and sidebar panel close button reference.
