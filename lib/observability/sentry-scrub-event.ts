@@ -40,6 +40,20 @@ const SPAN_NETWORK_KEYS = new Set([
   "user_agent.original",
 ]);
 
+function isSensitiveSpanDataKey(key: string): boolean {
+  const normalizedKey = key.toLowerCase().replace(/-/g, "_");
+
+  return (
+    normalizedKey === "user.ip_address" ||
+    normalizedKey.startsWith("http.request.body") ||
+    normalizedKey.startsWith("http.response.body") ||
+    normalizedKey === "http.request.header" ||
+    normalizedKey === "http.response.header" ||
+    normalizedKey.startsWith("http.request.header.") ||
+    normalizedKey.startsWith("http.response.header.")
+  );
+}
+
 function stripUrlQuery(rawUrl: string): string {
   try {
     const absoluteUrl = new URL(rawUrl);
@@ -100,8 +114,14 @@ export function scrubSentrySpan<T extends SentrySpan>(span: T): T {
     span.data["http.url"] = stripUrlQuery(span.data["http.url"]);
   }
 
-  for (const key of [...SPAN_QUERY_KEYS, ...SPAN_NETWORK_KEYS]) {
-    delete span.data[key];
+  for (const key of Object.keys(span.data)) {
+    if (
+      SPAN_QUERY_KEYS.has(key) ||
+      SPAN_NETWORK_KEYS.has(key) ||
+      isSensitiveSpanDataKey(key)
+    ) {
+      delete span.data[key];
+    }
   }
 
   if (Object.keys(span.data).length === 0) {
