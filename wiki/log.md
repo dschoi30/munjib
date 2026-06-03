@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 138
+source_count: 142
 tags:
   - log
   - munjib
@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T17:28:00+09:00 - issue-85 PR review tag search follow-up
+
+- Result: Left sidebar가 접힌 상태에서도 tag chip/body tag/graph tag search request가 sidebar를 다시 열고 Search panel에 `tag:#<tag>` query를 적용한다.
+- Coverage: `AppShell`의 `requestTagSearch`가 left sidebar open state를 복구한 뒤 request token을 갱신하고, real `DocumentList` integration test가 collapsed sidebar에서 `tag:#LangChain` search input까지 열리는 흐름을 고정했다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #86 Codex review thread on `components/app-shell.tsx`, `components/app-shell.tsx`, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "reopens the left sidebar|tag search request|opens sidebar search"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, and `pnpm exec tsc --noEmit` passed after the PR review fix.
+
 ## 2026-06-03T08:20:00+00:00 - implementation
 
 - Result: Issue #81 Ask AI host Ollama server setup을 적용하고 실제 ask route 응답을 검증했다.
@@ -26,6 +34,78 @@ links:
 - Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #81, `docker-compose.yml`, `tests/docker/compose.test.ts`, host Ollama install state, `netfilter-persistent` saved iptables rule.
 - Verification: `ollama list`, host `/api/tags`, `gemma4:e4b` chat returned `OK`, `bge-m3` embed returned 1024 dimensions, web container `/api/tags`, `pnpm exec vitest run tests/docker/compose.test.ts`, `sudo docker compose up -d --build web`, `sudo docker compose run --rm tools pnpm run db:rag:index`, authenticated ask route returned HTTP 200 with answer and citation for Welcome.
+
+## 2026-06-03T17:17:00+09:00 - issue-85 PR review keyboard follow-up
+
+- Result: Workspace menu Escape handling now closes the dropdown without capture-phase global cancellation and outside-click handling guards missing event targets.
+- Coverage: `tests/components/document-list.test.tsx` verifies Escape closes the workspace menu without calling `preventDefault` or `stopPropagation`.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #86 Gemini review thread on `components/document-list.tsx`, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "workspace menu|collapses and reopens"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, and `pnpm exec tsc --noEmit` passed after the PR review fix.
+
+## 2026-06-03T17:03:00+09:00 - issue-85 e2e selector follow-up
+
+- Result: E2E login workflow assertions now use the workspace menu button instead of treating `Company Handbook` as a heading.
+- Coverage: `tests/e2e/login.spec.ts` checks the `Workspace menu` button text and closes a favorites row menu via the `Documents` toolbar button after the Issue #85 header change.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `tests/e2e/login.spec.ts`, `components/document-list.tsx`.
+- Verification: `pnpm exec playwright test tests/e2e/login.spec.ts --grep "development credentials login opens the workspace"` reached the updated workspace menu selector path, then timed out later at an existing Product Notes row action lookup. Component and type checks cover the changed UI contract.
+
+## 2026-06-03T17:00:00+09:00 - issue-85 sidebar reopen slot
+
+- Result: Left sidebar가 접힌 상태에서 `PanelLeftOpen` button이 document tabs와 겹치지 않도록 tab row leading slot을 예약했다.
+- Coverage: `AppShell` left panel context는 center content에도 `isOpen` state를 제공하고, `WorkspaceCenterShell`은 left panel closed state를 `DocumentTabs`에 전달한다. `DocumentTabs`는 `w-14` leading slot을 렌더링하고 tab width calculation에서 그 slot width를 제외한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 final PR-before requirement, `components/app-shell.tsx`, `components/workspace-center-shell.tsx`, `components/document-tabs.tsx`, `tests/components/workspace-center-shell.test.tsx`, `tests/document-tabs.test.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx -t "reopen|leading space|sidebar reopen"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-06-03T16:18:00+09:00 - issue-85 final review follow-up
+
+- Result: Final review follow-up으로 real `DocumentList` collapse/reopen integration test와 workspace menu `aria-haspopup="menu"`를 추가했다.
+- Coverage: `DocumentList`의 `PanelLeftClose` button이 `AppShell`의 `useLeftPanel()` context와 실제로 연결되어 left sidebar를 접고 `PanelLeftOpen`으로 복구되는 흐름을 component integration test로 고정했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: final code review, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "real document list|workspace title"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-06-03T15:30:00+09:00 - issue-85 sidebar workspace menu
+
+- Result: 좌측 sidebar workspace name dropdown, Settings menu item, left sidebar collapse/reopen, sticky title+toolbar chrome을 구현했다.
+- Coverage: `AppShell` owns left sidebar open state and exposes `useLeftPanel()`. `DocumentList` renders the workspace title as the no-chevron menu trigger, opens `WorkspaceSettingsPanel` through a full-width `Settings` menu item, uses `PanelLeftClose` for collapse, and keeps the title row plus icon toolbar sticky while navigation content scrolls.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #85, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `components/app-shell.tsx`, `components/document-list.tsx`, `tests/components/app-shell.test.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-06-03T15:25:11+09:00 - plan
+
+- Result: Issue #85 sidebar workspace menu and collapse implementation plan을 추가했다.
+- Coverage: Plan은 `AppShell` left panel context, `DocumentList` workspace name Settings menu, sticky sidebar chrome, focused component tests, wiki maintenance, visual verification, push/PR/review workflow를 task 단위로 나눈다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-03-sidebar-workspace-menu-and-collapse.md`, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, GitHub issue #85.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
+
+## 2026-06-03T15:17:43+09:00 - design follow-up
+
+- Result: Issue #85 sidebar design에 sticky toolbar requirement를 추가했다.
+- Coverage: Left sidebar에서 workspace title row와 icon toolbar를 sticky chrome으로 묶어 긴 Recents, folder tree, search, favorites content를 스크롤해도 항상 보이게 하고, document navigation body만 chrome 아래에서 스크롤되도록 계획을 보강했다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 design review, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `wiki/index.md`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
+## 2026-06-03T14:28:42+09:00 - design
+
+- Result: Issue #85 left sidebar workspace menu and collapse design을 추가했다.
+- Coverage: Workspace name text를 chevron 없는 full-width dropdown trigger로 사용하고, dropdown의 첫 항목은 `Settings` 하나로 두며, 기존 gear 위치는 right metadata panel과 같은 결의 반대 방향 `PanelLeftClose` close button으로 바꾼다. Left sidebar collapse는 `AppShell` layout state가 소유하고, matching `PanelLeftOpen` reopen affordance를 제공한다.
+- Pages: [[index|Wiki Index]], [[UI Design Excalidraw Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #85, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `wiki/designs/sidebar.md`, `wiki/Pasted Image 20260603131407_119.png`, `components/document-list.tsx`, `components/app-shell.tsx`, `components/metadata-panel.tsx`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
+## 2026-06-03T12:56:00+09:00 - issue-83 recents and stored active tab follow-up
+
+- Result: Recents no longer shows the document currently displayed in the editor, and workspace root entry with a stored active tab now routes to that document.
+- Coverage: `DocumentNavigation` persists the selected document in `munjib:recents:<workspaceSlug>` for reload/session continuity, filters the current selected document only from the visible Recents list, and keeps stale/unreadable stored ids out before the five-item limit. `WorkspacePage` enables stored active tab restore only when the URL has no `document` or `folder` query and is not graph view, so stale/deleted/inaccessible document URLs are not hidden by local tab state. `WorkspaceCenterShell` replaces that true workspace-root URL with the stored active document URL when there is no selected folder, graph view, or empty active tab.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #83, `components/document-navigation.tsx`, `components/workspace-center-shell.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-center-shell.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx`, green `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-06-03T12:34:00+09:00 - pr-80 review follow-up
 

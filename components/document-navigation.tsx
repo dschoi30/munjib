@@ -41,6 +41,7 @@ export function DocumentNavigation({
   folders,
   documents,
   activePanel,
+  isWorkspaceMenuOpen,
   searchQuery,
   onOpenSearch,
   onOpenDocuments,
@@ -59,6 +60,7 @@ export function DocumentNavigation({
   folders: FolderListItem[];
   documents: DocumentListItem[];
   activePanel: "documents" | "search" | "favorites";
+  isWorkspaceMenuOpen: boolean;
   searchQuery: string;
   onOpenSearch: () => void;
   onOpenDocuments: () => void;
@@ -109,7 +111,6 @@ export function DocumentNavigation({
   );
   const recentDocuments = useMemo(() => {
     const orderedDocumentIds = [
-      ...(selectedDocumentId ? [selectedDocumentId] : []),
       ...recentDocumentIds,
       ...documents.map((document) => document.id),
     ];
@@ -118,6 +119,7 @@ export function DocumentNavigation({
 
     for (const documentId of orderedDocumentIds) {
       if (seenDocumentIds.has(documentId)) continue;
+      if (documentId === selectedDocumentId) continue;
       const document = documentsById.get(documentId);
       if (!document) continue;
 
@@ -165,21 +167,12 @@ export function DocumentNavigation({
       loadedDocumentIds,
       documentsById,
     );
-    if (!selectedDocumentId) {
-      setRecentDocumentIds(readableLoadedDocumentIds);
-      if (!areDocumentIdsEqual(readableLoadedDocumentIds, loadedDocumentIds)) {
-        window.localStorage.setItem(
-          recentDocumentStorageKey,
-          JSON.stringify(readableLoadedDocumentIds),
-        );
-      }
-      return;
-    }
-
     const nextDocumentIds = [
-      selectedDocumentId,
-      ...readableLoadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
-    ].slice(0, maxRecentDocuments);
+      ...(selectedDocumentId ? [selectedDocumentId] : []),
+      ...readableLoadedDocumentIds,
+    ]
+      .filter(uniqueDocumentId)
+      .slice(0, maxRecentDocuments);
     setRecentDocumentIds(nextDocumentIds);
 
     if (!areDocumentIdsEqual(nextDocumentIds, loadedDocumentIds)) {
@@ -245,7 +238,7 @@ export function DocumentNavigation({
       if (event.key === "Escape") {
         setOpenMenuId(null);
         setRenamingFolderId(null);
-        if (activePanel !== "documents") {
+        if (!isWorkspaceMenuOpen && activePanel !== "documents") {
           onOpenDocuments();
         }
       }
@@ -253,7 +246,7 @@ export function DocumentNavigation({
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [activePanel, onOpenDocuments, onOpenSearch]);
+  }, [activePanel, isWorkspaceMenuOpen, onOpenDocuments, onOpenSearch]);
 
   function toggleFavoriteDocument(documentId: string) {
     setFavorites((current) => ({
@@ -529,6 +522,10 @@ export function DocumentNavigation({
       </div>
     </>
   );
+}
+
+function uniqueDocumentId(documentId: string, index: number, documentIds: string[]) {
+  return documentIds.indexOf(documentId) === index;
 }
 
 function folderErrorMessage(folderError: string) {
