@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 125
+source_count: 126
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T12:09:00+09:00 - pr-80 review follow-up
+
+- Result: Recents localStorage loading, selected-document promotion, and persistence now use one synchronous effect.
+- Coverage: Removed intermediate loaded-key state after PR #80 review feedback while preserving workspace-scoped recent selection history behavior.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #80 review threads, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "moves newly selected documents into recents"`.
 
 ## 2026-06-03T11:58:00+09:00 - issue-79 recents selection history
 
