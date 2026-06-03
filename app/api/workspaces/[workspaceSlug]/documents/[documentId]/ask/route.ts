@@ -41,6 +41,8 @@ export async function POST(
   }
 }
 
+const RAG_RUNTIME_ERRORS = new Set<string>(Object.values(RAG_ERROR_CODES));
+
 function isRagRuntimeError(message: string) {
-  return Object.values(RAG_ERROR_CODES).some((code) => code === message);
+  return RAG_RUNTIME_ERRORS.has(message);
 }
