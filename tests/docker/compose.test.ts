@@ -27,7 +27,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("MUNJIB_RAG_EMBED_MODEL");
     expect(compose).toContain("bge-m3");
     expect(compose).toContain("MUNJIB_RAG_EMBED_DIMENSIONS");
-    expect(compose).toContain("host.docker.internal:172.18.0.1");
+    expect(compose).toContain("host.docker.internal:host-gateway");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");

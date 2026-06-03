@@ -35,7 +35,7 @@ services:
     ports:
       - "${WEB_PORT:-3000}:3000"
     extra_hosts:
-      - "host.docker.internal:172.18.0.1"
+      - "host.docker.internal:host-gateway"
     volumes:
       - web_storage:/app/storage
 
@@ -59,7 +59,7 @@ services:
       MUNJIB_RAG_EMBED_MODEL: ${MUNJIB_RAG_EMBED_MODEL:-bge-m3}
       MUNJIB_RAG_EMBED_DIMENSIONS: ${MUNJIB_RAG_EMBED_DIMENSIONS:-1024}
     extra_hosts:
-      - "host.docker.internal:172.18.0.1"
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
