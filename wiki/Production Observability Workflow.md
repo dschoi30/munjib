@@ -6,7 +6,7 @@ status: active
 summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
 created: 2026-06-03
 updated: 2026-06-03
-source_count: 18
+source_count: 20
 tags:
   - munjib
   - workflow
@@ -56,6 +56,7 @@ Sentry SaaS 첫 slice의 목표 범위:
 - Browser SDK에 필요한 `NEXT_PUBLIC_SENTRY_*` 값은 Next.js build time에 bundle되므로 Docker build args로도 전달한다.
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
 - Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
+- Browser/Server/Edge SDK init은 shared `beforeSend` scrubber를 사용해 Sentry event의 request URL query, `query_string`, request body data, cookies, credential/network-identifying request headers, user IP, span URL query/address/user-agent fields, and breadcrumb URL/query fields를 제거한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string과 browser `location.href` 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
 
 `docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 
@@ -65,11 +66,11 @@ Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure,
 
 잘못된 trace sample rate는 app startup failure로 만들지 않고 tracing disabled 상태로 낮춘다. Source map upload token은 runtime container env에 넣지 않는다.
 
-문서 본문, cookie, authorization header, `DATABASE_URL`, `NEXTAUTH_SECRET` 같은 민감 값은 Sentry event context에 넣지 않는다. 첫 slice에서는 `sendDefaultPii`를 켜지 않는다.
+문서 본문, query parameter 기반 document/search state, cookie, authorization header, network address, user IP, `DATABASE_URL`, `NEXTAUTH_SECRET` 같은 민감 값은 Sentry event context에 넣지 않는다. 첫 slice에서는 `sendDefaultPii`를 켜지 않는다.
 
 ## Tests
 
-Issue #89 자동 검증은 Sentry config helper unit test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
+Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scrubber test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
 
 ## 근거
 
@@ -77,6 +78,7 @@ Issue #89 자동 검증은 Sentry config helper unit test, static Sentry integra
 - `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`
 - `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`
 - `lib/observability/sentry-config.ts`
+- `lib/observability/sentry-scrub-event.ts`
 - `instrumentation-client.ts`
 - `sentry.server.config.ts`
 - `sentry.edge.config.ts`
@@ -88,6 +90,7 @@ Issue #89 자동 검증은 Sentry config helper unit test, static Sentry integra
 - `.env.example`
 - `.env.docker.example`
 - `tests/observability/sentry-config.test.ts`
+- `tests/observability/sentry-scrub-event.test.ts`
 - `tests/observability/sentry-files.test.ts`
 - `tests/docker/compose.test.ts`
 - [[Local Development Workflow]]

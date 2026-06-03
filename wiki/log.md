@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 145
+source_count: 152
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T20:50:14+0900 - issue-89 sentry privacy scrubber
+
+- Result: Sentry event privacy scrubber를 추가해 query parameter 기반 document/search state와 network identifiers가 event payload에 남지 않도록 했다.
+- Coverage: Browser, Server, Edge `Sentry.init` 모두 `beforeSend: scrubSentryEvent`를 사용한다. Scrubber는 request URL query, `query_string`, request data, cookies, credential/network request headers, user `ip_address`, span URL query/address/user-agent fields, breadcrumb URL/query fields를 제거하고 같은 event object를 반환한다.
+- Pages: [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89 final review privacy issue, `lib/observability/sentry-scrub-event.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `tests/observability/sentry-scrub-event.test.ts`, `tests/observability/sentry-files.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts`, `pnpm exec tsc --noEmit`, `pnpm run build`.
 
 ## 2026-06-03T20:28:45+0900 - issue-89 sentry observability
 
