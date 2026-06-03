@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T17:00:00+09:00 - issue-85 sidebar reopen slot
+
+- Result: Left sidebar가 접힌 상태에서 `PanelLeftOpen` button이 document tabs와 겹치지 않도록 tab row leading slot을 예약했다.
+- Coverage: `AppShell` left panel context는 center content에도 `isOpen` state를 제공하고, `WorkspaceCenterShell`은 left panel closed state를 `DocumentTabs`에 전달한다. `DocumentTabs`는 `w-14` leading slot을 렌더링하고 tab width calculation에서 그 slot width를 제외한다.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 final PR-before requirement, `components/app-shell.tsx`, `components/workspace-center-shell.tsx`, `components/document-tabs.tsx`, `tests/components/workspace-center-shell.test.tsx`, `tests/document-tabs.test.ts`.
+- Verification: `pnpm exec vitest run tests/document-tabs.test.ts tests/components/workspace-center-shell.test.tsx -t "reopen|leading space|sidebar reopen"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-06-03T16:18:00+09:00 - issue-85 final review follow-up
 
 - Result: Final review follow-up으로 real `DocumentList` collapse/reopen integration test와 workspace menu `aria-haspopup="menu"`를 추가했다.
