@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 139
+source_count: 140
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T14:28:42+09:00 - design
+
+- Result: Issue #85 left sidebar workspace menu and collapse design을 추가했다.
+- Coverage: Workspace name text를 chevron 없는 full-width dropdown trigger로 사용하고, dropdown의 첫 항목은 `Settings` 하나로 두며, 기존 gear 위치는 right metadata panel과 같은 결의 반대 방향 `PanelLeftClose` close button으로 바꾼다. Left sidebar collapse는 `AppShell` layout state가 소유하고, matching `PanelLeftOpen` reopen affordance를 제공한다.
+- Pages: [[index|Wiki Index]], [[UI Design Excalidraw Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #85, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `wiki/designs/sidebar.md`, `wiki/Pasted Image 20260603131407_119.png`, `components/document-list.tsx`, `components/app-shell.tsx`, `components/metadata-panel.tsx`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-03T12:56:00+09:00 - issue-83 recents and stored active tab follow-up
 

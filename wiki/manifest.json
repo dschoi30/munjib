@@ -41,7 +41,25 @@
         "[[Munjib]]",
         "[[Project PRD]]"
       ],
-      "source_count": 13,
+      "source_count": 14,
+      "searchPriority": 30
+    },
+    {
+      "id": "design-sidebar-excalidraw-draft",
+      "path": "wiki/designs/sidebar.md",
+      "title": "Sidebar Workspace Menu Draft",
+      "type": "source",
+      "status": "draft",
+      "summary": "Issue #85 sidebar workspace menu and close button Excalidraw draft.",
+      "tags": [
+        "excalidraw",
+        "design",
+        "munjib"
+      ],
+      "links": [
+        "[[UI Design Excalidraw Index]]"
+      ],
+      "source_count": 1,
       "searchPriority": 30
     },
     {
@@ -140,7 +158,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 52,
+      "source_count": 53,
       "searchPriority": 5
     },
     {
@@ -182,7 +200,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 139,
+      "source_count": 140,
       "searchPriority": 1
     },
     {
