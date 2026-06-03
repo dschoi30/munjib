@@ -129,6 +129,32 @@ describe("WorkspaceCenterShell", () => {
     expect(router.replace).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
   });
 
+  it("does not route to the stored active tab when a document URL was requested but not resolved", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+        restoreStoredActiveTab={false}
+      >
+        <div>Select a document or folder.</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(screen.getByText("Select a document or folder.")).toBeTruthy();
+  });
+
   it("closes the active tab and routes to the next tab", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
