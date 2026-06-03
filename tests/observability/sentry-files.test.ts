@@ -84,6 +84,7 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("http.request.header");
     expect(source).toContain("http.response.header");
     expect(source).toContain("user.ip_address");
+    expect(source).toContain('"url"');
     expect(source).toContain("http.target");
     expect(source).toContain("request.path");
     expect(source).toContain("net.peer.ip");
