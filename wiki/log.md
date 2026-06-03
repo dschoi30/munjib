@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 141
+source_count: 142
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T15:25:11+09:00 - plan
+
+- Result: Issue #85 sidebar workspace menu and collapse implementation plan을 추가했다.
+- Coverage: Plan은 `AppShell` left panel context, `DocumentList` workspace name Settings menu, sticky sidebar chrome, focused component tests, wiki maintenance, visual verification, push/PR/review workflow를 task 단위로 나눈다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-03-sidebar-workspace-menu-and-collapse.md`, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, GitHub issue #85.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
 
 ## 2026-06-03T15:17:43+09:00 - design follow-up
 
