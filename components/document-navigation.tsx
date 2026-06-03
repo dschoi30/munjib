@@ -34,6 +34,7 @@ const folderCreateErrorToastId = "folder-create-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
 const folderCreateErrorMessage = "Could not create the item. Try again.";
+const maxRecentDocuments = 5;
 
 export function DocumentNavigation({
   workspaceSlug,
@@ -81,11 +82,13 @@ export function DocumentNavigation({
   const [pendingFolderCreateAction, setPendingFolderCreateAction] = useState<string | null>(
     null,
   );
+  const [recentDocumentIds, setRecentDocumentIds] = useState<string[]>([]);
   const [clearCreatePendingAfterTransition, setClearCreatePendingAfterTransition] =
     useState(false);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
+  const recentDocumentStorageKey = `munjib:recents:${workspaceSlug}`;
 
   const favoriteDocumentIds = useMemo(
     () => new Set(favorites.documents),
@@ -100,7 +103,31 @@ export function DocumentNavigation({
     () => folders.filter((folder) => favoriteFolderIds.has(folder.id)),
     [folders, favoriteFolderIds],
   );
-  const recentDocuments = useMemo(() => documents.slice(0, 5), [documents]);
+  const documentsById = useMemo(
+    () => new Map(documents.map((document) => [document.id, document])),
+    [documents],
+  );
+  const recentDocuments = useMemo(() => {
+    const orderedDocumentIds = [
+      ...(selectedDocumentId ? [selectedDocumentId] : []),
+      ...recentDocumentIds,
+      ...documents.map((document) => document.id),
+    ];
+    const seenDocumentIds = new Set<string>();
+    const orderedDocuments: DocumentListItem[] = [];
+
+    for (const documentId of orderedDocumentIds) {
+      if (seenDocumentIds.has(documentId)) continue;
+      const document = documentsById.get(documentId);
+      if (!document) continue;
+
+      seenDocumentIds.add(documentId);
+      orderedDocuments.push(document);
+      if (orderedDocuments.length === maxRecentDocuments) break;
+    }
+
+    return orderedDocuments;
+  }, [documents, documentsById, recentDocumentIds, selectedDocumentId]);
   const searchResults = useMemo(() => {
     const trimmedQuery = searchQuery.trim();
     const tagQuery = parseTagSearchQuery(trimmedQuery);
@@ -129,6 +156,39 @@ export function DocumentNavigation({
   useEffect(() => {
     window.localStorage.setItem(`munjib:favorites:${workspaceSlug}`, JSON.stringify(favorites));
   }, [favorites, workspaceSlug]);
+
+  useEffect(() => {
+    const loadedDocumentIds = parseRecentDocumentIds(
+      window.localStorage.getItem(recentDocumentStorageKey),
+    );
+    const readableLoadedDocumentIds = filterReadableRecentDocumentIds(
+      loadedDocumentIds,
+      documentsById,
+    );
+    if (!selectedDocumentId) {
+      setRecentDocumentIds(readableLoadedDocumentIds);
+      if (!areDocumentIdsEqual(readableLoadedDocumentIds, loadedDocumentIds)) {
+        window.localStorage.setItem(
+          recentDocumentStorageKey,
+          JSON.stringify(readableLoadedDocumentIds),
+        );
+      }
+      return;
+    }
+
+    const nextDocumentIds = [
+      selectedDocumentId,
+      ...readableLoadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
+    ].slice(0, maxRecentDocuments);
+    setRecentDocumentIds(nextDocumentIds);
+
+    if (!areDocumentIdsEqual(nextDocumentIds, loadedDocumentIds)) {
+      window.localStorage.setItem(
+        recentDocumentStorageKey,
+        JSON.stringify(nextDocumentIds),
+      );
+    }
+  }, [documentsById, recentDocumentStorageKey, selectedDocumentId]);
 
   useEffect(() => {
     setExpandedFolderIds((current) => {
@@ -487,4 +547,44 @@ function parseTagSearchQuery(query: string) {
 
 function normalizeTagName(tagName: string) {
   return tagName.trim().replace(/^#/, "").toLowerCase();
+}
+
+function parseRecentDocumentIds(raw: string | null) {
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter((documentId): documentId is string => typeof documentId === "string");
+  } catch {
+    return [];
+  }
+}
+
+function filterReadableRecentDocumentIds(
+  documentIds: string[],
+  documentsById: Map<string, DocumentListItem>,
+) {
+  const seenDocumentIds = new Set<string>();
+  const readableDocumentIds: string[] = [];
+
+  for (const documentId of documentIds) {
+    if (seenDocumentIds.has(documentId)) continue;
+    if (!documentsById.has(documentId)) continue;
+
+    seenDocumentIds.add(documentId);
+    readableDocumentIds.push(documentId);
+    if (readableDocumentIds.length === maxRecentDocuments) break;
+  }
+
+  return readableDocumentIds;
+}
+
+function areDocumentIdsEqual(left: string[], right: string[]) {
+  return (
+    left.length === right.length &&
+    left.every((documentId, index) => documentId === right[index])
+  );
 }
