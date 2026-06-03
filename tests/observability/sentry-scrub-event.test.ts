@@ -20,7 +20,7 @@ describe("scrubSentryEvent", () => {
 
     expect(result).toBe(event);
     expect(result.request).toEqual({
-      url: "https://example.com/workspaces/company-handbook#heading",
+      url: "/workspaces/company-handbook#heading",
     });
   });
 
@@ -124,7 +124,7 @@ describe("scrubSentryEvent", () => {
 
     expect(event.spans[0].data).toEqual({
       url: "/api/workspaces/company-handbook#xhr",
-      "url.full": "https://example.com/search#result",
+      "url.full": "/search#result",
       "http.url": "/workspaces/company-handbook",
       "http.target": "/workspaces/company-handbook#editor",
       "request.path": "/api/workspaces/company-handbook",
@@ -158,9 +158,25 @@ describe("scrubSentryEvent", () => {
     expect(result).toBe(span);
     expect(span.data).toEqual({
       url: "/api/workspaces/company-handbook#xhr",
-      "url.full": "https://example.com/workspaces/company-handbook",
+      "url.full": "/workspaces/company-handbook",
       "http.target": "/workspaces/company-handbook",
       "request.path": "/api/workspaces/company-handbook",
+    });
+  });
+
+  test("scrubs URL-like span descriptions and names", () => {
+    const spanWithoutData = {
+      description:
+        "GET https://example.com/api/documents?documentId=secret#result then /api/ask?documentId=secret",
+      name: "POST /api/workspaces/company-handbook?documentId=secret",
+    };
+
+    const result = scrubSentrySpan(spanWithoutData);
+
+    expect(result).toBe(spanWithoutData);
+    expect(spanWithoutData).toEqual({
+      description: "GET /api/documents#result then /api/ask",
+      name: "POST /api/workspaces/company-handbook",
     });
   });
 
@@ -182,7 +198,7 @@ describe("scrubSentryEvent", () => {
     scrubSentrySpan(xhrSpan);
 
     expect(fetchSpan.data).toEqual({
-      url: "https://example.com/api/documents#fetch",
+      url: "/api/documents#fetch",
       type: "fetch",
     });
     expect(xhrSpan.data).toEqual({
@@ -211,7 +227,7 @@ describe("scrubSentryEvent", () => {
     scrubSentryEvent(event);
 
     expect(event.breadcrumbs[0].data).toEqual({
-      url: "https://example.com/workspaces/company-handbook",
+      url: "/workspaces/company-handbook",
       href: "/search#result",
       from: "/workspaces/company-handbook",
       to: "/workspaces/company-handbook#editor",

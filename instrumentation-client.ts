@@ -12,6 +12,7 @@ if (config.enabled) {
   Sentry.init({
     dsn: config.dsn,
     environment: config.environment,
+    release: config.release,
     sendDefaultPii: false,
     beforeSend: scrubSentryEvent,
     beforeSendTransaction: scrubSentryEvent,

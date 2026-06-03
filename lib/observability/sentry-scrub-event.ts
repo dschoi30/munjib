@@ -7,7 +7,9 @@ type SentryRequest = {
 };
 
 type SentrySpan = {
+  description?: string;
   data?: Record<string, unknown>;
+  name?: string;
 };
 
 type SentryBreadcrumb = {
@@ -74,6 +76,10 @@ function stripUrlQuery(rawUrl: string): string {
   try {
     const absoluteUrl = new URL(rawUrl);
     absoluteUrl.search = "";
+    if (absoluteUrl.protocol === "http:" || absoluteUrl.protocol === "https:") {
+      return `${absoluteUrl.pathname}${absoluteUrl.hash}`;
+    }
+
     return absoluteUrl.toString();
   } catch {
     // Continue with relative URL parsing.
@@ -86,6 +92,15 @@ function stripUrlQuery(rawUrl: string): string {
     const queryStart = rawUrl.indexOf("?");
     return queryStart === -1 ? rawUrl : rawUrl.slice(0, queryStart);
   }
+}
+
+function scrubUrlLikeText(text: string): string {
+  return text
+    .replace(/https?:\/\/[^\s"'<>]+/g, (match) => stripUrlQuery(match))
+    .replace(
+      /(^|[\s(["'])(\/[^\s"'<>?]*\?[^\s"'<>]*)/g,
+      (_match, prefix: string, url: string) => `${prefix}${stripUrlQuery(url)}`,
+    );
 }
 
 function scrubRequest(request: SentryRequest): void {
@@ -105,6 +120,14 @@ function scrubUser(user: Record<string, unknown>): boolean {
 }
 
 export function scrubSentrySpan<T extends SentrySpan>(span: T): T {
+  if (span.description) {
+    span.description = scrubUrlLikeText(span.description);
+  }
+
+  if (span.name) {
+    span.name = scrubUrlLikeText(span.name);
+  }
+
   if (!span.data) {
     return span;
   }

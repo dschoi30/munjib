@@ -58,6 +58,7 @@ function getBrowserSentryEnv(): SentryEnv {
     NODE_ENV: process.env.NODE_ENV,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_SENTRY_ENVIRONMENT: process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT,
+    NEXT_PUBLIC_SENTRY_RELEASE: process.env.NEXT_PUBLIC_SENTRY_RELEASE,
     NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: process.env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE,
   };
 }
@@ -69,7 +70,7 @@ export function getBrowserSentryConfig(env: SentryEnv = getBrowserSentryEnv()): 
     dsn,
     enabled: Boolean(dsn),
     environment: nonEmpty(env.NEXT_PUBLIC_SENTRY_ENVIRONMENT) ?? defaultEnvironment(env),
-    release: undefined,
+    release: nonEmpty(env.NEXT_PUBLIC_SENTRY_RELEASE),
     tracesSampleRate: parseTraceSampleRate(env.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE),
   };
 }

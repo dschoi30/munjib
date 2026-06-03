@@ -22,6 +22,7 @@ describe("Sentry Next.js integration files", () => {
       "} from \"@/lib/observability/sentry-scrub-event\";",
     );
     expect(source).toContain("Sentry.init");
+    expect(source).toContain("release: config.release");
     expect(source).toContain("sendDefaultPii: false");
     expect(source).toContain("beforeSend: scrubSentryEvent");
     expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
@@ -97,7 +98,7 @@ describe("Sentry Next.js integration files", () => {
 
     expect(source).toContain('"use client"');
     expect(source).toContain("Sentry.captureException(error)");
-    expect(source).toContain("<NextError statusCode={0} />");
+    expect(source).toContain("<NextError statusCode={500} />");
   });
 
   test("wraps Next config while disabling source map upload", () => {
