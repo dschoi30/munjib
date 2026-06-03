@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLeftPanel } from "@/components/app-shell";
 import { DocumentTabs } from "@/components/document-tabs";
 import { DocumentToolbar } from "@/components/document-toolbar";
 import {
@@ -58,6 +59,7 @@ function WorkspaceCenterShellContent({
   children,
 }: WorkspaceCenterShellProps) {
   const router = useRouter();
+  const leftPanel = useLeftPanel();
   const { setMode } = useDocumentViewMode();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTopBeforeModeChangeRef = useRef<number | null>(null);
@@ -208,6 +210,7 @@ function WorkspaceCenterShellContent({
       <DocumentTabs
         tabs={tabs}
         activeTabId={activeTabId}
+        reserveLeadingSlot={leftPanel?.isOpen === false}
         onSelect={handleSelect}
         onClose={handleClose}
         onAdd={handleAdd}
