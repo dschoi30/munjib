@@ -95,11 +95,12 @@ Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속�
 
 Compose는 database row와 uploaded attachment file이 함께 남도록 named volume을 둘 다 둔다. `postgres_data`는 PostgreSQL data directory를 유지하고, `web_storage`는 web container의 `/app/storage`를 유지해 container 재생성 뒤에도 `storage/attachments` 파일을 보존한다.
 
-기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다.
+기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다. Production container를 HTTPS 없이 외부 HTTP IP로 임시 노출할 때는 browser가 session cookie를 저장할 수 있도록 `NEXTAUTH_COOKIE_SECURE=false`도 함께 둔다. Compose는 이 값을 `web`과 `tools` container environment에 명시적으로 전달한다.
 
 ```bash
 POSTGRES_PORT=55433 docker compose up --build
 POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose up --build
+WEB_PORT=80 NEXTAUTH_URL=http://146.56.170.25 NEXTAUTH_COOKIE_SECURE=false docker compose up --build
 ```
 
 Docker web container에서 schema와 seed를 준비하는 명령:
