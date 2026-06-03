@@ -214,6 +214,22 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
   });
 
+  it("closes only the workspace menu on Escape while a replacement sidebar view is active", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+    expect(screen.queryByText("Recents")).toBeNull();
+  });
+
   it("closes the workspace menu on outside click", () => {
     renderList();
 

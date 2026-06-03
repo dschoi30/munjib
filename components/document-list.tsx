@@ -164,16 +164,18 @@ export function DocumentList({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
         closeWorkspaceMenu();
       }
     }
 
     document.addEventListener("mousedown", handleMouseDown);
-    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
 
     return () => {
       document.removeEventListener("mousedown", handleMouseDown);
-      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [closeWorkspaceMenu, workspaceMenuOpen]);
 
