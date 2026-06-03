@@ -62,6 +62,14 @@ describe("Docker web service configuration", () => {
     ]) {
       expect(tools.environment).not.toHaveProperty(key);
     }
+    expect(compose).toContain("MUNJIB_OLLAMA_BASE_URL");
+    expect(compose).toContain("host.docker.internal:11434");
+    expect(compose).toContain("MUNJIB_RAG_CHAT_MODEL");
+    expect(compose).toContain("gemma4:e4b");
+    expect(compose).toContain("MUNJIB_RAG_EMBED_MODEL");
+    expect(compose).toContain("bge-m3");
+    expect(compose).toContain("MUNJIB_RAG_EMBED_DIMENSIONS");
+    expect(compose).toContain("host.docker.internal:host-gateway");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");
