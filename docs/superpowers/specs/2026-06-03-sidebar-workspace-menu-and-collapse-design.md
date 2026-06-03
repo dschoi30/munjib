@@ -22,6 +22,8 @@ instead of an unrelated close icon.
 - Replace the old gear slot with `PanelLeftClose`.
 - Collapse the left sidebar when the close button is clicked.
 - Show a matching `PanelLeftOpen` affordance so the sidebar can be reopened.
+- Keep the workspace title row and icon toolbar fixed at the top of the left
+  sidebar while the document navigation area scrolls.
 - Preserve existing document/search/favorites/graph toolbar behavior.
 
 ## Non-Goals
@@ -58,6 +60,12 @@ settings toggle is closed by navigation changes.
 Clicking `PanelLeftClose` collapses the left sidebar column. The center content
 expands into the freed space. A floating `PanelLeftOpen` button appears near the
 top-left edge of the workspace shell. Clicking it restores the sidebar.
+
+The workspace title row and the icon toolbar below it form the left sidebar
+chrome. That chrome stays visible at the top of the left sidebar while users
+scroll through long recents, folder, search, or favorites content. Only the
+document navigation body scrolls away. The sticky surface should keep the same
+`bg-muted` background so rows never show through behind the toolbar.
 
 ## Component Architecture
 
@@ -98,7 +106,12 @@ floating reopen buttons for any closed panels.
 `DocumentList` owns the workspace menu open state, similar to its current
 settings open state.
 
-The header becomes a relative container:
+The top chrome becomes a sticky container that includes the header row and
+`DocumentCreateControls`. It should use a stable `top-0` offset, a `z-index`
+above the document list rows, and a `bg-muted` surface matching the sidebar.
+The scrollable document navigation content remains below this chrome.
+
+The header row becomes a relative container:
 
 - workspace title button uses `truncate` and fills available space
 - close button uses lucide `PanelLeftClose`
@@ -107,6 +120,10 @@ The header becomes a relative container:
 
 The menu item should be a button with `role="menuitem"` inside a `role="menu"`
 surface. Selecting the item opens the existing `WorkspaceSettingsPanel`.
+
+The full-width menu is anchored to the sticky header row and layers above the
+toolbar/list content. Opening the menu must not resize the toolbar or push the
+navigation list down.
 
 `settingsOpen` can remain as the state for the modal dialog. Add separate
 `workspaceMenuOpen` state so users can open the small menu without immediately
@@ -161,6 +178,8 @@ button offscreen. The dropdown still spans the sidebar content width.
   - Tag-search requests close the workspace menu and open search.
   - Clicking `Close sidebar` hides the left sidebar and shows `Open sidebar`.
   - Clicking `Open sidebar` restores the document list.
+  - Scrolling a long sidebar keeps the workspace title row and icon toolbar
+    visible while the navigation rows scroll underneath.
 
 - Existing focused bundle:
   - `pnpm exec vitest run tests/components/document-list.test.tsx`
@@ -185,3 +204,5 @@ and review evidence.
 - The old gear slot becomes `PanelLeftClose`.
 - The left sidebar collapse and matching `PanelLeftOpen` reopen behavior are in
   scope for this issue.
+- The workspace title row and icon toolbar stay sticky at the top of the left
+  sidebar while the navigation body scrolls.

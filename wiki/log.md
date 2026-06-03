@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 140
+source_count: 141
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T15:17:43+09:00 - design follow-up
+
+- Result: Issue #85 sidebar design에 sticky toolbar requirement를 추가했다.
+- Coverage: Left sidebar에서 workspace title row와 icon toolbar를 sticky chrome으로 묶어 긴 Recents, folder tree, search, favorites content를 스크롤해도 항상 보이게 하고, document navigation body만 chrome 아래에서 스크롤되도록 계획을 보강했다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: 사용자 design review, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `wiki/index.md`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-03T14:28:42+09:00 - design
 
