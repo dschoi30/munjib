@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T12:34:00+09:00 - pr-80 review follow-up
+
+- Result: Recents now filters stale stored ids before applying the five-item limit.
+- Coverage: `DocumentNavigation` normalizes stored recent ids against the current readable document map before truncation, so deleted or unreadable ids cannot crowd out valid recent history.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #80 Codex review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-list.test.tsx -t "filters stale stored recent ids"`, green `pnpm exec vitest run tests/components/document-list.test.tsx -t "filters stale stored recent ids"`.
+
 ## 2026-06-03T03:20:00+00:00 - review follow-up
 
 - Result: PR #82 review feedback on RAG runtime error matching was addressed.
@@ -27,6 +35,14 @@ links:
 - Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, PR #82 review thread.
 - Verification: `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/ollama.test.ts`; `pnpm exec tsc --noEmit`.
 
+## 2026-06-03T12:09:00+09:00 - pr-80 review follow-up
+
+- Result: Recents localStorage loading, selected-document promotion, and persistence now use one synchronous effect.
+- Coverage: Removed intermediate loaded-key state after PR #80 review feedback while preserving workspace-scoped recent selection history behavior.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #80 review threads, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "moves newly selected documents into recents"`.
+
 ## 2026-06-03T03:05:00+00:00 - design
 
 - Result: Issue #81 Ask AI Ollama model/server setup 설계를 추가했다.
@@ -34,6 +50,14 @@ links:
 - Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #81, `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`, `lib/rag/config.ts`, `lib/rag/ollama.ts`, `docker-compose.yml`.
 - Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
+## 2026-06-03T11:58:00+09:00 - issue-79 recents selection history
+
+- Result: Sidebar `Recents` now updates when a different document is selected.
+- Coverage: `DocumentNavigation` stores recent document ids in workspace-scoped `munjib:recents:<workspaceSlug>` localStorage, moves the current selected document to the top, filters ids that are not in the readable document list, and uses workspace page readable document order as the fallback filler.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #79, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`.
 
 ## 2026-06-03T02:57:00+00:00 - bug fix
 
