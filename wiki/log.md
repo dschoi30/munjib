@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T15:30:00+09:00 - issue-85 sidebar workspace menu
+
+- Result: 좌측 sidebar workspace name dropdown, Settings menu item, left sidebar collapse/reopen, sticky title+toolbar chrome을 구현했다.
+- Coverage: `AppShell` owns left sidebar open state and exposes `useLeftPanel()`. `DocumentList` renders the workspace title as the no-chevron menu trigger, opens `WorkspaceSettingsPanel` through a full-width `Settings` menu item, uses `PanelLeftClose` for collapse, and keeps the title row plus icon toolbar sticky while navigation content scrolls.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #85, `docs/superpowers/specs/2026-06-03-sidebar-workspace-menu-and-collapse-design.md`, `components/app-shell.tsx`, `components/document-list.tsx`, `tests/components/app-shell.test.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-03T15:25:11+09:00 - plan
 
 - Result: Issue #85 sidebar workspace menu and collapse implementation plan을 추가했다.
