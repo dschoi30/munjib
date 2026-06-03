@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
 import {
   DocumentSection,
@@ -88,10 +88,6 @@ export function DocumentNavigation({
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
-  const lastProcessedRecentSelectionRef = useRef<{
-    storageKey: string;
-    selectedDocumentId: string | null;
-  } | null>(null);
   const recentDocumentStorageKey = `munjib:recents:${workspaceSlug}`;
 
   const favoriteDocumentIds = useMemo(
@@ -169,25 +165,10 @@ export function DocumentNavigation({
       loadedDocumentIds,
       documentsById,
     );
-    const previousSelection = lastProcessedRecentSelectionRef.current;
-    const previousSelectedDocumentId =
-      previousSelection?.storageKey === recentDocumentStorageKey
-        ? previousSelection.selectedDocumentId
-        : null;
-    const previousRecentDocumentIds =
-      previousSelectedDocumentId !== null &&
-      previousSelectedDocumentId !== selectedDocumentId &&
-      documentsById.has(previousSelectedDocumentId)
-        ? [previousSelectedDocumentId]
-        : [];
-
-    lastProcessedRecentSelectionRef.current = {
-      storageKey: recentDocumentStorageKey,
-      selectedDocumentId,
-    };
-
-    const nextDocumentIds = [...previousRecentDocumentIds, ...readableLoadedDocumentIds]
-      .filter((documentId) => documentId !== selectedDocumentId)
+    const nextDocumentIds = [
+      ...(selectedDocumentId ? [selectedDocumentId] : []),
+      ...readableLoadedDocumentIds,
+    ]
       .filter(uniqueDocumentId)
       .slice(0, maxRecentDocuments);
     setRecentDocumentIds(nextDocumentIds);

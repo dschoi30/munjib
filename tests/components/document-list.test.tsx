@@ -249,7 +249,7 @@ describe("DocumentList", () => {
     });
   });
 
-  it("adds the previously selected document to recents after navigating to another document", async () => {
+  it("keeps the selected document out of visible recents while preserving it for later", async () => {
     const documents = Array.from({ length: 6 }, (_, index) => ({
       id: `doc-${index + 1}`,
       folderId: null,
@@ -271,9 +271,9 @@ describe("DocumentList", () => {
       ).toEqual(["Document 1", "Document 2", "Document 3", "Document 4", "Document 6"]);
     });
 
-    expect(
-      JSON.parse(window.localStorage.getItem("munjib:recents:company-handbook") ?? "[]"),
-    ).toEqual([]);
+    expect(window.localStorage.getItem("munjib:recents:company-handbook")).toBe(
+      JSON.stringify(["doc-5"]),
+    );
 
     rerender(
       <DocumentList {...baseProps} documents={documents} selectedDocumentId="doc-6" />,
@@ -290,7 +290,7 @@ describe("DocumentList", () => {
     });
 
     expect(window.localStorage.getItem("munjib:recents:company-handbook")).toBe(
-      JSON.stringify(["doc-5"]),
+      JSON.stringify(["doc-6", "doc-5"]),
     );
   });
 
