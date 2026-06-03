@@ -6,6 +6,7 @@ import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 
 const router = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,6 +22,7 @@ const documents = [
 beforeEach(() => {
   let store: Record<string, string> = {};
   router.push.mockReset();
+  router.replace.mockReset();
   vi.spyOn(window.history, "back").mockImplementation(() => {});
   vi.spyOn(window.history, "forward").mockImplementation(() => {});
 
@@ -98,6 +100,59 @@ describe("WorkspaceCenterShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Engineering Runbook" }));
 
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
+  it("routes to the stored active tab when the workspace opens without a selected document", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+      >
+        <div>Select a document or folder.</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Engineering Runbook" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(router.replace).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
+  it("does not route to the stored active tab when a document URL was requested but not resolved", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+        restoreStoredActiveTab={false}
+      >
+        <div>Select a document or folder.</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(screen.getByText("Select a document or folder.")).toBeTruthy();
   });
 
   it("closes the active tab and routes to the next tab", () => {
