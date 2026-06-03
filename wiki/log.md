@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 137
+source_count: 138
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T12:34:00+09:00 - pr-80 review follow-up
+
+- Result: Recents now filters stale stored ids before applying the five-item limit.
+- Coverage: `DocumentNavigation` normalizes stored recent ids against the current readable document map before truncation, so deleted or unreadable ids cannot crowd out valid recent history.
+- Pages: [[log|Wiki Log]].
+- Source evidence: PR #80 Codex review thread, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-list.test.tsx -t "filters stale stored recent ids"`, green `pnpm exec vitest run tests/components/document-list.test.tsx -t "filters stale stored recent ids"`.
 
 ## 2026-06-03T12:09:00+09:00 - pr-80 review follow-up
 

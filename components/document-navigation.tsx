@@ -161,27 +161,34 @@ export function DocumentNavigation({
     const loadedDocumentIds = parseRecentDocumentIds(
       window.localStorage.getItem(recentDocumentStorageKey),
     );
+    const readableLoadedDocumentIds = filterReadableRecentDocumentIds(
+      loadedDocumentIds,
+      documentsById,
+    );
     if (!selectedDocumentId) {
-      setRecentDocumentIds(loadedDocumentIds);
+      setRecentDocumentIds(readableLoadedDocumentIds);
+      if (!areDocumentIdsEqual(readableLoadedDocumentIds, loadedDocumentIds)) {
+        window.localStorage.setItem(
+          recentDocumentStorageKey,
+          JSON.stringify(readableLoadedDocumentIds),
+        );
+      }
       return;
     }
 
     const nextDocumentIds = [
       selectedDocumentId,
-      ...loadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
+      ...readableLoadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
     ].slice(0, maxRecentDocuments);
     setRecentDocumentIds(nextDocumentIds);
 
-    const isStoredOrderCurrent =
-      nextDocumentIds.length === loadedDocumentIds.length &&
-      nextDocumentIds.every((documentId, index) => documentId === loadedDocumentIds[index]);
-    if (!isStoredOrderCurrent) {
+    if (!areDocumentIdsEqual(nextDocumentIds, loadedDocumentIds)) {
       window.localStorage.setItem(
         recentDocumentStorageKey,
         JSON.stringify(nextDocumentIds),
       );
     }
-  }, [recentDocumentStorageKey, selectedDocumentId]);
+  }, [documentsById, recentDocumentStorageKey, selectedDocumentId]);
 
   useEffect(() => {
     setExpandedFolderIds((current) => {
@@ -550,9 +557,34 @@ function parseRecentDocumentIds(raw: string | null) {
     if (!Array.isArray(parsed)) return [];
 
     return parsed
-      .filter((documentId): documentId is string => typeof documentId === "string")
-      .slice(0, maxRecentDocuments);
+      .filter((documentId): documentId is string => typeof documentId === "string");
   } catch {
     return [];
   }
+}
+
+function filterReadableRecentDocumentIds(
+  documentIds: string[],
+  documentsById: Map<string, DocumentListItem>,
+) {
+  const seenDocumentIds = new Set<string>();
+  const readableDocumentIds: string[] = [];
+
+  for (const documentId of documentIds) {
+    if (seenDocumentIds.has(documentId)) continue;
+    if (!documentsById.has(documentId)) continue;
+
+    seenDocumentIds.add(documentId);
+    readableDocumentIds.push(documentId);
+    if (readableDocumentIds.length === maxRecentDocuments) break;
+  }
+
+  return readableDocumentIds;
+}
+
+function areDocumentIdsEqual(left: string[], right: string[]) {
+  return (
+    left.length === right.length &&
+    left.every((documentId, index) => documentId === right[index])
+  );
 }
