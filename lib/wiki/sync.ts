@@ -194,6 +194,7 @@ const CODE_OR_DOC_EXTENSIONS = [
   ".tsx",
   ".js",
   ".jsx",
+  ".mjs",
   ".json",
   ".md",
   ".mdx",
@@ -207,7 +208,7 @@ const CODE_OR_DOC_EXTENSIONS = [
 const ROOT_KNOWLEDGE_FILES = new Set([
   "package.json",
   "pnpm-lock.yaml",
-  "next.config.ts",
+  "next.config.mjs",
   "prisma/schema.prisma",
   "prd.md",
   "llm-wiki.md",
@@ -247,7 +248,7 @@ const PAGE_RULES: PageRule[] = [
     matches: (file) =>
       file === "package.json" ||
       file === "pnpm-lock.yaml" ||
-      file === "next.config.ts" ||
+      file === "next.config.mjs" ||
       file.startsWith(".github/") ||
       file.startsWith("tests/e2e/") ||
       file.startsWith("prisma/"),
