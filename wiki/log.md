@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 138
+source_count: 139
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T09:20:00+00:00 - design
+
+- Result: Issue #88 GitHub Actions CI/CD 설계를 추가했다.
+- Coverage: PR/`main` CI는 pnpm install, Prisma generate, Vitest, Next build, Docker `runner` target build를 검증하고, `main` push는 GHCR image publish 후 SSH로 production compose project를 갱신하는 계획을 기록했다. 구현은 아직 시작하지 않았고, deploy server와 GitHub secrets는 repository 밖 운영 전제다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #88, `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`, `package.json`, `Dockerfile`, `docker-compose.yml`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-03T08:20:00+00:00 - implementation
 

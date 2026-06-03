@@ -3,10 +3,10 @@ id: index-main
 title: Wiki Index
 type: index
 status: active
-summary: Munjib repository wiki의 탐색 인덱스와 Docker 포함 local workflow navigation.
+summary: Munjib repository wiki의 탐색 인덱스와 Docker/CI 포함 workflow navigation.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 51
+source_count: 52
 tags:
   - index
   - munjib
@@ -74,6 +74,6 @@ links:
 - AI/RAG route follow-up: Ask route는 auth redirect를 broad service error catch 밖에서 유지하고, malformed JSON은 missing question으로 처리해 `QUESTION_REQUIRED` 400 response로 보내며, recoverable RAG/Ollama runtime failure는 user-facing details 없이 `AI_UNAVAILABLE` 503 response로 정규화한다.
 - AI/RAG UI follow-up: `DocumentEditor` assistant warning은 title/markdown dirty state뿐 아니라 pending clipboard image paste upload도 saved-content-only 경고 대상으로 본다. Assistant panel은 document id로 keying되어 문서 전환 시 이전 문서의 질문/답변/citation state를 다음 문서에 재사용하지 않는다.
 - 데이터/권한/링크 모델: [[Document Knowledge Model]], [[Folder Hierarchy Model]], [[Auth And Permissions Workflow]], [[Wiki Links And Backlinks]]
-- wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]; 신규 기능 시작은 `pnpm wiki:feature-start "<feature title>"`로 GitHub issue를 먼저 만들고, 모든 task 종료 시 draft PR을 자동 작성한 뒤 리뷰 요청 완료 5분 후 PR review/CI feedback을 다시 확인한다. Issue #50 Docker workflow는 `docker compose up --build`로 PostgreSQL과 Next.js web service를 함께 실행하고, production compose는 DB data와 web attachment storage를 named volume으로 보존하며, development override는 `docker-compose.dev.yml`을 함께 지정한다.
+- wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]; 신규 기능 시작은 `pnpm wiki:feature-start "<feature title>"`로 GitHub issue를 먼저 만들고, 모든 task 종료 시 draft PR을 자동 작성한 뒤 리뷰 요청 완료 5분 후 PR review/CI feedback을 다시 확인한다. Issue #50 Docker workflow는 `docker compose up --build`로 PostgreSQL과 Next.js web service를 함께 실행하고, production compose는 DB data와 web attachment storage를 named volume으로 보존하며, development override는 `docker-compose.dev.yml`을 함께 지정한다. Issue #88 설계는 GitHub Actions가 PR/`main` CI를 실행하고 `main`에서 GHCR image publish와 SSH compose deploy까지 수행하는 계획을 둔다.
 - 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
 - stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.

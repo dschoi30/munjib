@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 40
+updated: 2026-06-03
+source_count: 41
 tags:
   - munjib
   - source
@@ -87,6 +87,8 @@ Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추
 
 Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 응답하도록 host Ollama 운영 설정을 적용했다. 서버 host에 Ollama `gemma4:e4b`와 `bge-m3`를 설치했고, Docker web container는 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 host Ollama에 접근한다. 현재 compose network gateway는 `172.18.0.1`이라 `docker-compose.yml`은 `host.docker.internal:172.18.0.1` extra host mapping을 명시한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent`에 저장했다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
+Issue #88 설계는 GitHub Actions CI/CD를 추가하는 계획이다. PR과 `main` push는 pnpm install, Prisma generate, Vitest, Next build, Docker `runner` target build를 검증하고, `main` push는 GitHub Container Registry에 `ghcr.io/dschoi30/munjib` image를 publish한 뒤 SSH로 production compose project를 갱신하는 방향이다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`이다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -127,6 +129,7 @@ Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 �
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
+- GitHub issue #88와 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`: GitHub Actions CI/CD 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
 - `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.

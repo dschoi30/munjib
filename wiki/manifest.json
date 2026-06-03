@@ -119,7 +119,7 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker 포함 local workflow navigation.",
+      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker/CI 포함 workflow navigation.",
       "tags": [
         "index",
         "munjib"
@@ -140,7 +140,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 51,
+      "source_count": 52,
       "searchPriority": 5
     },
     {
@@ -182,7 +182,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 138,
+      "source_count": 139,
       "searchPriority": 1
     },
     {
@@ -274,7 +274,7 @@
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 40,
+      "source_count": 41,
       "searchPriority": 30
     },
     {
