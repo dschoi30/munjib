@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 143
+source_count: 144
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T19:51:44+0900 - issue-89 plan
+
+- Result: Issue #89 Sentry SaaS observability implementation plan을 추가했다.
+- Coverage: Plan은 dependency install, Sentry config parser, Next.js App Router instrumentation files, Docker build/runtime env propagation, focused tests, production build, wiki maintenance, push/PR/review feedback loop를 task 단위로 나눈다. Repo wiki sync hook 때문에 중간 구현 task는 checkpoint로 두고 source와 wiki maintenance를 최종 commit에 함께 싣도록 했다.
+- Pages: [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `lib/wiki/sync.ts`.
+- Verification: plan self-review for spec coverage, placeholder scan, type consistency, and repo wiki sync compatibility.
 
 ## 2026-06-03T18:46:41+09:00 - issue-89 design
 
