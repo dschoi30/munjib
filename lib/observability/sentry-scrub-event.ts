@@ -32,11 +32,31 @@ const SENSITIVE_REQUEST_HEADERS = new Set([
   "x-real-ip",
 ]);
 
+const SPAN_URL_KEYS = new Set([
+  "url.full",
+  "http.url",
+  "http.target",
+  "request.path",
+]);
 const SPAN_QUERY_KEYS = new Set(["url.query", "http.query"]);
 const SPAN_NETWORK_KEYS = new Set([
   "server.address",
+  "server.port",
   "client.address",
+  "client.port",
   "network.peer.address",
+  "network.peer.port",
+  "net.host.ip",
+  "net.host.port",
+  "net.host.name",
+  "net.peer.ip",
+  "net.peer.port",
+  "net.peer.name",
+  "http.client_ip",
+  "http.user_agent",
+  "http.host",
+  "url.domain",
+  "url.port",
   "user_agent.original",
 ]);
 
@@ -106,12 +126,10 @@ export function scrubSentrySpan<T extends SentrySpan>(span: T): T {
     return span;
   }
 
-  if (typeof span.data["url.full"] === "string") {
-    span.data["url.full"] = stripUrlQuery(span.data["url.full"]);
-  }
-
-  if (typeof span.data["http.url"] === "string") {
-    span.data["http.url"] = stripUrlQuery(span.data["http.url"]);
+  for (const key of SPAN_URL_KEYS) {
+    if (typeof span.data[key] === "string") {
+      span.data[key] = stripUrlQuery(span.data[key]);
+    }
   }
 
   for (const key of Object.keys(span.data)) {
