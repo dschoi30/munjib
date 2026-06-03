@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 142
+source_count: 143
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T18:46:41+09:00 - issue-89 design
+
+- Result: Issue #89 Sentry SaaS observability design을 추가하고 production Docker 로그와 Sentry 역할을 분리했다.
+- Coverage: Docker stdout은 startup/env/DB/PostgreSQL log 확인 경로로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing을 맡는다. Browser SDK용 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 하며, source map upload와 `SENTRY_AUTH_TOKEN`은 첫 slice에서 제외한다.
+- Pages: [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docker-compose.yml`, `Dockerfile`, `next.config.mjs`.
+- Verification: spec self-review and wiki placeholder scan.
 
 ## 2026-06-03T17:28:00+09:00 - issue-85 PR review tag search follow-up
 
