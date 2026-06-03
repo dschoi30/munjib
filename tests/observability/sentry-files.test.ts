@@ -19,11 +19,14 @@ describe("Sentry Next.js integration files", () => {
 
     expect(source).toContain("getBrowserSentryConfig");
     expect(source).toContain(
-      'import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";',
+      "} from \"@/lib/observability/sentry-scrub-event\";",
     );
     expect(source).toContain("Sentry.init");
     expect(source).toContain("sendDefaultPii: false");
     expect(source).toContain("beforeSend: scrubSentryEvent");
+    expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
+    expect(source).toContain("beforeSendSpan: scrubSentrySpan");
+    expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
     expect(source).toContain("captureRouterTransitionStart");
     expect(source).not.toContain("replayIntegration");
     expect(source).not.toContain("feedbackIntegration");
@@ -37,11 +40,14 @@ describe("Sentry Next.js integration files", () => {
     for (const source of [serverSource, edgeSource]) {
       expect(source).toContain("getServerSentryConfig");
       expect(source).toContain(
-        'import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";',
+        "} from \"@/lib/observability/sentry-scrub-event\";",
       );
       expect(source).toContain("Sentry.init");
       expect(source).toContain("sendDefaultPii: false");
       expect(source).toContain("beforeSend: scrubSentryEvent");
+      expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
+      expect(source).toContain("beforeSendSpan: scrubSentrySpan");
+      expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
       expect(source).toContain("dataCollection");
       expect(source).toContain("userInfo: false");
       expect(source).toContain("cookies: false");
