@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { DocumentListItem, FolderListItem } from "@/components/document-list";
 import {
   DocumentSection,
@@ -88,6 +88,10 @@ export function DocumentNavigation({
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
+  const lastProcessedRecentSelectionRef = useRef<{
+    storageKey: string;
+    selectedDocumentId: string | null;
+  } | null>(null);
   const recentDocumentStorageKey = `munjib:recents:${workspaceSlug}`;
 
   const favoriteDocumentIds = useMemo(
@@ -109,7 +113,6 @@ export function DocumentNavigation({
   );
   const recentDocuments = useMemo(() => {
     const orderedDocumentIds = [
-      ...(selectedDocumentId ? [selectedDocumentId] : []),
       ...recentDocumentIds,
       ...documents.map((document) => document.id),
     ];
@@ -118,6 +121,7 @@ export function DocumentNavigation({
 
     for (const documentId of orderedDocumentIds) {
       if (seenDocumentIds.has(documentId)) continue;
+      if (documentId === selectedDocumentId) continue;
       const document = documentsById.get(documentId);
       if (!document) continue;
 
@@ -165,21 +169,27 @@ export function DocumentNavigation({
       loadedDocumentIds,
       documentsById,
     );
-    if (!selectedDocumentId) {
-      setRecentDocumentIds(readableLoadedDocumentIds);
-      if (!areDocumentIdsEqual(readableLoadedDocumentIds, loadedDocumentIds)) {
-        window.localStorage.setItem(
-          recentDocumentStorageKey,
-          JSON.stringify(readableLoadedDocumentIds),
-        );
-      }
-      return;
-    }
+    const previousSelection = lastProcessedRecentSelectionRef.current;
+    const previousSelectedDocumentId =
+      previousSelection?.storageKey === recentDocumentStorageKey
+        ? previousSelection.selectedDocumentId
+        : null;
+    const previousRecentDocumentIds =
+      previousSelectedDocumentId !== null &&
+      previousSelectedDocumentId !== selectedDocumentId &&
+      documentsById.has(previousSelectedDocumentId)
+        ? [previousSelectedDocumentId]
+        : [];
 
-    const nextDocumentIds = [
+    lastProcessedRecentSelectionRef.current = {
+      storageKey: recentDocumentStorageKey,
       selectedDocumentId,
-      ...readableLoadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
-    ].slice(0, maxRecentDocuments);
+    };
+
+    const nextDocumentIds = [...previousRecentDocumentIds, ...readableLoadedDocumentIds]
+      .filter((documentId) => documentId !== selectedDocumentId)
+      .filter(uniqueDocumentId)
+      .slice(0, maxRecentDocuments);
     setRecentDocumentIds(nextDocumentIds);
 
     if (!areDocumentIdsEqual(nextDocumentIds, loadedDocumentIds)) {
@@ -529,6 +539,10 @@ export function DocumentNavigation({
       </div>
     </>
   );
+}
+
+function uniqueDocumentId(documentId: string, index: number, documentIds: string[]) {
+  return documentIds.indexOf(documentId) === index;
 }
 
 function folderErrorMessage(folderError: string) {

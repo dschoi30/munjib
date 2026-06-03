@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 138
+source_count: 139
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T12:56:00+09:00 - issue-83 recents and stored active tab follow-up
+
+- Result: Recents no longer shows the document currently displayed in the editor, and workspace root entry with a stored active tab now routes to that document.
+- Coverage: `DocumentNavigation` adds the previous selected document to `munjib:recents:<workspaceSlug>` only after selection changes, filters the current selected document out of the visible fallback list, and keeps stale/unreadable stored ids out before the five-item limit. `WorkspaceCenterShell` replaces the root workspace URL with the stored active document URL when there is no selected folder, graph view, or empty active tab.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #83, `components/document-navigation.tsx`, `components/workspace-center-shell.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-center-shell.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx`, green `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx`, `pnpm exec tsc --noEmit`.
 
 ## 2026-06-03T12:34:00+09:00 - pr-80 review follow-up
 
