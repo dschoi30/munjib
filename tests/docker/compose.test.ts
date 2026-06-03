@@ -1,13 +1,27 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
+import { parse } from "yaml";
 
 const root = process.cwd();
 const read = (path: string) => readFileSync(join(root, path), "utf8");
+const readCompose = () =>
+  parse(read("docker-compose.yml")) as {
+    services: Record<
+      string,
+      {
+        build?: { args?: Record<string, string> };
+        environment?: Record<string, string>;
+      }
+    >;
+  };
 
 describe("Docker web service configuration", () => {
   test("default compose runs web with the existing postgres service", () => {
     const compose = read("docker-compose.yml");
+    const composeConfig = readCompose();
+    const web = composeConfig.services.web;
+    const tools = composeConfig.services.tools;
 
     expect(compose).toContain("postgres:");
     expect(compose).toContain("web:");
@@ -20,6 +34,37 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("localhost:3000");
     expect(compose).toContain("NEXTAUTH_SECRET");
     expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
+    expect(web.build?.args).toMatchObject({
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
+      NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
+      NEXT_PUBLIC_SENTRY_RELEASE: "${NEXT_PUBLIC_SENTRY_RELEASE:-}",
+      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:
+        "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}",
+      SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
+    });
+    expect(web.environment).toMatchObject({
+      SENTRY_DSN: "${SENTRY_DSN:-}",
+      SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}",
+      SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
+      SENTRY_TRACES_SAMPLE_RATE: "${SENTRY_TRACES_SAMPLE_RATE:-0.05}",
+      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
+      NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
+      NEXT_PUBLIC_SENTRY_RELEASE: "${NEXT_PUBLIC_SENTRY_RELEASE:-}",
+      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:
+        "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}",
+    });
+    for (const key of [
+      "SENTRY_DSN",
+      "SENTRY_ENVIRONMENT",
+      "SENTRY_RELEASE",
+      "SENTRY_TRACES_SAMPLE_RATE",
+      "NEXT_PUBLIC_SENTRY_DSN",
+      "NEXT_PUBLIC_SENTRY_ENVIRONMENT",
+      "NEXT_PUBLIC_SENTRY_RELEASE",
+      "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
+    ]) {
+      expect(tools.environment).not.toHaveProperty(key);
+    }
     expect(compose).toContain("MUNJIB_OLLAMA_BASE_URL");
     expect(compose).toContain("host.docker.internal:11434");
     expect(compose).toContain("MUNJIB_RAG_CHAT_MODEL");
@@ -27,7 +72,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("MUNJIB_RAG_EMBED_MODEL");
     expect(compose).toContain("bge-m3");
     expect(compose).toContain("MUNJIB_RAG_EMBED_DIMENSIONS");
-    expect(compose).toContain("host.docker.internal:172.18.0.1");
+    expect(compose).toContain("host.docker.internal:host-gateway");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");
@@ -67,6 +112,37 @@ describe("Docker web service configuration", () => {
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
   });
 
+  test("Dockerfile sets Sentry build values in the builder stage before building", () => {
+    const dockerfile = read("Dockerfile");
+    const builderStart = dockerfile.indexOf("FROM deps AS builder");
+    const toolsStart = dockerfile.indexOf("FROM deps AS tools");
+    const builderStage = dockerfile.slice(builderStart, toolsStart);
+    const buildStart = builderStage.indexOf("RUN pnpm run build");
+    const sentryBuildLines = [
+      'ARG NEXT_PUBLIC_SENTRY_DSN=""',
+      'ARG NEXT_PUBLIC_SENTRY_ENVIRONMENT="production"',
+      'ARG NEXT_PUBLIC_SENTRY_RELEASE=""',
+      'ARG NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE="0.05"',
+      'ARG SENTRY_RELEASE=""',
+      "ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN",
+      "ENV NEXT_PUBLIC_SENTRY_ENVIRONMENT=$NEXT_PUBLIC_SENTRY_ENVIRONMENT",
+      "ENV NEXT_PUBLIC_SENTRY_RELEASE=$NEXT_PUBLIC_SENTRY_RELEASE",
+      "ENV NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
+      "ENV SENTRY_RELEASE=$SENTRY_RELEASE",
+    ];
+
+    expect(builderStart).toBeGreaterThanOrEqual(0);
+    expect(toolsStart).toBeGreaterThan(builderStart);
+    expect(buildStart).toBeGreaterThanOrEqual(0);
+
+    for (const line of sentryBuildLines) {
+      const lineIndex = builderStage.indexOf(line);
+
+      expect(builderStage).toContain(line);
+      expect(lineIndex).toBeLessThan(buildStart);
+    }
+  });
+
   test("dockerignore keeps local artifacts out of image builds", () => {
     const dockerignore = read(".dockerignore");
 
@@ -74,5 +150,28 @@ describe("Docker web service configuration", () => {
     expect(dockerignore).toContain(".next");
     expect(dockerignore).toContain(".env");
     expect(dockerignore).toContain(".worktrees");
+  });
+
+  test("environment examples document Sentry SaaS settings without auth tokens", () => {
+    const envExample = read(".env.example");
+    const dockerEnvExample = read(".env.docker.example");
+    const expectedKeys = [
+      "SENTRY_DSN=",
+      "SENTRY_ENVIRONMENT=",
+      "SENTRY_RELEASE=",
+      "SENTRY_TRACES_SAMPLE_RATE=",
+      "NEXT_PUBLIC_SENTRY_DSN=",
+      "NEXT_PUBLIC_SENTRY_ENVIRONMENT=",
+      "NEXT_PUBLIC_SENTRY_RELEASE=",
+      "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=",
+    ];
+
+    for (const key of expectedKeys) {
+      expect(envExample).toContain(key);
+      expect(dockerEnvExample).toContain(key);
+    }
+
+    expect(envExample).not.toContain("SENTRY_AUTH_TOKEN");
+    expect(dockerEnvExample).not.toContain("SENTRY_AUTH_TOKEN");
   });
 });

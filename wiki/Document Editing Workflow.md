@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 63
+source_count: 69
 tags:
   - munjib
   - workflow
@@ -40,9 +40,9 @@ links:
 
 오른쪽 metadata panel은 상단 icon tab에서 `Attachments`, `Versions`, `Audit log`를 선택할 때 해당 목록만 표시한다. Panel 우측 상단의 close control은 오른쪽 sidebar를 접고, 화면 우측 상단의 reopen icon 하나로 다시 펼친다.
 
-좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #79 이후 `Recents`는 workspace-scoped `munjib:recents:<workspaceSlug>` localStorage selection history에서 최대 5개를 보여주며, 현재 선택된 document를 즉시 첫 후보로 올린다. Stored id가 더 이상 readable documents에 없으면 화면에서 제외하고, history가 5개보다 짧으면 workspace page가 내려준 readable document 순서로 나머지를 채운다. Favorites localStorage 상태와는 무관하게 같은 recent 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
+좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #79와 Issue #83 이후 `Recents`는 workspace-scoped `munjib:recents:<workspaceSlug>` localStorage selection history에서 최대 5개를 보여주되, 현재 editor에 표시 중인 selected document는 visible Recents 목록에서 제외한다. Selected document id는 session/reload 보존을 위해 history에 저장하지만 UI에서 필터되므로, 다른 document로 이동한 뒤에야 직전 selected document가 Recents 맨 앞에 보인다. Stored id가 더 이상 readable documents에 없으면 화면에서 제외하며, history가 5개보다 짧으면 workspace page가 내려준 readable document 순서로 나머지를 채운다. Favorites localStorage 상태와는 무관하게 같은 recent 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
-Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip, preview mode 본문 `#tag`, graph view의 tag node를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다. Body inline tag parsing and preview linking support Unicode letter/number tag names, so Korean tags such as `#로드맵` and mixed tags such as `#AI_요약` are clickable and searchable. Workspace sidebar search and graph tag nodes derive their tag list from the current readable document markdown at render time, so existing documents with Korean tags are searchable without waiting for a save/reconcile cycle.
+Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip, preview mode 본문 `#tag`, graph view의 tag node를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다. Issue #85 이후 left sidebar가 접혀 있어도 tag search request는 sidebar를 다시 열고 같은 Search panel/input state를 적용한다. Body inline tag parsing and preview linking support Unicode letter/number tag names, so Korean tags such as `#로드맵` and mixed tags such as `#AI_요약` are clickable and searchable. Workspace sidebar search and graph tag nodes derive their tag list from the current readable document markdown at render time, so existing documents with Korean tags are searchable without waiting for a save/reconcile cycle.
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
@@ -52,7 +52,9 @@ Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 
 
 Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. `Favorites` icon button은 document list 영역을 favorites-only panel로 전환하며, favorite section은 더 이상 `Recents` 위에 상시 노출되지 않는다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
 
-Issue #40 이후 `Company Handbook` 제목 row 우측에는 sidebar toolbar icon들과 오른쪽 edge를 맞춘 workspace settings button이 있다. Settings button은 document list를 교체하지 않고 modal dialog를 띄운다. Dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되며, 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. Import content는 Markdown 전용 `Import your contents` form만 제공한다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
+Issue #85 이후 `Company Handbook` workspace name text는 chevron 없는 workspace menu trigger다. Trigger를 클릭하면 sidebar content width를 채우는 dropdown menu가 열리고, 현재 첫 item은 `Settings` 하나다. `Settings`는 기존 `WorkspaceSettingsPanel` modal을 열며, dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되고 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. 좌측 sidebar header 오른쪽의 기존 gear slot은 right metadata panel과 같은 결의 반대 방향인 `PanelLeftClose` button으로 바뀌며, 클릭하면 `AppShell`이 left sidebar column을 접고 center content를 확장한다. 접힌 상태에서는 화면 좌측 상단의 `PanelLeftOpen` button으로 sidebar를 다시 연다. 이때 center `DocumentTabs` row는 leading reopen slot을 예약해 `PanelLeftOpen` button이 첫 tab과 겹치지 않게 한다. Workspace title row와 Documents/Graph/New document/New folder/Search/Favorites icon toolbar는 sticky sidebar chrome으로 묶여 긴 Recents, folder tree, search, favorites content를 스크롤해도 항상 보이고, document navigation body만 그 아래에서 스크롤된다.
+
+Issue #40 이후 workspace settings dialog는 document list를 교체하지 않고 modal dialog로 열린다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 
 Issue #73 이후 `DocumentEditor` title input 우측에는 `AI에게 묻기` button이 있고, 선택 문서가 있을 때 작은 assistant panel을 열고 닫는다. Panel은 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed question만 POST하며, 현재 editor의 unsaved title/content draft는 request body에 넣지 않는다. 현재 title 또는 markdown state가 선택된 saved document와 다르거나 clipboard image paste가 아직 업로드 중이면 `저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.` warning을 보여 saved DB content 기준 답변임을 알린다. 문서 전환 시 assistant panel은 document id 기준으로 새로 mount되어 이전 문서의 질문, 답변, citation state를 다음 문서에 보여주지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. Ask route는 recoverable RAG/Ollama runtime failure를 `AI_UNAVAILABLE` 503으로 정규화하고, assistant panel은 raw server/model details 없이 generic failure state를 보여준다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이다. pgvector 기반 chunk index는 saved `Document`에서만 파생하며 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
@@ -136,7 +138,7 @@ Issue #48 이후 editor와 navigation source는 동작을 유지한 채 feature-
 
 Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, sidebar search result link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
 
-Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
+Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다. Workspace root URL로 진입했고 `document`/`folder` query가 없지만 readable stored active tab이 있는 경우, center shell은 graph/empty-tab context가 아닐 때 해당 document URL로 replace navigation을 수행해 tab title과 server-rendered editor body가 같은 document를 가리키게 한다. Stale, deleted, or inaccessible `?document=` URLs are not replaced by the local stored tab.
 
 Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없거나 더 이상 readable하지 않으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
 
@@ -163,6 +165,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `app/globals.css`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/workspace-center-shell.tsx`
+- `components/use-document-tabs.ts`
+- `lib/document-tabs.ts`
 - `components/document-navigation/search-panel.tsx`
 - `components/app-shell.tsx`
 - `components/document-navigation/favorites-panel.tsx`
@@ -204,12 +209,14 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `tests/components/document-editor-preview.test.tsx`
 - `tests/e2e/preview-line-breaks.spec.ts`
 - `tests/components/document-list.test.tsx`
+- `tests/components/workspace-center-shell.test.tsx`
 - `tests/documents/import-markdown.test.ts`
 - `tests/components/knowledge-graph-view.test.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
 - GitHub issue #25
 - GitHub issue #29
+- GitHub issue #83
 - GitHub issue #34
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`

@@ -2,10 +2,12 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useLeftPanel } from "@/components/app-shell";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 
 const router = vi.hoisted(() => ({
   push: vi.fn(),
+  replace: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,6 +23,7 @@ const documents = [
 beforeEach(() => {
   let store: Record<string, string> = {};
   router.push.mockReset();
+  router.replace.mockReset();
   vi.spyOn(window.history, "back").mockImplementation(() => {});
   vi.spyOn(window.history, "forward").mockImplementation(() => {});
 
@@ -56,6 +59,16 @@ function renderShell(selectedDocument = documents[0]) {
     >
       <div>Editor content</div>
     </WorkspaceCenterShell>,
+  );
+}
+
+function LeftSidebarCloser() {
+  const leftPanel = useLeftPanel();
+
+  return (
+    <button type="button" onClick={() => leftPanel?.collapse()}>
+      Close sidebar
+    </button>
   );
 }
 
@@ -98,6 +111,89 @@ describe("WorkspaceCenterShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Engineering Runbook" }));
 
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
+  it("reserves document tab row space for the sidebar reopen button", () => {
+    render(
+      <AppShell
+        left={<LeftSidebarCloser />}
+        center={
+          <WorkspaceCenterShell
+            workspaceSlug="company-handbook"
+            documents={documents}
+            selectedDocument={documents[0]}
+            selectedFolder={null}
+          >
+            <div>Editor content</div>
+          </WorkspaceCenterShell>
+        }
+        right={<div>Right</div>}
+      />,
+    );
+
+    expect(screen.queryByTestId("document-tabs-leading-sidebar-slot")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
+
+    expect(screen.getByRole("button", { name: "Open sidebar" })).toBeTruthy();
+    expect(screen.getByTestId("document-tabs-leading-sidebar-slot")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sidebar" }));
+
+    expect(screen.queryByTestId("document-tabs-leading-sidebar-slot")).toBeNull();
+  });
+
+  it("routes to the stored active tab when the workspace opens without a selected document", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+      >
+        <div>Select a document or folder.</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByRole("button", { name: "Engineering Runbook" }).getAttribute("aria-current")).toBe(
+      "page",
+    );
+    expect(router.replace).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
+  it("does not route to the stored active tab when a document URL was requested but not resolved", () => {
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([
+        { id: "tab-1", documentId: "doc-1", title: "Welcome", path: "/welcome" },
+        { id: "tab-2", documentId: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
+      ]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
+
+    render(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={null}
+        restoreStoredActiveTab={false}
+      >
+        <div>Select a document or folder.</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(router.replace).not.toHaveBeenCalled();
+    expect(screen.getByText("Select a document or folder.")).toBeTruthy();
   });
 
   it("closes the active tab and routes to the next tab", () => {

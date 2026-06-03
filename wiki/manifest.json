@@ -41,7 +41,25 @@
         "[[Munjib]]",
         "[[Project PRD]]"
       ],
-      "source_count": 13,
+      "source_count": 14,
+      "searchPriority": 30
+    },
+    {
+      "id": "design-sidebar-excalidraw-draft",
+      "path": "wiki/designs/sidebar.md",
+      "title": "Sidebar Workspace Menu Draft",
+      "type": "source",
+      "status": "draft",
+      "summary": "Issue #85 sidebar workspace menu and close button Excalidraw draft.",
+      "tags": [
+        "excalidraw",
+        "design",
+        "munjib"
+      ],
+      "links": [
+        "[[UI Design Excalidraw Index]]"
+      ],
+      "source_count": 1,
       "searchPriority": 30
     },
     {
@@ -66,7 +84,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 63,
+      "source_count": 69,
       "searchPriority": 50
     },
     {
@@ -110,7 +128,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 36,
+      "source_count": 38,
       "searchPriority": 50
     },
     {
@@ -134,13 +152,14 @@
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
+        "[[Production Observability Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 52,
+      "source_count": 59,
       "searchPriority": 5
     },
     {
@@ -162,7 +181,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 22,
+      "source_count": 23,
       "searchPriority": 50
     },
     {
@@ -182,7 +201,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 139,
+      "source_count": 153,
       "searchPriority": 1
     },
     {
@@ -255,6 +274,28 @@
       "searchPriority": 40
     },
     {
+      "id": "workflow-production-observability",
+      "path": "wiki/Production Observability Workflow.md",
+      "title": "Production Observability Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "observability",
+        "sentry"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Local Development Workflow]]"
+      ],
+      "source_count": 20,
+      "searchPriority": 50
+    },
+    {
       "id": "source-project-prd",
       "path": "wiki/Project PRD.md",
       "title": "Project PRD",
@@ -272,9 +313,10 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
-        "[[Next.js Prisma Monolith]]"
+        "[[Next.js Prisma Monolith]]",
+        "[[Production Observability Workflow]]"
       ],
-      "source_count": 41,
+      "source_count": 44,
       "searchPriority": 30
     },
     {

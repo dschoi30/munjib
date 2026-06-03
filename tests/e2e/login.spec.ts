@@ -34,7 +34,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await page.getByRole("button", { name: "Sign in" }).click();
 
   await expect(page).toHaveURL(/\/workspaces\/company-handbook/);
-  await expect(page.getByRole("heading", { name: "Company Handbook" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Workspace menu" })).toHaveText("Company Handbook");
   await expect
     .poll(() =>
       page.evaluate(() => ({
@@ -77,7 +77,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(documentList.getByRole("button", { name: "Remove Welcome from favorites" })).toHaveCount(0);
   await page.getByRole("button", { name: "Open actions for Welcome" }).first().click();
   await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toBeVisible();
-  await page.getByRole("heading", { name: "Company Handbook" }).click();
+  await page.getByRole("button", { name: "Documents" }).click();
   await expect(page.getByRole("menuitem", { name: "Remove from favorites" })).toHaveCount(0);
   await page.getByRole("button", { name: "Favorites" }).click();
 
