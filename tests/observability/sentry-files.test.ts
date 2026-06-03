@@ -76,6 +76,16 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain('"to"');
   });
 
+  test("scrubs request body, header, and IP span data before send", () => {
+    const source = read("lib/observability/sentry-scrub-event.ts");
+
+    expect(source).toContain("http.request.body");
+    expect(source).toContain("http.response.body");
+    expect(source).toContain("http.request.header");
+    expect(source).toContain("http.response.header");
+    expect(source).toContain("user.ip_address");
+  });
+
   test("captures App Router global errors", () => {
     const source = read("app/global-error.tsx");
 
