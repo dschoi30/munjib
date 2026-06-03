@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T16:18:00+09:00 - issue-85 final review follow-up
+
+- Result: Final review follow-up으로 real `DocumentList` collapse/reopen integration test와 workspace menu `aria-haspopup="menu"`를 추가했다.
+- Coverage: `DocumentList`의 `PanelLeftClose` button이 `AppShell`의 `useLeftPanel()` context와 실제로 연결되어 left sidebar를 접고 `PanelLeftOpen`으로 복구되는 흐름을 component integration test로 고정했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: final code review, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "real document list|workspace title"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-03T15:30:00+09:00 - issue-85 sidebar workspace menu
 
 - Result: 좌측 sidebar workspace name dropdown, Settings menu item, left sidebar collapse/reopen, sticky title+toolbar chrome을 구현했다.

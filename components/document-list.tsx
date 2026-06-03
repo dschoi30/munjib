@@ -189,6 +189,7 @@ export function DocumentList({
                 type="button"
                 aria-label="Workspace menu"
                 aria-expanded={workspaceMenuOpen}
+                aria-haspopup="menu"
                 onClick={() => setWorkspaceMenuOpen((open) => !open)}
                 className="min-w-0 flex-1 justify-start bg-transparent p-0 text-left text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
               >

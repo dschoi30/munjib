@@ -126,11 +126,33 @@ describe("DocumentList", () => {
     const workspaceMenuButton = screen.getByRole("button", { name: "Workspace menu" });
     expect(workspaceMenuButton.textContent).toBe("Company Handbook");
     expect(workspaceMenuButton.getAttribute("aria-expanded")).toBe("false");
+    expect(workspaceMenuButton.getAttribute("aria-haspopup")).toBe("menu");
     expect(screen.queryByRole("button", { name: "Workspace settings" })).toBeNull();
     expect(screen.getByRole("button", { name: "Close sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "New document" }).textContent).toBe("");
     expect(screen.getByRole("button", { name: "New folder" }).textContent).toBe("");
     expect(screen.queryByRole("combobox", { name: /template/i })).toBeNull();
+  });
+
+  it("collapses and reopens the real document list inside AppShell", () => {
+    render(
+      <AppShell
+        left={<DocumentList {...baseProps} />}
+        center={<div>Center</div>}
+        right={<div>Right</div>}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
+
+    expect(screen.queryByRole("button", { name: "Workspace menu" })).toBeNull();
+    const openSidebarButton = screen.getByRole("button", { name: "Open sidebar" });
+    expect(openSidebarButton).toBeTruthy();
+
+    fireEvent.click(openSidebarButton);
+
+    expect(screen.getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(screen.getByText("Recents")).toBeTruthy();
   });
 
   it("spaces the toolbar groups apart and places graph second", () => {
