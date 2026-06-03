@@ -249,6 +249,33 @@ describe("DocumentList", () => {
     });
   });
 
+  it("moves newly selected documents into recents", async () => {
+    const documents = Array.from({ length: 6 }, (_, index) => ({
+      id: `doc-${index + 1}`,
+      folderId: null,
+      title: `Document ${index + 1}`,
+      path: `/document-${index + 1}`,
+      contentText: "",
+      tagNames: [],
+      canWrite: true,
+    }));
+    const { rerender } = renderList({ documents, selectedDocumentId: "doc-1" });
+
+    rerender(
+      <DocumentList {...baseProps} documents={documents} selectedDocumentId="doc-6" />,
+    );
+
+    const recentsSection = screen.getByText("Recents").closest("section");
+    expect(recentsSection).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        within(recentsSection as HTMLElement)
+          .getAllByRole("link")
+          .map((link) => link.textContent?.trim()),
+      ).toEqual(["Document 6", "Document 1", "Document 2", "Document 3", "Document 4"]);
+    });
+  });
+
   it("shows duplicate document titles without path context in visible rows", () => {
     renderList({
       documents: [

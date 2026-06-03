@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-27
-source_count: 124
+updated: 2026-06-03
+source_count: 125
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T11:58:00+09:00 - issue-79 recents selection history
+
+- Result: Sidebar `Recents` now updates when a different document is selected.
+- Coverage: `DocumentNavigation` stores recent document ids in workspace-scoped `munjib:recents:<workspaceSlug>` localStorage, moves the current selected document to the top, filters ids that are not in the readable document list, and uses workspace page readable document order as the fallback filler.
+- Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #79, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`.
 
 ## 2026-05-27T01:35:00+09:00 - review follow-up
 
