@@ -11,6 +11,7 @@ type SentrySpan = {
 };
 
 type SentryBreadcrumb = {
+  category?: string;
   data?: Record<string, unknown>;
 };
 
@@ -110,17 +111,21 @@ export function scrubSentrySpan<T extends SentrySpan>(span: T): T {
   return span;
 }
 
-export function scrubSentryBreadcrumb<T extends SentryBreadcrumb>(breadcrumb: T): T {
+export function scrubSentryBreadcrumb<T extends SentryBreadcrumb>(
+  breadcrumb: T,
+): T | null {
+  if (breadcrumb.category === "console") {
+    return null;
+  }
+
   if (!breadcrumb.data) {
     return breadcrumb;
   }
 
-  if (typeof breadcrumb.data.url === "string") {
-    breadcrumb.data.url = stripUrlQuery(breadcrumb.data.url);
-  }
-
-  if (typeof breadcrumb.data.href === "string") {
-    breadcrumb.data.href = stripUrlQuery(breadcrumb.data.href);
+  for (const urlKey of ["url", "href", "from", "to"]) {
+    if (typeof breadcrumb.data[urlKey] === "string") {
+      breadcrumb.data[urlKey] = stripUrlQuery(breadcrumb.data[urlKey]);
+    }
   }
 
   delete breadcrumb.data.query;
@@ -142,8 +147,10 @@ export function scrubSentryEvent<T extends ScrubbableSentryEvent>(event: T): T {
     scrubSentrySpan(span);
   }
 
-  for (const breadcrumb of event.breadcrumbs ?? []) {
-    scrubSentryBreadcrumb(breadcrumb);
+  if (event.breadcrumbs) {
+    event.breadcrumbs = event.breadcrumbs.filter(
+      (breadcrumb) => scrubSentryBreadcrumb(breadcrumb) !== null,
+    );
   }
 
   return event;

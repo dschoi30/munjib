@@ -145,6 +145,8 @@ describe("scrubSentryEvent", () => {
           data: {
             url: "https://example.com/workspaces/company-handbook?documentId=secret",
             href: "/search?q=private#result",
+            from: "/workspaces/company-handbook?documentId=old",
+            to: "/workspaces/company-handbook?documentId=new#editor",
             query: "q=private",
             "url.query": "documentId=secret",
             method: "GET",
@@ -158,6 +160,8 @@ describe("scrubSentryEvent", () => {
     expect(event.breadcrumbs[0].data).toEqual({
       url: "https://example.com/workspaces/company-handbook",
       href: "/search#result",
+      from: "/workspaces/company-handbook",
+      to: "/workspaces/company-handbook#editor",
       method: "GET",
     });
   });
@@ -176,5 +180,45 @@ describe("scrubSentryEvent", () => {
     expect(breadcrumb.data).toEqual({
       url: "/workspaces/company-handbook",
     });
+  });
+
+  test("drops console breadcrumbs from event payloads", () => {
+    const event = {
+      breadcrumbs: [
+        {
+          category: "console",
+          data: {
+            arguments: ["private startup output"],
+          },
+          message: "private startup output",
+        },
+        {
+          category: "navigation",
+          data: {
+            to: "/workspaces/company-handbook?documentId=secret",
+          },
+        },
+      ],
+    };
+
+    scrubSentryEvent(event);
+
+    expect(event.breadcrumbs).toEqual([
+      {
+        category: "navigation",
+        data: {
+          to: "/workspaces/company-handbook",
+        },
+      },
+    ]);
+  });
+
+  test("drops standalone console breadcrumbs for beforeBreadcrumb", () => {
+    const breadcrumb = {
+      category: "console",
+      message: "private startup output",
+    };
+
+    expect(scrubSentryBreadcrumb(breadcrumb)).toBeNull();
   });
 });

@@ -27,10 +27,10 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
     expect(source).toContain("beforeSendSpan: scrubSentrySpan");
     expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
+    expect(source).not.toContain("enableLogs: true");
     expect(source).toContain("captureRouterTransitionStart");
     expect(source).not.toContain("replayIntegration");
     expect(source).not.toContain("feedbackIntegration");
-    expect(source).not.toContain("enableLogs: true");
   });
 
   test("initializes server runtimes without PII or document context", () => {
@@ -48,6 +48,7 @@ describe("Sentry Next.js integration files", () => {
       expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
       expect(source).toContain("beforeSendSpan: scrubSentrySpan");
       expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
+      expect(source).not.toContain("enableLogs: true");
       expect(source).toContain("dataCollection");
       expect(source).toContain("userInfo: false");
       expect(source).toContain("cookies: false");
@@ -65,6 +66,14 @@ describe("Sentry Next.js integration files", () => {
       expect(source).not.toContain("NEXTAUTH_SECRET");
       expect(source).not.toContain("contentMarkdown");
     }
+  });
+
+  test("scrubs navigation and console breadcrumbs before send", () => {
+    const source = read("lib/observability/sentry-scrub-event.ts");
+
+    expect(source).toContain('breadcrumb.category === "console"');
+    expect(source).toContain('"from"');
+    expect(source).toContain('"to"');
   });
 
   test("captures App Router global errors", () => {
