@@ -56,7 +56,7 @@ Sentry SaaS 첫 slice의 목표 범위:
 - Browser SDK에 필요한 `NEXT_PUBLIC_SENTRY_*` 값은 Next.js build time에 bundle되므로 Docker build args로도 전달한다.
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
 - Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
-- Browser/Server/Edge SDK init은 shared `beforeSend` scrubber를 사용해 Sentry event의 request URL query, `query_string`, request body data, cookies, credential/network-identifying request headers, user IP, span URL query/address/user-agent fields, and breadcrumb URL/query fields를 제거한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string과 browser `location.href` 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
+- Browser/Server/Edge SDK init은 shared scrubber를 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb`에 연결해 Sentry event의 request URL query, `query_string`, request body data, cookies, credential/network-identifying request headers, user IP, span URL query/address/user-agent fields, and breadcrumb URL/query fields를 제거한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string, sampled trace span URL fields, browser `location.href`/breadcrumb 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
 
 `docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 

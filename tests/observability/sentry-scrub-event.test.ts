@@ -1,5 +1,9 @@
 import { describe, expect, test } from "vitest";
-import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";
+import {
+  scrubSentryBreadcrumb,
+  scrubSentryEvent,
+  scrubSentrySpan,
+} from "@/lib/observability/sentry-scrub-event";
 
 describe("scrubSentryEvent", () => {
   test("strips absolute request URL query and removes query string and data", () => {
@@ -117,6 +121,23 @@ describe("scrubSentryEvent", () => {
     });
   });
 
+  test("scrubs standalone span payloads for beforeSendSpan", () => {
+    const span = {
+      data: {
+        "url.full": "https://example.com/workspaces/company-handbook?documentId=secret",
+        "url.query": "documentId=secret",
+        "network.peer.address": "203.0.113.10",
+      },
+    };
+
+    const result = scrubSentrySpan(span);
+
+    expect(result).toBe(span);
+    expect(span.data).toEqual({
+      "url.full": "https://example.com/workspaces/company-handbook",
+    });
+  });
+
   test("scrubs breadcrumb URL and query data", () => {
     const event = {
       breadcrumbs: [
@@ -138,6 +159,22 @@ describe("scrubSentryEvent", () => {
       url: "https://example.com/workspaces/company-handbook",
       href: "/search#result",
       method: "GET",
+    });
+  });
+
+  test("scrubs standalone breadcrumbs for beforeBreadcrumb", () => {
+    const breadcrumb = {
+      data: {
+        url: "/workspaces/company-handbook?documentId=secret",
+        query: "documentId=secret",
+      },
+    };
+
+    const result = scrubSentryBreadcrumb(breadcrumb);
+
+    expect(result).toBe(breadcrumb);
+    expect(breadcrumb.data).toEqual({
+      url: "/workspaces/company-handbook",
     });
   });
 });

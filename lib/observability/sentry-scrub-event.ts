@@ -86,9 +86,9 @@ function scrubUser(user: Record<string, unknown>): boolean {
   return Object.keys(user).length > 0;
 }
 
-function scrubSpan(span: SentrySpan): void {
+export function scrubSentrySpan<T extends SentrySpan>(span: T): T {
   if (!span.data) {
-    return;
+    return span;
   }
 
   if (typeof span.data["url.full"] === "string") {
@@ -106,11 +106,13 @@ function scrubSpan(span: SentrySpan): void {
   if (Object.keys(span.data).length === 0) {
     delete span.data;
   }
+
+  return span;
 }
 
-function scrubBreadcrumb(breadcrumb: SentryBreadcrumb): void {
+export function scrubSentryBreadcrumb<T extends SentryBreadcrumb>(breadcrumb: T): T {
   if (!breadcrumb.data) {
-    return;
+    return breadcrumb;
   }
 
   if (typeof breadcrumb.data.url === "string") {
@@ -123,6 +125,8 @@ function scrubBreadcrumb(breadcrumb: SentryBreadcrumb): void {
 
   delete breadcrumb.data.query;
   delete breadcrumb.data["url.query"];
+
+  return breadcrumb;
 }
 
 export function scrubSentryEvent<T extends ScrubbableSentryEvent>(event: T): T {
@@ -135,11 +139,11 @@ export function scrubSentryEvent<T extends ScrubbableSentryEvent>(event: T): T {
   }
 
   for (const span of event.spans ?? []) {
-    scrubSpan(span);
+    scrubSentrySpan(span);
   }
 
   for (const breadcrumb of event.breadcrumbs ?? []) {
-    scrubBreadcrumb(breadcrumb);
+    scrubSentryBreadcrumb(breadcrumb);
   }
 
   return event;
