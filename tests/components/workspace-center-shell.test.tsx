@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { AppShell, useLeftPanel } from "@/components/app-shell";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 
 const router = vi.hoisted(() => ({
@@ -61,6 +62,16 @@ function renderShell(selectedDocument = documents[0]) {
   );
 }
 
+function LeftSidebarCloser() {
+  const leftPanel = useLeftPanel();
+
+  return (
+    <button type="button" onClick={() => leftPanel?.collapse()}>
+      Close sidebar
+    </button>
+  );
+}
+
 describe("WorkspaceCenterShell", () => {
   it("adds the selected document as the active tab and shows the path", () => {
     renderShell();
@@ -100,6 +111,36 @@ describe("WorkspaceCenterShell", () => {
     fireEvent.click(screen.getByRole("button", { name: "Engineering Runbook" }));
 
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-2");
+  });
+
+  it("reserves document tab row space for the sidebar reopen button", () => {
+    render(
+      <AppShell
+        left={<LeftSidebarCloser />}
+        center={
+          <WorkspaceCenterShell
+            workspaceSlug="company-handbook"
+            documents={documents}
+            selectedDocument={documents[0]}
+            selectedFolder={null}
+          >
+            <div>Editor content</div>
+          </WorkspaceCenterShell>
+        }
+        right={<div>Right</div>}
+      />,
+    );
+
+    expect(screen.queryByTestId("document-tabs-leading-sidebar-slot")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
+
+    expect(screen.getByRole("button", { name: "Open sidebar" })).toBeTruthy();
+    expect(screen.getByTestId("document-tabs-leading-sidebar-slot")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sidebar" }));
+
+    expect(screen.queryByTestId("document-tabs-leading-sidebar-slot")).toBeNull();
   });
 
   it("routes to the stored active tab when the workspace opens without a selected document", () => {

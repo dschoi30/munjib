@@ -194,4 +194,8 @@ describe("calculateDocumentTabWidth", () => {
     expect(calculateDocumentTabWidth(760, 4)).toBe(179);
     expect(calculateDocumentTabWidth(760, 6)).toBe(120);
   });
+
+  it("reserves leading space for the left sidebar reopen affordance", () => {
+    expect(calculateDocumentTabWidth(760, 3, 56)).toBe(208);
+  });
 });

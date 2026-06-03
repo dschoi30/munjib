@@ -11,19 +11,27 @@ type DocumentTabsProps = {
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onAdd: () => void;
+  reserveLeadingSlot?: boolean;
 };
 
 const ADD_BUTTON_WIDTH = 44;
+const SIDEBAR_REOPEN_SLOT_WIDTH = 56;
 const MAX_TAB_WIDTH = 224;
 const MIN_TAB_WIDTH = 120;
 const TAB_WIDTH_STEP = 16;
 
-export function calculateDocumentTabWidth(containerWidth: number, tabCount: number) {
-  if (tabCount <= 0 || containerWidth <= ADD_BUTTON_WIDTH) {
+export function calculateDocumentTabWidth(
+  containerWidth: number,
+  tabCount: number,
+  leadingReservedWidth = 0,
+) {
+  const reservedWidth = ADD_BUTTON_WIDTH + leadingReservedWidth;
+
+  if (tabCount <= 0 || containerWidth <= reservedWidth) {
     return MAX_TAB_WIDTH;
   }
 
-  const availableWidth = Math.max(0, containerWidth - ADD_BUTTON_WIDTH);
+  const availableWidth = Math.max(0, containerWidth - reservedWidth);
   const fullWidthTabCount = Math.max(1, Math.floor(availableWidth / MAX_TAB_WIDTH));
   const overflowSteps = Math.max(0, tabCount - fullWidthTabCount);
   const steppedWidth = Math.max(MIN_TAB_WIDTH, MAX_TAB_WIDTH - overflowSteps * TAB_WIDTH_STEP);
@@ -32,10 +40,18 @@ export function calculateDocumentTabWidth(containerWidth: number, tabCount: numb
   return Math.min(steppedWidth, fittedWidth);
 }
 
-export function DocumentTabs({ tabs, activeTabId, onSelect, onClose, onAdd }: DocumentTabsProps) {
+export function DocumentTabs({
+  tabs,
+  activeTabId,
+  onSelect,
+  onClose,
+  onAdd,
+  reserveLeadingSlot = false,
+}: DocumentTabsProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
-  const tabWidth = calculateDocumentTabWidth(containerWidth, tabs.length);
+  const leadingReservedWidth = reserveLeadingSlot ? SIDEBAR_REOPEN_SLOT_WIDTH : 0;
+  const tabWidth = calculateDocumentTabWidth(containerWidth, tabs.length, leadingReservedWidth);
 
   useEffect(() => {
     const element = containerRef.current;
@@ -60,6 +76,13 @@ export function DocumentTabs({ tabs, activeTabId, onSelect, onClose, onAdd }: Do
   return (
     <nav aria-label="Open documents" className="h-11 border-b border-border bg-muted">
       <div ref={containerRef} className="flex h-full min-w-0 overflow-x-auto overflow-y-hidden">
+        {reserveLeadingSlot ? (
+          <div
+            aria-hidden="true"
+            data-testid="document-tabs-leading-sidebar-slot"
+            className="h-11 w-14 shrink-0 border-r border-border"
+          />
+        ) : null}
         <ul className="flex h-full min-w-0 shrink-0 overflow-hidden">
           {tabs.map((tab) => {
             const selected = tab.id === activeTabId;

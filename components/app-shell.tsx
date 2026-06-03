@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/tooltip";
 
 type LeftPanelControls = {
+  isOpen: boolean;
   collapse: () => void;
+  open: () => void;
 };
 
 type RightPanelControls = {
@@ -93,9 +95,11 @@ export function AppShell({
   }, []);
   const leftPanelControls = useMemo(
     () => ({
+      isOpen: leftPanelOpen,
       collapse: () => setLeftPanelOpen(false),
+      open: () => setLeftPanelOpen(true),
     }),
-    [],
+    [leftPanelOpen],
   );
   const rightPanelControls = useMemo(
     () => ({
@@ -134,53 +138,53 @@ export function AppShell({
     <HeadingNavigationContext.Provider value={headingNavigationControls}>
       <TagSearchContext.Provider value={tagSearchControls}>
         <main className={appShellGridClassName({ leftPanelOpen, rightPanelOpen })}>
-          {leftPanelOpen ? (
-            <aside className="overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
-              <LeftPanelContext.Provider value={leftPanelControls}>
+          <LeftPanelContext.Provider value={leftPanelControls}>
+            {leftPanelOpen ? (
+              <aside className="overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
                 {left}
-              </LeftPanelContext.Provider>
-            </aside>
-          ) : (
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    aria-label="Open sidebar"
-                    onClick={() => setLeftPanelOpen(true)}
-                    className="absolute left-4 top-1.5 z-30 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
-                  >
-                    <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Open sidebar</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          <section className="min-h-0 min-w-0 overflow-hidden bg-white">{center}</section>
-          {rightPanelOpen ? (
-            <aside className="overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
-              <RightPanelContext.Provider value={rightPanelControls}>
-                {rightContent}
-              </RightPanelContext.Provider>
-            </aside>
-          ) : (
-            <TooltipProvider delayDuration={0}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    aria-label="Open metadata panel"
-                    onClick={() => setRightPanelOpen(true)}
-                    className="absolute right-4 top-1.5 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
-                  >
-                    <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Open metadata panel</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
+              </aside>
+            ) : (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      aria-label="Open sidebar"
+                      onClick={() => setLeftPanelOpen(true)}
+                      className="absolute left-4 top-1.5 z-30 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
+                    >
+                      <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Open sidebar</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <section className="min-h-0 min-w-0 overflow-hidden bg-white">{center}</section>
+            {rightPanelOpen ? (
+              <aside className="overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
+                <RightPanelContext.Provider value={rightPanelControls}>
+                  {rightContent}
+                </RightPanelContext.Provider>
+              </aside>
+            ) : (
+              <TooltipProvider delayDuration={0}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      aria-label="Open metadata panel"
+                      onClick={() => setRightPanelOpen(true)}
+                      className="absolute right-4 top-1.5 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
+                    >
+                      <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">Open metadata panel</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </LeftPanelContext.Provider>
         </main>
       </TagSearchContext.Provider>
     </HeadingNavigationContext.Provider>
