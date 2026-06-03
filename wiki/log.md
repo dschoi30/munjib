@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 137
+source_count: 138
 tags:
   - log
   - munjib
@@ -42,6 +42,15 @@ links:
 - Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`, `components/document-editor/ai-assistant-panel.tsx`.
 - Verification: `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/ollama.test.ts`.
+
+## 2026-05-30T22:25:00+09:00 - deployment cleanup
+
+- Result: Issue #75 OCI HTTP/IP 배포에서 NextAuth redirect와 session cookie 설정을 환경변수로 맞출 수 있게 정리했다.
+- Coverage: Production session cookie secure flag는 기본적으로 유지하되 `NEXTAUTH_COOKIE_SECURE=false` override를 허용하고, local HTTPS proxy 검증용 `NEXTAUTH_COOKIE_SECURE=true`도 명시 지원한다. Compose는 해당 env를 `web`과 `tools` container에 전달한다. Runtime image는 `next.config.mjs`를 복사해 `next start` 시 TypeScript config loading 경고를 피한다. Wiki sync path mapping도 `next.config.mjs`를 Local Development Workflow 후보로 인식한다.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Wiki Maintenance Automation]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `Dockerfile`, `next.config.mjs`, `lib/wiki/sync.ts`, `tests/auth/config.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: red `pnpm exec vitest run tests/auth/config.test.ts`, red `pnpm exec vitest run tests/docker/compose.test.ts`, green `pnpm exec vitest run tests/auth/config.test.ts tests/docker/compose.test.ts`, `pnpm exec vitest run tests/auth/config.test.ts tests/docker/compose.test.ts tests/wiki/sync.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:lint`, `pnpm wiki:manifest`, `pnpm run build`, `docker compose build web`.
+
 
 ## 2026-05-30T17:20:00+09:00 - review follow-up
 
