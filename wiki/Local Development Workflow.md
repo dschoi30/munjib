@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-05-25
-source_count: 22
+source_count: 23
 tags:
   - munjib
   - workflow
@@ -101,6 +101,19 @@ Compose는 database row와 uploaded attachment file이 함께 남도록 named vo
 POSTGRES_PORT=55433 docker compose up --build
 POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose up --build
 WEB_PORT=80 NEXTAUTH_URL=http://146.56.170.25 NEXTAUTH_COOKIE_SECURE=false docker compose up --build
+```
+
+Issue #89부터 production-style `web` service는 Sentry SaaS error/tracing 설정을 받을 수 있다. Browser SDK 값은 Next.js build time에 bundle되므로 `NEXT_PUBLIC_SENTRY_*` 값은 runtime environment뿐 아니라 Docker build args로도 전달된다. Compose는 이 값을 `web` service에만 전달하고 `tools` service에는 전달하지 않는다. Source map upload와 `SENTRY_AUTH_TOKEN`은 첫 Sentry slice에서 제외한다.
+
+```bash
+SENTRY_DSN=https://public@example.ingest.sentry.io/1 \
+SENTRY_ENVIRONMENT=production \
+SENTRY_RELEASE=$(git rev-parse --short HEAD) \
+SENTRY_TRACES_SAMPLE_RATE=0.05 \
+NEXT_PUBLIC_SENTRY_DSN=https://public@example.ingest.sentry.io/1 \
+NEXT_PUBLIC_SENTRY_ENVIRONMENT=production \
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05 \
+docker compose up --build
 ```
 
 Docker web container에서 schema와 seed를 준비하는 명령:

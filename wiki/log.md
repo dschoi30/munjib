@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 144
+source_count: 145
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T20:28:45+0900 - issue-89 sentry observability
+
+- Result: Sentry SaaS error monitoring and low sample rate tracing were wired into the Next.js App Router production Docker web service.
+- Coverage: `@sentry/nextjs` initializes browser, Node, and Edge runtimes only when a DSN is configured; App Router global errors and request errors are captured; server/edge `dataCollection` disables user info, cookies, headers, bodies, query params, genAI input/output, stack frame variables, and frame context lines; Docker build args carry `NEXT_PUBLIC_SENTRY_*` values for the browser bundle; runtime `web.environment` carries server and public Sentry values. Source map upload, Sentry structured logs, replay, profiling, and `SENTRY_AUTH_TOKEN` remain out of scope.
+- Pages: [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `lib/observability/sentry-config.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`, `next.config.mjs`, `Dockerfile`, `docker-compose.yml`.
+- Verification: `pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts`, `pnpm exec tsc --noEmit`, `pnpm run build`.
 
 ## 2026-06-03T19:51:44+0900 - issue-89 plan
 
