@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 142
+source_count: 152
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T20:50:14+0900 - issue-89 sentry privacy scrubber
+
+- Result: Sentry event privacy scrubber를 추가해 query parameter 기반 document/search state와 network identifiers가 event payload에 남지 않도록 했다.
+- Coverage: Browser, Server, Edge `Sentry.init` 모두 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb` scrubber hooks를 사용한다. Scrubber는 request URL query/host, `query_string`, request data, cookies, request headers, user `ip_address`, span URL/query/target/path/description/name fields, browser fetch/XHR span `url`, span request/response body/header/IP/host/user-agent attributes, breadcrumb URL/query/host fields와 navigation breadcrumb `from`/`to` query를 제거한다. Console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 드롭한다.
+- Pages: [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89 final review privacy issue, `lib/observability/sentry-scrub-event.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `tests/observability/sentry-scrub-event.test.ts`, `tests/observability/sentry-files.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts` (38 tests), `pnpm exec tsc --noEmit`, `pnpm run build`.
+
+## 2026-06-03T20:28:45+0900 - issue-89 sentry observability
+
+- Result: Sentry SaaS error monitoring and low sample rate tracing were wired into the Next.js App Router production Docker web service.
+- Coverage: `@sentry/nextjs` initializes browser, Node, and Edge runtimes only when a DSN is configured; App Router global errors and request errors are captured; server/edge `dataCollection` disables user info, cookies, headers, bodies, query params, genAI input/output, stack frame variables, and frame context lines; Docker build args carry `NEXT_PUBLIC_SENTRY_*` values for the browser bundle; runtime `web.environment` carries server and public Sentry values. Source map upload, Sentry structured logs, replay, profiling, and `SENTRY_AUTH_TOKEN` remain out of scope.
+- Pages: [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `lib/observability/sentry-config.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`, `next.config.mjs`, `Dockerfile`, `docker-compose.yml`.
+- Verification: `pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts`, `pnpm exec tsc --noEmit`, `pnpm run build`.
+
+## 2026-06-03T19:51:44+0900 - issue-89 plan
+
+- Result: Issue #89 Sentry SaaS observability implementation plan을 추가했다.
+- Coverage: Plan은 dependency install, Sentry config parser, Next.js App Router instrumentation files, Docker build/runtime env propagation, focused tests, production build, wiki maintenance, push/PR/review feedback loop를 task 단위로 나눈다. Repo wiki sync hook 때문에 중간 구현 task는 checkpoint로 두고 source와 wiki maintenance를 최종 commit에 함께 싣도록 했다.
+- Pages: [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `lib/wiki/sync.ts`.
+- Verification: plan self-review for spec coverage, placeholder scan, type consistency, and repo wiki sync compatibility.
+
+## 2026-06-03T18:46:41+09:00 - issue-89 design
+
+- Result: Issue #89 Sentry SaaS observability design을 추가하고 production Docker 로그와 Sentry 역할을 분리했다.
+- Coverage: Docker stdout은 startup/env/DB/PostgreSQL log 확인 경로로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing을 맡는다. Browser SDK용 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 하며, source map upload와 `SENTRY_AUTH_TOKEN`은 첫 slice에서 제외한다.
+- Pages: [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docker-compose.yml`, `Dockerfile`, `next.config.mjs`.
+- Verification: spec self-review and wiki placeholder scan.
 
 ## 2026-06-03T17:28:00+09:00 - issue-85 PR review tag search follow-up
 
