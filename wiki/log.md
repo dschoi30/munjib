@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 135
+updated: 2026-06-03
+source_count: 136
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T02:57:00+00:00 - bug fix
+
+- Result: AI assistant ask route가 recoverable RAG/Ollama runtime failure를 generic unavailable response로 반환하게 했다.
+- Coverage: `app/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`는 `OLLAMA_REQUEST_FAILED` 같은 RAG runtime error를 `RAG_REQUEST_FAILED` 500 대신 `AI_UNAVAILABLE` 503으로 정규화한다. Editor assistant panel은 deployment host, model name, install state 같은 내부 세부정보를 노출하지 않고 기존 generic failure message를 유지한다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`, `components/document-editor/ai-assistant-panel.tsx`.
+- Verification: `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/ollama.test.ts`.
 
 ## 2026-05-30T17:20:00+09:00 - review follow-up
 
