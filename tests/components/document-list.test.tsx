@@ -123,8 +123,11 @@ describe("DocumentList", () => {
     renderList();
 
     expect(screen.queryByText("Workspace")).toBeNull();
-    expect(screen.getByRole("heading", { name: "Company Handbook" }).parentElement?.className).toContain("h-11");
-    expect(screen.getByRole("button", { name: "Workspace settings" }).parentElement?.className).toContain("ml-auto");
+    const workspaceMenuButton = screen.getByRole("button", { name: "Workspace menu" });
+    expect(workspaceMenuButton.textContent).toBe("Company Handbook");
+    expect(workspaceMenuButton.getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("button", { name: "Workspace settings" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Close sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "New document" }).textContent).toBe("");
     expect(screen.getByRole("button", { name: "New folder" }).textContent).toBe("");
     expect(screen.queryByRole("combobox", { name: /template/i })).toBeNull();
@@ -149,7 +152,14 @@ describe("DocumentList", () => {
   it("opens the workspace settings panel with import selected by default", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+
+    const workspaceMenu = screen.getByRole("menu", { name: "Workspace menu" });
+    expect(workspaceMenu.className).toContain("left-0");
+    expect(workspaceMenu.className).toContain("right-0");
+    expect(within(workspaceMenu).getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+
+    fireEvent.click(within(workspaceMenu).getByRole("menuitem", { name: "Settings" }));
 
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
@@ -172,12 +182,67 @@ describe("DocumentList", () => {
   it("keeps the document list visible behind the workspace settings dialog", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
 
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
     expect(screen.getByText("Recents")).toBeTruthy();
     expect(screen.getByText("Documents")).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
+  });
+
+  it("closes the workspace menu when switching sidebar views", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+  });
+
+  it("closes the workspace menu on Escape", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+
+    fireEvent.keyDown(window, { key: "Escape" });
+
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+  });
+
+  it("closes the workspace menu on outside click", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+  });
+
+  it("closes the workspace menu when an AppShell tag search request opens search", () => {
+    render(
+      <AppShell
+        left={<DocumentList {...baseProps} />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div />}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#LangChain",
+    );
   });
 
   it("orders folders before documents and sorts each group by title ascending", () => {
@@ -381,7 +446,8 @@ describe("DocumentList", () => {
   it("closes the workspace settings panel", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
 
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
@@ -391,7 +457,8 @@ describe("DocumentList", () => {
   it("closes the workspace settings panel from the backdrop without closing on dialog clicks", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.click(screen.getByRole("dialog", { name: "Workspace settings" }));
 
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
@@ -405,7 +472,8 @@ describe("DocumentList", () => {
   it("disables markdown import when the workspace is read-only", () => {
     renderList({ canWrite: false });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
 
     expect(screen.getByRole("button", { name: "Import Markdown" })).toHaveProperty(
       "disabled",
@@ -429,7 +497,8 @@ describe("DocumentList", () => {
       });
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
     const secondFile = new File(["# Second"], "second.markdown", { type: "text/markdown" });
     fireEvent.change(screen.getByLabelText("Markdown files"), {
@@ -476,7 +545,8 @@ describe("DocumentList", () => {
     }));
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: /Import destination: \// }));
 
     expect(
@@ -521,7 +591,8 @@ describe("DocumentList", () => {
     }));
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
       "/",
     );
@@ -566,7 +637,8 @@ describe("DocumentList", () => {
       });
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -604,7 +676,8 @@ describe("DocumentList", () => {
       });
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -643,7 +716,8 @@ describe("DocumentList", () => {
       });
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -677,7 +751,8 @@ describe("DocumentList", () => {
     }));
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["# Imported"], "imported.md", { type: "text/markdown" })],
@@ -707,7 +782,8 @@ describe("DocumentList", () => {
     const importMarkdownAction = vi.fn(() => importPromise);
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["# Slow"], "slow.md", { type: "text/markdown" })],
@@ -760,7 +836,8 @@ describe("DocumentList", () => {
     }));
     renderList({ importMarkdownAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["nope"], "failed.md", { type: "text/markdown" })],
