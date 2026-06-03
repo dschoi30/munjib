@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 126
+source_count: 137
 tags:
   - log
   - munjib
@@ -34,6 +34,166 @@ links:
 - Pages: [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #79, `components/document-navigation.tsx`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/components/document-list.test.tsx`.
+
+## 2026-05-30T22:25:00+09:00 - deployment cleanup
+
+- Result: Issue #75 OCI HTTP/IP 배포에서 NextAuth redirect와 session cookie 설정을 환경변수로 맞출 수 있게 정리했다.
+- Coverage: Production session cookie secure flag는 기본적으로 유지하되 `NEXTAUTH_COOKIE_SECURE=false` override를 허용하고, local HTTPS proxy 검증용 `NEXTAUTH_COOKIE_SECURE=true`도 명시 지원한다. Compose는 해당 env를 `web`과 `tools` container에 전달한다. Runtime image는 `next.config.mjs`를 복사해 `next start` 시 TypeScript config loading 경고를 피한다. Wiki sync path mapping도 `next.config.mjs`를 Local Development Workflow 후보로 인식한다.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Wiki Maintenance Automation]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `Dockerfile`, `next.config.mjs`, `lib/wiki/sync.ts`, `tests/auth/config.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: red `pnpm exec vitest run tests/auth/config.test.ts`, red `pnpm exec vitest run tests/docker/compose.test.ts`, green `pnpm exec vitest run tests/auth/config.test.ts tests/docker/compose.test.ts`, `pnpm exec vitest run tests/auth/config.test.ts tests/docker/compose.test.ts tests/wiki/sync.test.ts`, `pnpm exec tsc --noEmit`, `pnpm wiki:lint`, `pnpm wiki:manifest`, `pnpm run build`, `docker compose build web`.
+
+## 2026-05-30T17:20:00+09:00 - review follow-up
+
+- Result: PR #74 review threads for Issue #73 RAG assistant를 반영했다.
+- Coverage: AI assistant panel은 HTTP 200이어도 response JSON parse가 실패하면 오류 상태를 보여주고, empty citation heading path는 dangling separator를 표시하지 않는다. Saved document indexing은 chunk embedding을 순차 처리하고, mutation commit 뒤 refresh는 Next.js `after()` hook에 등록한다. Ask service의 persisted `DocumentLink` lookup은 retrieval scope에 필요하지 않은 ordering을 제거했다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `lib/rag/index-document.ts`, `lib/rag/ask.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/rag/index-document.test.ts`, `tests/rag/ask.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/ask.test.ts tests/components/document-editor-preview.test.tsx tests/rag/index-document.test.ts`, green `pnpm exec vitest run tests/rag/ask.test.ts tests/components/document-editor-preview.test.tsx tests/rag/index-document.test.ts`.
+
+## 2026-05-30T17:00:00+09:00 - review follow-up
+
+- Result: Issue #73 pgvector migration workflow를 `prisma migrate dev`와 호환되게 보정했다.
+- Coverage: HNSW vector index를 Prisma migration history 밖의 `lib/rag/vector-index.ts` idempotent setup SQL과 `pnpm run db:rag:index` script로 분리했다. `20260530023000_add_document_chunks_pgvector` migration은 pgvector extension, `DocumentChunk` table, relational/current chunk indexes만 만들며, local pgvector image/port guidance를 [[Local Development Workflow]]에 추가했다.
+- Pages: [[Document Knowledge Model]], [[Next.js Prisma Monolith]], [[Project PRD]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`, `lib/rag/vector-index.ts`, `scripts/db/ensure-rag-vector-index.ts`, `package.json`, `tests/rag/vector-index.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/vector-index.test.ts`, `pnpm exec vitest run tests/rag/vector-index.test.ts tests/rag/vector-store.test.ts tests/docker/compose.test.ts`, `pnpm exec prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url 'postgresql://obsidian:obsidian@localhost:55433/obsidian_clone_shadow?schema=public' --script`, `pnpm run db:rag:index`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/index-document.test.ts tests/rag/vector-store.test.ts tests/rag/vector-index.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts tests/components/document-editor-preview.test.tsx tests/docker/compose.test.ts`.
+
+## 2026-05-30T16:40:00+09:00 - documentation
+
+- Result: Issue #73 saved-content-only document AI RAG assistant의 최종 wiki 설명을 구현 완료 기준으로 정리했다.
+- Coverage: `DocumentChunk` pgvector `vector(1024)` 모델, `bge-m3` dimension coupling과 migration 경고, monolith 내 pgvector/raw SQL seam, editor assistant request contract, ask service/retriever/prompt 구현 근거를 보강했다.
+- Pages: [[Munjib]], [[Document Knowledge Model]], [[Next.js Prisma Monolith]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `prisma/schema.prisma`, `prisma/migrations/20260530023000_add_document_chunks_pgvector/migration.sql`, `lib/rag/config.ts`, `lib/rag/vector-store.ts`, `lib/rag/retriever.ts`, `lib/rag/ask.ts`, `components/document-editor/ai-assistant-panel.tsx`.
+- Verification: `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/index-document.test.ts tests/rag/vector-store.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts tests/components/document-editor-preview.test.tsx`, `pnpm test`.
+
+## 2026-05-30T16:35:00+09:00 - review follow-up
+
+- Result: Issue #73 editor assistant panel의 dirty-state warning과 document switch state isolation을 보강했다.
+- Coverage: AI assistant warning은 title/markdown draft divergence뿐 아니라 pending clipboard image paste upload도 saved-content-only warning 대상으로 본다. Assistant panel은 document id로 keying되어 문서 전환 시 이전 질문, 답변, citation state를 다음 문서에 보여주지 않는다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "saved-content warning|resets assistant panel"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "saved-content warning|resets assistant panel|opens the AI assistant"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T16:30:00+09:00 - implementation
+
+- Result: Issue #73 Document Editor assistant UI를 추가했다.
+- Coverage: `DocumentEditor` title row 우측에 `AI에게 묻기` button을 추가하고, `AiAssistantPanel`이 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed `question`만 POST하도록 했다. Current title 또는 markdown draft가 selected saved document와 다르면 saved-content warning을 표시하며, answer, citations, loading, error state를 처리한다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/document-editor/types.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: red `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "opens the AI assistant"`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx -t "opens the AI assistant"`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T16:15:00+09:00 - review follow-up
+
+- Result: Issue #73 ask route wrapper의 error boundary를 보정했다.
+- Coverage: `requireCurrentUser()`와 params/body parsing을 service error catch 밖으로 옮겨 Next auth redirect control flow를 generic 500으로 삼키지 않게 했다. Malformed JSON body는 empty object로 처리해 missing `question`과 같은 `QUESTION_REQUIRED` 400 response를 반환한다. Route는 계속 JSON body에서 `question`만 service input으로 전달한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/ask-route.test.ts`, `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T16:00:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 prompt builder와 saved-document-only ask service/API route를 추가했다.
+- Coverage: `buildRagPrompt()`는 saved document context만 쓰도록 지시하고 unsaved editor drafts/outside knowledge 금지, saved docs insufficient evidence response, question language matching, `[n] Document Title > Heading` citation label을 만든다. `askDocumentQuestion()`은 caller input을 `workspaceSlug`, `documentId`, `actorId`, `question`으로 제한하고, workspace page와 같은 explicit document permission/readability 계산으로 selected document access를 확인한 뒤 `safeIndexSavedDocument({ documentId })`, scoped pgvector search, rerank, prompt, Ollama chat을 연결한다. Ask route는 `body.question`만 읽고 posted draft title/content fields를 무시한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T15:46:00+09:00 - review follow-up
+
+- Result: Issue #73 saved document indexing lifecycle의 stale replacement result propagation을 보정했다.
+- Coverage: `replaceDocumentChunksInTransaction()`이 pgvector replacement transaction callback의 boolean result를 반환하도록 해, `FOR UPDATE` + expected `updatedAt` guard가 stale job을 감지한 `false` 결과를 `indexSavedDocument()` caller까지 보존한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `tests/rag/index-document.test.ts`.
+- Verification: red `pnpm exec vitest run tests/rag/index-document.test.ts -t "preserves stale replacement results"`, `pnpm exec vitest run tests/rag/index-document.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T15:42:00+09:00 - review follow-up
+
+- Result: Issue #73 graph-aware retriever의 reranking boundary와 keyword overlap을 보강했다.
+- Coverage: `rerankRetrievedChunks()`는 retrieval scopes 밖의 document chunk를 prompt/citation 후보에서 제외한다. Keyword overlap은 punctuation-normalized Unicode token set으로 계산하고, English stop words와 too-short Latin terms를 무시하되 Korean/CJK 2글자 terms는 질문 keyword로 유지한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T15:31:00+09:00 - review follow-up
+
+- Result: Issue #73 graph-aware retriever의 public export surface를 요청 범위로 좁혔다.
+- Coverage: `ReadableDocument`, `PersistedLink`, `RankedRerankChunk`는 internal type으로 유지하고, 외부 import 가능한 retriever API는 `RETRIEVAL_SCORE_WEIGHTS`, `buildRetrievalScopes`, `rerankRetrievedChunks`, `RetrievalScopes`, `RerankChunk`만 남겼다. `tests/rag/retriever.test.ts`는 extra type exports가 다시 열리면 `tsc`에서 unused `@ts-expect-error`로 실패하는 compile-time regression guard를 포함한다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec tsc --noEmit` red unused `@ts-expect-error` check, `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T15:26:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 graph-aware retriever를 추가했다.
+- Coverage: `lib/rag/retriever.ts`는 selected saved/readable document를 current scope로 두고 saved markdown wiki links, non-broken/non-ambiguous persisted outgoing links, backlinks, same normalized tags, fallback readable documents 순서로 retrieval scopes를 만든다. Lower-priority scopes는 이미 assigned된 document id를 다시 포함하지 않는다. Reranking은 `(1 - cosine distance) + scope boost + bounded keyword overlap boost` 공식을 쓰며 current `0.5`, linked `0.3`, backlink `0.25`, same-tag `0.15`, keyword term `0.05`, keyword max `0.2`를 exported constants로 노출한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/retriever.ts`, `tests/rag/retriever.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/retriever.test.ts` red missing-module check, `pnpm exec vitest run tests/rag/retriever.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T15:09:00+09:00 - review follow-up
+
+- Result: Issue #73 saved document indexing lifecycle의 review blocker를 수정했다.
+- Coverage: save/update/move/restore/broken-link creation과 manual attachment upload는 이제 `scheduleSavedDocumentIndex()`로 RAG refresh를 fire-and-forget 예약해 저장 응답을 Ollama/pgvector latency에 묶지 않는다. Index replacement transaction은 `Document` row를 `FOR UPDATE`로 lock하고 expected `updatedAt`을 확인한 뒤 delete/insert를 수행해 stale indexing job이 최신 chunks를 덮지 못하게 한다. Move는 content를 바꾸지 않지만 `updatedAt`을 바꾸므로 refresh 대상에 포함한다. Pasted-image upload에는 no-reindex negative test를 추가했다. Vitest 기본 service save path에서는 automatic scheduler를 no-op 처리해 기존 DB-backed test suite가 local pgvector table state에 의존하지 않는다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `lib/documents/service.ts`, `lib/attachments/service.ts`, `tests/rag/index-document.test.ts`, `tests/documents/service.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/index-document.test.ts tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`, `pnpm test`.
+
+## 2026-05-30T14:05:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 saved document indexing lifecycle을 추가했다.
+- Coverage: `lib/rag/index-document.ts`는 saved DB document fields를 chunking/embedding source로 사용하고, `DocumentChunk.workspaceId`도 saved document에서만 파생한다. Empty saved markdown은 replacement with empty chunks로 stale index를 비우며, `safeIndexSavedDocument({ documentId })`는 DB load/indexing 실패를 logger에 남기고 false를 반환한다. Document create/update/version restore/broken-link creation과 manual attachment upload는 transaction commit 뒤 best-effort로 RAG chunk refresh를 실행하고, clipboard pasted image upload는 saved markdown을 변경하지 않아 indexing을 실행하지 않는다.
+- Pages: [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/index-document.ts`, `lib/documents/service.ts`, `lib/attachments/service.ts`, `tests/rag/index-document.test.ts`, `tests/documents/service.test.ts`, `tests/attachments/service.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/index-document.test.ts`, `pnpm exec vitest run tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec vitest run tests/rag/index-document.test.ts tests/documents/service.test.ts tests/attachments/service.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-05-30T13:55:00+09:00 - review follow-up
+
+- Result: RAG Markdown chunking helper의 TypeScript inference blocker를 정리했다.
+- Coverage: fenced-code tracking의 `openingFence`에 explicit `FenceMarker | null` annotation을 추가해 runtime behavior 변경 없이 `pnpm exec tsc --noEmit` 검증이 통과하도록 했다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `lib/rag/chunk-markdown.ts`.
+- Verification: `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/rag/chunk-markdown.test.ts tests/rag/vector-store.test.ts tests/rag/ollama.test.ts`.
+
+## 2026-05-30T13:50:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 pgvector store helper를 추가했다.
+- Coverage: `lib/rag/vector-store.ts`는 `DocumentChunk` replacement와 similarity search를 raw SQL seam으로 격리한다. Vector literal은 empty, non-number, NaN, Infinity를 raw SQL 실행 전에 거절하고, insert/search SQL은 static string과 positional parameter를 사용하며 pgvector cast는 `CAST($n AS vector(1024))` 형식만 쓴다. Search는 readable document id array를 bound parameter로 받고 saved `Document.updatedAt`과 chunk `sourceUpdatedAt`이 맞는 current chunks만 반환한다.
+- Pages: [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/vector-store.ts`, `tests/rag/vector-store.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/vector-store.test.ts`, `pnpm exec vitest run tests/rag/vector-store.test.ts tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts`.
+
+## 2026-05-30T12:46:00+09:00 - review follow-up
+
+- Result: Issue #73 Ollama RAG client의 configuration과 response validation을 보강했다.
+- Coverage: blank env values는 기본값으로 fallback하고 invalid embedding dimension은 stable config error로 거절한다. Ollama network failure와 invalid JSON은 recoverable request error로 정규화하며, embedding은 configured dimension과 finite numeric value contract를 통과해야 pgvector 저장 단계로 넘어간다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/config.ts`, `lib/rag/ollama.ts`, `tests/rag/ollama.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/ollama.test.ts tests/rag/chunk-markdown.test.ts`.
+
+## 2026-05-30T12:15:00+09:00 - implementation
+
+- Result: Issue #73 RAG assistant의 Ollama configuration과 client wrapper를 추가했다.
+- Coverage: `getRagConfig()`는 local Ollama base URL, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimension `1024`를 env override 가능한 기본값으로 제공한다. `embedText()`는 Ollama `/api/embed`에 embedding request를 보내고, `chatWithContext()`는 non-streaming `/api/chat`에 system/user message를 보낸다. Non-ok response와 empty embedding/chat content는 recoverable RAG error code로 구분한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/config.ts`, `lib/rag/ollama.ts`, `tests/rag/ollama.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/ollama.test.ts`.
+
+## 2026-05-30T11:50:00+09:00 - design review
+
+- Result: Issue #73 RAG assistant 설계와 구현 계획에 review follow-up을 반영했다.
+- Coverage: pgvector raw SQL cast를 `CAST($n AS vector(1024))`로 명시하고, vector 값은 static SQL positional parameter로만 전달하도록 계획을 보강했다. `bge-m3`와 `vector(1024)` dimension coupling, retriever weighted score constants, unsaved draft 안내 UX, AGENTS PR review loop 체크리스트도 구현 계획에 추가했다.
+- Pages: [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: 사용자 review feedback, `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`, `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`.
+- Verification: plan self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-05-30T11:30:00+09:00 - design
+
+- Result: Issue #73 `Document AI RAG assistant` 설계를 추가했다.
+- Coverage: `DocumentEditor` title row 우측 `AI에게 묻기` button, saved-content-only ask route, Ollama `gemma4:e4b` chat model, `bge-m3` embedding model, PostgreSQL pgvector `vector(1024)` chunk store, HNSW cosine index, current-document-centered graph-aware retriever, 테스트와 implementation decision 범위.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #73, `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`, `components/document-editor.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/knowledge-graph/model.ts`, `prisma/schema.prisma`, `docker-compose.yml`.
+- Verification: spec self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-05-27T01:35:00+09:00 - review follow-up
 

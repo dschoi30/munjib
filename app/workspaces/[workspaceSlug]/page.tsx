@@ -326,6 +326,7 @@ export default async function WorkspacePage({
             />
           ) : (
             <DocumentEditor
+              workspaceSlug={workspaceSlug}
               document={
                 selectedDocument
                   ? {

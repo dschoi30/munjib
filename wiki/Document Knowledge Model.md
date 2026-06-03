@@ -5,7 +5,7 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-18
+updated: 2026-05-30
 source_count: 17
 tags:
   - munjib
@@ -106,6 +106,21 @@ erDiagram
     String changeSummary
     DateTime createdAt
   }
+  DocumentChunk {
+    String id PK
+    String workspaceId
+    String documentId FK
+    Int chunkIndex
+    String headingPath
+    String content
+    String contentHash
+    DateTime sourceUpdatedAt
+    Int tokenCount
+    String embeddingModel
+    vector embedding
+    DateTime createdAt
+    DateTime updatedAt
+  }
   DocumentLink {
     String id PK
     String workspaceId FK
@@ -196,6 +211,7 @@ erDiagram
   Folder ||--o{ Document : contains
   Document ||--o{ Document : parents
   Document ||--o{ DocumentVersion : snapshots
+  Document ||--o{ DocumentChunk : indexes
   User ||--o{ DocumentVersion : authors
   Document ||--o{ DocumentLink : source
   Document ||--o{ DocumentLink : target
@@ -232,6 +248,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `status`는 `ACTIVE` 또는 `ARCHIVED`다.
 - `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
+- `DocumentChunk`: saved `Document.contentMarkdown`에서 만든 RAG retrieval chunk다. `workspaceId`는 denormalized field지만 caller/draft 값이 아니라 DB에서 다시 읽은 saved `Document.workspaceId`에서만 파생한다.
 
 현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 
@@ -259,6 +276,18 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `DocumentProperty`: YAML frontmatter에서 추출한 key/value property다.
 
 `lib/document-metadata/parser.ts`는 markdown frontmatter와 inline `#tag`를 읽는다. Frontmatter value는 JSON으로 저장되며 scalar, boolean, number, array, object 같은 value type을 기록한다. `DocumentProperty.sortOrder`는 YAML frontmatter에 적힌 key 순서를 보존해 Properties UI가 markdown 파일의 속성 순서와 일치하도록 한다. `reconcileDocumentMetadata()`는 문서 생성, 수정, version restore, attachment upload 후 metadata row를 최신 markdown 기준으로 다시 맞춘다.
+
+## Document RAG chunks
+
+Issue #73의 saved-content-only RAG assistant는 `DocumentChunk`를 pgvector-backed retrieval index로 사용한다. Chunk source는 저장된 DB 문서의 `title`, `contentMarkdown`, `workspaceId`, `updatedAt`이며, editor의 unsaved draft title/content는 indexing input에 포함하지 않는다.
+
+`DocumentChunk.embedding`은 Prisma schema에서 `Unsupported("vector(1024)")`로 선언된다. Prisma Client가 pgvector 타입을 직접 다루지 않으므로 vector 저장과 similarity search는 `lib/rag/vector-store.ts`의 raw SQL seam으로 격리하고, SQL text는 static string과 positional parameter만 사용한다. pgvector cast는 `$n::vector` shorthand가 아니라 `CAST($n AS vector(1024))` 형식으로 유지해 Prisma/PostgreSQL parser 차이를 피한다. Local Docker PostgreSQL은 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 migration은 `vector` extension과 chunk table/indexes를 만든다. Prisma Migrate가 `Unsupported("vector(1024)")` field의 HNSW index를 datamodel로 round-trip하지 못하므로 cosine HNSW index는 `lib/rag/vector-index.ts`와 `pnpm run db:rag:index`의 idempotent `CREATE INDEX IF NOT EXISTS` step으로 관리한다.
+
+첫 embedding schema는 Ollama `bge-m3`의 1024-dimensional dense vector에 맞춘다. `MUNJIB_RAG_EMBED_MODEL`을 다른 차원의 model로 바꾸는 경우에는 단순 env 변경으로 끝나지 않고 `DocumentChunk.embedding` vector dimension migration, pgvector index rebuild, 기존 chunk reindexing이 함께 필요하다.
+
+`lib/rag/index-document.ts`의 `safeIndexSavedDocument({ documentId })`는 document id만 받아 DB에서 saved document fields를 load한 뒤 markdown chunking, Ollama embedding, `replaceDocumentChunks()`를 수행한다. Service save paths는 `scheduleSavedDocumentIndex({ documentId })`를 호출해 Next.js `after()` request lifecycle hook으로 저장 응답 이후 indexing을 예약한다. Chunk row는 `sourceUpdatedAt`과 `embeddingModel`을 저장하고, vector search는 saved `Document.updatedAt`과 `sourceUpdatedAt`이 같은 current chunk만 사용한다. Replacement는 transaction 안에서 `Document` row를 `FOR UPDATE`로 lock하고 expected `updatedAt`을 확인한 뒤 delete/insert를 수행하므로 stale indexing job이 최신 chunk를 덮지 못한다. Empty saved markdown도 replacement를 실행해 기존 chunk를 삭제한다.
+
+RAG chunk refresh는 document create/update/move/version restore/broken-link creation과 manual attachment upload가 commit된 뒤 `after()` hook에 등록되는 best-effort deferred work로 실행된다. Move는 content를 바꾸지 않지만 `Document.updatedAt`을 바꾸므로 current chunk freshness contract를 유지하기 위해 refresh를 예약한다. Local Ollama overload를 피하기 위해 한 문서 안의 chunk embedding request는 순차 처리한다. Embedding 서버나 pgvector write가 실패해도 saved document mutation은 성공으로 유지되고, failure는 service logger에만 남긴다. Vitest 환경의 기본 service save path에서는 자동 scheduler를 no-op 처리해 기존 DB-backed tests가 Ollama/pgvector local state에 의존하지 않게 한다.
 
 ## Workspace knowledge graph DTO
 
@@ -290,5 +319,10 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `lib/comments/service.ts`
 - `lib/permissions/document.ts`
 - `tests/documents/service.test.ts`
+- `tests/attachments/service.test.ts`
+- `lib/rag/index-document.ts`
+- `lib/rag/vector-store.ts`
+- `tests/rag/index-document.test.ts`
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
+- GitHub issue #73

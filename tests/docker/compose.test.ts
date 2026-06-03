@@ -19,9 +19,16 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("NEXTAUTH_URL");
     expect(compose).toContain("localhost:3000");
     expect(compose).toContain("NEXTAUTH_SECRET");
+    expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
     expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");
+  });
+
+  test("uses a pgvector-enabled postgres image", () => {
+    const compose = read("docker-compose.yml");
+
+    expect(compose).toContain("pgvector/pgvector:0.8.2-pg16");
   });
 
   test("development override runs next dev from the dev image target", () => {
@@ -45,6 +52,8 @@ describe("Docker web service configuration", () => {
     expect(dockerfile).toContain("FROM deps AS dev");
     expect(dockerfile).toContain("pnpm run build");
     expect(dockerfile).toContain("COPY --from=builder /app/public ./public");
+    expect(dockerfile).toContain("COPY --from=builder /app/next.config.mjs ./next.config.mjs");
+    expect(dockerfile).not.toContain("next.config.ts");
     expect(dockerfile).toContain("pnpm prune --prod");
     expect(dockerfile).toContain('CMD ["pnpm", "start"]');
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
