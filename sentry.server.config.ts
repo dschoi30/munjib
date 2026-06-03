@@ -1,5 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { getServerSentryConfig } from "@/lib/observability/sentry-config";
+import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";
 
 const config = getServerSentryConfig();
 
@@ -9,6 +10,7 @@ if (config.enabled) {
     environment: config.environment,
     release: config.release,
     sendDefaultPii: false,
+    beforeSend: scrubSentryEvent,
     dataCollection: {
       userInfo: false,
       cookies: false,

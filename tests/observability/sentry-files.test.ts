@@ -18,8 +18,12 @@ describe("Sentry Next.js integration files", () => {
     const source = read("instrumentation-client.ts");
 
     expect(source).toContain("getBrowserSentryConfig");
+    expect(source).toContain(
+      'import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";',
+    );
     expect(source).toContain("Sentry.init");
     expect(source).toContain("sendDefaultPii: false");
+    expect(source).toContain("beforeSend: scrubSentryEvent");
     expect(source).toContain("captureRouterTransitionStart");
     expect(source).not.toContain("replayIntegration");
     expect(source).not.toContain("feedbackIntegration");
@@ -32,8 +36,12 @@ describe("Sentry Next.js integration files", () => {
 
     for (const source of [serverSource, edgeSource]) {
       expect(source).toContain("getServerSentryConfig");
+      expect(source).toContain(
+        'import { scrubSentryEvent } from "@/lib/observability/sentry-scrub-event";',
+      );
       expect(source).toContain("Sentry.init");
       expect(source).toContain("sendDefaultPii: false");
+      expect(source).toContain("beforeSend: scrubSentryEvent");
       expect(source).toContain("dataCollection");
       expect(source).toContain("userInfo: false");
       expect(source).toContain("cookies: false");
