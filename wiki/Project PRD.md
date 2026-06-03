@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 40
+updated: 2026-06-03
+source_count: 41
 tags:
   - munjib
   - source
@@ -18,6 +18,7 @@ links:
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Next.js Prisma Monolith]]"
+  - "[[Production Observability Workflow]]"
 ---
 
 # Project PRD
@@ -87,6 +88,8 @@ Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추
 
 Issue #81 설계는 이미 구현된 Ask AI/RAG를 현재 Docker 서버에서 정상 응답하도록 운영 설정을 맞추는 계획이다. 서버 host에 Ollama를 두고 `gemma4:e4b`와 `bge-m3`를 설치한 뒤, Docker web container가 host Ollama에 닿도록 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`를 사용한다. Linux Docker에서 해당 host name resolution이 실패하면 web service에 `host-gateway` mapping을 추가해 같은 RAG code path를 유지한다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
+Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. Docker stdout은 startup, 환경 변수, DB 연결, PostgreSQL process log 확인용으로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing에만 사용한다. Browser SDK 설정은 Next.js build time에 bundle되므로 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 한다. Source map upload와 `SENTRY_AUTH_TOKEN` handling은 첫 slice에서 제외한다. 설계 근거는 [[Production Observability Workflow]]와 `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`이다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -128,6 +131,7 @@ Issue #81 설계는 이미 구현된 Ask AI/RAG를 현재 Docker 서버에서 �
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
+- GitHub issue #89와 `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`: production Docker 로그와 Sentry SaaS error/tracing 역할 분리 설계.
 - `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
 - `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.
 - `tests/rag/vector-index.test.ts`: Prisma migrate-dev-safe HNSW index setup SQL and migration-history guard coverage.
