@@ -259,7 +259,7 @@ describe("DocumentList", () => {
       tagNames: [],
       canWrite: true,
     }));
-    const { rerender } = renderList({ documents, selectedDocumentId: "doc-1" });
+    const { rerender } = renderList({ documents, selectedDocumentId: "doc-5" });
 
     rerender(
       <DocumentList {...baseProps} documents={documents} selectedDocumentId="doc-6" />,
@@ -272,7 +272,7 @@ describe("DocumentList", () => {
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
           .map((link) => link.textContent?.trim()),
-      ).toEqual(["Document 6", "Document 1", "Document 2", "Document 3", "Document 4"]);
+      ).toEqual(["Document 6", "Document 5", "Document 1", "Document 2", "Document 3"]);
     });
   });
 

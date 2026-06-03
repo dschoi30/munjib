@@ -83,9 +83,6 @@ export function DocumentNavigation({
     null,
   );
   const [recentDocumentIds, setRecentDocumentIds] = useState<string[]>([]);
-  const [loadedRecentDocumentStorageKey, setLoadedRecentDocumentStorageKey] = useState<
-    string | null
-  >(null);
   const [clearCreatePendingAfterTransition, setClearCreatePendingAfterTransition] =
     useState(false);
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
@@ -161,35 +158,30 @@ export function DocumentNavigation({
   }, [favorites, workspaceSlug]);
 
   useEffect(() => {
-    setRecentDocumentIds(
-      parseRecentDocumentIds(window.localStorage.getItem(recentDocumentStorageKey)),
+    const loadedDocumentIds = parseRecentDocumentIds(
+      window.localStorage.getItem(recentDocumentStorageKey),
     );
-    setLoadedRecentDocumentStorageKey(recentDocumentStorageKey);
-  }, [recentDocumentStorageKey]);
+    if (!selectedDocumentId) {
+      setRecentDocumentIds(loadedDocumentIds);
+      return;
+    }
 
-  useEffect(() => {
-    if (!selectedDocumentId) return;
+    const nextDocumentIds = [
+      selectedDocumentId,
+      ...loadedDocumentIds.filter((documentId) => documentId !== selectedDocumentId),
+    ].slice(0, maxRecentDocuments);
+    setRecentDocumentIds(nextDocumentIds);
 
-    setRecentDocumentIds((current) => {
-      const next = [
-        selectedDocumentId,
-        ...current.filter((documentId) => documentId !== selectedDocumentId),
-      ].slice(0, maxRecentDocuments);
-      if (
-        next.length === current.length &&
-        next.every((documentId, index) => documentId === current[index])
-      ) {
-        return current;
-      }
-      return next;
-    });
+    const isStoredOrderCurrent =
+      nextDocumentIds.length === loadedDocumentIds.length &&
+      nextDocumentIds.every((documentId, index) => documentId === loadedDocumentIds[index]);
+    if (!isStoredOrderCurrent) {
+      window.localStorage.setItem(
+        recentDocumentStorageKey,
+        JSON.stringify(nextDocumentIds),
+      );
+    }
   }, [recentDocumentStorageKey, selectedDocumentId]);
-
-  useEffect(() => {
-    if (loadedRecentDocumentStorageKey !== recentDocumentStorageKey) return;
-
-    window.localStorage.setItem(recentDocumentStorageKey, JSON.stringify(recentDocumentIds));
-  }, [loadedRecentDocumentStorageKey, recentDocumentIds, recentDocumentStorageKey]);
 
   useEffect(() => {
     setExpandedFolderIds((current) => {
