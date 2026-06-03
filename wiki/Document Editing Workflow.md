@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 63
+source_count: 68
 tags:
   - munjib
   - workflow
@@ -40,7 +40,7 @@ links:
 
 오른쪽 metadata panel은 상단 icon tab에서 `Attachments`, `Versions`, `Audit log`를 선택할 때 해당 목록만 표시한다. Panel 우측 상단의 close control은 오른쪽 sidebar를 접고, 화면 우측 상단의 reopen icon 하나로 다시 펼친다.
 
-좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #79 이후 `Recents`는 workspace-scoped `munjib:recents:<workspaceSlug>` localStorage selection history에서 최대 5개를 보여주며, 현재 선택된 document를 즉시 첫 후보로 올린다. Stored id가 더 이상 readable documents에 없으면 화면에서 제외하고, history가 5개보다 짧으면 workspace page가 내려준 readable document 순서로 나머지를 채운다. Favorites localStorage 상태와는 무관하게 같은 recent 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
+좌측 navigation은 recent documents, folder/document tree, search panel, localStorage favorites panel을 제공한다. Issue #79와 Issue #83 이후 `Recents`는 workspace-scoped `munjib:recents:<workspaceSlug>` localStorage selection history에서 최대 5개를 보여주되, 현재 editor에 표시 중인 selected document는 목록에서 제외한다. 다른 document로 이동하면 직전 selected document id를 history 맨 앞에 저장하고, stored id가 더 이상 readable documents에 없으면 화면에서 제외하며, history가 5개보다 짧으면 workspace page가 내려준 readable document 순서로 나머지를 채운다. Favorites localStorage 상태와는 무관하게 같은 recent 후보를 유지한다. Issue #32 이후 sidebar의 always-visible title/body search form은 제거되었고, `Search` icon button 또는 `Ctrl+K`가 document list 영역을 검색 결과 panel로 전환한다. `Documents` icon button 또는 `Escape` key는 search/favorites panel에서 기본 document list로 되돌린다. 검색은 permission filter를 통과한 readable document의 title, path, `contentText`를 기준으로 한다.
 
 Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. 사용자가 `tag:#LangChain` 또는 `tag:LangChain`을 직접 입력하면 exact normalized tag match로 검색하고, partial tag query는 matching하지 않는다. 검색 대상 tag index는 YAML frontmatter `tags:`와 body `#tag` reconciliation 결과를 모두 포함하지만, Properties row 자체는 계속 frontmatter tags만 표시한다. Frontmatter tag chip, preview mode 본문 `#tag`, graph view의 tag node를 클릭하면 sidebar Search panel이 열리고 input이 `tag:#<tag>` 값으로 채워진다. Body inline tag parsing and preview linking support Unicode letter/number tag names, so Korean tags such as `#로드맵` and mixed tags such as `#AI_요약` are clickable and searchable. Workspace sidebar search and graph tag nodes derive their tag list from the current readable document markdown at render time, so existing documents with Korean tags are searchable without waiting for a save/reconcile cycle.
 
@@ -136,7 +136,7 @@ Issue #48 이후 editor와 navigation source는 동작을 유지한 채 feature-
 
 Issue #29 구현은 workspace editor 위에 Obsidian-style document tab strip과 navigation toolbar를 추가했다. Active document source of truth는 기존 `?document=<id>` query로 유지된다. Sidebar link, sidebar search result link, preview wikilink는 계속 `?document=<id>`로 route한다. Issue #31에서 toolbar layout은 left navigation buttons, centered current path, right mode toggle의 3-column grid로 정리되어 path가 toolbar 중앙에 표시된다.
 
-Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다.
+Tab strip은 workspace-scoped browser UI state를 `munjib:open-tabs:<workspaceSlug>` localStorage key에 저장하고, active tab instance는 별도 localStorage key로 관리한다. 탭 상태는 DB row를 만들지 않고, document별 separate unsaved editor buffer도 보존하지 않는다. 일반 document 선택은 현재 active tab의 document를 교체한다. 사용자가 마지막 tab 바로 오른쪽의 `+` button으로 빈 tab을 만들거나 sidebar document row의 `...` menu에서 Open in new tab을 선택한 경우에만 새 tab instance를 추가한다. Tab width는 row 폭을 측정해 고정 폭으로 시작하고, tab 수가 row를 채우면 전체 tab width를 줄여 `+` button이 tab strip 끝에 붙어 있게 한다. Minimum tab width까지 줄어든 뒤에도 row를 넘는 tab은 horizontal scroll로 접근할 수 있다. Workspace root URL로 진입했지만 readable stored active tab이 있는 경우, center shell은 folder/graph/empty-tab context가 아닐 때 해당 document URL로 replace navigation을 수행해 tab title과 server-rendered editor body가 같은 document를 가리키게 한다.
 
 Tab close는 active tab이 아니면 목록에서만 제거하고 현재 document/folder context를 유지한다. Active tab을 닫으면 오른쪽 tab, 왼쪽 tab, workspace root 순서로 다음 target을 고른다. Toolbar back/forward는 workspace center가 추적하는 document navigation history를 사용하며, forward 대상 document가 없거나 더 이상 readable하지 않으면 forward button을 비활성화한다. 현재 context path는 selected document의 `Document.path`, selected folder의 `Folder.path`, 또는 root `/`로 표시한다.
 
@@ -163,6 +163,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `app/globals.css`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/workspace-center-shell.tsx`
+- `components/use-document-tabs.ts`
+- `lib/document-tabs.ts`
 - `components/document-navigation/search-panel.tsx`
 - `components/app-shell.tsx`
 - `components/document-navigation/favorites-panel.tsx`
@@ -204,12 +207,14 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `tests/components/document-editor-preview.test.tsx`
 - `tests/e2e/preview-line-breaks.spec.ts`
 - `tests/components/document-list.test.tsx`
+- `tests/components/workspace-center-shell.test.tsx`
 - `tests/documents/import-markdown.test.ts`
 - `tests/components/knowledge-graph-view.test.tsx`
 - `tests/wiki-links/preview.test.ts`
 - `tests/e2e/login.spec.ts`
 - GitHub issue #25
 - GitHub issue #29
+- GitHub issue #83
 - GitHub issue #34
 - `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`

@@ -238,7 +238,7 @@ describe("DocumentList", () => {
       JSON.stringify({ documents: ["doc-1"], folders: [] }),
     );
 
-    renderList();
+    renderList({ selectedDocumentId: "doc-2" });
 
     const recentsSection = screen.getByText("Recents").closest("section");
     expect(recentsSection).toBeTruthy();
@@ -249,7 +249,7 @@ describe("DocumentList", () => {
     });
   });
 
-  it("moves newly selected documents into recents", async () => {
+  it("adds the previously selected document to recents after navigating to another document", async () => {
     const documents = Array.from({ length: 6 }, (_, index) => ({
       id: `doc-${index + 1}`,
       folderId: null,
@@ -261,19 +261,37 @@ describe("DocumentList", () => {
     }));
     const { rerender } = renderList({ documents, selectedDocumentId: "doc-5" });
 
-    rerender(
-      <DocumentList {...baseProps} documents={documents} selectedDocumentId="doc-6" />,
-    );
-
-    const recentsSection = screen.getByText("Recents").closest("section");
+    let recentsSection = screen.getByText("Recents").closest("section");
     expect(recentsSection).toBeTruthy();
     await waitFor(() => {
       expect(
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
           .map((link) => link.textContent?.trim()),
-      ).toEqual(["Document 6", "Document 5", "Document 1", "Document 2", "Document 3"]);
+      ).toEqual(["Document 1", "Document 2", "Document 3", "Document 4", "Document 6"]);
     });
+
+    expect(
+      JSON.parse(window.localStorage.getItem("munjib:recents:company-handbook") ?? "[]"),
+    ).toEqual([]);
+
+    rerender(
+      <DocumentList {...baseProps} documents={documents} selectedDocumentId="doc-6" />,
+    );
+
+    recentsSection = screen.getByText("Recents").closest("section");
+    expect(recentsSection).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        within(recentsSection as HTMLElement)
+          .getAllByRole("link")
+          .map((link) => link.textContent?.trim()),
+      ).toEqual(["Document 5", "Document 1", "Document 2", "Document 3", "Document 4"]);
+    });
+
+    expect(window.localStorage.getItem("munjib:recents:company-handbook")).toBe(
+      JSON.stringify(["doc-5"]),
+    );
   });
 
   it("filters stale stored recent ids before applying the recent limit", async () => {
@@ -300,7 +318,7 @@ describe("DocumentList", () => {
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
           .map((link) => link.textContent?.trim()),
-      ).toEqual(["Document 6", "Document 5", "Document 1", "Document 2", "Document 3"]);
+      ).toEqual(["Document 5", "Document 1", "Document 2", "Document 3", "Document 4"]);
     });
   });
 

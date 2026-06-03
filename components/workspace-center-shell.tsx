@@ -11,6 +11,7 @@ import {
 } from "@/components/document-view-mode";
 import { useDocumentTabs } from "@/components/use-document-tabs";
 import type { DocumentTabDocument } from "@/lib/document-tabs";
+import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type WorkspaceCenterShellProps = {
   workspaceSlug: string;
@@ -56,7 +57,7 @@ function WorkspaceCenterShellContent({
   const { setMode } = useDocumentViewMode();
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTopBeforeModeChangeRef = useRef<number | null>(null);
-  const { tabs, activeTabId, closeTab, selectTab, createNewTab } = useDocumentTabs({
+  const { tabs, activeTabId, activeDocumentId, closeTab, selectTab, createNewTab } = useDocumentTabs({
     workspaceSlug,
     documents,
     selectedDocument,
@@ -90,6 +91,14 @@ function WorkspaceCenterShellContent({
       return { ids: nextIds, index: nextIds.length - 1 };
     });
   }, [selectedDocument]);
+
+  useEffect(() => {
+    if (isGraphView || selectedDocument || selectedFolder || !activeDocumentId) {
+      return;
+    }
+
+    router.replace(workspaceDocumentHref({ workspaceSlug, documentId: activeDocumentId }));
+  }, [activeDocumentId, isGraphView, router, selectedDocument, selectedFolder, workspaceSlug]);
 
   const canNavigateBack =
     documentHistory.index > 0 &&
