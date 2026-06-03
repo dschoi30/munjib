@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-03
-source_count: 136
+source_count: 137
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-03T03:15:00+00:00 - review follow-up
+
+- Result: PR #82 review feedback on RAG runtime error matching was addressed.
+- Coverage: Ask route now stores recoverable RAG/Ollama runtime error codes in a module-level `Set` and checks membership without allocating `Object.values()` on each failed request.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, PR #82 review thread.
+- Verification: `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/ollama.test.ts`; `pnpm exec tsc --noEmit`.
+
+## 2026-06-03T03:05:00+00:00 - design
+
+- Result: Issue #81 Ask AI Ollama model/server setup 설계를 추가했다.
+- Coverage: 현재 Docker web server에서 host-level Ollama를 사용하고, `gemma4:e4b` chat model과 `bge-m3` embedding model을 설치한 뒤 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 web container가 Ollama에 접근하도록 검증하는 운영 설정 계획을 기록했다. Linux Docker에서 host name resolution이 실패하면 `host-gateway` mapping을 추가한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #81, `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`, `lib/rag/config.ts`, `lib/rag/ollama.ts`, `docker-compose.yml`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-03T02:57:00+00:00 - bug fix
 
