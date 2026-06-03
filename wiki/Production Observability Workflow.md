@@ -40,6 +40,7 @@ SENTRY_RELEASE=issue-89-local-build
 SENTRY_TRACES_SAMPLE_RATE=0.05
 NEXT_PUBLIC_SENTRY_DSN=https://public@example.ingest.sentry.io/1
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+NEXT_PUBLIC_SENTRY_RELEASE=issue-89-local-build
 NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
 ```
 
@@ -51,12 +52,12 @@ Sentry SaaS 첫 slice의 목표 범위:
 
 - server-side request error, browser runtime error, App Router global error를 Sentry issue로 보낸다.
 - `SENTRY_DSN` 또는 `NEXT_PUBLIC_SENTRY_DSN`이 비어 있으면 Sentry init은 no-op으로 둔다.
-- `SENTRY_ENVIRONMENT`와 optional `SENTRY_RELEASE`로 event를 운영 환경과 배포 단위에 tag한다.
+- `SENTRY_ENVIRONMENT`와 optional `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE`로 event를 운영 환경과 배포 단위에 tag한다.
 - tracing은 `SENTRY_TRACES_SAMPLE_RATE` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`로 낮게 시작한다.
 - Browser SDK에 필요한 `NEXT_PUBLIC_SENTRY_*` 값은 Next.js build time에 bundle되므로 Docker build args로도 전달한다.
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
 - Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
-- Browser/Server/Edge SDK init은 shared scrubber를 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb`에 연결해 Sentry event의 request URL query, `query_string`, request body data, cookies, request headers, user IP, span URL/query/target/path fields, span request/response body/header/IP/host/user-agent attributes, breadcrumb URL/query fields를 제거한다. Browser navigation breadcrumb의 `from`/`to` query도 제거하고, console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 드롭한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string, browser fetch/XHR span `url`, sampled trace span URL/body/header/IP/host fields, browser `location.href`/breadcrumb 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
+- Browser/Server/Edge SDK init은 shared scrubber를 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb`에 연결해 Sentry event의 request URL query/host, `query_string`, request body data, cookies, request headers, user IP, span URL/query/target/path/description/name fields, span request/response body/header/IP/host/user-agent attributes, breadcrumb URL/query/host fields를 제거한다. Browser navigation breadcrumb의 `from`/`to` query도 제거하고, console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 드롭한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string, browser fetch/XHR span `url`, sampled trace span URL/body/header/IP/host fields, browser `location.href`/breadcrumb 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
 
 `docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 

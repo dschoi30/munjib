@@ -58,13 +58,14 @@ describe("Sentry observability config", () => {
         SENTRY_TRACES_SAMPLE_RATE: "0.5",
         NEXT_PUBLIC_SENTRY_DSN: "https://browser@example.ingest.sentry.io/1",
         NEXT_PUBLIC_SENTRY_ENVIRONMENT: "browser",
+        NEXT_PUBLIC_SENTRY_RELEASE: " browser-release ",
         NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: "0.02",
       }),
     ).toEqual({
       dsn: "https://browser@example.ingest.sentry.io/1",
       enabled: true,
       environment: "browser",
-      release: undefined,
+      release: "browser-release",
       tracesSampleRate: 0.02,
     });
   });
