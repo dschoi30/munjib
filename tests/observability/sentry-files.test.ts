@@ -84,6 +84,11 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("http.request.header");
     expect(source).toContain("http.response.header");
     expect(source).toContain("user.ip_address");
+    expect(source).toContain("http.target");
+    expect(source).toContain("request.path");
+    expect(source).toContain("net.peer.ip");
+    expect(source).toContain("http.client_ip");
+    expect(source).toContain("url.domain");
   });
 
   test("captures App Router global errors", () => {

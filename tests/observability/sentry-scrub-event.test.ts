@@ -100,6 +100,8 @@ describe("scrubSentryEvent", () => {
           data: {
             "url.full": "https://example.com/search?q=private#result",
             "http.url": "/workspaces/company-handbook?documentId=secret",
+            "http.target": "/workspaces/company-handbook?documentId=secret#editor",
+            "request.path": "/api/workspaces/company-handbook?documentId=secret",
             "url.query": "q=private",
             "http.query": "documentId=secret",
             "http.request.body.data": '{"contentMarkdown":"private"}',
@@ -107,8 +109,22 @@ describe("scrubSentryEvent", () => {
             "http.request.header.authorization": "Bearer secret",
             "http.response.header.set_cookie.session": "secret",
             "server.address": "example.com",
+            "server.port": 443,
             "client.address": "203.0.113.10",
+            "client.port": 12345,
             "network.peer.address": "203.0.113.11",
+            "network.peer.port": 5432,
+            "net.host.ip": "198.51.100.10",
+            "net.host.port": 443,
+            "net.host.name": "internal.example.com",
+            "net.peer.ip": "198.51.100.11",
+            "net.peer.port": 5432,
+            "net.peer.name": "database.internal",
+            "http.client_ip": "203.0.113.12",
+            "http.user_agent": "Secret Browser",
+            "http.host": "internal.example.com",
+            "url.domain": "internal.example.com",
+            "url.port": 443,
             "user.ip_address": "203.0.113.12",
             "user_agent.original": "Secret Browser",
             "http.method": "GET",
@@ -122,6 +138,8 @@ describe("scrubSentryEvent", () => {
     expect(event.spans[0].data).toEqual({
       "url.full": "https://example.com/search#result",
       "http.url": "/workspaces/company-handbook",
+      "http.target": "/workspaces/company-handbook#editor",
+      "request.path": "/api/workspaces/company-handbook",
       "http.method": "GET",
     });
   });
@@ -130,12 +148,17 @@ describe("scrubSentryEvent", () => {
     const span = {
       data: {
         "url.full": "https://example.com/workspaces/company-handbook?documentId=secret",
+        "http.target": "/workspaces/company-handbook?documentId=secret",
+        "request.path": "/api/workspaces/company-handbook?documentId=secret",
         "url.query": "documentId=secret",
         "http.request.body.data": '{"contentMarkdown":"private"}',
         "http.request.header.cookie.session": "secret",
         "http.request.header.authorization": "Bearer secret",
         "http.response.header.set_cookie.session": "secret",
         "user.ip_address": "203.0.113.10",
+        "net.peer.ip": "203.0.113.10",
+        "http.client_ip": "203.0.113.10",
+        "http.host": "internal.example.com",
         "network.peer.address": "203.0.113.10",
       },
     };
@@ -145,6 +168,8 @@ describe("scrubSentryEvent", () => {
     expect(result).toBe(span);
     expect(span.data).toEqual({
       "url.full": "https://example.com/workspaces/company-handbook",
+      "http.target": "/workspaces/company-handbook",
+      "request.path": "/api/workspaces/company-handbook",
     });
   });
 
