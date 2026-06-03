@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T17:28:00+09:00 - issue-85 PR review tag search follow-up
+
+- Result: Left sidebar가 접힌 상태에서도 tag chip/body tag/graph tag search request가 sidebar를 다시 열고 Search panel에 `tag:#<tag>` query를 적용한다.
+- Coverage: `AppShell`의 `requestTagSearch`가 left sidebar open state를 복구한 뒤 request token을 갱신하고, real `DocumentList` integration test가 collapsed sidebar에서 `tag:#LangChain` search input까지 열리는 흐름을 고정했다.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #86 Codex review thread on `components/app-shell.tsx`, `components/app-shell.tsx`, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-list.test.tsx -t "reopens the left sidebar|tag search request|opens sidebar search"`, `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/workspace-center-shell.test.tsx tests/document-tabs.test.ts`, and `pnpm exec tsc --noEmit` passed after the PR review fix.
+
 ## 2026-06-03T17:17:00+09:00 - issue-85 PR review keyboard follow-up
 
 - Result: Workspace menu Escape handling now closes the dropdown without capture-phase global cancellation and outside-click handling guards missing event targets.

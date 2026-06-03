@@ -87,6 +87,7 @@ export function AppShell({
   const headingNavigatorRef = useRef<HeadingNavigator>(null);
   const nextTagSearchTokenRef = useRef(0);
   const requestTagSearch = useCallback((tagName: string) => {
+    setLeftPanelOpen(true);
     nextTagSearchTokenRef.current += 1;
     setLatestTagSearchRequest({
       tagName,
