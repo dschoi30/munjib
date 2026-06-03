@@ -28,8 +28,14 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
       NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
+      MUNJIB_OLLAMA_BASE_URL: ${MUNJIB_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      MUNJIB_RAG_CHAT_MODEL: ${MUNJIB_RAG_CHAT_MODEL:-gemma4:e4b}
+      MUNJIB_RAG_EMBED_MODEL: ${MUNJIB_RAG_EMBED_MODEL:-bge-m3}
+      MUNJIB_RAG_EMBED_DIMENSIONS: ${MUNJIB_RAG_EMBED_DIMENSIONS:-1024}
     ports:
       - "${WEB_PORT:-3000}:3000"
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
     volumes:
       - web_storage:/app/storage
 
@@ -48,6 +54,12 @@ services:
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
       NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
+      MUNJIB_OLLAMA_BASE_URL: ${MUNJIB_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      MUNJIB_RAG_CHAT_MODEL: ${MUNJIB_RAG_CHAT_MODEL:-gemma4:e4b}
+      MUNJIB_RAG_EMBED_MODEL: ${MUNJIB_RAG_EMBED_MODEL:-bge-m3}
+      MUNJIB_RAG_EMBED_DIMENSIONS: ${MUNJIB_RAG_EMBED_DIMENSIONS:-1024}
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
 
 volumes:
   postgres_data:

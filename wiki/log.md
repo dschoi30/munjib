@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-03T08:20:00+00:00 - implementation
+
+- Result: Issue #81 Ask AI host Ollama server setup을 적용하고 실제 ask route 응답을 검증했다.
+- Coverage: Host에 Ollama 0.30.2를 설치하고 `gemma4:e4b`, `bge-m3` 모델을 pull했다. Ollama service는 `OLLAMA_HOST=0.0.0.0:11434` systemd drop-in으로 Docker web container 접근을 허용한다. `docker-compose.yml`은 web/tools에 RAG model env와 `host.docker.internal:172.18.0.1` mapping을 제공한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent save`로 영구 저장했다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #81, `docker-compose.yml`, `tests/docker/compose.test.ts`, host Ollama install state, `netfilter-persistent` saved iptables rule.
+- Verification: `ollama list`, host `/api/tags`, `gemma4:e4b` chat returned `OK`, `bge-m3` embed returned 1024 dimensions, web container `/api/tags`, `pnpm exec vitest run tests/docker/compose.test.ts`, `sudo docker compose up -d --build web`, `sudo docker compose run --rm tools pnpm run db:rag:index`, authenticated ask route returned HTTP 200 with answer and citation for Welcome.
+
 ## 2026-06-03T12:34:00+09:00 - pr-80 review follow-up
 
 - Result: Recents now filters stale stored ids before applying the five-item limit.
