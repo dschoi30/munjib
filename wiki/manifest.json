@@ -159,7 +159,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 56,
+      "source_count": 57,
       "searchPriority": 5
     },
     {
@@ -181,7 +181,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 22,
+      "source_count": 23,
       "searchPriority": 50
     },
     {
@@ -201,7 +201,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 144,
+      "source_count": 145,
       "searchPriority": 1
     },
     {
@@ -279,7 +279,7 @@
       "title": "Production Observability Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS 관측성 설계 범위.",
+      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.",
       "tags": [
         "munjib",
         "workflow",
@@ -292,7 +292,7 @@
         "[[Project PRD]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 8,
+      "source_count": 18,
       "searchPriority": 50
     },
     {

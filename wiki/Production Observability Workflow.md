@@ -3,10 +3,10 @@ id: workflow-production-observability
 title: Production Observability Workflow
 type: workflow
 status: active
-summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS 관측성 설계 범위.
+summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
 created: 2026-06-03
 updated: 2026-06-03
-source_count: 8
+source_count: 18
 tags:
   - munjib
   - workflow
@@ -21,7 +21,7 @@ links:
 
 # Production Observability Workflow
 
-이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 Sentry 도입은 아직 구현 전 설계 단계이며, 현재형 구현으로 과장하지 않는다.
+이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다.
 
 ## Entry points
 
@@ -31,7 +31,19 @@ Production-style Compose 서버의 startup, 환경 변수, DB 연결, PostgreSQL
 docker compose logs -f --tail=300 --timestamps web postgres
 ```
 
-Issue #89 설계와 구현 계획은 이 로그 흐름을 대체하지 않고 `@sentry/nextjs` 기반 SaaS error monitoring과 낮은 sample rate의 tracing을 추가한다. Next.js App Router manual setup에 맞춰 `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`를 추가하는 방향이다.
+Sentry SaaS를 켜려면 production Docker image build와 runtime에 다음 값을 둔다.
+
+```text
+SENTRY_DSN=https://public@example.ingest.sentry.io/1
+SENTRY_ENVIRONMENT=production
+SENTRY_RELEASE=issue-89-local-build
+SENTRY_TRACES_SAMPLE_RATE=0.05
+NEXT_PUBLIC_SENTRY_DSN=https://public@example.ingest.sentry.io/1
+NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
+```
+
+Issue #89 구현은 이 로그 흐름을 대체하지 않고 `@sentry/nextjs` 기반 SaaS error monitoring과 낮은 sample rate의 tracing을 추가한다. Next.js App Router manual setup에 맞춰 `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`를 사용한다.
 
 ## Steps
 
@@ -43,8 +55,9 @@ Sentry SaaS 첫 slice의 목표 범위:
 - tracing은 `SENTRY_TRACES_SAMPLE_RATE` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`로 낮게 시작한다.
 - Browser SDK에 필요한 `NEXT_PUBLIC_SENTRY_*` 값은 Next.js build time에 bundle되므로 Docker build args로도 전달한다.
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
+- Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
 
-`docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 검증해야 한다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다룬다.
+`docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 
 ## Failure modes
 
@@ -56,15 +69,25 @@ Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure,
 
 ## Tests
 
-Issue #89 구현 계획은 `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`에 둔다. 자동 검증은 Sentry config helper unit test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함해야 한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
+Issue #89 자동 검증은 Sentry config helper unit test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
 
 ## 근거
 
 - GitHub issue #89
 - `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`
 - `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`
+- `lib/observability/sentry-config.ts`
+- `instrumentation-client.ts`
+- `sentry.server.config.ts`
+- `sentry.edge.config.ts`
+- `instrumentation.ts`
+- `app/global-error.tsx`
 - `docker-compose.yml`
 - `Dockerfile`
 - `next.config.mjs`
+- `.env.example`
+- `.env.docker.example`
+- `tests/observability/sentry-config.test.ts`
+- `tests/observability/sentry-files.test.ts`
 - `tests/docker/compose.test.ts`
 - [[Local Development Workflow]]
