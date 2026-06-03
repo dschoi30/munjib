@@ -149,6 +149,23 @@ describe("DocumentList", () => {
     expect(buttonNames[documentsIndex + 1]).toBe("Graph");
   });
 
+  it("keeps the workspace header and icon toolbar in sticky sidebar chrome", () => {
+    renderList();
+
+    const stickyChrome = screen.getByTestId("document-list-sticky-chrome");
+    expect(stickyChrome.className).toContain("sticky");
+    expect(stickyChrome.className).toContain("top-0");
+    expect(stickyChrome.className).toContain("z-20");
+    expect(stickyChrome.className).toContain("bg-muted");
+    expect(within(stickyChrome).getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(within(stickyChrome).getByTestId("document-create-toolbar")).toBeTruthy();
+
+    const navigationBody = screen.getByTestId("document-list-navigation-body");
+    expect(navigationBody.className).toContain("pt-3");
+    expect(within(navigationBody).getByText("Recents")).toBeTruthy();
+    expect(within(navigationBody).getByRole("navigation", { name: "All documents" })).toBeTruthy();
+  });
+
   it("opens the workspace settings panel with import selected by default", () => {
     renderList();
 

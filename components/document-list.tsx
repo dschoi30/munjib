@@ -181,80 +181,84 @@ export function DocumentList({
 
   return (
     <div>
-      <div ref={workspaceMenuRef} className="relative">
-        <TooltipProvider delayDuration={0}>
-          <div className="flex h-11 items-center gap-2">
-            <Button
-              type="button"
+      <div data-testid="document-list-sticky-chrome" className="sticky top-0 z-20 bg-muted pb-1">
+        <div ref={workspaceMenuRef} className="relative">
+          <TooltipProvider delayDuration={0}>
+            <div className="flex h-11 items-center gap-2">
+              <Button
+                type="button"
+                aria-label="Workspace menu"
+                aria-expanded={workspaceMenuOpen}
+                onClick={() => setWorkspaceMenuOpen((open) => !open)}
+                className="min-w-0 flex-1 justify-start bg-transparent p-0 text-left text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
+              >
+                <span className="truncate">Company Handbook</span>
+              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    aria-label="Close sidebar"
+                    onClick={closeSidebar}
+                    className={iconButtonClassName}
+                  >
+                    <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Close sidebar</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
+          {workspaceMenuOpen ? (
+            <div
+              role="menu"
               aria-label="Workspace menu"
-              aria-expanded={workspaceMenuOpen}
-              onClick={() => setWorkspaceMenuOpen((open) => !open)}
-              className="min-w-0 flex-1 justify-start bg-transparent p-0 text-left text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
+              className="absolute left-0 right-0 top-11 z-30 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg"
             >
-              <span className="truncate">Company Handbook</span>
-            </Button>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  aria-label="Close sidebar"
-                  onClick={closeSidebar}
-                  className={iconButtonClassName}
-                >
-                  <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">Close sidebar</TooltipContent>
-            </Tooltip>
-          </div>
-        </TooltipProvider>
-        {workspaceMenuOpen ? (
-          <div
-            role="menu"
-            aria-label="Workspace menu"
-            className="absolute left-0 right-0 top-11 z-30 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={openWorkspaceSettings}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-muted"
-            >
-              <Settings className="h-4 w-4" aria-hidden="true" />
-              Settings
-            </button>
-          </div>
-        ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={openWorkspaceSettings}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-muted"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                Settings
+              </button>
+            </div>
+          ) : null}
+        </div>
+        <DocumentCreateControls
+          canWrite={canWrite}
+          createAction={createAction as CreateDocumentFormAction}
+          createFolderAction={createFolderAction as CreateFolderFormAction}
+          activeView={isGraphView ? "graph" : activePanel}
+          onOpenDocuments={openDocuments}
+          onOpenSearch={openSearch}
+          onOpenFavorites={openFavorites}
+          onOpenGraph={openGraph}
+        />
       </div>
-      <DocumentCreateControls
-        canWrite={canWrite}
-        createAction={createAction as CreateDocumentFormAction}
-        createFolderAction={createFolderAction as CreateFolderFormAction}
-        activeView={isGraphView ? "graph" : activePanel}
-        onOpenDocuments={openDocuments}
-        onOpenSearch={openSearch}
-        onOpenFavorites={openFavorites}
-        onOpenGraph={openGraph}
-      />
-      <DocumentNavigation
-        workspaceSlug={workspaceSlug}
-        folders={folders}
-        documents={documents}
-        activePanel={activePanel}
-        searchQuery={searchQuery}
-        onOpenSearch={openSearch}
-        onOpenDocuments={openDocuments}
-        onSearchQueryChange={setSearchQuery}
-        selectedFolderId={selectedFolderId}
-        canWrite={canWrite}
-        createAction={createAction}
-        createFolderAction={createFolderAction}
-        renameFolderAction={renameFolderAction}
-        archiveFolderAction={archiveFolderAction}
-        archiveDocumentAction={archiveDocumentAction}
-        folderError={folderError}
-        selectedDocumentId={selectedDocumentId}
-      />
+      <div data-testid="document-list-navigation-body" className="pt-3">
+        <DocumentNavigation
+          workspaceSlug={workspaceSlug}
+          folders={folders}
+          documents={documents}
+          activePanel={activePanel}
+          searchQuery={searchQuery}
+          onOpenSearch={openSearch}
+          onOpenDocuments={openDocuments}
+          onSearchQueryChange={setSearchQuery}
+          selectedFolderId={selectedFolderId}
+          canWrite={canWrite}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+          renameFolderAction={renameFolderAction}
+          archiveFolderAction={archiveFolderAction}
+          archiveDocumentAction={archiveDocumentAction}
+          folderError={folderError}
+          selectedDocumentId={selectedDocumentId}
+        />
+      </div>
       {settingsOpen ? (
         <WorkspaceSettingsPanel
           canWrite={canWrite}
