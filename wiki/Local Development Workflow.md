@@ -39,8 +39,18 @@ DB 관련 명령:
 ```bash
 pnpm run db:generate
 pnpm run db:migrate
+pnpm run db:rag:index
 pnpm run db:seed
 ```
+
+Issue #73 이후 local Postgres는 pgvector extension이 설치된 image가 필요하다. `localhost:55432`에 예전 `postgres:16-alpine` container가 남아 있으면 `prisma migrate dev`의 shadow database 단계에서 `extension "vector" is not available` / `vector.control` 오류가 난다. 이 경우 기존 DB를 보존하려면 `.env`의 `POSTGRES_PORT`와 `DATABASE_URL`을 다른 port로 맞춘 뒤 현재 `docker-compose.yml`의 `pgvector/pgvector:0.8.2-pg16` Postgres를 띄운다.
+
+```text
+POSTGRES_PORT=55433
+DATABASE_URL="postgresql://obsidian:obsidian@localhost:55433/obsidian_clone?schema=public"
+```
+
+Prisma schema는 `DocumentChunk.embedding`을 `Unsupported("vector(1024)")`로 보지만 HNSW vector index는 datamodel로 round-trip하지 못한다. 그래서 Prisma migration은 extension/table/current relational indexes까지만 맡고, `pnpm run db:rag:index`가 `CREATE INDEX IF NOT EXISTS "DocumentChunk_embedding_hnsw_idx" ... USING hnsw ("embedding" vector_cosine_ops)`를 별도로 실행한다. `pnpm run db:migrate`는 `prisma migrate dev` 뒤 이 index setup을 이어서 실행한다.
 
 Wiki maintenance 명령:
 
@@ -81,15 +91,16 @@ Development container 실행:
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속한다. Host machine에서 직접 Prisma/test를 실행할 때는 기존처럼 `localhost:55432` 또는 `127.0.0.1:55432`를 사용한다. Host용 `.env`의 `DATABASE_URL`과 충돌하지 않도록 Compose는 container DB override 변수로 `DOCKER_DATABASE_URL`을 사용한다.
+Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속한다. Host machine에서 직접 Prisma/test를 실행할 때는 `.env`의 `POSTGRES_PORT`와 `DATABASE_URL`을 사용한다. Host용 `.env`의 `DATABASE_URL`과 충돌하지 않도록 Compose는 container DB override 변수로 `DOCKER_DATABASE_URL`을 사용한다.
 
 Compose는 database row와 uploaded attachment file이 함께 남도록 named volume을 둘 다 둔다. `postgres_data`는 PostgreSQL data directory를 유지하고, `web_storage`는 web container의 `/app/storage`를 유지해 container 재생성 뒤에도 `storage/attachments` 파일을 보존한다.
 
-기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다.
+기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다. Production container를 HTTPS 없이 외부 HTTP IP로 임시 노출할 때는 browser가 session cookie를 저장할 수 있도록 `NEXTAUTH_COOKIE_SECURE=false`도 함께 둔다. Compose는 이 값을 `web`과 `tools` container environment에 명시적으로 전달한다.
 
 ```bash
 POSTGRES_PORT=55433 docker compose up --build
 POSTGRES_PORT=55433 WEB_PORT=3101 NEXTAUTH_URL=http://localhost:3101 docker compose up --build
+WEB_PORT=80 NEXTAUTH_URL=http://146.56.170.25 NEXTAUTH_COOKIE_SECURE=false docker compose up --build
 ```
 
 Docker web container에서 schema와 seed를 준비하는 명령:

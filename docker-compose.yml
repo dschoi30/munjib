@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:0.8.2-pg16
     environment:
       POSTGRES_USER: obsidian
       POSTGRES_PASSWORD: obsidian
@@ -27,6 +27,7 @@ services:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
+      NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
     ports:
       - "${WEB_PORT:-3000}:3000"
     volumes:
@@ -46,6 +47,7 @@ services:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
+      NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
 
 volumes:
   postgres_data:
