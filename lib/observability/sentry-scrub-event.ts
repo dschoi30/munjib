@@ -22,23 +22,19 @@ type ScrubbableSentryEvent = {
   breadcrumbs?: SentryBreadcrumb[];
 };
 
-const SENSITIVE_REQUEST_HEADERS = new Set([
-  "referer",
-  "referrer",
-  "cookie",
-  "authorization",
-  "proxy-authorization",
-  "x-forwarded-for",
-  "x-real-ip",
-]);
-
 const SPAN_URL_KEYS = new Set([
+  "url",
   "url.full",
   "http.url",
   "http.target",
   "request.path",
 ]);
-const SPAN_QUERY_KEYS = new Set(["url.query", "http.query"]);
+const SPAN_QUERY_KEYS = new Set([
+  "url.query",
+  "http.query",
+  "url.fragment",
+  "http.fragment",
+]);
 const SPAN_NETWORK_KEYS = new Set([
   "server.address",
   "server.port",
@@ -100,20 +96,7 @@ function scrubRequest(request: SentryRequest): void {
   delete request.query_string;
   delete request.data;
   delete request.cookies;
-
-  if (!request.headers) {
-    return;
-  }
-
-  for (const header of Object.keys(request.headers)) {
-    if (SENSITIVE_REQUEST_HEADERS.has(header.toLowerCase())) {
-      delete request.headers[header];
-    }
-  }
-
-  if (Object.keys(request.headers).length === 0) {
-    delete request.headers;
-  }
+  delete request.headers;
 }
 
 function scrubUser(user: Record<string, unknown>): boolean {

@@ -36,34 +36,18 @@ describe("scrubSentryEvent", () => {
     expect(event.request.url).toBe("/workspaces/company-handbook#graph");
   });
 
-  test("removes sensitive request headers case-insensitively and keeps safe headers", () => {
+  test("removes request headers", () => {
     const event = {
       request: {
         headers: {
           Referer: "https://example.com/search?q=private",
+          "User-Agent": "Secret Browser",
           Cookie: "session=secret",
           authorization: "Bearer secret",
           "Proxy-Authorization": "Basic secret",
           "X-Forwarded-For": "203.0.113.10",
           "x-real-ip": "203.0.113.11",
           "content-type": "application/json",
-        },
-      },
-    };
-
-    scrubSentryEvent(event);
-
-    expect(event.request.headers).toEqual({
-      "content-type": "application/json",
-    });
-  });
-
-  test("removes request headers when no safe headers remain", () => {
-    const event = {
-      request: {
-        headers: {
-          REFERRER: "https://example.com/search?q=private",
-          COOKIE: "session=secret",
         },
       },
     };
@@ -98,12 +82,15 @@ describe("scrubSentryEvent", () => {
       spans: [
         {
           data: {
+            url: "/api/workspaces/company-handbook?documentId=secret#xhr",
             "url.full": "https://example.com/search?q=private#result",
             "http.url": "/workspaces/company-handbook?documentId=secret",
             "http.target": "/workspaces/company-handbook?documentId=secret#editor",
             "request.path": "/api/workspaces/company-handbook?documentId=secret",
             "url.query": "q=private",
             "http.query": "documentId=secret",
+            "url.fragment": "xhr",
+            "http.fragment": "editor",
             "http.request.body.data": '{"contentMarkdown":"private"}',
             "http.request.header.cookie.session": "secret",
             "http.request.header.authorization": "Bearer secret",
@@ -136,6 +123,7 @@ describe("scrubSentryEvent", () => {
     scrubSentryEvent(event);
 
     expect(event.spans[0].data).toEqual({
+      url: "/api/workspaces/company-handbook#xhr",
       "url.full": "https://example.com/search#result",
       "http.url": "/workspaces/company-handbook",
       "http.target": "/workspaces/company-handbook#editor",
@@ -147,10 +135,12 @@ describe("scrubSentryEvent", () => {
   test("scrubs standalone span payloads for beforeSendSpan", () => {
     const span = {
       data: {
+        url: "/api/workspaces/company-handbook?documentId=secret#xhr",
         "url.full": "https://example.com/workspaces/company-handbook?documentId=secret",
         "http.target": "/workspaces/company-handbook?documentId=secret",
         "request.path": "/api/workspaces/company-handbook?documentId=secret",
         "url.query": "documentId=secret",
+        "http.fragment": "xhr",
         "http.request.body.data": '{"contentMarkdown":"private"}',
         "http.request.header.cookie.session": "secret",
         "http.request.header.authorization": "Bearer secret",
@@ -167,9 +157,37 @@ describe("scrubSentryEvent", () => {
 
     expect(result).toBe(span);
     expect(span.data).toEqual({
+      url: "/api/workspaces/company-handbook#xhr",
       "url.full": "https://example.com/workspaces/company-handbook",
       "http.target": "/workspaces/company-handbook",
       "request.path": "/api/workspaces/company-handbook",
+    });
+  });
+
+  test("scrubs browser fetch and xhr span url payloads", () => {
+    const fetchSpan = {
+      data: {
+        url: "https://example.com/api/documents?documentId=secret#fetch",
+        type: "fetch",
+      },
+    };
+    const xhrSpan = {
+      data: {
+        url: "/api/documents?documentId=secret#xhr",
+        type: "xhr",
+      },
+    };
+
+    scrubSentrySpan(fetchSpan);
+    scrubSentrySpan(xhrSpan);
+
+    expect(fetchSpan.data).toEqual({
+      url: "https://example.com/api/documents#fetch",
+      type: "fetch",
+    });
+    expect(xhrSpan.data).toEqual({
+      url: "/api/documents#xhr",
+      type: "xhr",
     });
   });
 
