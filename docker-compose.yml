@@ -16,6 +16,7 @@ services:
       retries: 10
 
   web:
+    image: ${WEB_IMAGE:-ghcr.io/dschoi30/munjib:latest}
     build:
       context: .
       target: runner

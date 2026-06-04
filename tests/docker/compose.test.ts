@@ -25,6 +25,8 @@ describe("Docker web service configuration", () => {
 
     expect(compose).toContain("postgres:");
     expect(compose).toContain("web:");
+    expect(compose).toContain("WEB_IMAGE");
+    expect(compose).toContain("ghcr.io/dschoi30/munjib:latest");
     expect(compose).toContain("target: runner");
     expect(compose).toContain("target: tools");
     expect(compose).toContain("condition: service_healthy");
@@ -87,6 +89,8 @@ describe("Docker web service configuration", () => {
   test("development override runs next dev from the dev image target", () => {
     const compose = read("docker-compose.dev.yml");
 
+    expect(compose).toContain("WEB_DEV_IMAGE");
+    expect(compose).toContain("munjib-web-dev");
     expect(compose).toContain("target: dev");
     expect(compose).toContain("pnpm run dev");
     expect(compose).toContain("DOCKER_DATABASE_URL");

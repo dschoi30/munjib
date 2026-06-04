@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-03
-source_count: 152
+updated: 2026-06-04
+source_count: 154
 tags:
   - log
   - munjib
@@ -18,6 +18,31 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-04T00:00:00+00:00 - issue-88 review follow-up
+
+- Result: PR #91 review feedback에 따라 GHCR runtime image publish build에도 Sentry public build args를 전달한다.
+- Coverage: `.github/workflows/ci-cd.yml`의 Docker build-push step은 `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`, `SENTRY_RELEASE` build args를 전달해 browser Sentry bundle이 published image에서 비활성화되지 않게 한다. Workflow test는 publish step build args를 고정한다.
+- Pages: [[Local Development Workflow]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: PR #91 Codex review thread, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.test.ts` passed 2 files / 12 tests.
+
+## 2026-06-03T13:20:00+00:00 - implementation
+
+- Result: Issue #88 GitHub Actions CI/CD workflow를 구현했다.
+- Coverage: `.github/workflows/ci-cd.yml`은 PR/`main` CI에서 pgvector PostgreSQL service, pnpm install, Prisma generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. `main` push는 GHCR에 SHA/latest image를 publish하고 SSH로 production compose project에서 `git pull --ff-only`, `docker compose pull web`, rebuilt tools container Prisma migration deploy, RAG vector index setup, `docker compose up -d web`을 실행한다. `docker-compose.yml`의 `web` service는 `WEB_IMAGE`로 published image tag를 받을 수 있고, `docker-compose.dev.yml`은 dev build tag를 `WEB_DEV_IMAGE`로 분리한다. PR review follow-up은 workflow test action step assertions, CI DB setup, deploy tools rebuild, published image Sentry build args를 보강했다.
+- Pages: [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #88, `.github/workflows/ci-cd.yml`, `docker-compose.yml`, `docker-compose.dev.yml`, `tests/github-actions/ci-cd.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm run db:generate`; `DATABASE_URL=postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public pnpm test` passed 50 files / 514 tests; `DATABASE_URL=postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public pnpm run build`; `sudo docker build --target runner --tag munjib-ci-cd-verify .`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; review follow-up `pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.test.ts`. PR CI re-inspection is pending.
+
+## 2026-06-03T09:20:00+00:00 - design
+
+- Result: Issue #88 GitHub Actions CI/CD 설계를 추가했다.
+- Coverage: PR/`main` CI는 pnpm install, Prisma generate, Vitest, Next build, Docker `runner` target build를 검증하고, `main` push는 GHCR image publish 후 SSH로 production compose project를 갱신하는 계획을 기록했다. 구현은 아직 시작하지 않았고, deploy server와 GitHub secrets는 repository 밖 운영 전제다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #88, `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`, `package.json`, `Dockerfile`, `docker-compose.yml`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
 
 ## 2026-06-03T20:50:14+0900 - issue-89 sentry privacy scrubber
 
