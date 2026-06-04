@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-03
+updated: 2026-06-04
 source_count: 24
 tags:
   - munjib
@@ -116,7 +116,7 @@ NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05 \
 docker compose up --build
 ```
 
-Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. `main` push에서는 `ghcr.io/dschoi30/munjib:<sha>`와 `latest` image를 publish한 뒤 SSH로 production server의 compose project를 갱신한다. Production compose `web` service는 `WEB_IMAGE` env로 published image tag를 받을 수 있고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본 image name으로 사용한다. Deploy job은 server checkout을 `git pull --ff-only`로 갱신하고 `docker compose pull web`, `docker compose run --rm --build tools pnpm exec prisma migrate deploy`, `docker compose run --rm --build tools pnpm run db:rag:index`, `docker compose up -d web` 순서로 실행한다.
+Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. `main` push에서는 `ghcr.io/dschoi30/munjib:<sha>`와 `latest` image를 publish한 뒤 SSH로 production server의 compose project를 갱신한다. GHCR image publish build는 browser Sentry bundle이 유지되도록 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 함께 전달한다. Production compose `web` service는 `WEB_IMAGE` env로 published image tag를 받을 수 있고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본 image name으로 사용한다. Deploy job은 server checkout을 `git pull --ff-only`로 갱신하고 `docker compose pull web`, `docker compose run --rm --build tools pnpm exec prisma migrate deploy`, `docker compose run --rm --build tools pnpm run db:rag:index`, `docker compose up -d web` 순서로 실행한다.
 
 Required GitHub secrets:
 

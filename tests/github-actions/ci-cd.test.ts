@@ -73,6 +73,11 @@ describe("GitHub Actions CI/CD workflow", () => {
       target: "runner",
       push: true,
     });
+    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}");
+    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'production' }}");
+    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}");
+    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '0.05' }}");
+    expect(pushStep?.with["build-args"]).toContain("SENTRY_RELEASE=${{ github.sha }}");
     expect(pushStep?.with.tags).toContain("${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}");
     expect(pushStep?.with.tags).toContain("${{ env.IMAGE_NAME }}:latest");
   });
