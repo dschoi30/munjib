@@ -16,6 +16,7 @@ import {
 } from "@/components/document-navigation/favorites";
 import { FavoriteSection } from "@/components/document-navigation/favorites-panel";
 import { FolderToggleRow } from "@/components/document-navigation/folder-row";
+import { getFolderTrashSummary } from "@/components/document-navigation/folder-trash";
 import { SearchPanel } from "@/components/document-navigation/search-panel";
 import { buildTreeItems, hasTreeChildren } from "@/components/document-navigation/tree";
 import type {
@@ -351,6 +352,14 @@ export function DocumentNavigation({
   }
 
   async function archiveFolderFromMenu(formData: FormData) {
+    const folderId = String(formData.get("folderId"));
+    const trashSummary = getFolderTrashSummary({
+      folderId,
+      folders,
+      documents,
+      selectedFolderId,
+      selectedDocumentId,
+    });
     const result = await archiveFolderAction(formData);
     if (result.error) {
       setOpenMenuId(null);
@@ -364,7 +373,11 @@ export function DocumentNavigation({
 
     setOpenMenuId(null);
     startTransition(() => {
-      if (result.folderId === selectedFolderId) {
+      if (
+        result.folderId === selectedFolderId ||
+        trashSummary.selectedFolderWillBeArchived ||
+        trashSummary.selectedDocumentWillBeArchived
+      ) {
         router.push(`/workspaces/${workspaceSlug}`);
         return;
       }
@@ -425,6 +438,13 @@ export function DocumentNavigation({
 
       const isExpanded = expandedFolderIds.has(item.folder.id);
       const hasChildren = hasTreeChildren(folders, documents, item.folder.id);
+      const trashSummary = getFolderTrashSummary({
+        folderId: item.folder.id,
+        folders,
+        documents,
+        selectedFolderId,
+        selectedDocumentId,
+      });
 
       return (
         <div key={item.folder.id}>
@@ -435,6 +455,7 @@ export function DocumentNavigation({
             canWrite={canWrite}
             renameFolderAction={renameFolderFromMenu}
             archiveFolderAction={archiveFolderFromMenu}
+            trashSummary={trashSummary}
             isFavorite={favoriteFolderIds.has(item.folder.id)}
             isRenaming={renamingFolderId === item.folder.id}
             pendingCreateAction={pendingFolderCreateAction}

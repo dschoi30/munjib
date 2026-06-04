@@ -6,7 +6,7 @@ status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
 updated: 2026-06-05
-source_count: 40
+source_count: 48
 tags:
   - munjib
   - data-model
@@ -64,7 +64,7 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 Folder archive는 soft delete다. Folder와 Document row는 물리 삭제하지 않고 `status=ARCHIVED`, `archivedAt`, `updatedById`를 갱신해 active workspace tree에서 제외한다.
 
-기본 `archiveFolder()` 호출은 비어 있지 않은 folder를 `FOLDER_NOT_EMPTY`로 거부한다. Issue #92 설계는 sidebar `Move to trash`에서 active descendant folder/document counts를 보여주는 사용자 확인을 받은 뒤에만 `cascade=true`를 server action에 전달한다. Server service는 client counts를 신뢰하지 않고 같은 workspace 안의 active descendant subtree를 다시 계산한 뒤, 하나의 transaction으로 하위 documents, 하위 folders, target folder를 archive한다.
+기본 `archiveFolder()` 호출은 비어 있지 않은 folder를 `FOLDER_NOT_EMPTY`로 거부한다. Issue #92 implements explicit cascade archive for folder trash. Sidebar `Move to trash` computes active descendant folder/document counts for confirmation copy, submits `cascade=true` only after user confirmation, and the server service recalculates the active subtree before archiving descendant documents, descendant folders, and the target folder in one transaction.
 
 Recursive restore와 hard delete는 Issue #92 범위가 아니다.
 

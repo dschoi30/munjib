@@ -161,11 +161,13 @@ export async function renameFolderAction(workspaceSlug: string, formData: FormDa
 export async function archiveFolderAction(workspaceSlug: string, formData: FormData) {
   const user = await requireCurrentUser();
   const folderId = String(formData.get("folderId"));
+  const cascade = formData.get("cascade") === "true";
 
   try {
     await archiveFolder({
       folderId,
       actorId: user.id,
+      cascade,
     });
   } catch (error) {
     if (!(error instanceof Error) || error.message !== SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY) {

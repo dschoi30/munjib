@@ -1330,6 +1330,177 @@ describe("DocumentList", () => {
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
   });
 
+  it("submits cascade when moving a non-empty folder subtree to trash", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({
+      archiveFolderAction,
+      documents: [
+        ...baseProps.documents,
+        {
+          id: "doc-runbook",
+          folderId: "folder-runbooks",
+          title: "Deploy Checklist",
+          path: "/engineering/runbooks/deploy-checklist",
+          contentText: "Deploy body",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    await waitFor(() => {
+      expect(archiveFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (archiveFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Move this folder and 1 folder and 1 document to trash?",
+    );
+    expect(submittedFormData.get("folderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("cascade")).toBe("true");
+    expect(router.refresh).toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("navigates to the workspace root when cascade trash archives the selected document", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({
+      archiveFolderAction,
+      selectedDocumentId: "doc-runbook",
+      documents: [
+        ...baseProps.documents,
+        {
+          id: "doc-runbook",
+          folderId: "folder-runbooks",
+          title: "Deploy Checklist",
+          path: "/engineering/runbooks/deploy-checklist",
+          contentText: "Deploy body",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
+    });
+    expect(router.refresh).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("navigates to the workspace root when cascade trash archives the selected folder", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({
+      archiveFolderAction,
+      selectedFolderId: "folder-runbooks",
+      selectedDocumentId: null,
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook");
+    });
+    expect(router.refresh).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("keeps empty folder trash as a non-cascade submit", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({ archiveFolderAction });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Runbooks /engineering/runbooks",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    await waitFor(() => {
+      expect(archiveFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (archiveFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(confirmSpy).toHaveBeenCalledWith("Move this folder to trash?");
+    expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
+    expect(submittedFormData.get("cascade")).toBeNull();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("cancels cascade folder trash when the confirmation is dismissed", () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({
+      archiveFolderAction,
+      documents: [
+        ...baseProps.documents,
+        {
+          id: "doc-runbook",
+          folderId: "folder-runbooks",
+          title: "Deploy Checklist",
+          path: "/engineering/runbooks/deploy-checklist",
+          contentText: "Deploy body",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Move this folder and 1 folder and 1 document to trash?",
+    );
+    expect(archiveFolderAction).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
   it("shows feedback when folder menu creation fails", async () => {
     const createFolderAction = vi.fn(async () => {
       throw new Error("create failed");
