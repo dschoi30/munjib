@@ -125,6 +125,14 @@ export default async function WorkspacePage({
     explicitDocumentIds,
     userPermissionsByDocumentId: userPermissionByDocumentId,
   });
+  const activeDocumentCountsByFolderId = workspace.documents.reduce<Record<string, number>>(
+    (counts, document) => {
+      if (!document.folderId) return counts;
+      counts[document.folderId] = (counts[document.folderId] ?? 0) + 1;
+      return counts;
+    },
+    {},
+  );
   const readableDocumentIds = new Set(readableDocuments.map((document) => document.id));
   const readableDocumentIdList = Array.from(readableDocumentIds);
   const documentTagsForList = readableDocuments.flatMap((document) =>
@@ -281,6 +289,7 @@ export default async function WorkspacePage({
               userPermission: userPermissionByDocumentId.get(document.id),
             }),
           }))}
+          folderDocumentCounts={activeDocumentCountsByFolderId}
           canWrite={canWrite}
           createAction={createAction}
           createFolderAction={createFolder}

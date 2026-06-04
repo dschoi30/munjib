@@ -1373,6 +1373,49 @@ describe("DocumentList", () => {
     confirmSpy.mockRestore();
   });
 
+  it("uses all-active folder document counts for cascade trash confirmation", async () => {
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveFolderAction = vi.fn(async (formData: FormData) => ({
+      folderId: String(formData.get("folderId")),
+    }));
+    renderList({
+      archiveFolderAction,
+      folderDocumentCounts: { "folder-runbooks": 2 },
+      documents: [
+        ...baseProps.documents,
+        {
+          id: "doc-runbook",
+          folderId: "folder-runbooks",
+          title: "Deploy Checklist",
+          path: "/engineering/runbooks/deploy-checklist",
+          contentText: "Deploy body",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+    });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    fireEvent.click(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      }),
+    );
+    fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
+
+    await waitFor(() => {
+      expect(archiveFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (archiveFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(confirmSpy).toHaveBeenCalledWith(
+      "Move this folder and 1 folder and 2 documents to trash?",
+    );
+    expect(submittedFormData.get("folderId")).toBe("folder-engineering");
+    expect(submittedFormData.get("cascade")).toBe("true");
+
+    confirmSpy.mockRestore();
+  });
+
   it("navigates to the workspace root when cascade trash archives the selected document", async () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const archiveFolderAction = vi.fn(async (formData: FormData) => ({

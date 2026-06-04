@@ -42,10 +42,13 @@ export type FolderListItem = {
   path: string;
 };
 
+export type FolderDocumentCounts = Record<string, number>;
+
 export function DocumentList({
   workspaceSlug,
   folders,
   documents,
+  folderDocumentCounts,
   canWrite,
   createAction,
   createFolderAction,
@@ -61,6 +64,7 @@ export function DocumentList({
   workspaceSlug: string;
   folders: FolderListItem[];
   documents: DocumentListItem[];
+  folderDocumentCounts?: FolderDocumentCounts;
   canWrite: boolean;
   createAction: CreateDocumentAction;
   createFolderAction: CreateFolderAction;
@@ -243,6 +247,7 @@ export function DocumentList({
           workspaceSlug={workspaceSlug}
           folders={folders}
           documents={documents}
+          folderDocumentCounts={folderDocumentCounts}
           activePanel={activePanel}
           isWorkspaceMenuOpen={workspaceMenuOpen}
           searchQuery={searchQuery}

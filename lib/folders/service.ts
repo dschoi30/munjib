@@ -1,6 +1,7 @@
 import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/client";
+import { lockFolderMutation } from "@/lib/folders/locks";
 import { buildChildPath } from "@/lib/folders/path";
 import type {
   ArchiveFolderInput,
@@ -139,11 +140,13 @@ async function isDescendant(
   return false;
 }
 
-async function getActiveDescendantFolderIds(
+async function getLockedActiveDescendantFolderIds(
   tx: Prisma.TransactionClient,
   workspaceId: string,
   folderId: string,
 ) {
+  await lockFolderMutation(tx, folderId);
+
   const descendantFolderIds: string[] = [];
   let parentFolderIds = [folderId];
 
@@ -155,8 +158,13 @@ async function getActiveDescendantFolderIds(
         status: DocumentStatus.ACTIVE,
       },
       select: { id: true },
+      orderBy: { id: "asc" },
     });
-    const childFolderIds = childFolders.map((childFolder) => childFolder.id);
+    const childFolderIds = childFolders.map((childFolder) => childFolder.id).sort();
+
+    for (const childFolderId of childFolderIds) {
+      await lockFolderMutation(tx, childFolderId);
+    }
 
     descendantFolderIds.push(...childFolderIds);
     parentFolderIds = childFolderIds;
@@ -169,6 +177,9 @@ export async function createFolder(input: CreateFolderInput) {
   const { workspace } = await getWorkspaceForWrite(input.workspaceSlug, input.actorId);
 
   return prisma.$transaction(async (tx) => {
+    if (input.parentFolderId) {
+      await lockFolderMutation(tx, input.parentFolderId);
+    }
     const slug = await nextAvailableFolderSlug(tx, workspace.id, input.parentFolderId, input.name);
     const parentPath = await getParentFolderPath(tx, workspace.id, input.parentFolderId);
     const folder = await tx.folder.create({
@@ -200,6 +211,9 @@ export async function renameFolder(input: RenameFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
+    if (folder.parentFolderId) {
+      await lockFolderMutation(tx, folder.parentFolderId);
+    }
     const slug = await nextAvailableFolderSlug(
       tx,
       folder.workspaceId,
@@ -237,6 +251,9 @@ export async function moveFolder(input: MoveFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
+    if (input.parentFolderId) {
+      await lockFolderMutation(tx, input.parentFolderId);
+    }
     if (input.parentFolderId === folder.id) {
       throw new Error(SERVICE_ERROR_CODES.FOLDER_MOVE_CYCLE);
     }
@@ -280,25 +297,25 @@ export async function moveFolder(input: MoveFolderInput) {
 export async function archiveFolder(input: ArchiveFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
-  if (!input.cascade) {
-    const [childFolderCount, childDocumentCount] = await Promise.all([
-      prisma.folder.count({
-        where: { parentFolderId: folder.id, status: DocumentStatus.ACTIVE },
-      }),
-      prisma.document.count({
-        where: { folderId: folder.id, status: DocumentStatus.ACTIVE },
-      }),
-    ]);
-
-    if (childFolderCount > 0 || childDocumentCount > 0) {
-      throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY);
-    }
-  }
-
   return prisma.$transaction(async (tx) => {
     const descendantFolderIds = input.cascade
-      ? await getActiveDescendantFolderIds(tx, folder.workspaceId, folder.id)
+      ? await getLockedActiveDescendantFolderIds(tx, folder.workspaceId, folder.id)
       : [];
+    if (!input.cascade) {
+      await lockFolderMutation(tx, folder.id);
+      const [childFolderCount, childDocumentCount] = await Promise.all([
+        tx.folder.count({
+          where: { parentFolderId: folder.id, status: DocumentStatus.ACTIVE },
+        }),
+        tx.document.count({
+          where: { folderId: folder.id, status: DocumentStatus.ACTIVE },
+        }),
+      ]);
+
+      if (childFolderCount > 0 || childDocumentCount > 0) {
+        throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY);
+      }
+    }
     const archivedFolderIds = [folder.id, ...descendantFolderIds];
     const descendantDocuments = await tx.document.findMany({
       where: {
