@@ -190,9 +190,7 @@ async function createDocumentWithInitialVersion(
   },
 ) {
   const folderId = input.folderId ?? null;
-  if (folderId) {
-    await lockWorkspaceFolderTreeMutation(tx, input.workspaceId);
-  }
+  await lockWorkspaceFolderTreeMutation(tx, input.workspaceId);
   const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, folderId, input.title);
   const parentPath = await getParentFolderPath(tx, input.workspaceId, folderId);
   const contentText = markdownToPlainText(input.contentMarkdown);
