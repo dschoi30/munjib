@@ -128,7 +128,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 40,
+      "source_count": 48,
       "searchPriority": 50
     },
     {
@@ -159,7 +159,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 61,
+      "source_count": 62,
       "searchPriority": 5
     },
     {
@@ -201,7 +201,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 156,
+      "source_count": 157,
       "searchPriority": 1
     },
     {
@@ -316,7 +316,7 @@
         "[[Next.js Prisma Monolith]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 47,
+      "source_count": 55,
       "searchPriority": 30
     },
     {

@@ -100,6 +100,148 @@ describe("folder service", () => {
     );
   });
 
+  it("archives a non-empty folder subtree when cascade is explicit", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const otherFixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const parent = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const child = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: parent.id,
+      name: "Runbooks",
+    });
+    const grandchild = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: child.id,
+      name: "Incidents",
+    });
+    const parentDocument = await prisma.document.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        folderId: parent.id,
+        title: "Overview",
+        slug: "overview",
+        path: "/operations/overview",
+        createdById: fixture.user.id,
+        updatedById: fixture.user.id,
+      },
+    });
+    const grandchildDocument = await prisma.document.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        folderId: grandchild.id,
+        title: "Incident Review",
+        slug: "incident-review",
+        path: "/operations/runbooks/incidents/incident-review",
+        createdById: fixture.user.id,
+        updatedById: fixture.user.id,
+      },
+    });
+    const archivedAt = new Date("2026-01-01T00:00:00.000Z");
+    const alreadyArchivedChild = await prisma.folder.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        parentFolderId: parent.id,
+        name: "Archive Shelf",
+        slug: "archive-shelf",
+        path: "/operations/archive-shelf",
+        status: "ARCHIVED",
+        archivedAt,
+        createdById: fixture.user.id,
+        updatedById: fixture.user.id,
+      },
+    });
+    const alreadyArchivedDocument = await prisma.document.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        folderId: parent.id,
+        title: "Old Runbook",
+        slug: "old-runbook",
+        path: "/operations/old-runbook",
+        status: "ARCHIVED",
+        archivedAt,
+        createdById: fixture.user.id,
+        updatedById: fixture.user.id,
+      },
+    });
+    const otherWorkspaceFolder = await createFolder({
+      workspaceSlug: otherFixture.workspace.slug,
+      actorId: otherFixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+
+    const archived = await archiveFolder({
+      folderId: parent.id,
+      actorId: fixture.user.id,
+      cascade: true,
+    });
+
+    expect(archived.status).toBe("ARCHIVED");
+    const archivedFolders = await prisma.folder.findMany({
+      where: { id: { in: [parent.id, child.id, grandchild.id] } },
+      select: { id: true, status: true, archivedAt: true, updatedById: true },
+    });
+    expect(archivedFolders).toHaveLength(3);
+    expect(archivedFolders.every((folder) => folder.status === "ARCHIVED")).toBe(true);
+    expect(archivedFolders.every((folder) => folder.archivedAt instanceof Date)).toBe(true);
+    expect(archivedFolders.every((folder) => folder.updatedById === fixture.user.id)).toBe(true);
+
+    const archivedDocuments = await prisma.document.findMany({
+      where: { id: { in: [parentDocument.id, grandchildDocument.id] } },
+      select: { id: true, status: true, archivedAt: true, updatedById: true },
+    });
+    expect(archivedDocuments).toHaveLength(2);
+    expect(archivedDocuments.every((document) => document.status === "ARCHIVED")).toBe(true);
+    expect(archivedDocuments.every((document) => document.archivedAt instanceof Date)).toBe(true);
+    expect(archivedDocuments.every((document) => document.updatedById === fixture.user.id)).toBe(
+      true,
+    );
+
+    await expect(
+      prisma.folder.findUniqueOrThrow({ where: { id: otherWorkspaceFolder.id } }),
+    ).resolves.toMatchObject({ status: "ACTIVE" });
+    await expect(
+      prisma.folder.findUniqueOrThrow({ where: { id: alreadyArchivedChild.id } }),
+    ).resolves.toMatchObject({ status: "ARCHIVED", archivedAt });
+    await expect(
+      prisma.document.findUniqueOrThrow({ where: { id: alreadyArchivedDocument.id } }),
+    ).resolves.toMatchObject({ status: "ARCHIVED", archivedAt });
+
+    const auditLog = await prisma.auditLog.findFirstOrThrow({
+      where: {
+        action: "folder.archived",
+        resourceId: parent.id,
+      },
+    });
+    expect(auditLog.metadataJson).toMatchObject({
+      path: "/operations",
+      descendantFolderCount: 2,
+      descendantDocumentCount: 2,
+    });
+  });
+
+  it("still archives empty folders without cascade", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const folder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Empty",
+    });
+
+    const archived = await archiveFolder({ folderId: folder.id, actorId: fixture.user.id });
+
+    expect(archived.status).toBe("ARCHIVED");
+    expect(archived.archivedAt).toBeInstanceOf(Date);
+  });
+
   it("rejects moving a folder below its descendant", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const parent = await createFolder({

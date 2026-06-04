@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 156
+source_count: 157
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-92 implementation
+
+- Result: 폴더 휴지통 이동이 사용자 확인 후 하위 폴더와 문서를 함께 archive할 수 있게 되었다.
+- Coverage: `archiveFolder()`는 기본 비어 있지 않은 folder guard를 유지하면서 `cascade=true`일 때 active descendant subtree를 다시 계산해 descendant documents, descendant folders, target folder를 하나의 transaction으로 `ARCHIVED` 처리한다. Sidebar는 descendant counts를 확인 문구에 포함하고, 삭제 대상에 현재 selected folder/document가 들어 있으면 workspace root로 이동한다.
+- Pages: [[Folder Hierarchy Model]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #92, `lib/folders/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-navigation/folder-trash.ts`, `components/document-navigation.tsx`, `components/document-navigation/folder-row.tsx`, `tests/folders/service.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/workspace-actions.test.ts tests/components/document-list.test.tsx`; `pnpm test:e2e tests/e2e/login.spec.ts`; `pnpm exec tsc --noEmit`; `pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-92 plan
 
