@@ -3,7 +3,11 @@
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState, useTransition } from "react";
-import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import type {
+  DocumentListItem,
+  FolderDocumentCounts,
+  FolderListItem,
+} from "@/components/document-list";
 import {
   DocumentSection,
   sectionHeadingClassName,
@@ -41,6 +45,7 @@ export function DocumentNavigation({
   workspaceSlug,
   folders,
   documents,
+  folderDocumentCounts,
   activePanel,
   isWorkspaceMenuOpen,
   searchQuery,
@@ -60,6 +65,7 @@ export function DocumentNavigation({
   workspaceSlug: string;
   folders: FolderListItem[];
   documents: DocumentListItem[];
+  folderDocumentCounts?: FolderDocumentCounts;
   activePanel: "documents" | "search" | "favorites";
   isWorkspaceMenuOpen: boolean;
   searchQuery: string;
@@ -357,6 +363,7 @@ export function DocumentNavigation({
       folderId,
       folders,
       documents,
+      folderDocumentCounts,
       selectedFolderId,
       selectedDocumentId,
     });
@@ -442,6 +449,7 @@ export function DocumentNavigation({
         folderId: item.folder.id,
         folders,
         documents,
+        folderDocumentCounts,
         selectedFolderId,
         selectedDocumentId,
       });

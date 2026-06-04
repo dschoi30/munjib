@@ -1,4 +1,8 @@
-import type { DocumentListItem, FolderListItem } from "@/components/document-list";
+import type {
+  DocumentListItem,
+  FolderDocumentCounts,
+  FolderListItem,
+} from "@/components/document-list";
 
 export type FolderTrashSummary = {
   descendantFolderCount: number;
@@ -11,12 +15,14 @@ export function getFolderTrashSummary({
   folderId,
   folders,
   documents,
+  folderDocumentCounts,
   selectedFolderId,
   selectedDocumentId,
 }: {
   folderId: string;
   folders: FolderListItem[];
   documents: DocumentListItem[];
+  folderDocumentCounts?: FolderDocumentCounts;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
 }): FolderTrashSummary {
@@ -36,9 +42,14 @@ export function getFolderTrashSummary({
   }
 
   const archivedFolderIds = new Set([folderId, ...descendantFolderIds]);
-  const descendantDocumentCount = documents.filter((document) =>
-    document.folderId ? archivedFolderIds.has(document.folderId) : false,
-  ).length;
+  const descendantDocumentCount = folderDocumentCounts
+    ? Array.from(archivedFolderIds).reduce(
+        (count, archivedFolderId) => count + (folderDocumentCounts[archivedFolderId] ?? 0),
+        0,
+      )
+    : documents.filter((document) =>
+        document.folderId ? archivedFolderIds.has(document.folderId) : false,
+      ).length;
   const selectedDocument = selectedDocumentId
     ? documents.find((document) => document.id === selectedDocumentId)
     : undefined;

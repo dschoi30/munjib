@@ -64,7 +64,7 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 Folder archive는 soft delete다. Folder와 Document row는 물리 삭제하지 않고 `status=ARCHIVED`, `archivedAt`, `updatedById`를 갱신해 active workspace tree에서 제외한다.
 
-기본 `archiveFolder()` 호출은 비어 있지 않은 folder를 `FOLDER_NOT_EMPTY`로 거부한다. Issue #92 implements explicit cascade archive for folder trash. Sidebar `Move to trash` computes active descendant folder/document counts for confirmation copy, submits `cascade=true` only after user confirmation, and the server service recalculates the active subtree before archiving descendant documents, descendant folders, and the target folder in one transaction.
+기본 `archiveFolder()` 호출은 비어 있지 않은 folder를 `FOLDER_NOT_EMPTY`로 거부한다. Issue #92 implements explicit cascade archive for folder trash. Sidebar `Move to trash` computes active descendant folder/document counts for confirmation copy, submits `cascade=true` only after user confirmation, and the server service recalculates the active subtree before archiving descendant documents, descendant folders, and the target folder in one transaction. Confirmation document counts come from the workspace page's all-active documents by folder, so explicitly permissioned unreadable documents are still counted when archive would include them. Folder/document mutations that create or move children into a folder take a transaction-scoped folder advisory lock before active parent and slug/path reads, and cascade archive locks the target folder plus active descendants while discovering the subtree to avoid concurrent-create archive races.
 
 Recursive restore와 hard delete는 Issue #92 범위가 아니다.
 
