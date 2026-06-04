@@ -22,10 +22,10 @@ links:
 ## 2026-06-05T00:00:00+09:00 - issue-92 review follow-up
 
 - Result: Final review follow-up aligned cascade trash confirmation counts with archive semantics and hardened folder subtree archive against concurrent child creation.
-- Coverage: Workspace page computes all-active document counts by folder and sidebar confirmation uses those counts when supplied, while keeping readable documents for rendering and selection. Folder/document create and move-into-folder mutations lock the target folder before parent/slug/path validation; cascade archive locks the target and active descendants while discovering the subtree.
+- Coverage: Workspace page computes all-active document counts by folder and sidebar confirmation uses those counts when supplied, while keeping readable documents for rendering and selection. Folder/document mutations that create, move, rename, or archive folder-tree children take a transaction-scoped workspace folder-tree advisory lock before active parent and slug/path validation.
 - Pages: [[Folder Hierarchy Model]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #92 review after commit `23fbc14`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-navigation/folder-trash.ts`, `lib/folders/locks.ts`, `lib/folders/service.ts`, `lib/documents/service.ts`, `tests/components/document-list.test.tsx`.
-- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts tests/components/document-list.test.tsx`; `pnpm exec tsc --noEmit`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts tests/components/document-list.test.tsx`; `pnpm exec tsc --noEmit`; `pnpm test`; `pnpm test:e2e tests/e2e/login.spec.ts`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-92 implementation
 

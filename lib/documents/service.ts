@@ -2,7 +2,7 @@ import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { reconcileDocumentMetadata } from "@/lib/document-metadata/reconcile";
 import { prisma } from "@/lib/db/client";
-import { lockFolderMutation } from "@/lib/folders/locks";
+import { lockWorkspaceFolderTreeMutation } from "@/lib/folders/locks";
 import { buildChildPath } from "@/lib/folders/path";
 import {
   assertCanReadDocument,
@@ -191,7 +191,7 @@ async function createDocumentWithInitialVersion(
 ) {
   const folderId = input.folderId ?? null;
   if (folderId) {
-    await lockFolderMutation(tx, folderId);
+    await lockWorkspaceFolderTreeMutation(tx, input.workspaceId);
   }
   const slug = await nextAvailableDocumentSlug(tx, input.workspaceId, folderId, input.title);
   const parentPath = await getParentFolderPath(tx, input.workspaceId, folderId);
@@ -567,9 +567,7 @@ export async function moveDocument(input: MoveDocumentInput) {
   });
 
   const movedDocument = await runWithDocumentSlugRetry(() => prisma.$transaction(async (tx) => {
-    if (input.folderId) {
-      await lockFolderMutation(tx, input.folderId);
-    }
+    await lockWorkspaceFolderTreeMutation(tx, workspace.id);
     const slug = await nextAvailableDocumentSlug(
       tx,
       workspace.id,
