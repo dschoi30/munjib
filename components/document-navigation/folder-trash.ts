@@ -89,5 +89,5 @@ export function folderTrashConfirmMessage(summary: FolderTrashSummary) {
     );
   }
 
-  return `Move this folder and ${parts.join(" and ")} to trash?`;
+  return `Move this folder to trash with ${parts.join(" and ")}?`;
 }

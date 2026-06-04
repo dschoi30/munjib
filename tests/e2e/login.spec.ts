@@ -246,9 +246,7 @@ test("development credentials login opens the workspace", async ({ page }) => {
   );
   await expect(productNotesDocumentLink).toHaveCount(1);
   const cascadeDialogPromise = page.waitForEvent("dialog").then(async (cascadeDialog) => {
-    expect(cascadeDialog.message()).toMatch(
-      /^Move this folder and \d+ document(?:s)? to trash\?$/,
-    );
+    expect(cascadeDialog.message()).toBe("Move this folder to trash with 1 document?");
     await cascadeDialog.accept();
   });
   await productNotesAction.click();

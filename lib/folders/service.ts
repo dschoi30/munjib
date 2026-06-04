@@ -1,7 +1,7 @@
 import { DocumentStatus, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit/log";
 import { prisma } from "@/lib/db/client";
-import { lockFolderMutation } from "@/lib/folders/locks";
+import { lockWorkspaceFolderTreeMutation } from "@/lib/folders/locks";
 import { buildChildPath } from "@/lib/folders/path";
 import type {
   ArchiveFolderInput,
@@ -140,13 +140,11 @@ async function isDescendant(
   return false;
 }
 
-async function getLockedActiveDescendantFolderIds(
+async function getActiveDescendantFolderIds(
   tx: Prisma.TransactionClient,
   workspaceId: string,
   folderId: string,
 ) {
-  await lockFolderMutation(tx, folderId);
-
   const descendantFolderIds: string[] = [];
   let parentFolderIds = [folderId];
 
@@ -158,13 +156,8 @@ async function getLockedActiveDescendantFolderIds(
         status: DocumentStatus.ACTIVE,
       },
       select: { id: true },
-      orderBy: { id: "asc" },
     });
-    const childFolderIds = childFolders.map((childFolder) => childFolder.id).sort();
-
-    for (const childFolderId of childFolderIds) {
-      await lockFolderMutation(tx, childFolderId);
-    }
+    const childFolderIds = childFolders.map((childFolder) => childFolder.id);
 
     descendantFolderIds.push(...childFolderIds);
     parentFolderIds = childFolderIds;
@@ -177,9 +170,7 @@ export async function createFolder(input: CreateFolderInput) {
   const { workspace } = await getWorkspaceForWrite(input.workspaceSlug, input.actorId);
 
   return prisma.$transaction(async (tx) => {
-    if (input.parentFolderId) {
-      await lockFolderMutation(tx, input.parentFolderId);
-    }
+    await lockWorkspaceFolderTreeMutation(tx, workspace.id);
     const slug = await nextAvailableFolderSlug(tx, workspace.id, input.parentFolderId, input.name);
     const parentPath = await getParentFolderPath(tx, workspace.id, input.parentFolderId);
     const folder = await tx.folder.create({
@@ -211,9 +202,7 @@ export async function renameFolder(input: RenameFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
-    if (folder.parentFolderId) {
-      await lockFolderMutation(tx, folder.parentFolderId);
-    }
+    await lockWorkspaceFolderTreeMutation(tx, folder.workspaceId);
     const slug = await nextAvailableFolderSlug(
       tx,
       folder.workspaceId,
@@ -251,9 +240,7 @@ export async function moveFolder(input: MoveFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
-    if (input.parentFolderId) {
-      await lockFolderMutation(tx, input.parentFolderId);
-    }
+    await lockWorkspaceFolderTreeMutation(tx, folder.workspaceId);
     if (input.parentFolderId === folder.id) {
       throw new Error(SERVICE_ERROR_CODES.FOLDER_MOVE_CYCLE);
     }
@@ -298,11 +285,11 @@ export async function archiveFolder(input: ArchiveFolderInput) {
   const { folder, workspace } = await getFolderForWrite(input.folderId, input.actorId);
 
   return prisma.$transaction(async (tx) => {
+    await lockWorkspaceFolderTreeMutation(tx, folder.workspaceId);
     const descendantFolderIds = input.cascade
-      ? await getLockedActiveDescendantFolderIds(tx, folder.workspaceId, folder.id)
+      ? await getActiveDescendantFolderIds(tx, folder.workspaceId, folder.id)
       : [];
     if (!input.cascade) {
-      await lockFolderMutation(tx, folder.id);
       const [childFolderCount, childDocumentCount] = await Promise.all([
         tx.folder.count({
           where: { parentFolderId: folder.id, status: DocumentStatus.ACTIVE },

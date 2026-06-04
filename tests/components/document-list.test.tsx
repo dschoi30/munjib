@@ -102,6 +102,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 function renderList(props: Partial<Parameters<typeof DocumentList>[0]> = {}) {
@@ -1364,7 +1365,7 @@ describe("DocumentList", () => {
     });
     const submittedFormData = (archiveFolderAction.mock.calls as unknown as FormData[][])[0][0];
     expect(confirmSpy).toHaveBeenCalledWith(
-      "Move this folder and 1 folder and 1 document to trash?",
+      "Move this folder to trash with 1 folder and 1 document?",
     );
     expect(submittedFormData.get("folderId")).toBe("folder-engineering");
     expect(submittedFormData.get("cascade")).toBe("true");
@@ -1408,7 +1409,7 @@ describe("DocumentList", () => {
     });
     const submittedFormData = (archiveFolderAction.mock.calls as unknown as FormData[][])[0][0];
     expect(confirmSpy).toHaveBeenCalledWith(
-      "Move this folder and 1 folder and 2 documents to trash?",
+      "Move this folder to trash with 1 folder and 2 documents?",
     );
     expect(submittedFormData.get("folderId")).toBe("folder-engineering");
     expect(submittedFormData.get("cascade")).toBe("true");
@@ -1537,7 +1538,7 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "Move to trash" }));
 
     expect(confirmSpy).toHaveBeenCalledWith(
-      "Move this folder and 1 folder and 1 document to trash?",
+      "Move this folder to trash with 1 folder and 1 document?",
     );
     expect(archiveFolderAction).not.toHaveBeenCalled();
 
