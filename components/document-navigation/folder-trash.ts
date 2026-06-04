@@ -28,14 +28,20 @@ export function getFolderTrashSummary({
 }): FolderTrashSummary {
   const descendantFolderIds = new Set<string>();
   let parentFolderIds = [folderId];
+  const visitedFolderIds = new Set<string>([folderId]);
 
   while (parentFolderIds.length > 0) {
     const childFolderIds = folders
-      .filter((folder) => parentFolderIds.includes(folder.parentFolderId ?? ""))
+      .filter(
+        (folder) =>
+          parentFolderIds.includes(folder.parentFolderId ?? "") &&
+          !visitedFolderIds.has(folder.id),
+      )
       .map((folder) => folder.id);
 
     for (const childFolderId of childFolderIds) {
       descendantFolderIds.add(childFolderId);
+      visitedFolderIds.add(childFolderId);
     }
 
     parentFolderIds = childFolderIds;
