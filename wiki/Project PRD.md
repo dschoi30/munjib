@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-03
-source_count: 43
+updated: 2026-06-04
+source_count: 45
 tags:
   - munjib
   - source
@@ -88,6 +88,8 @@ Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추
 
 Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 응답하도록 host Ollama 운영 설정을 적용했다. 서버 host에 Ollama `gemma4:e4b`와 `bge-m3`를 설치했고, Docker web container는 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 host Ollama에 접근한다. `docker-compose.yml`은 Docker `host-gateway`를 `host.docker.internal`로 매핑해 Linux host gateway IP를 동적으로 해석한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent`에 저장했다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
+Issue #88은 GitHub Actions CI/CD를 추가했다. PR과 `main` push는 pgvector PostgreSQL service, pnpm install, Prisma generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 검증하고, `main` push는 GitHub Container Registry에 `ghcr.io/dschoi30/munjib` image를 publish한 뒤 SSH로 production compose project를 갱신한다. Published image build는 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 전달해 browser Sentry 설정이 compiled bundle에서 빠지지 않게 한다. Production compose `web` service는 `WEB_IMAGE`로 published image tag를 받고, deploy job은 server checkout update, `docker compose pull web`, rebuilt tools container Prisma migration deploy, RAG vector index setup, `docker compose up -d web`을 실행한다. 설계 근거는 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`이다.
+
 Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. Docker stdout은 startup, 환경 변수, DB 연결, PostgreSQL process log 확인용으로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing에만 사용한다. Browser SDK 설정은 Next.js build time에 bundle되므로 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 한다. Source map upload와 `SENTRY_AUTH_TOKEN` handling은 첫 slice에서 제외한다. Sentry event scrubber는 query parameter 기반 document/search state, request URL host, request body, cookies, request headers, user IP, URL/query/address/user-agent/host span data, span description/name URL text, and breadcrumb URL/query/host fields를 제거한다. 설계 근거는 [[Production Observability Workflow]]와 `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`에 둔다.
 
 ## 현재 구현 근거
@@ -130,6 +132,7 @@ Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. D
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
+- GitHub issue #88와 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`: GitHub Actions CI/CD 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`: production Docker 로그와 Sentry SaaS error/tracing 역할 분리 설계 및 구현 계획.
 - `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
