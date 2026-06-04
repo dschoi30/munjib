@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 155
+source_count: 156
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-92 plan
+
+- Result: cascade folder trash confirmation 구현 계획을 추가했다.
+- Coverage: Plan은 folder service recursive archive, workspace server action cascade contract, sidebar confirmation/navigation, e2e update, wiki maintenance/full verification, PR review/CI loop를 task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-05-cascade-folder-trash-confirmation.md`, `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
 
 ## 2026-06-05T00:00:00+09:00 - issue-92 design
 
