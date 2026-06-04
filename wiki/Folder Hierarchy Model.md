@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-06-03
-source_count: 38
+updated: 2026-06-05
+source_count: 40
 tags:
   - munjib
   - data-model
@@ -31,7 +31,7 @@ Issue #20의 목표는 현재 folder-like document creation을 실제 folder 기
 - 같은 folder 안에서는 folder/document slug가 unique해야 한다.
 - 서로 다른 folder 사이에서는 같은 document title/slug를 허용한다.
 - `path`는 workspace 안에서 folder/document location을 구분하는 unique 값이다.
-- 비어 있지 않은 folder archive는 차단한다.
+- Folder archive는 기본적으로 비어 있지 않은 folder를 차단하되, 사용자 확인 후 명시적 cascade archive를 허용한다.
 - Folder-specific permission과 inherited ACL은 MVP 범위에서 제외한다.
 
 ## Path와 duplicate title
@@ -62,7 +62,11 @@ Folder create, rename, move, archive는 workspace write 권한을 요구한다. 
 
 ## Archive 정책
 
-비어 있지 않은 folder archive는 거부한다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 follow-up 기능으로 둔다.
+Folder archive는 soft delete다. Folder와 Document row는 물리 삭제하지 않고 `status=ARCHIVED`, `archivedAt`, `updatedById`를 갱신해 active workspace tree에서 제외한다.
+
+기본 `archiveFolder()` 호출은 비어 있지 않은 folder를 `FOLDER_NOT_EMPTY`로 거부한다. Issue #92 설계는 sidebar `Move to trash`에서 active descendant folder/document counts를 보여주는 사용자 확인을 받은 뒤에만 `cascade=true`를 server action에 전달한다. Server service는 client counts를 신뢰하지 않고 같은 workspace 안의 active descendant subtree를 다시 계산한 뒤, 하나의 transaction으로 하위 documents, 하위 folders, target folder를 archive한다.
+
+Recursive restore와 hard delete는 Issue #92 범위가 아니다.
 
 ## 구현 계획에 포함할 항목
 
@@ -107,7 +111,9 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 - GitHub issue #26
 - GitHub issue #29
 - GitHub issue #83
+- GitHub issue #92
 - `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`
+- `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`
 - `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`
 - `components/document-navigation.tsx`
 - `tests/components/document-list.test.tsx`

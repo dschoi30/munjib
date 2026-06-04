@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-04
-source_count: 154
+updated: 2026-06-05
+source_count: 155
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-92 design
+
+- Result: 폴더 휴지통 이동 시 사용자 확인 후 하위 폴더와 문서를 함께 archive하는 cascade folder trash 설계를 추가했다.
+- Coverage: 기본 `archiveFolder()`는 비어 있지 않은 folder를 계속 거부하고, sidebar `Move to trash`에서 active descendant counts를 포함한 확인을 받은 경우에만 `cascade=true`를 전달한다. Server service는 client counts를 신뢰하지 않고 active descendant subtree를 다시 계산해 하나의 transaction으로 descendant documents, descendant folders, target folder를 soft delete archive 처리한다. Recursive restore와 hard delete는 범위에서 제외한다.
+- Pages: [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #92, `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`, `components/document-navigation.tsx`, `components/document-navigation/folder-row.tsx`, `lib/folders/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/e2e/login.spec.ts`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-04T00:00:00+00:00 - issue-88 review follow-up
 
