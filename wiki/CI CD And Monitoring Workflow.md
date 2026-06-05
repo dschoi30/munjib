@@ -3,10 +3,10 @@ id: workflow-ci-cd-monitoring
 title: CI CD And Monitoring Workflow
 type: workflow
 status: active
-summary: Munjib의 현재 GitHub Actions CI/CD, GHCR image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.
+summary: Munjib의 현재 GitHub Actions CI/CD, GHCR multi-platform image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.
 created: 2026-06-05
 updated: 2026-06-05
-source_count: 28
+source_count: 30
 tags:
   - munjib
   - workflow
@@ -96,6 +96,8 @@ SENTRY_RELEASE=${{ github.sha }}
 ```
 
 Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SENTRY_*` 값을 바꾸려면 runtime env만 바꾸는 것으로는 부족하고 image rebuild/publish가 필요하다. 현재 `munjib.andrewchoi.link` 초기 production 관측은 GitHub repository variable `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`과 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
+
+Publish job은 `docker/setup-qemu-action@v3`를 Buildx build/push 전에 실행하고 `linux/amd64,linux/arm64` manifest list를 push한다. OCI instance가 `linux/arm64/v8` platform으로 pull하기 때문에 amd64-only image는 `docker compose pull web`에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다.
 
 ### main deploy
 
@@ -221,6 +223,8 @@ Deploy secret이 빠지거나 SSH 접속이 실패하면 deploy job이 실패한
 
 Server checkout이 dirty하거나 remote와 diverge되어 있으면 `git pull --ff-only`가 실패한다. GHCR image pull 권한이 없으면 `docker compose pull web`이 실패한다.
 
+GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꿔 이 failure mode를 고정했다.
+
 Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
 
 Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`가 잘못된 image를 이미 publish했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다.
@@ -243,6 +247,8 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub issue #88
 - GitHub issue #89
 - GitHub issue #94
+- GitHub issue #96
+- GitHub Actions run `27016407598` deploy failure log
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
 - `docker-compose.yml`

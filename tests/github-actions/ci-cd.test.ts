@@ -61,17 +61,25 @@ describe("GitHub Actions CI/CD workflow", () => {
 
   test("publish job pushes sha and latest tags only on main pushes", () => {
     const publish = workflow.jobs.publish;
-    const pushStep = publish.steps.find((step: { uses?: string }) =>
+    const qemuIndex = publish.steps.findIndex((step: { uses?: string }) =>
+      step.uses?.startsWith("docker/setup-qemu-action@"),
+    );
+    const pushIndex = publish.steps.findIndex((step: { uses?: string }) =>
       step.uses?.startsWith("docker/build-push-action@"),
     );
+    const pushStep = publish.steps[pushIndex];
 
     expect(publish.needs).toBe("ci");
     expect(publish.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    expect(qemuIndex).toBeGreaterThan(-1);
+    expect(pushIndex).toBeGreaterThan(-1);
+    expect(qemuIndex).toBeLessThan(pushIndex);
     expect(pushStep).toBeDefined();
     expect(pushStep?.with).toMatchObject({
       context: ".",
       target: "runner",
       push: true,
+      platforms: "linux/amd64,linux/arm64",
     });
     expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}");
     expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'production' }}");
