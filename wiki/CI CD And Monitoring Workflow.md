@@ -3,10 +3,10 @@ id: workflow-ci-cd-monitoring
 title: CI CD And Monitoring Workflow
 type: workflow
 status: active
-summary: Munjib의 현재 GitHub Actions CI/CD, GHCR multi-platform image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.
+summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.
 created: 2026-06-05
 updated: 2026-06-05
-source_count: 30
+source_count: 33
 tags:
   - munjib
   - workflow
@@ -24,23 +24,22 @@ links:
 
 # CI CD And Monitoring Workflow
 
-이 page는 현재 repository의 자동 검증, image publish, production compose deploy, monitoring 구성을 한 곳에서 본다. 세부 production observability 원칙은 [[Production Observability Workflow]]에 있고, 이 page는 CI/CD와 monitoring이 어떻게 이어지는지 요약한다.
+이 page는 현재 repository의 자동 검증, production compose deploy, monitoring 구성을 한 곳에서 본다. 세부 production observability 원칙은 [[Production Observability Workflow]]에 있고, 이 page는 CI/CD와 monitoring이 어떻게 이어지는지 요약한다.
 
 ## Entry points
 
 CI/CD entry point는 `.github/workflows/ci-cd.yml` 하나다. Workflow 이름은 `CI/CD`이고, `pull_request`와 `main` branch push에서 실행된다.
 
-Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용해 같은 ref의 이전 run을 취소한다. 기본 permission은 repository read와 GHCR publish를 위한 `packages: write`다.
+Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용해 같은 ref의 이전 run을 취소한다. 기본 permission은 repository read인 `contents: read`만 사용한다.
 
 공통 workflow env:
 
 ```text
-IMAGE_NAME=ghcr.io/${{ github.repository }}
 IMAGE_TAG=${{ github.sha }}
 PNPM_VERSION=10.28.1
 ```
 
-Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
+Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
 
 Monitoring entry point는 두 갈래다.
 
@@ -74,34 +73,22 @@ CI service database는 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 `pg_
 
 현재 PR CI는 Vitest, Next build, runtime image build까지 검증한다. Playwright e2e는 mandatory GitHub Actions gate에 포함되어 있지 않다.
 
-### main publish
-
-`publish` job은 `ci`가 성공한 `main` push에서만 실행된다. Docker Buildx를 설정하고 `GITHUB_TOKEN`으로 GitHub Container Registry에 로그인한 뒤 Dockerfile의 `runner` target을 build/push한다.
-
-Published tags:
-
-```text
-ghcr.io/${{ github.repository }}:${{ github.sha }}
-ghcr.io/${{ github.repository }}:latest
-```
-
-Publish build는 browser Sentry bundle이 비활성화되지 않도록 public Sentry values를 Docker build args로 넣는다.
-
-```text
-NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}
-NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'production' }}
-NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '0.05' }}
-SENTRY_RELEASE=${{ github.sha }}
-```
-
-Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SENTRY_*` 값을 바꾸려면 runtime env만 바꾸는 것으로는 부족하고 image rebuild/publish가 필요하다. 현재 `munjib.andrewchoi.link` 초기 production 관측은 GitHub repository variable `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`과 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
-
-Publish job은 `docker/setup-qemu-action@v3`를 Buildx build/push 전에 실행하고 `linux/amd64,linux/arm64` manifest list를 push한다. OCI instance가 `linux/arm64/v8` platform으로 pull하기 때문에 amd64-only image는 `docker compose pull web`에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다.
-
 ### main deploy
 
-`deploy` job은 `publish`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, publish job output image를 `WEB_IMAGE` env로 remote script에 전달한다.
+`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
+
+Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
+
+Deploy job env:
+
+```text
+WEB_IMAGE=munjib-web:latest
+SENTRY_RELEASE=${{ github.sha }}
+NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+DEPLOY_HEALTHCHECK_URL=https://munjib.andrewchoi.link
+```
+
+Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 server `.env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 현재 `munjib.andrewchoi.link` 초기 production 관측은 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
 
 Required GitHub secrets:
 
@@ -124,10 +111,9 @@ Remote deploy 순서:
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
 git pull --ff-only
-printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose build web tools
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm run db:rag:index
 sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
@@ -140,7 +126,7 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
 done
 ```
 
-이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인하고, published `web` image를 pull한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. `pull`과 `tools` command는 image 선택에 필요한 `WEB_IMAGE`만 전달하고, Sentry release env는 실제 `web` service를 올리는 `up -d web` 단계에만 전달한다. Server checkout 기준으로 rebuilt `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 최대 10회 재시도한다.
+이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 최대 10회 재시도한다.
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
@@ -149,7 +135,7 @@ OCI server production env는 `/home/ubuntu/munjib/.env`가 기준이다. 초기 
 ```text
 NEXTAUTH_URL="https://munjib.andrewchoi.link"
 NEXTAUTH_COOKIE_SECURE=true
-WEB_IMAGE=ghcr.io/dschoi30/munjib:latest
+WEB_IMAGE=munjib-web:latest
 SENTRY_ENVIRONMENT=production
 SENTRY_TRACES_SAMPLE_RATE=1.0
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
@@ -217,17 +203,17 @@ Privacy contract:
 
 ## Failure modes
 
-CI failure는 publish와 deploy를 막는다. Test, Next build, Docker `runner` build 중 하나라도 실패하면 main image publish가 일어나지 않는다.
+CI failure는 deploy를 막는다. Test, Next build, Docker `runner` build 중 하나라도 실패하면 production deploy가 일어나지 않는다.
 
 Deploy secret이 빠지거나 SSH 접속이 실패하면 deploy job이 실패한다. PR validation에는 deploy secrets가 필요하지 않다.
 
-Server checkout이 dirty하거나 remote와 diverge되어 있으면 `git pull --ff-only`가 실패한다. GHCR image pull 권한이 없으면 `docker compose pull web`이 실패한다.
+Server checkout이 dirty하거나 remote와 diverge되어 있으면 `git pull --ff-only`가 실패한다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
 
-GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꿔 이 failure mode를 고정했다.
+GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 과거 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패했다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꾸는 중간 fix였고, Issue #98은 long-running QEMU publish를 제거해 OCI host에서 ARM64 image를 직접 build하도록 바꾼 현재 fix다.
 
 Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
 
-Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`가 잘못된 image를 이미 publish했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다.
+Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`가 잘못된 image를 이미 build했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다. Native OCI deploy에서는 server `.env`와 deploy job release env를 고친 뒤 새 build가 필요하다.
 
 Sentry는 Docker log를 대체하지 않는다. Startup/env/DB/PostgreSQL 문제와 Sentry init 이전 crash는 Docker stdout/stderr를 먼저 본다.
 
@@ -240,7 +226,7 @@ pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.tes
 pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts
 ```
 
-Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target build가 실행된다. Local wiki maintenance 후에는 `pnpm wiki:manifest`와 `pnpm wiki:lint`로 frontmatter, manifest, link 구조를 확인한다.
+Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target build가 실행된다. `main` deploy path에서는 OCI host의 `docker compose build web tools`, Prisma migration deploy, RAG vector index setup, public HTTPS health check가 실행된다. Local wiki maintenance 후에는 `pnpm wiki:manifest`와 `pnpm wiki:lint`로 frontmatter, manifest, link 구조를 확인한다.
 
 ## 근거
 
@@ -248,7 +234,9 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub issue #89
 - GitHub issue #94
 - GitHub issue #96
+- GitHub issue #98
 - GitHub Actions run `27016407598` deploy failure log
+- GitHub Actions run `27017475831` cancelled publish log
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
 - `docker-compose.yml`

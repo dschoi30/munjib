@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 161
+source_count: 165
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-98 oci native build deploy fix
+
+- Result: main deploy path를 GHCR multi-platform publish/pull에서 OCI host native Compose build로 전환했다.
+- Coverage: PR #97 merge 후 main run `27017475831`은 `Test and build`를 통과했지만 `Publish image`의 QEMU 기반 runtime image build/push가 장시간 진행되어 취소했다. Issue #98 workflow는 `publish` job, `packages: write`, GHCR login, Buildx/QEMU publish action을 제거하고, `deploy` job이 `ci` 성공 뒤 SSH로 OCI host에서 `git pull --ff-only`, `docker compose build web tools`, Prisma migration deploy, RAG vector index setup, `docker compose up -d web`, public HTTPS health check를 실행하게 한다. Deploy image tag는 `WEB_IMAGE=munjib-web:latest`이고 release env는 build/up 단계에 전달한다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #98, GitHub Actions run `27017475831` cancelled publish log, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-96 oci arm64 publish fix
 

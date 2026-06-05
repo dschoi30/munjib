@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 25
+source_count: 27
 tags:
   - munjib
   - workflow
@@ -117,7 +117,7 @@ NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05 \
 docker compose up --build
 ```
 
-Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. `main` push에서는 `ghcr.io/dschoi30/munjib:<sha>`와 `latest` image를 publish한 뒤 SSH로 production server의 compose project를 갱신한다. GHCR image publish build는 browser Sentry bundle이 유지되도록 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 함께 전달한다. Production compose `web` service는 `WEB_IMAGE` env로 published image tag를 받을 수 있고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본 image name으로 사용한다. Issue #94부터 OCI production deploy는 `/home/ubuntu/munjib` checkout을 `git pull --ff-only`로 갱신하고, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인한 뒤 `sudo env WEB_IMAGE=... docker compose pull web`, rebuilt `tools` container Prisma migration deploy, RAG vector index setup, `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE`를 전달한 `docker compose up -d web`, `https://munjib.andrewchoi.link` public health check retry 순서로 실행한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.andrewchoi.link`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`을 사용한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
+Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #98 이후 `main` push deploy는 GHCR publish/pull 없이 SSH로 production server의 `/home/ubuntu/munjib` checkout을 `git pull --ff-only`로 갱신하고, OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `sudo env ... docker compose build web tools`를 실행한다. Native build는 browser Sentry bundle이 유지되도록 server `.env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy job의 `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` env를 Docker build args로 전달한다. 이후 built `tools` container에서 Prisma migration deploy와 RAG vector index setup을 실행하고, release env를 전달한 `docker compose up -d web`, `https://munjib.andrewchoi.link` public health check retry 순서로 배포한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.andrewchoi.link`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`을 사용한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
 
 Required GitHub secrets:
 
@@ -216,3 +216,5 @@ PR merge 이후에는 관련 GitHub issue가 닫혔는지 반드시 확인한다
 - User workflow decision to wait 5 minutes after PR review request and inspect review feedback
 - User workflow decision to close related issues after merge
 - `AGENTS.md` Task Completion and PR Review Workflow
+- GitHub issue #98
+- GitHub Actions run `27017475831`
