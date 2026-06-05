@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 29
+updated: 2026-06-06
+source_count: 30
 tags:
   - munjib
   - product
@@ -71,6 +71,8 @@ Issue #71은 tag click search를 추가해 frontmatter tag chip, preview mode bo
 
 Issue #73은 document editor title row 우측 `AI에게 묻기` button과 saved-content-only RAG assistant를 추가했다. 답변은 저장된 DB 문서 내용만 근거로 삼고, 현재 문서에서 wiki link target, backlink source, same-tag document, workspace fallback 순서로 context를 확장한다. 첫 모델 구성은 Ollama `gemma4:e4b`, `bge-m3`, PostgreSQL pgvector chunk index다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
 
+Issue #100 설계는 이 RAG assistant의 permission, saved-content, graph-aware retrieval, pgvector freshness contract를 유지하면서 chat/embedding provider boundary를 LangChain으로 바꾸고 Langfuse tracing을 추가하는 계획이다. 첫 slice의 provider 설정은 server-wide env 기반이고 Ollama, OpenAI, OpenAI-compatible endpoint를 대상으로 하며, 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding provider/model/dimension은 live Ask AI에서 fail-fast한다. Production Langfuse trace는 문서 본문, retrieved context, full prompt, question, answer body를 의도적으로 보내지 않고 provider/model, chunk/citation ids/counts, error code 같은 metadata 중심으로 제한한다. 설계 근거는 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`이다.
+
 Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. 일반 문서 선택은 현재 탭을 교체하고, 마지막 tab 바로 오른쪽의 `+` button 또는 sidebar row `...` menu의 Open in new tab만 새 탭을 만든다. Tab width는 row 공간이 부족해질 때 함께 줄어든다. Toolbar는 document navigation history 기반 back/forward와 현재 document 또는 folder path 표시를 제공하며, forward 대상 document가 없거나 readable하지 않으면 forward button을 비활성화한다.
 
 ## 빠른 진입점
@@ -117,6 +119,7 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`
 - `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
+- `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `lib/markdown/folding.ts`
 - `tests/markdown/folding.test.ts`
 - `tests/components/document-editor-preview.test.tsx`

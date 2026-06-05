@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 69,
+      "source_count": 70,
       "searchPriority": 50
     },
     {
@@ -228,7 +228,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 170,
+      "source_count": 171,
       "searchPriority": 1
     },
     {
@@ -276,7 +276,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 29,
+      "source_count": 30,
       "searchPriority": 50
     },
     {
@@ -320,7 +320,7 @@
         "[[Local Development Workflow]]",
         "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 21,
+      "source_count": 22,
       "searchPriority": 50
     },
     {
@@ -345,7 +345,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 62,
+      "source_count": 63,
       "searchPriority": 30
     },
     {

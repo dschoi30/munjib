@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-05
-source_count: 170
+updated: 2026-06-06
+source_count: 171
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-06T00:28:56+0900 - issue-100 langchain langfuse rag provider design
+
+- Result: Issue #100 설계를 추가해 현재 saved-content-only RAG의 provider abstraction과 Langfuse observability 방향을 정했다.
+- Coverage: 기존 permission/readable document filtering, saved document indexing, graph-aware retrieval, pgvector search, rerank, citation contract는 유지하고, chat/embedding provider boundary를 LangChain으로 옮긴다. 첫 slice는 env 기반 Ollama/OpenAI/OpenAI-compatible provider 설정을 이해하되 workspace/request override, automatic reindex, vector dimension migration은 제외한다. 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding provider/model/dimension은 partial selected-document indexing을 만들지 않고 live Ask AI에서 fail-fast하며, production Langfuse traces는 prompt/context/question/answer body가 아니라 metadata 중심으로 제한한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #100, `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`, `lib/rag/ask.ts`, `lib/rag/ollama.ts`, `lib/rag/vector-store.ts`, LangChain JavaScript provider docs, Langfuse LangChain integration docs.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-05T00:00:00+09:00 - issue-98 review follow-up
 
