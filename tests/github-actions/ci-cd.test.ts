@@ -115,19 +115,28 @@ describe("GitHub Actions CI/CD workflow", () => {
       "trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT",
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose pull web',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm exec prisma migrate deploy',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm exec prisma migrate deploy',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm run db:rag:index',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm run db:rag:index',
     );
     expect(deployStep?.with.script).toContain(
       'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web',
     );
     expect(deployStep?.with.script).toContain(
-      'curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null',
+      "for attempt in 1 2 3 4 5 6 7 8 9 10; do",
+    );
+    expect(deployStep?.with.script).toContain(
+      'if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then',
+    );
+    expect(deployStep?.with.script).toContain(
+      'if [ "$attempt" = "10" ]; then',
+    );
+    expect(deployStep?.with.script).toContain(
+      "sleep 3",
     );
   });
 });
