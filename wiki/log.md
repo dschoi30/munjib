@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 160
+source_count: 161
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-96 oci arm64 publish fix
+
+- Result: main deploy failure after PR #95 merge traced to an amd64-only GHCR image, then publish workflow was updated to push a multi-platform manifest for OCI.
+- Coverage: GitHub Actions run `27016407598` passed test/build and GHCR publish but failed `Deploy over SSH` at `sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web` because the OCI instance requested `linux/arm64/v8` and the published manifest lacked that platform. The publish job now sets up QEMU before Buildx and pushes `linux/amd64,linux/arm64` for the Docker `runner` target; workflow tests assert the QEMU setup step exists, runs before the build-push step, and preserves the platform list.
+- Pages: [[CI CD And Monitoring Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #96, GitHub Actions run `27016407598` deploy failure log, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-94 oci ci cd implementation
 

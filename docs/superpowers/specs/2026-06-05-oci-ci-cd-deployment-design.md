@@ -89,6 +89,11 @@ The remote script will:
 The script should always avoid printing secret values. It should use
 `--password-stdin` for registry login and should not enable shell tracing.
 
+Post-merge deploy observation for Issue #96 showed that the OCI instance pulls
+images as `linux/arm64/v8`. The GHCR publish job therefore must push a
+multi-platform manifest that includes `linux/arm64`; an amd64-only image fails
+at `docker compose pull web` with `no matching manifest for linux/arm64/v8`.
+
 ## Server Environment Contract
 
 The OCI server should keep a production compose env file at:
@@ -162,6 +167,8 @@ Deploy fails if:
 - `DEPLOY_PATH` does not exist.
 - `git pull --ff-only` cannot fast-forward.
 - GHCR login or image pull fails.
+- The published GHCR image does not include a `linux/arm64` manifest for the OCI
+  instance.
 - Prisma migration fails.
 - RAG vector index setup fails.
 - `docker compose up -d web` fails.
