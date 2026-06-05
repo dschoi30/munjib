@@ -125,17 +125,25 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           WEB_IMAGE: ${{ needs.publish.outputs.image }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SENTRY_RELEASE: ${{ github.sha }}
+          NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
+          DEPLOY_HEALTHCHECK_URL: https://munjib.example.invalid
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: WEB_IMAGE
+          envs: WEB_IMAGE,GHCR_USERNAME,GHCR_TOKEN,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
             git pull --ff-only
-            docker compose pull web
-            docker compose run --rm --build tools pnpm exec prisma migrate deploy
-            docker compose run --rm --build tools pnpm run db:rag:index
-            docker compose up -d web
+            printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+            trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose pull web
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm run db:rag:index
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
+            curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null

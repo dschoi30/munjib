@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, GHCR image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.
 created: 2026-06-05
 updated: 2026-06-05
-source_count: 22
+source_count: 28
 tags:
   - munjib
   - workflow
@@ -95,7 +95,7 @@ NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_
 SENTRY_RELEASE=${{ github.sha }}
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SENTRY_*` 값을 바꾸려면 runtime env만 바꾸는 것으로는 부족하고 image rebuild/publish가 필요하다.
+Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SENTRY_*` 값을 바꾸려면 runtime env만 바꾸는 것으로는 부족하고 image rebuild/publish가 필요하다. 현재 `munjib.example.invalid` 초기 production 관측은 GitHub repository variable `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`과 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
 
 ### main deploy
 
@@ -104,11 +104,17 @@ Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SE
 Required GitHub secrets:
 
 ```text
-DEPLOY_HOST
-DEPLOY_USER
-DEPLOY_SSH_KEY
-DEPLOY_PATH
-DEPLOY_PORT   # optional, default 22
+DEPLOY_HOST=146.56.170.25
+DEPLOY_USER=ubuntu
+DEPLOY_SSH_KEY=<OCI private key>
+DEPLOY_PATH=/home/deployer/munjib
+DEPLOY_PORT=22
+```
+
+Current OCI production domain:
+
+```text
+https://munjib.example.invalid
 ```
 
 Remote deploy 순서:
@@ -116,15 +122,29 @@ Remote deploy 순서:
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
 git pull --ff-only
-docker compose pull web
-docker compose run --rm --build tools pnpm exec prisma migrate deploy
-docker compose run --rm --build tools pnpm run db:rag:index
-docker compose up -d web
+printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose pull web
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
+curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null
 ```
 
-이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, published `web` image를 pull하고, server checkout 기준으로 rebuilt `tools` container에서 Prisma migration과 RAG vector index setup을 실행한다. 마지막 단계는 `web` service를 detached mode로 올린다.
+이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인하고, published `web` image를 pull한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Server checkout 기준으로 rebuilt `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 수행한다.
 
-현재 deploy job에는 별도 HTTP health check, synthetic browser check, Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
+현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
+
+OCI server production env는 `/home/deployer/munjib/.env`가 기준이다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
+
+```text
+NEXTAUTH_URL="https://munjib.example.invalid"
+NEXTAUTH_COOKIE_SECURE=true
+WEB_IMAGE=ghcr.io/dschoi30/munjib:latest
+SENTRY_ENVIRONMENT=production
+SENTRY_TRACES_SAMPLE_RATE=1.0
+NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0
+```
 
 ### Docker runtime
 
@@ -214,6 +234,7 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 
 - GitHub issue #88
 - GitHub issue #89
+- GitHub issue #94
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
 - `docker-compose.yml`
@@ -233,5 +254,6 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - `tests/observability/sentry-config.test.ts`
 - `tests/observability/sentry-scrub-event.test.ts`
 - `tests/observability/sentry-files.test.ts`
+- OCI server read-only inspection for `munjib.example.invalid`
 - [[Local Development Workflow]]
 - [[Production Observability Workflow]]
