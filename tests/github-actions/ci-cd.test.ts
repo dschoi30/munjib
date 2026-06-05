@@ -19,11 +19,11 @@ describe("GitHub Actions CI/CD workflow", () => {
     });
   });
 
-  test("grants package write access for GHCR publishing", () => {
+  test("uses least-privilege repository read permissions", () => {
     expect(workflow.permissions).toMatchObject({
       contents: "read",
-      packages: "write",
     });
+    expect(workflow.permissions).not.toHaveProperty("packages");
   });
 
   test("ci job installs, tests, builds, and validates the runtime image", () => {
@@ -59,50 +59,26 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(runCommands).toContain("docker build --target runner");
   });
 
-  test("publish job pushes sha and latest tags only on main pushes", () => {
-    const publish = workflow.jobs.publish;
-    const qemuIndex = publish.steps.findIndex((step: { uses?: string }) =>
-      step.uses?.startsWith("docker/setup-qemu-action@"),
-    );
-    const pushIndex = publish.steps.findIndex((step: { uses?: string }) =>
-      step.uses?.startsWith("docker/build-push-action@"),
-    );
-    const pushStep = publish.steps[pushIndex];
+  test("does not publish GHCR images before deploy", () => {
+    const workflowText = read(".github/workflows/ci-cd.yml");
 
-    expect(publish.needs).toBe("ci");
-    expect(publish.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
-    expect(qemuIndex).toBeGreaterThan(-1);
-    expect(pushIndex).toBeGreaterThan(-1);
-    expect(qemuIndex).toBeLessThan(pushIndex);
-    expect(pushStep).toBeDefined();
-    expect(pushStep?.with).toMatchObject({
-      context: ".",
-      target: "runner",
-      push: true,
-      platforms: "linux/amd64,linux/arm64",
-    });
-    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN || secrets.NEXT_PUBLIC_SENTRY_DSN || '' }}");
-    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT || 'production' }}");
-    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}");
-    expect(pushStep?.with["build-args"]).toContain("NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE || '0.05' }}");
-    expect(pushStep?.with["build-args"]).toContain("SENTRY_RELEASE=${{ github.sha }}");
-    expect(pushStep?.with.tags).toContain("${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}");
-    expect(pushStep?.with.tags).toContain("${{ env.IMAGE_NAME }}:latest");
+    expect(workflow.jobs.publish).toBeUndefined();
+    expect(workflowText).not.toContain("docker/build-push-action");
+    expect(workflowText).not.toContain("docker/setup-qemu-action");
+    expect(workflowText).not.toContain("docker/login-action");
   });
 
-  test("deploy job uses SSH secrets and passes the published image tag", () => {
+  test("deploy job builds natively on the OCI host", () => {
     const deploy = workflow.jobs.deploy;
     const deployStep = deploy.steps.find((step: { uses?: string }) =>
       step.uses?.startsWith("appleboy/ssh-action@"),
     );
 
-    expect(deploy.needs).toBe("publish");
+    expect(deploy.needs).toBe("ci");
     expect(deploy.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
     expect(deployStep).toBeDefined();
     expect(deployStep?.env).toMatchObject({
-      WEB_IMAGE: "${{ needs.publish.outputs.image }}",
-      GHCR_USERNAME: "${{ github.actor }}",
-      GHCR_TOKEN: "${{ secrets.GITHUB_TOKEN }}",
+      WEB_IMAGE: "munjib-web:latest",
       SENTRY_RELEASE: "${{ github.sha }}",
       NEXT_PUBLIC_SENTRY_RELEASE: "${{ github.sha }}",
       DEPLOY_HEALTHCHECK_URL: "https://munjib.example.invalid",
@@ -112,24 +88,20 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
     expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
     expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,GHCR_USERNAME,GHCR_TOKEN,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL",
+      "WEB_IMAGE,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL",
     );
     expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
     expect(deployStep?.with.script).toContain("git pull --ff-only");
+    expect(deployStep?.with.script).not.toContain("docker login ghcr.io");
+    expect(deployStep?.with.script).not.toContain("docker compose pull web");
     expect(deployStep?.with.script).toContain(
-      'printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose build web tools',
     );
     expect(deployStep?.with.script).toContain(
-      "trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT",
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm exec prisma migrate deploy',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm exec prisma migrate deploy',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm run db:rag:index',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm run db:rag:index',
     );
     expect(deployStep?.with.script).toContain(
       'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web',
