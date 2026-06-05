@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-04",
+  "updated": "2026-06-05",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -22,6 +22,31 @@
         "[[Local Development Workflow]]"
       ],
       "source_count": 9,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-ci-cd-monitoring",
+      "path": "wiki/CI CD And Monitoring Workflow.md",
+      "title": "CI CD And Monitoring Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib의 현재 GitHub Actions CI/CD, GHCR image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "ci-cd",
+        "deployment",
+        "monitoring",
+        "sentry"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Local Development Workflow]]",
+        "[[Production Observability Workflow]]",
+        "[[Project PRD]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 22,
       "searchPriority": 50
     },
     {
@@ -137,7 +162,7 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker/CI 포함 workflow navigation.",
+      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, monitoring workflow navigation.",
       "tags": [
         "index",
         "munjib"
@@ -152,6 +177,7 @@
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
+        "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
@@ -159,7 +185,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 62,
+      "source_count": 64,
       "searchPriority": 5
     },
     {
@@ -201,7 +227,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 157,
+      "source_count": 159,
       "searchPriority": 1
     },
     {
@@ -290,9 +316,10 @@
         "[[index|Wiki Index]]",
         "[[Munjib]]",
         "[[Project PRD]]",
-        "[[Local Development Workflow]]"
+        "[[Local Development Workflow]]",
+        "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 20,
+      "source_count": 21,
       "searchPriority": 50
     },
     {
@@ -314,9 +341,10 @@
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Next.js Prisma Monolith]]",
+        "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 55,
+      "source_count": 56,
       "searchPriority": 30
     },
     {
