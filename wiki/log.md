@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 157
+source_count: 160
 tags:
   - log
   - munjib
@@ -18,6 +18,30 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-94 oci ci cd implementation
+
+- Result: GitHub Actions deploy job을 현재 Oracle Cloud instance 운영 방식에 맞췄고 server production env를 domain origin 기준으로 정리했다.
+- Coverage: Deploy job은 `main` publish image를 remote `WEB_IMAGE`로 전달하고, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인한 뒤 OCI instance에서 `sudo env ... docker compose pull/run/up`을 실행한다. `pull`과 `tools` command에는 `WEB_IMAGE`만 전달하고, Sentry release env는 `up -d web` 단계에만 전달한다. Deploy 후 `https://munjib.andrewchoi.link` public health check를 최대 10회 재시도한다. Server `/home/ubuntu/munjib/.env`는 `NEXTAUTH_URL="https://munjib.andrewchoi.link"`, `NEXTAUTH_COOKIE_SECURE=true`, `WEB_IMAGE=ghcr.io/dschoi30/munjib:latest`, 초기 Sentry trace sample rate `1.0` 값을 갖는다. GitHub repository variable `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`과 deploy secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH`, `DEPLOY_PORT`, `DEPLOY_SSH_KEY`를 설정했다. 현재 running web container도 local `munjib-web` image로 재시작해 domain origin과 sample rate `1.0` runtime env를 적용했다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #94, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, OCI server env backups `.env.backup-issue-94` and `.env.docker.backup-issue-94`, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`, `docs/superpowers/plans/2026-06-05-oci-ci-cd-deployment.md`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts`; `pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.test.ts`; redacted OCI `.env` inspection; GitHub repository secret and variable name inspection; `curl -I https://munjib.andrewchoi.link`; `sudo docker compose ps`; `sudo docker compose logs --tail=60 web`.
+
+## 2026-06-05T00:00:00+09:00 - issue-94 oci ci cd design
+
+- Result: OCI instance에 현재 CI/CD를 연결하기 위한 설계를 추가했다.
+- Coverage: 설계는 `munjib.andrewchoi.link`/`146.56.170.25`, `/home/ubuntu/munjib` compose project, Caddy reverse proxy, `sudo docker` 필요, GHCR unauthenticated pull failure, `.env.docker`로 인해 active container `NEXTAUTH_URL`이 localhost fallback이 된 문제, GitHub Actions deploy script와 server env contract를 정리한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #94, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`, OCI server read-only inspection, `.github/workflows/ci-cd.yml`, [[CI CD And Monitoring Workflow]].
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
+## 2026-06-05T00:00:00+09:00 - ci cd monitoring wiki split
+
+- Result: 현재 CI/CD와 monitoring 구성을 별도 wiki page로 정리했다.
+- Coverage: [[CI CD And Monitoring Workflow]]는 `.github/workflows/ci-cd.yml`의 PR/main CI, GHCR publish, SSH compose deploy, Docker compose runtime, Docker stdout/Sentry monitoring split, Sentry build/runtime env와 privacy contract, 현재 한계(e2e/health check/source map upload 제외)를 한 곳에 모은다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `.env.docker.example`, `next.config.mjs`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`, `lib/observability/sentry-config.ts`, `lib/observability/sentry-scrub-event.ts`, `tests/github-actions/ci-cd.test.ts`, `tests/docker/compose.test.ts`, `tests/observability/sentry-config.test.ts`, `tests/observability/sentry-scrub-event.test.ts`, `tests/observability/sentry-files.test.ts`.
+- Verification: `pnpm wiki:manifest`; `pnpm wiki:lint` exited 0 with the existing `wiki/designs/sidebar.md` pasted image unresolved-link warning; `git diff --check`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-92 review follow-up
 
