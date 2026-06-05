@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 55
+source_count: 56
 tags:
   - munjib
   - source
@@ -18,6 +18,7 @@ links:
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[Next.js Prisma Monolith]]"
+  - "[[CI CD And Monitoring Workflow]]"
   - "[[Production Observability Workflow]]"
 ---
 
@@ -94,6 +95,8 @@ Issue #88은 GitHub Actions CI/CD를 추가했다. PR과 `main` push는 pgvector
 
 Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. Docker stdout은 startup, 환경 변수, DB 연결, PostgreSQL process log 확인용으로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing에만 사용한다. Browser SDK 설정은 Next.js build time에 bundle되므로 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 한다. Source map upload와 `SENTRY_AUTH_TOKEN` handling은 첫 slice에서 제외한다. Sentry event scrubber는 query parameter 기반 document/search state, request URL host, request body, cookies, request headers, user IP, URL/query/address/user-agent/host span data, span description/name URL text, and breadcrumb URL/query/host fields를 제거한다. 설계 근거는 [[Production Observability Workflow]]와 `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`에 둔다.
 
+Issue #94는 현재 Oracle Cloud instance의 `munjib.example.invalid` production service에 기존 GitHub Actions CI/CD를 연결한다. 운영 contract는 `/home/deployer/munjib` compose project, Caddy `127.0.0.1:3000` reverse proxy, `sudo docker` 기반 remote deploy, GHCR authenticated pull, `NEXTAUTH_URL=https://munjib.example.invalid`, `NEXTAUTH_COOKIE_SECURE=true`, deploy 후 public HTTPS health check다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다. 설계 근거는 [[CI CD And Monitoring Workflow]]와 `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`이다.
+
 ## 현재 구현 근거
 
 현재 repository에서 확인한 구현 근거:
@@ -138,6 +141,7 @@ Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. D
 - GitHub issue #88와 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`: GitHub Actions CI/CD 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`: production Docker 로그와 Sentry SaaS error/tracing 역할 분리 설계 및 구현 계획.
+- GitHub issue #94와 `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`: Oracle Cloud instance의 `munjib.example.invalid` production service에 GitHub Actions CI/CD를 연결하는 설계.
 - `tests/rag/ollama.test.ts`: RAG Ollama config/env parsing, request payload, response trimming, recoverable error, embedding validation coverage.
 - `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.
 - `tests/rag/vector-index.test.ts`: Prisma migrate-dev-safe HNSW index setup SQL and migration-history guard coverage.

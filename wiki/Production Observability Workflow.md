@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
 created: 2026-06-03
-updated: 2026-06-03
-source_count: 20
+updated: 2026-06-05
+source_count: 21
 tags:
   - munjib
   - workflow
@@ -17,11 +17,12 @@ links:
   - "[[Munjib]]"
   - "[[Project PRD]]"
   - "[[Local Development Workflow]]"
+  - "[[CI CD And Monitoring Workflow]]"
 ---
 
 # Production Observability Workflow
 
-이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다.
+이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다. CI/CD deploy와 monitoring을 함께 보는 현재 운영 요약은 [[CI CD And Monitoring Workflow]]에 둔다.
 
 ## Entry points
 
