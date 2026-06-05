@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 157
+source_count: 159
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-94 oci ci cd design
+
+- Result: OCI instance에 현재 CI/CD를 연결하기 위한 설계를 추가했다.
+- Coverage: 설계는 `munjib.andrewchoi.link`/`146.56.170.25`, `/home/ubuntu/munjib` compose project, Caddy reverse proxy, `sudo docker` 필요, GHCR unauthenticated pull failure, `.env.docker`로 인해 active container `NEXTAUTH_URL`이 localhost fallback이 된 문제, GitHub Actions deploy script와 server env contract를 정리한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #94, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`, OCI server read-only inspection, `.github/workflows/ci-cd.yml`, [[CI CD And Monitoring Workflow]].
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
+
+## 2026-06-05T00:00:00+09:00 - ci cd monitoring wiki split
+
+- Result: 현재 CI/CD와 monitoring 구성을 별도 wiki page로 정리했다.
+- Coverage: [[CI CD And Monitoring Workflow]]는 `.github/workflows/ci-cd.yml`의 PR/main CI, GHCR publish, SSH compose deploy, Docker compose runtime, Docker stdout/Sentry monitoring split, Sentry build/runtime env와 privacy contract, 현재 한계(e2e/health check/source map upload 제외)를 한 곳에 모은다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `Dockerfile`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `.env.docker.example`, `next.config.mjs`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`, `lib/observability/sentry-config.ts`, `lib/observability/sentry-scrub-event.ts`, `tests/github-actions/ci-cd.test.ts`, `tests/docker/compose.test.ts`, `tests/observability/sentry-config.test.ts`, `tests/observability/sentry-scrub-event.test.ts`, `tests/observability/sentry-files.test.ts`.
+- Verification: `pnpm wiki:manifest`; `pnpm wiki:lint` exited 0 with the existing `wiki/designs/sidebar.md` pasted image unresolved-link warning; `git diff --check`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-92 review follow-up
 
