@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-05
-source_count: 161
+source_count: 170
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-98 review follow-up
+
+- Result: PR #99 review feedback에 따라 OCI native deploy를 exact GitHub SHA에 pinning하고 health check와 image cleanup을 보강했다.
+- Coverage: Remote deploy는 `git pull --ff-only` 대신 `git fetch --force origin main`, `git checkout --detach "$DEPLOY_SHA"`, `test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"`로 CI가 검증한 commit만 build한다. Remote health check는 OCI hairpin NAT 영향을 피하기 위해 `http://127.0.0.1:3000`에 `Host: munjib.andrewchoi.link` header를 붙여 실행하고, SSH deploy step 뒤 GitHub-hosted runner가 `https://munjib.andrewchoi.link` public health check를 별도 실행한다. 성공한 remote deploy는 dangling image 누적을 줄이기 위해 `sudo docker image prune -f`를 실행한다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #99 review threads, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts`.
+
+## 2026-06-05T00:00:00+09:00 - issue-98 oci native build deploy fix
+
+- Result: main deploy path를 GHCR multi-platform publish/pull에서 OCI host native Compose build로 전환했다.
+- Coverage: PR #97 merge 후 main run `27017475831`은 `Test and build`를 통과했지만 `Publish image`의 QEMU 기반 runtime image build/push가 장시간 진행되어 취소했다. Issue #98 workflow는 `publish` job, `packages: write`, GHCR login, Buildx/QEMU publish action을 제거하고, `deploy` job이 `ci` 성공 뒤 SSH로 OCI host에서 native `docker compose build web tools`, Prisma migration deploy, RAG vector index setup, `docker compose up -d web`, health checks를 실행하게 한다. Deploy image tag는 `WEB_IMAGE=munjib-web:latest`이고 release env는 build/up 단계에 전달한다.
+- Pages: [[CI CD And Monitoring Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #98, GitHub Actions run `27017475831` cancelled publish log, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/superpowers/specs/2026-06-05-oci-ci-cd-deployment-design.md`.
+- Verification: `pnpm exec vitest run tests/github-actions/ci-cd.test.ts`.
 
 ## 2026-06-05T00:00:00+09:00 - issue-96 oci arm64 publish fix
 
