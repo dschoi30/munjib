@@ -108,10 +108,10 @@ DOCKER_DATABASE_URL=postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?
 NEXTAUTH_SECRET=<server secret>
 SENTRY_DSN=<server secret, optional but configured if Sentry is desired>
 SENTRY_ENVIRONMENT=production
-SENTRY_TRACES_SAMPLE_RATE=0.05
+SENTRY_TRACES_SAMPLE_RATE=1.0
 NEXT_PUBLIC_SENTRY_DSN=<public DSN, optional but configured if browser Sentry is desired>
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
-NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0
 ```
 
 `SENTRY_RELEASE` and `NEXT_PUBLIC_SENTRY_RELEASE` should come from the deploy
@@ -140,12 +140,15 @@ Optional repository variables/secrets for Sentry build-time browser config:
 ```text
 NEXT_PUBLIC_SENTRY_DSN
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
-NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0
 ```
 
 The deploy job uses `GITHUB_TOKEN` for GHCR login. The package is private, so the
 remote server must authenticate before pull. No long-lived GHCR token is needed
-for this slice.
+for this slice. During the initial production observation period, set
+`NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0` as a GitHub repository variable so
+the browser bundle is built with full tracing; lower it later when the signal is
+well understood.
 
 ## Error Handling
 
