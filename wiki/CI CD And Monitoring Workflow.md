@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.
 created: 2026-06-05
 updated: 2026-06-05
-source_count: 33
+source_count: 38
 tags:
   - munjib
   - workflow
@@ -83,9 +83,11 @@ Deploy job env:
 
 ```text
 WEB_IMAGE=munjib-web:latest
+DEPLOY_SHA=${{ github.sha }}
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_HEALTHCHECK_URL=https://munjib.example.invalid
+DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
+DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
 ```
 
 Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 server `.env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 현재 `munjib.example.invalid` 초기 production 관측은 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
@@ -110,13 +112,15 @@ Remote deploy 순서:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
-git pull --ff-only
+git fetch --force origin main
+git checkout --detach "$DEPLOY_SHA"
+test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
 sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose build web tools
 sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm exec prisma migrate deploy
 sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm run db:rag:index
 sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
-  if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
+  if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
     break
   fi
   if [ "$attempt" = "10" ]; then
@@ -124,9 +128,10 @@ for attempt in 1 2 3 4 5 6 7 8 9 10; do
   fi
   sleep 3
 done
+sudo docker image prune -f
 ```
 
-이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 최대 10회 재시도한다.
+이 deploy는 server checkout에서 `origin/main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Remote script 안에서는 hairpin NAT 영향을 피하기 위해 `http://127.0.0.1:3000`에 `Host: munjib.example.invalid` header를 붙인 local health check를 최대 10회 재시도하고, 성공 후 dangling image 정리를 위해 `sudo docker image prune -f`를 실행한다. SSH deploy step 뒤에는 GitHub-hosted runner에서 `https://munjib.example.invalid` public health check를 별도 실행해 DNS/TLS/Caddy public path를 확인한다.
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
@@ -207,11 +212,11 @@ CI failure는 deploy를 막는다. Test, Next build, Docker `runner` build 중 �
 
 Deploy secret이 빠지거나 SSH 접속이 실패하면 deploy job이 실패한다. PR validation에는 deploy secrets가 필요하지 않다.
 
-Server checkout이 dirty하거나 remote와 diverge되어 있으면 `git pull --ff-only`가 실패한다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
+Server checkout에서 `origin/main` fetch나 `DEPLOY_SHA` detached checkout이 실패하면 deploy가 source sync 단계에서 멈춘다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
 
 GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 과거 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패했다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꾸는 중간 fix였고, Issue #98은 long-running QEMU publish를 제거해 OCI host에서 ARM64 image를 직접 build하도록 바꾼 현재 fix다.
 
-Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
+Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. Remote local health check가 실패하면 public runner health check까지 가지 않고 deploy가 실패한다. Remote local health check는 app container response를 확인하고, public runner health check는 외부 DNS/TLS/Caddy path를 확인한다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
 
 Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`가 잘못된 image를 이미 build했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다. Native OCI deploy에서는 server `.env`와 deploy job release env를 고친 뒤 새 build가 필요하다.
 
@@ -237,6 +242,7 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub issue #98
 - GitHub Actions run `27016407598` deploy failure log
 - GitHub Actions run `27017475831` cancelled publish log
+- PR #99 review threads
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
 - `docker-compose.yml`

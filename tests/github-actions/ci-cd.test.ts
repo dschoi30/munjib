@@ -73,25 +73,33 @@ describe("GitHub Actions CI/CD workflow", () => {
     const deployStep = deploy.steps.find((step: { uses?: string }) =>
       step.uses?.startsWith("appleboy/ssh-action@"),
     );
+    const publicHealthStep = deploy.steps.find((step: { name?: string }) =>
+      step.name === "Verify public deployment",
+    );
 
     expect(deploy.needs).toBe("ci");
     expect(deploy.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
     expect(deployStep).toBeDefined();
     expect(deployStep?.env).toMatchObject({
       WEB_IMAGE: "munjib-web:latest",
+      DEPLOY_SHA: "${{ github.sha }}",
       SENTRY_RELEASE: "${{ github.sha }}",
       NEXT_PUBLIC_SENTRY_RELEASE: "${{ github.sha }}",
-      DEPLOY_HEALTHCHECK_URL: "https://munjib.example.invalid",
+      DEPLOY_HEALTHCHECK_URL: "http://127.0.0.1:3000",
+      DEPLOY_HEALTHCHECK_HOST: "munjib.example.invalid",
     });
     expect(deployStep?.with.host).toBe("${{ secrets.DEPLOY_HOST }}");
     expect(deployStep?.with.username).toBe("${{ secrets.DEPLOY_USER }}");
     expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
     expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
     expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL",
+      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST",
     );
     expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
-    expect(deployStep?.with.script).toContain("git pull --ff-only");
+    expect(deployStep?.with.script).toContain("git fetch --force origin main");
+    expect(deployStep?.with.script).toContain('git checkout --detach "$DEPLOY_SHA"');
+    expect(deployStep?.with.script).toContain('test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"');
+    expect(deployStep?.with.script).not.toContain("git pull --ff-only");
     expect(deployStep?.with.script).not.toContain("docker login ghcr.io");
     expect(deployStep?.with.script).not.toContain("docker compose pull web");
     expect(deployStep?.with.script).toContain(
@@ -110,13 +118,18 @@ describe("GitHub Actions CI/CD workflow", () => {
       "for attempt in 1 2 3 4 5 6 7 8 9 10; do",
     );
     expect(deployStep?.with.script).toContain(
-      'if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then',
+      'if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then',
     );
     expect(deployStep?.with.script).toContain(
       'if [ "$attempt" = "10" ]; then',
     );
     expect(deployStep?.with.script).toContain(
       "sleep 3",
+    );
+    expect(deployStep?.with.script).toContain("sudo docker image prune -f");
+    expect(publicHealthStep).toBeDefined();
+    expect(publicHealthStep?.run).toBe(
+      "curl --fail --silent --show-error --location --max-time 20 https://munjib.example.invalid >/dev/null",
     );
   });
 });
