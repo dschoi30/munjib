@@ -15,7 +15,8 @@ The repository originally had `.github/workflows/ci-cd.yml` with three jobs:
 Issue #98 supersedes the GHCR publish/pull deploy path for the current OCI
 instance. The workflow now keeps the `ci` job and makes `deploy` depend directly
 on `ci`; production image build happens natively on the OCI ARM64 host after the
-server checkout fast-forwards to `main`.
+server checkout fetches `origin/main` and checks out the exact GitHub SHA that
+passed CI.
 
 The OCI instance is already serving the app at:
 
@@ -80,20 +81,31 @@ The deploy job will pass these values into the SSH action:
 
 ```text
 WEB_IMAGE=munjib-web:latest
+DEPLOY_SHA=${{ github.sha }}
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
+DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
 ```
 
 The remote script will:
 
 1. Change to `${{ secrets.DEPLOY_PATH }}`.
-2. Fast-forward the server checkout with `git pull --ff-only`.
+2. Fetch `origin/main`, check out `DEPLOY_SHA` in detached mode, and verify
+   `git rev-parse HEAD` equals `DEPLOY_SHA`.
 3. Build `web` and `tools` on the OCI host with
    `sudo env WEB_IMAGE="$WEB_IMAGE" ... docker compose build web tools`.
 4. Run Prisma migrations with the native `tools` image.
 5. Run RAG vector index setup with the native `tools` image.
 6. Start `web` with the native image and release env.
-7. Retry `https://munjib.andrewchoi.link` until it returns HTTP 200 or 10 attempts fail.
+7. Retry `http://127.0.0.1:3000` with `Host: munjib.andrewchoi.link` until it
+   returns HTTP 200 or 10 attempts fail.
+8. Prune dangling Docker images with `sudo docker image prune -f`.
+
+After the SSH action completes, the deploy job runs a separate public health
+check from the GitHub-hosted runner against `https://munjib.andrewchoi.link`.
+The remote local check avoids OCI hairpin NAT assumptions; the runner check
+keeps DNS/TLS/Caddy public routing covered.
 
 The script should always avoid printing secret values and should not enable
 shell tracing.
@@ -175,12 +187,13 @@ Deploy fails if:
 
 - SSH cannot connect.
 - `DEPLOY_PATH` does not exist.
-- `git pull --ff-only` cannot fast-forward.
+- `git fetch --force origin main`, detached checkout, or SHA verification fails.
 - OCI native `docker compose build web tools` fails.
 - Prisma migration fails.
 - RAG vector index setup fails.
 - `docker compose up -d web` fails.
-- Public health check does not return HTTP 200 after 10 attempts.
+- Remote local health check does not return HTTP 200 after 10 attempts.
+- Public health check from the GitHub-hosted runner fails.
 
 Cross-platform GHCR image manifest failures and registry auth failures are no
 longer on the current deploy path. They may still matter if the project returns
@@ -222,5 +235,5 @@ Update durable knowledge in:
 - Whether to remove `.env.docker` from the server or keep it as a local manual
   helper after merging its production values into `.env`.
 - Whether to add a dedicated `/api/health` endpoint in a later slice. The first
-  slice uses `curl` against the public homepage because the app already returns
-  HTTP 200 there.
+  slice uses `curl` against the app root because it already returns HTTP 200
+  after redirects.

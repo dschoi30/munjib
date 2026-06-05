@@ -46,7 +46,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 33,
+      "source_count": 38,
       "searchPriority": 50
     },
     {
@@ -185,7 +185,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 68,
+      "source_count": 71,
       "searchPriority": 5
     },
     {
@@ -208,7 +208,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 27,
+      "source_count": 30,
       "searchPriority": 50
     },
     {
@@ -228,7 +228,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 165,
+      "source_count": 170,
       "searchPriority": 1
     },
     {
@@ -345,7 +345,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 59,
+      "source_count": 62,
       "searchPriority": 30
     },
     {
