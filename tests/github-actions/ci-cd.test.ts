@@ -61,16 +61,19 @@ describe("GitHub Actions CI/CD workflow", () => {
 
   test("publish job pushes sha and latest tags only on main pushes", () => {
     const publish = workflow.jobs.publish;
-    const pushStep = publish.steps.find((step: { uses?: string }) =>
-      step.uses?.startsWith("docker/build-push-action@"),
-    );
-    const qemuStep = publish.steps.find((step: { uses?: string }) =>
+    const qemuIndex = publish.steps.findIndex((step: { uses?: string }) =>
       step.uses?.startsWith("docker/setup-qemu-action@"),
     );
+    const pushIndex = publish.steps.findIndex((step: { uses?: string }) =>
+      step.uses?.startsWith("docker/build-push-action@"),
+    );
+    const pushStep = publish.steps[pushIndex];
 
     expect(publish.needs).toBe("ci");
     expect(publish.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
-    expect(qemuStep).toBeDefined();
+    expect(qemuIndex).toBeGreaterThan(-1);
+    expect(pushIndex).toBeGreaterThan(-1);
+    expect(qemuIndex).toBeLessThan(pushIndex);
     expect(pushStep).toBeDefined();
     expect(pushStep?.with).toMatchObject({
       context: ".",

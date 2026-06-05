@@ -97,7 +97,7 @@ SENTRY_RELEASE=${{ github.sha }}
 
 Browser SDK 값은 Next.js build time에 bundle된다. 따라서 `NEXT_PUBLIC_SENTRY_*` 값을 바꾸려면 runtime env만 바꾸는 것으로는 부족하고 image rebuild/publish가 필요하다. 현재 `munjib.andrewchoi.link` 초기 production 관측은 GitHub repository variable `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`과 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
 
-Publish job은 `docker/setup-qemu-action@v3`와 Buildx를 사용해 `linux/amd64,linux/arm64` manifest list를 push한다. OCI instance가 `linux/arm64/v8` platform으로 pull하기 때문에 amd64-only image는 `docker compose pull web`에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다.
+Publish job은 `docker/setup-qemu-action@v3`를 Buildx build/push 전에 실행하고 `linux/amd64,linux/arm64` manifest list를 push한다. OCI instance가 `linux/arm64/v8` platform으로 pull하기 때문에 amd64-only image는 `docker compose pull web`에서 `no matching manifest for linux/arm64/v8` 오류로 실패한다.
 
 ### main deploy
 
