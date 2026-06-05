@@ -20,4 +20,5 @@ export type MoveFolderInput = {
 export type ArchiveFolderInput = {
   folderId: string;
   actorId: string;
+  cascade?: boolean;
 };

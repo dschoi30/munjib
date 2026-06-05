@@ -9,7 +9,6 @@ test("development credentials login opens the workspace", async ({ page }) => {
       consoleErrors.push(message.text());
     }
   });
-  page.on("dialog", (dialog) => dialog.accept());
   const openEditMode = async () => {
     const editButton = page.getByRole("button", { name: "Edit", exact: true });
     await expect(async () => {
@@ -219,8 +218,13 @@ test("development credentials login opens the workspace", async ({ page }) => {
   const emptyFolderAction = documentList
     .getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` })
     .last();
+  const emptyFolderDialogPromise = page.waitForEvent("dialog").then(async (emptyFolderDialog) => {
+    expect(emptyFolderDialog.message()).toBe("Move this folder to trash?");
+    await emptyFolderDialog.accept();
+  });
   await emptyFolderAction.click();
   await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await emptyFolderDialogPromise;
   await expect(
     documentList.getByRole("button", { name: `Open actions for ${emptyFolderDisplayLabel}` }),
   ).toHaveCount(0);
@@ -232,28 +236,23 @@ test("development credentials login opens the workspace", async ({ page }) => {
   await expect(page.locator("[name='title']")).toHaveValue("Untitled");
   const productNotesDocumentId = new URL(page.url()).searchParams.get("document");
   expect(productNotesDocumentId).toBeTruthy();
-  await productNotesRow.getByRole("button", { name: "Product Notes", exact: true }).click();
+  const productNotesToggle = productNotesRow.getByRole("button", { name: "Product Notes", exact: true });
+  if ((await productNotesToggle.getAttribute("aria-expanded")) !== "true") {
+    await productNotesToggle.click();
+  }
 
-  await productNotesAction.click();
-  await page.getByRole("menuitem", { name: "Move to trash" }).click();
-  const folderTrashToast = page.getByText("Empty this folder before moving it to trash.", {
-    exact: true,
-  });
-  await expect(folderTrashToast).toBeVisible();
-  await expect(folderTrashToast).toBeHidden({ timeout: 4000 });
-  await expect(page).not.toHaveURL(/folderError=/);
   const productNotesDocumentLink = page.locator(
     `a[href*="document=${productNotesDocumentId}"]`,
   );
-  const productNotesDocumentRow = productNotesDocumentLink.locator("..");
-  const productNotesDocumentAction = productNotesDocumentRow.getByRole("button", {
-    name: /^Open actions for Untitled · \/product-notes(?:-\d+)?\/untitled(?:-\d+)?$/,
+  await expect(productNotesDocumentLink).toHaveCount(1);
+  const cascadeDialogPromise = page.waitForEvent("dialog").then(async (cascadeDialog) => {
+    expect(cascadeDialog.message()).toBe("Move this folder to trash with 1 document?");
+    await cascadeDialog.accept();
   });
-  await productNotesDocumentAction.click();
-  await productNotesDocumentRow.getByRole("menuitem", { name: "Move to trash" }).click();
-  await expect(productNotesDocumentLink).toHaveCount(0);
   await productNotesAction.click();
   await page.getByRole("menuitem", { name: "Move to trash" }).click();
+  await cascadeDialogPromise;
+  await expect(productNotesDocumentLink).toHaveCount(0);
   await expect(
     documentList.getByRole("button", { name: `Open actions for ${productNotesDisplayLabel}` }),
   ).toHaveCount(0);

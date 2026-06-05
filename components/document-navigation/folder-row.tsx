@@ -9,6 +9,11 @@ import type {
   OpenMenuHandler,
   ToggleFavoriteFolderHandler,
 } from "@/components/document-navigation/types";
+import {
+  type FolderTrashSummary,
+  folderTrashConfirmMessage,
+  hasTrashDescendants,
+} from "@/components/document-navigation/folder-trash";
 
 export function FavoriteFolderRow({
   rowId,
@@ -77,6 +82,7 @@ export function FolderToggleRow({
   canWrite,
   renameFolderAction,
   archiveFolderAction,
+  trashSummary,
   isFavorite,
   isRenaming,
   pendingCreateAction,
@@ -95,6 +101,7 @@ export function FolderToggleRow({
   canWrite: boolean;
   renameFolderAction: (formData: FormData) => Promise<void>;
   archiveFolderAction: (formData: FormData) => Promise<void>;
+  trashSummary: FolderTrashSummary;
   isFavorite: boolean;
   isRenaming: boolean;
   pendingCreateAction: string | null;
@@ -112,6 +119,8 @@ export function FolderToggleRow({
   const isMenuOpen = openMenuId === menuId;
   const isCreatingInFolder = pendingCreateAction?.endsWith(`:${folder.id}`) ?? false;
   const displayLabel = folderDisplayLabel(folder);
+  const hasDescendantsToTrash = hasTrashDescendants(trashSummary);
+  const trashConfirmMessage = folderTrashConfirmMessage(trashSummary);
   const rowClassName = selected
     ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
     : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-slate-200 focus-within:bg-slate-200";
@@ -212,12 +221,15 @@ export function FolderToggleRow({
           </button>
           <form action={archiveFolderAction}>
             <input type="hidden" name="folderId" value={folder.id} />
+            {hasDescendantsToTrash ? (
+              <input type="hidden" name="cascade" value="true" />
+            ) : null}
             <button
               type="submit"
               role="menuitem"
               disabled={!canWrite}
               onClick={(event) => {
-                if (!window.confirm("Move this folder to trash?")) {
+                if (!window.confirm(trashConfirmMessage)) {
                   event.preventDefault();
                 }
               }}
