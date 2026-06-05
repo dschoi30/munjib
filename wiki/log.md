@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-04
-source_count: 154
+updated: 2026-06-05
+source_count: 157
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-05T00:00:00+09:00 - issue-92 review follow-up
+
+- Result: Final review follow-up aligned cascade trash confirmation counts with archive semantics and hardened folder subtree archive against concurrent child creation.
+- Coverage: Workspace page computes all-active document counts by folder and sidebar confirmation uses those counts when supplied, while keeping readable documents for rendering and selection. Folder/document mutations that create, move, rename, or archive folder-tree children, including root-level document creation, take a transaction-scoped workspace folder-tree advisory lock before active parent and slug/path validation. Sidebar descendant summary traversal tracks visited folder ids so malformed cyclic folder input cannot loop.
+- Pages: [[Folder Hierarchy Model]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #92 review after commit `23fbc14`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-navigation/folder-trash.ts`, `lib/folders/locks.ts`, `lib/folders/service.ts`, `lib/documents/service.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/documents/service.test.ts tests/components/document-list.test.tsx`; `pnpm exec tsc --noEmit`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+
+## 2026-06-05T00:00:00+09:00 - issue-92 implementation
+
+- Result: 폴더 휴지통 이동이 사용자 확인 후 하위 폴더와 문서를 함께 archive할 수 있게 되었다.
+- Coverage: `archiveFolder()`는 기본 비어 있지 않은 folder guard를 유지하면서 `cascade=true`일 때 active descendant subtree를 다시 계산해 descendant documents, descendant folders, target folder를 하나의 transaction으로 `ARCHIVED` 처리한다. Sidebar는 descendant counts를 확인 문구에 포함하고, 삭제 대상에 현재 selected folder/document가 들어 있으면 workspace root로 이동한다.
+- Pages: [[Folder Hierarchy Model]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #92, `lib/folders/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `components/document-navigation/folder-trash.ts`, `components/document-navigation.tsx`, `components/document-navigation/folder-row.tsx`, `tests/folders/service.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`, `tests/e2e/login.spec.ts`.
+- Verification: `pnpm exec vitest run tests/folders/service.test.ts tests/workspace-actions.test.ts tests/components/document-list.test.tsx`; `pnpm test:e2e tests/e2e/login.spec.ts`; `pnpm exec tsc --noEmit`; `pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+
+## 2026-06-05T00:00:00+09:00 - issue-92 plan
+
+- Result: cascade folder trash confirmation 구현 계획을 추가했다.
+- Coverage: Plan은 folder service recursive archive, workspace server action cascade contract, sidebar confirmation/navigation, e2e update, wiki maintenance/full verification, PR review/CI loop를 task 단위로 나눈다.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-05-cascade-folder-trash-confirmation.md`, `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
+
+## 2026-06-05T00:00:00+09:00 - issue-92 design
+
+- Result: 폴더 휴지통 이동 시 사용자 확인 후 하위 폴더와 문서를 함께 archive하는 cascade folder trash 설계를 추가했다.
+- Coverage: 기본 `archiveFolder()`는 비어 있지 않은 folder를 계속 거부하고, sidebar `Move to trash`에서 active descendant counts를 포함한 확인을 받은 경우에만 `cascade=true`를 전달한다. Server service는 client counts를 신뢰하지 않고 active descendant subtree를 다시 계산해 하나의 transaction으로 descendant documents, descendant folders, target folder를 soft delete archive 처리한다. Recursive restore와 hard delete는 범위에서 제외한다.
+- Pages: [[Folder Hierarchy Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #92, `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`, `components/document-navigation.tsx`, `components/document-navigation/folder-row.tsx`, `lib/folders/service.ts`, `app/workspaces/[workspaceSlug]/actions.ts`, `tests/e2e/login.spec.ts`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-04T00:00:00+00:00 - issue-88 review follow-up
 

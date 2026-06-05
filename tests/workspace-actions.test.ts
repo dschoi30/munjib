@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 const mocks = vi.hoisted(() => ({
   archiveDocument: vi.fn(),
@@ -355,6 +356,43 @@ describe("workspace document actions", () => {
     expect(result).toEqual({ folderId: "folder-created" });
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
     expect(mocks.redirect).not.toHaveBeenCalled();
+  });
+
+  test("archiveFolderAction passes cascade when the form opts in", async () => {
+    const { archiveFolderAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("folderId", "folder-engineering");
+    formData.set("cascade", "true");
+
+    const result = await archiveFolderAction("company-handbook", formData);
+
+    expect(mocks.archiveFolder).toHaveBeenCalledWith({
+      actorId: "user-1",
+      folderId: "folder-engineering",
+      cascade: true,
+    });
+    expect(result).toEqual({ folderId: "folder-engineering" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("archiveFolderAction keeps non-cascade folder-not-empty as an action result", async () => {
+    mocks.archiveFolder.mockRejectedValue(new Error(SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY));
+    const { archiveFolderAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("folderId", "folder-engineering");
+
+    const result = await archiveFolderAction("company-handbook", formData);
+
+    expect(mocks.archiveFolder).toHaveBeenCalledWith({
+      actorId: "user-1",
+      folderId: "folder-engineering",
+      cascade: false,
+    });
+    expect(result).toEqual({
+      folderId: "folder-engineering",
+      error: SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY,
+    });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {

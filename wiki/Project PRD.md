@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-04
-source_count: 45
+updated: 2026-06-05
+source_count: 55
 tags:
   - munjib
   - source
@@ -72,6 +72,8 @@ links:
 
 Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder` 컨테이너와 path 기반 document hierarchy로 바꾸었다. 구현된 설계는 duplicate title을 folder별로 허용하고, path-qualified wikilink를 지원하며, title-only ambiguous link는 임의 target으로 연결하지 않는다. Folder-specific permission과 recursive archive/restore는 첫 구현 범위에서 제외한다. 자세한 내용은 [[Folder Hierarchy Model]]과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`를 본다.
 
+Issue #92 implements the archive side of the Issue #20 recursive archive/restore follow-up. Sidebar folder `Move to trash` includes descendant folder/document counts in the confirmation and sends `cascade=true` to the server action only after user acceptance. Document counts use all active documents in the folder subtree, including explicitly permissioned documents that are not readable to the current writer but will be archived by the service. The server service recalculates the active descendant subtree under a transaction-scoped workspace folder-tree advisory lock and performs a soft-delete archive transaction. Folder/document creation, moves, renames, and folder archive take the same workspace tree lock before parent/slug/path validation so concurrent child mutations wait for cascade archive and re-check active folder state. Recursive restore and hard delete remain outside the current implementation.
+
 Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위해 구현된 편집 구조 변경이다. 구현 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장/복원, 기존 split mode 제거다. Edit mode는 CodeMirror folded ranges를 heading body line range와 matching해 preview와 같은 raw heading key를 저장한다. Preview rendering은 heading folding을 위해 문서를 chunk로 나누더라도 문서 전체의 reference link와 continuation line을 포함한 footnote/reference definition block을 각 chunk에 공유해 whole-document Markdown reference 해석을 보존한다.
 
 Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigation을 구현했다. 구현 범위는 상단 문서 탭, 탭 하단 back/forward toolbar, 현재 document/folder path 표시다. 이 구현은 DB schema나 markdown payload를 바꾸지 않고, 기존 server-selected single document editor와 URL query routing을 유지한다. 열린 탭 목록은 workspace-scoped browser `localStorage`에 저장하는 UI state이며, 일반 문서 선택은 현재 탭을 교체하고 tab strip `+` button 또는 sidebar Open in new tab menu만 새 탭을 만든다. Tab strip은 `+` button을 마지막 tab에 붙이고, tab이 row 폭을 채우면 각 tab width를 함께 줄인다. Forward navigation은 대상 document가 있고 해당 document가 readable할 때만 활성화한다. 여러 editor instance와 unsaved buffer 보존은 후속 범위로 둔다.
@@ -124,6 +126,7 @@ Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. D
 - `components/metadata-panel.tsx`: local graph, attachments, versions, audit log.
 - `.githooks/pre-commit`, `lib/wiki/sync.ts`: commit-time wiki sync automation.
 - GitHub issue #20과 `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`: 실제 folder hierarchy 설계.
+- GitHub issue #92와 `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`: 사용자 확인 기반 cascade folder archive 설계.
 - GitHub issue #25와 `docs/superpowers/specs/2026-05-05-markdown-heading-folding-design.md`: Markdown heading folding 설계.
 - GitHub issue #29와 `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`: 문서 탭과 navigation toolbar 설계.
 - `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`: metadata panel outline tab 설계.
