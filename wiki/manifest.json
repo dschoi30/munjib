@@ -30,7 +30,7 @@
       "title": "CI CD And Monitoring Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib의 현재 GitHub Actions CI/CD, GHCR multi-platform image publish, SSH Compose deploy, Docker/Sentry monitoring 구성.",
+      "summary": "Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.",
       "tags": [
         "munjib",
         "workflow",
@@ -46,7 +46,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 30,
+      "source_count": 38,
       "searchPriority": 50
     },
     {
@@ -185,7 +185,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 66,
+      "source_count": 71,
       "searchPriority": 5
     },
     {
@@ -208,7 +208,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 25,
+      "source_count": 30,
       "searchPriority": 50
     },
     {
@@ -228,7 +228,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 161,
+      "source_count": 170,
       "searchPriority": 1
     },
     {
@@ -345,7 +345,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 57,
+      "source_count": 62,
       "searchPriority": 30
     },
     {
