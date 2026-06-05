@@ -84,7 +84,7 @@ The remote script will:
 6. Run RAG vector index setup with the rebuilt `tools` image.
 7. Start `web` with the published image and release env.
 8. Log out of GHCR.
-9. Check `https://munjib.example.invalid` returns HTTP 200.
+9. Retry `https://munjib.example.invalid` until it returns HTTP 200 or 10 attempts fail.
 
 The script should always avoid printing secret values. It should use
 `--password-stdin` for registry login and should not enable shell tracing.
@@ -165,7 +165,7 @@ Deploy fails if:
 - Prisma migration fails.
 - RAG vector index setup fails.
 - `docker compose up -d web` fails.
-- Public health check does not return HTTP 200.
+- Public health check does not return HTTP 200 after 10 attempts.
 
 Registry logout should run at the end of the deploy script even if later deploy
 steps fail. If this becomes awkward in the inline workflow script, keep the

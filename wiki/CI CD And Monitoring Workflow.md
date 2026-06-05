@@ -123,14 +123,22 @@ Remote deploy 순서:
 cd "${{ secrets.DEPLOY_PATH }}"
 git pull --ff-only
 printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose pull web
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm run db:rag:index
 sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
-curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null
+for attempt in 1 2 3 4 5 6 7 8 9 10; do
+  if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
+    break
+  fi
+  if [ "$attempt" = "10" ]; then
+    exit 1
+  fi
+  sleep 3
+done
 ```
 
-이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인하고, published `web` image를 pull한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Server checkout 기준으로 rebuilt `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 수행한다.
+이 deploy는 server checkout의 compose project를 최신 `main`으로 fast-forward한 뒤, ephemeral `GITHUB_TOKEN`으로 GHCR에 로그인하고, published `web` image를 pull한다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. `pull`과 `tools` command는 image 선택에 필요한 `WEB_IMAGE`만 전달하고, Sentry release env는 실제 `web` service를 올리는 `up -d web` 단계에만 전달한다. Server checkout 기준으로 rebuilt `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올리고 public HTTPS health check를 최대 10회 재시도한다.
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 

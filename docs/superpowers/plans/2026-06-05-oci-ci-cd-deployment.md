@@ -46,11 +46,14 @@ Add assertions inside the existing `test("deploy job uses SSH secrets and passes
       'printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin',
     );
     expect(deployStep?.with.script).toContain("trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT");
-    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" SENTRY_RELEASE=\"$SENTRY_RELEASE\" NEXT_PUBLIC_SENTRY_RELEASE=\"$NEXT_PUBLIC_SENTRY_RELEASE\" docker compose pull web");
-    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" SENTRY_RELEASE=\"$SENTRY_RELEASE\" NEXT_PUBLIC_SENTRY_RELEASE=\"$NEXT_PUBLIC_SENTRY_RELEASE\" docker compose run --rm --build tools pnpm exec prisma migrate deploy");
-    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" SENTRY_RELEASE=\"$SENTRY_RELEASE\" NEXT_PUBLIC_SENTRY_RELEASE=\"$NEXT_PUBLIC_SENTRY_RELEASE\" docker compose run --rm --build tools pnpm run db:rag:index");
+    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" docker compose pull web");
+    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" docker compose run --rm --build tools pnpm exec prisma migrate deploy");
+    expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" docker compose run --rm --build tools pnpm run db:rag:index");
     expect(deployStep?.with.script).toContain("sudo env WEB_IMAGE=\"$WEB_IMAGE\" SENTRY_RELEASE=\"$SENTRY_RELEASE\" NEXT_PUBLIC_SENTRY_RELEASE=\"$NEXT_PUBLIC_SENTRY_RELEASE\" docker compose up -d web");
-    expect(deployStep?.with.script).toContain('curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null');
+    expect(deployStep?.with.script).toContain("for attempt in 1 2 3 4 5 6 7 8 9 10; do");
+    expect(deployStep?.with.script).toContain('if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then');
+    expect(deployStep?.with.script).toContain('if [ "$attempt" = "10" ]; then');
+    expect(deployStep?.with.script).toContain("sleep 3");
 ```
 
 - [ ] **Step 2: Run the focused test and confirm it fails**
@@ -61,7 +64,7 @@ Run:
 pnpm exec vitest run tests/github-actions/ci-cd.test.ts
 ```
 
-Expected: FAIL because `.github/workflows/ci-cd.yml` does not yet include GHCR remote login, `sudo env ... docker compose`, release env, or public health check.
+Expected: FAIL because `.github/workflows/ci-cd.yml` does not yet include GHCR remote login, simplified `sudo env ... docker compose` commands, release env for `web`, or public health check retry.
 
 ## Task 2: OCI-Aware Deploy Workflow
 
@@ -107,11 +110,19 @@ Use this script:
             git pull --ff-only
             printf "%s" "$GHCR_TOKEN" | sudo docker login ghcr.io -u "$GHCR_USERNAME" --password-stdin
             trap 'sudo docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose pull web
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose run --rm --build tools pnpm run db:rag:index
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose pull web
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm exec prisma migrate deploy
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm --build tools pnpm run db:rag:index
             sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
-            curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null
+            for attempt in 1 2 3 4 5 6 7 8 9 10; do
+              if curl --fail --silent --show-error --location --max-time 20 "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
+                break
+              fi
+              if [ "$attempt" = "10" ]; then
+                exit 1
+              fi
+              sleep 3
+            done
 ```
 
 - [ ] **Step 4: Run focused workflow test and confirm it passes**
