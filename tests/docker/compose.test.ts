@@ -86,6 +86,31 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("pgvector/pgvector:0.8.2-pg16");
   });
 
+  test("passes RAG provider and optional Langfuse settings into the web service", () => {
+    const { services } = readCompose();
+
+    expect(services.web.environment).toMatchObject({
+      MUNJIB_RAG_CHAT_PROVIDER: "${MUNJIB_RAG_CHAT_PROVIDER:-ollama}",
+      MUNJIB_RAG_EMBED_PROVIDER: "${MUNJIB_RAG_EMBED_PROVIDER:-ollama}",
+      MUNJIB_OLLAMA_BASE_URL:
+        "${MUNJIB_OLLAMA_BASE_URL:-http://host.docker.internal:11434}",
+      MUNJIB_RAG_CHAT_MODEL: "${MUNJIB_RAG_CHAT_MODEL:-gemma4:e4b}",
+      MUNJIB_RAG_EMBED_MODEL: "${MUNJIB_RAG_EMBED_MODEL:-bge-m3}",
+      MUNJIB_RAG_EMBED_DIMENSIONS: "${MUNJIB_RAG_EMBED_DIMENSIONS:-1024}",
+      OPENAI_API_KEY: "${OPENAI_API_KEY:-}",
+      MUNJIB_OPENAI_API_KEY: "${MUNJIB_OPENAI_API_KEY:-}",
+      MUNJIB_OPENAI_BASE_URL: "${MUNJIB_OPENAI_BASE_URL:-}",
+      MUNJIB_OPENAI_COMPATIBLE_BASE_URL:
+        "${MUNJIB_OPENAI_COMPATIBLE_BASE_URL:-}",
+      MUNJIB_OPENAI_COMPATIBLE_API_KEY: "${MUNJIB_OPENAI_COMPATIBLE_API_KEY:-}",
+      LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}",
+      LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}",
+      LANGFUSE_HOST: "${LANGFUSE_HOST:-}",
+      LANGFUSE_BASEURL: "${LANGFUSE_BASEURL:-}",
+      MUNJIB_LANGFUSE_CAPTURE: "${MUNJIB_LANGFUSE_CAPTURE:-metadata}",
+    });
+  });
+
   test("development override runs next dev from the dev image target", () => {
     const compose = read("docker-compose.dev.yml");
 
@@ -177,5 +202,33 @@ describe("Docker web service configuration", () => {
 
     expect(envExample).not.toContain("SENTRY_AUTH_TOKEN");
     expect(dockerEnvExample).not.toContain("SENTRY_AUTH_TOKEN");
+  });
+
+  test("environment examples document RAG provider and optional Langfuse settings", () => {
+    const envExample = read(".env.example");
+    const dockerEnvExample = read(".env.docker.example");
+    const expectedKeys = [
+      "MUNJIB_RAG_CHAT_PROVIDER=ollama",
+      "MUNJIB_RAG_EMBED_PROVIDER=ollama",
+      "MUNJIB_OLLAMA_BASE_URL=",
+      "MUNJIB_RAG_CHAT_MODEL=gemma4:e4b",
+      "MUNJIB_RAG_EMBED_MODEL=bge-m3",
+      "MUNJIB_RAG_EMBED_DIMENSIONS=1024",
+      "OPENAI_API_KEY=",
+      "MUNJIB_OPENAI_API_KEY=",
+      "MUNJIB_OPENAI_BASE_URL=",
+      "MUNJIB_OPENAI_COMPATIBLE_BASE_URL=",
+      "MUNJIB_OPENAI_COMPATIBLE_API_KEY=",
+      "LANGFUSE_PUBLIC_KEY=",
+      "LANGFUSE_SECRET_KEY=",
+      "LANGFUSE_HOST=",
+      "LANGFUSE_BASEURL=",
+      "MUNJIB_LANGFUSE_CAPTURE=metadata",
+    ];
+
+    for (const key of expectedKeys) {
+      expect(envExample).toContain(key);
+      expect(dockerEnvExample).toContain(key);
+    }
   });
 });

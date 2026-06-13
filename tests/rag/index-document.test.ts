@@ -66,6 +66,24 @@ describe("document RAG indexing", () => {
     }));
   });
 
+  it("uses the current provider-neutral embedding index id by default", async () => {
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+
+    await indexSavedDocument({
+      document: savedDocument,
+      embedText,
+      replaceDocumentChunks,
+    });
+
+    expect(replaceDocumentChunks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: "doc-1",
+        embeddingModel: "bge-m3",
+      }),
+    );
+  });
+
   it("embeds chunks sequentially to avoid overloading local Ollama", async () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     let activeEmbeddingRequests = 0;
