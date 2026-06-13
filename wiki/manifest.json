@@ -177,6 +177,7 @@
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
+        "[[RAG Process Workflow]]",
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]",
         "[[Next.js Prisma Monolith]]",
@@ -273,6 +274,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
+        "[[RAG Process Workflow]]",
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
@@ -341,12 +343,40 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
+        "[[RAG Process Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
       "source_count": 75,
       "searchPriority": 30
+    },
+    {
+      "id": "workflow-rag-process",
+      "path": "wiki/RAG Process Workflow.md",
+      "title": "RAG Process Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Munjib Ask AI RAG의 saved-content-only request, indexing, retrieval, provider, observability 흐름.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "rag",
+        "ai"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Document Editing Workflow]]",
+        "[[Document Knowledge Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Local Development Workflow]]",
+        "[[Production Observability Workflow]]"
+      ],
+      "source_count": 32,
+      "searchPriority": 50
     },
     {
       "id": "concept-wiki-links-and-backlinks",

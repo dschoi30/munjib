@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T19:44:00+09:00 - rag process workflow page
+
+- Result: Ask AI RAG request부터 provider/env, indexing, retrieval, LangChain answer generation, Langfuse observability까지 한 번에 따라갈 수 있는 별도 workflow page를 추가했다.
+- Coverage: [[RAG Process Workflow]]는 UI/route/service entry point, saved-content-only permission contract, provider and current embedding index guard, retrieval/rerank formula, metadata/full Langfuse capture behavior, failure modes, verification commands를 정리한다. [[index|Wiki Index]], [[Munjib]], [[Project PRD]]는 새 RAG page로 연결한다.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[Munjib]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/retriever.ts`, `lib/rag/model-config.ts`, `lib/rag/langfuse.ts`, `lib/rag/langfuse-otel.ts`, `tests/rag/*`.
+- Verification: `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm exec vitest run tests/wiki/manifest.test.ts tests/wiki/lint.test.ts`.
+
 ## 2026-06-13T19:35:00+09:00 - issue-100 langfuse env precedence follow-up
 
 - Result: PR #101 follow-up review에 따라 Langfuse disabled flag와 legacy capture alias precedence를 정리했다.
