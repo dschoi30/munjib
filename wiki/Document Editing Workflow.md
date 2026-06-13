@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-06-03
-source_count: 69
+updated: 2026-06-13
+source_count: 77
 tags:
   - munjib
   - workflow
@@ -57,6 +57,8 @@ Issue #85 이후 `Company Handbook` workspace name text는 chevron 없는 worksp
 Issue #40 이후 workspace settings dialog는 document list를 교체하지 않고 modal dialog로 열린다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 
 Issue #73 이후 `DocumentEditor` title input 우측에는 `AI에게 묻기` button이 있고, 선택 문서가 있을 때 작은 assistant panel을 열고 닫는다. Panel은 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed question만 POST하며, 현재 editor의 unsaved title/content draft는 request body에 넣지 않는다. 현재 title 또는 markdown state가 선택된 saved document와 다르거나 clipboard image paste가 아직 업로드 중이면 `저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.` warning을 보여 saved DB content 기준 답변임을 알린다. 문서 전환 시 assistant panel은 document id 기준으로 새로 mount되어 이전 문서의 질문, 답변, citation state를 다음 문서에 보여주지 않는다. 답변 근거는 저장된 DB 문서 내용으로 제한하며, retriever는 현재 문서 chunk를 우선하고 wiki link target, backlink source, same-tag document, workspace fallback chunk를 graph-aware score로 보강한다. Ask route는 recoverable RAG/Ollama runtime failure를 `AI_UNAVAILABLE` 503으로 정규화하고, assistant panel은 raw server/model details 없이 generic failure state를 보여준다. 기본 모델은 Ollama `gemma4:e4b`와 `bge-m3`이다. pgvector 기반 chunk index는 saved `Document`에서만 파생하며 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이다.
+
+Issue #100 구현은 이 UI와 route response shape를 바꾸지 않고 RAG model boundary만 provider-neutral LangChain seam으로 옮겼다. Ask flow의 permission check, saved document indexing, graph-aware scope, pgvector search, rerank, citation metadata는 유지하고, prompt formatting과 chat invocation은 LangChain prompt/model/parser chain으로 구성한다. Chat provider는 server env로 Ollama, OpenAI, OpenAI-compatible endpoint 중 선택할 수 있고, embedding provider 설정도 같은 provider set을 이해하지만 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity는 reindex follow-up 전까지 live Ask AI에서 fail-fast한다. Workspace별 또는 request별 override는 첫 slice에서 제외한다. Langfuse tracing은 optional/fail-open이고, production 기본 metadata mode에서는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback을 붙이지 않으며 explicit `full` capture에서만 LangChain invocation config에 callback을 연결한다.
 
 ## 생성 흐름
 
@@ -191,9 +193,21 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/wiki-links/preview.ts`
 - GitHub issue #73
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
+- `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `lib/rag/index-document.ts`
+- `lib/rag/model-config.ts`
+- `lib/rag/model-factory.ts`
+- `lib/rag/embedding-client.ts`
+- `lib/rag/answer-chain.ts`
+- `lib/rag/langfuse.ts`
+- `lib/rag/errors.ts`
 - `lib/attachments/service.ts`
 - `tests/rag/index-document.test.ts`
+- `tests/rag/model-config.test.ts`
+- `tests/rag/model-factory.test.ts`
+- `tests/rag/embedding-client.test.ts`
+- `tests/rag/answer-chain.test.ts`
+- `tests/rag/langfuse.test.ts`
 - `tests/attachments/service.test.ts`
 - `lib/comments/service.ts`
 - `lib/document-metadata/display.ts`

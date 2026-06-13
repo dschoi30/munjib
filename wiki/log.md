@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-05
-source_count: 170
+updated: 2026-06-13
+source_count: 183
 tags:
   - log
   - munjib
@@ -18,6 +18,70 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-13T19:44:00+09:00 - rag process workflow page
+
+- Result: Ask AI RAG request부터 provider/env, indexing, retrieval, LangChain answer generation, Langfuse observability까지 한 번에 따라갈 수 있는 별도 workflow page를 추가했다.
+- Coverage: [[RAG Process Workflow]]는 UI/route/service entry point, saved-content-only permission contract, provider and current embedding index guard, retrieval/rerank formula, metadata/full Langfuse capture behavior, failure modes, verification commands를 정리한다. [[index|Wiki Index]], [[Munjib]], [[Project PRD]]는 새 RAG page로 연결한다.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[Munjib]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/retriever.ts`, `lib/rag/model-config.ts`, `lib/rag/langfuse.ts`, `lib/rag/langfuse-otel.ts`, `tests/rag/*`.
+- Verification: `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm exec vitest run tests/wiki/manifest.test.ts tests/wiki/lint.test.ts`.
+
+## 2026-06-13T19:35:00+09:00 - issue-100 langfuse env precedence follow-up
+
+- Result: PR #101 follow-up review에 따라 Langfuse disabled flag와 legacy capture alias precedence를 정리했다.
+- Coverage: `lib/rag/model-config.ts`는 `MUNJIB_LANGFUSE_ENABLED=false`를 credential보다 우선해 disabled config를 반환하고, `lib/rag/langfuse-otel.ts`와 model config는 `MUNJIB_LANGFUSE_CAPTURE_MODE` 또는 legacy `MUNJIB_LANGFUSE_CAPTURE` 중 하나라도 `full`이면 full capture로 해석한다. `docker-compose.yml`은 legacy `MUNJIB_LANGFUSE_CAPTURE=full`을 덮지 않도록 `MUNJIB_LANGFUSE_CAPTURE_MODE` 기본값을 주입하지 않고, env samples는 disabled flag와 alias precedence를 문서화한다.
+- Pages: [[Production Observability Workflow]], [[Local Development Workflow]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/model-config.ts`, `lib/rag/langfuse-otel.ts`, `docker-compose.yml`, `.env.example`, `.env.docker.example`, `tests/rag/model-config.test.ts`, `tests/rag/langfuse-otel.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/langfuse-otel.test.ts tests/rag/langfuse.test.ts tests/rag/model-config.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`.
+
+## 2026-06-13T19:24:00+09:00 - issue-100 langfuse full capture exporter follow-up
+
+- Result: PR #101 review feedback에 따라 Langfuse full capture가 LangChain callback뿐 아니라 Node runtime OpenTelemetry exporter도 초기화하도록 보강했다.
+- Coverage: `instrumentation.ts`는 Node runtime에서 `initializeLangfuseOtel()`을 먼저 호출하고, `lib/rag/langfuse-otel.ts`는 explicit full capture와 credential이 있을 때만 `NodeSDK`와 `LangfuseSpanProcessor`를 시작한다. Metadata mode, disabled env, missing credential, non-node runtime, startup failure는 fail-open으로 callback/exporter를 붙이지 않는다. `.env.example`, `.env.docker.example`, `docker-compose.yml`은 `MUNJIB_LANGFUSE_ENABLED`와 full capture exporter contract를 문서화하고 web container로 전달한다.
+- Pages: [[Production Observability Workflow]], [[Local Development Workflow]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: PR #101 review thread, Langfuse JS/TS SDK docs, Langfuse LangChain integration docs, `instrumentation.ts`, `lib/rag/langfuse-otel.ts`, `tests/rag/langfuse-otel.test.ts`, `tests/observability/sentry-files.test.ts`, `.env.example`, `.env.docker.example`, `docker-compose.yml`, `package.json`, `pnpm-lock.yaml`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/langfuse-otel.test.ts tests/rag/langfuse.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts tests/rag/model-config.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`.
+
+## 2026-06-13T19:03:00+09:00 - issue-100 environment sample alignment
+
+- Result: RAG provider and Langfuse environment samples now document the latest review follow-up contract and Docker runtime passthrough.
+- Coverage: `.env.example` and `.env.docker.example` include `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_BASE_URL`, `MUNJIB_LANGFUSE_CAPTURE_MODE`, metadata-mode privacy notes, and OpenAI-compatible blank-key guidance. `docker-compose.yml` passes those Langfuse aliases through to the web service, and `lib/rag/model-config.ts` recognizes `LANGFUSE_BASE_URL` alongside existing Langfuse host/base URL names.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: `.env.example`, `.env.docker.example`, `docker-compose.yml`, `lib/rag/model-config.ts`, `tests/docker/compose.test.ts`, `tests/rag/model-config.test.ts`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`; `pnpm exec vitest run tests/rag/model-config.test.ts`.
+
+## 2026-06-13T18:55:00+09:00 - issue-100 PR review privacy and provider follow-up
+
+- Result: PR #101 follow-up review에 따라 Ask AI answer prompts의 literal brace handling, OpenAI base URL passthrough, OpenAI-compatible blank-key runtime support, and Langfuse metadata-mode privacy behavior를 보강했다.
+- Coverage: `lib/rag/answer-chain.ts`는 dynamic prompt template 대신 literal chat messages를 사용해 JSON/code brace content를 template variable로 해석하지 않는다. `lib/rag/model-factory.ts`는 official OpenAI `baseUrl`을 LangChain configuration에 전달하고, unauthenticated OpenAI-compatible endpoint에는 non-secret placeholder API key를 넣어 OpenAI SDK credential preflight를 통과시킨다. `lib/rag/langfuse.ts`는 metadata mode에서 external callback을 붙이지 않고 explicit `full` capture에서만 callback을 연결한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[Project PRD]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/answer-chain.ts`, `lib/rag/model-factory.ts`, `lib/rag/langfuse.ts`, `lib/rag/ask.ts`, `tests/rag/answer-chain.test.ts`, `tests/rag/model-factory.test.ts`, `tests/rag/langfuse.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/model-factory.test.ts tests/rag/langfuse.test.ts`.
+
+## 2026-06-13T18:46:00+09:00 - issue-100 PR review follow-up
+
+- Result: PR #101 automated review feedback에 따라 LangChain model factory의 dynamic `require`를 static imports로 바꾸고, OpenAI-compatible provider의 API key를 optional로 유지하며, answer/embedding provider failure logging을 보강했다.
+- Coverage: `lib/rag/model-factory.ts`는 bundler/static analysis friendly imports를 사용한다. `lib/rag/model-config.ts`는 OpenAI-compatible base URL은 계속 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값으로 둔다. `lib/rag/answer-chain.ts`와 `lib/rag/embedding-client.ts`는 provider 실패의 원본 error를 server log에 남긴 뒤 기존 stable RAG error code로 매핑한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/model-factory.ts`, `lib/rag/model-config.ts`, `lib/rag/answer-chain.ts`, `lib/rag/embedding-client.ts`, `.env.example`, `.env.docker.example`.
+- Verification: `pnpm exec vitest run tests/rag/model-factory.test.ts tests/rag/model-config.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-13T18:35:00+09:00 - issue-100 langchain langfuse rag provider implementation
+
+- Result: Issue #100 구현으로 saved-content-only Ask AI RAG의 model boundary를 LangChain provider seam으로 옮기고 optional Langfuse metadata tracing을 추가했다.
+- Coverage: `lib/rag/model-config.ts`가 Ollama/OpenAI/OpenAI-compatible chat/embedding env를 검증하고, current indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity는 live Ask AI에서 fail-fast한다. `lib/rag/model-factory.ts`, `lib/rag/embedding-client.ts`, `lib/rag/answer-chain.ts`, `lib/rag/langfuse.ts`, `lib/rag/errors.ts`가 provider-neutral boundary를 맡고, `lib/rag/ask.ts`는 기존 permission/readable document filtering, saved document indexing, graph-aware retrieval, pgvector search, rerank, citation metadata를 유지한 채 LangChain answer chain과 Langfuse invocation metadata를 연결한다. `.env.example`, `.env.docker.example`, `docker-compose.yml`은 provider/Langfuse env passthrough를 문서화한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #100, `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`, `lib/rag/model-config.ts`, `lib/rag/model-factory.ts`, `lib/rag/embedding-client.ts`, `lib/rag/answer-chain.ts`, `lib/rag/langfuse.ts`, `lib/rag/errors.ts`, `lib/rag/ask.ts`, `lib/rag/index-document.ts`, `docker-compose.yml`, `.env.example`, `.env.docker.example`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/model-factory.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts tests/rag/langfuse.test.ts tests/rag/index-document.test.ts tests/rag/ask-route.test.ts tests/docker/compose.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm exec vitest run tests/rag`.
+
+## 2026-06-06T00:28:56+0900 - issue-100 langchain langfuse rag provider design
+
+- Result: Issue #100 설계를 추가해 현재 saved-content-only RAG의 provider abstraction과 Langfuse observability 방향을 정했다.
+- Coverage: 기존 permission/readable document filtering, saved document indexing, graph-aware retrieval, pgvector search, rerank, citation contract는 유지하고, chat/embedding provider boundary를 LangChain으로 옮긴다. 첫 slice는 env 기반 Ollama/OpenAI/OpenAI-compatible provider 설정을 이해하되 workspace/request override, automatic reindex, vector dimension migration은 제외한다. 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding provider/model/dimension은 partial selected-document indexing을 만들지 않고 live Ask AI에서 fail-fast하며, production Langfuse traces는 prompt/context/question/answer body가 아니라 metadata 중심으로 제한한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #100, `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`, `lib/rag/ask.ts`, `lib/rag/ollama.ts`, `lib/rag/vector-store.ts`, LangChain JavaScript provider docs, Langfuse LangChain integration docs.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-05T00:00:00+09:00 - issue-98 review follow-up
 

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
 created: 2026-06-03
-updated: 2026-06-05
-source_count: 21
+updated: 2026-06-13
+source_count: 25
 tags:
   - munjib
   - workflow
@@ -47,6 +47,8 @@ NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
 
 Issue #89 구현은 이 로그 흐름을 대체하지 않고 `@sentry/nextjs` 기반 SaaS error monitoring과 낮은 sample rate의 tracing을 추가한다. Next.js App Router manual setup에 맞춰 `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`를 사용한다.
 
+Issue #100 구현은 Ask AI RAG의 LLM-specific observability에 Langfuse를 추가하되 Sentry/Docker 로그 역할을 대체하지 않는다. Langfuse full capture는 Node runtime instrumentation에서 OpenTelemetry `NodeSDK`와 `LangfuseSpanProcessor` exporter를 시작하고, answer generation에는 LangChain callback을 연결한다. 설정 누락, metadata capture, startup/exporter 실패, callback 생성 실패는 Ask AI request를 실패시키지 않는 fail-open layer다.
+
 ## Steps
 
 Sentry SaaS 첫 slice의 목표 범위:
@@ -70,6 +72,8 @@ Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure,
 
 문서 본문, query parameter 기반 document/search state, cookie, authorization header, network address, user IP, `DATABASE_URL`, `NEXTAUTH_SECRET` 같은 민감 값은 Sentry event context에 넣지 않는다. 첫 slice에서는 `sendDefaultPii`를 켜지 않는다.
 
+Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 Node runtime Langfuse OpenTelemetry exporter와 LangChain Langfuse callback을 연결한다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 남아 있어도 config와 exporter startup 양쪽에서 Langfuse를 disabled로 유지한다.
+
 ## Tests
 
 Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scrubber test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
@@ -78,6 +82,7 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 
 - GitHub issue #89
 - `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`
+- `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`
 - `lib/observability/sentry-config.ts`
 - `lib/observability/sentry-scrub-event.ts`
@@ -87,6 +92,9 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 - `instrumentation.ts`
 - `app/global-error.tsx`
 - `docker-compose.yml`
+- `lib/rag/langfuse.ts`
+- `lib/rag/langfuse-otel.ts`
+- `lib/rag/answer-chain.ts`
 - `Dockerfile`
 - `next.config.mjs`
 - `.env.example`
@@ -95,4 +103,7 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 - `tests/observability/sentry-scrub-event.test.ts`
 - `tests/observability/sentry-files.test.ts`
 - `tests/docker/compose.test.ts`
+- `tests/rag/langfuse.test.ts`
+- `tests/rag/langfuse-otel.test.ts`
+- `tests/rag/answer-chain.test.ts`
 - [[Local Development Workflow]]

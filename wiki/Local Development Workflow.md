@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-05
-source_count: 30
+updated: 2026-06-13
+source_count: 34
 tags:
   - munjib
   - workflow
@@ -76,6 +76,10 @@ postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public
 
 NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다.
 
+Issue #100 이후 Ask AI RAG provider는 server-wide env로 고른다. 기본값은 기존 local Ollama 경로와 같은 chat provider `ollama`, embedding provider `ollama`, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimensions `1024`, local base URL `http://localhost:11434`다. Official OpenAI는 `MUNJIB_RAG_CHAT_PROVIDER=openai` 또는 `MUNJIB_RAG_EMBED_PROVIDER=openai`와 `OPENAI_API_KEY`를 사용하고, OpenAI-compatible endpoint는 `openai-compatible`과 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 사용한다. `MUNJIB_OPENAI_COMPATIBLE_API_KEY`는 endpoint가 인증을 요구할 때만 설정하며, LM Studio, LocalAI, vLLM 같은 local unauthenticated endpoint에서는 비워둘 수 있다. 현재 DB vector index identity는 Ollama `bge-m3` 1024라 다른 embedding identity는 live Ask AI에서 fail-fast하며, reindex workflow는 별도 follow-up이다.
+
+Langfuse tracing은 optional이다. `LANGFUSE_PUBLIC_KEY`와 `LANGFUSE_SECRET_KEY`가 없으면 disabled/fail-open이고, production-safe metadata capture가 기본이다. 기본 metadata mode는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. `MUNJIB_LANGFUSE_CAPTURE=full` 또는 `MUNJIB_LANGFUSE_CAPTURE_MODE=full`은 명시적 opt-in으로만 사용하며, 둘 중 하나라도 `full`이면 full capture가 이긴다. 이때 Node runtime instrumentation이 Langfuse OpenTelemetry `NodeSDK`/`LangfuseSpanProcessor` exporter를 시작하고 answer generation에는 LangChain Langfuse callback이 연결된다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 있어도 Langfuse startup과 callback을 끈다. Env sample은 `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_BASEURL`, `LANGFUSE_BASE_URL`, `LANGFUSE_HOST`, `MUNJIB_LANGFUSE_ENABLED`를 문서화하고, Docker compose는 같은 값을 web container로 전달하되 legacy `MUNJIB_LANGFUSE_CAPTURE=full`을 덮지 않도록 `MUNJIB_LANGFUSE_CAPTURE_MODE` 기본값을 주입하지 않는다.
+
 ## Docker web+DB 실행
 
 Issue #50부터 Docker는 기존 PostgreSQL container에 더해 Next.js web service도 함께 띄우는 경로를 제공한다. 기본 `docker-compose.yml`은 production-style `runner` image target을 사용하고, `docker-compose.dev.yml` override는 source-mounted `dev` target으로 `next dev`를 실행한다. Prisma schema/seed 같은 관리 명령은 devDependencies를 포함하는 `tools` target에서 실행한다.
@@ -116,6 +120,8 @@ NEXT_PUBLIC_SENTRY_ENVIRONMENT=production \
 NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05 \
 docker compose up --build
 ```
+
+Issue #100 이후 production-style `web` service는 RAG provider와 optional Langfuse env도 받는다. Docker 안에서 Ollama를 host에서 실행할 때 기본 `MUNJIB_OLLAMA_BASE_URL`은 `http://host.docker.internal:11434`다. Compose는 provider selection, OpenAI/OpenAI-compatible credential/base URL, Langfuse key/host/capture env를 `web` service로 전달한다.
 
 Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #98 이후 `main` push deploy는 GHCR publish/pull 없이 SSH로 production server의 `/home/ubuntu/munjib` checkout에서 `origin/main`을 fetch하고 workflow가 검증한 `DEPLOY_SHA=${{ github.sha }}`로 detached checkout을 고정한 뒤, OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `sudo env ... docker compose build web tools`를 실행한다. Native build는 browser Sentry bundle이 유지되도록 server `.env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy job의 `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` env를 Docker build args로 전달한다. 이후 built `tools` container에서 Prisma migration deploy와 RAG vector index setup을 실행하고, release env를 전달한 `docker compose up -d web`, remote local `http://127.0.0.1:3000` health check, dangling image prune, GitHub-hosted runner의 `https://munjib.andrewchoi.link` public health check 순서로 배포한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.andrewchoi.link`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`을 사용한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
 
