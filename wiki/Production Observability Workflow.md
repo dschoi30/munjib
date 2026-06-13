@@ -72,7 +72,7 @@ Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure,
 
 문서 본문, query parameter 기반 document/search state, cookie, authorization header, network address, user IP, `DATABASE_URL`, `NEXTAUTH_SECRET` 같은 민감 값은 Sentry event context에 넣지 않는다. 첫 slice에서는 `sendDefaultPii`를 켜지 않는다.
 
-Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 Node runtime Langfuse OpenTelemetry exporter와 LangChain Langfuse callback을 연결한다.
+Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 Node runtime Langfuse OpenTelemetry exporter와 LangChain Langfuse callback을 연결한다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 남아 있어도 config와 exporter startup 양쪽에서 Langfuse를 disabled로 유지한다.
 
 ## Tests
 

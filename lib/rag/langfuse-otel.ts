@@ -145,10 +145,11 @@ function readCredentials(
 }
 
 function readCaptureMode(env: LangfuseOtelEnv): "metadata" | "full" {
-  const value =
-    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE_MODE") ??
-    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE");
-  return value?.toLowerCase() === "full" ? "full" : "metadata";
+  const values = [
+    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE_MODE"),
+    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE"),
+  ];
+  return values.some((value) => value?.toLowerCase() === "full") ? "full" : "metadata";
 }
 
 function readBooleanEnv(env: LangfuseOtelEnv, name: string): boolean | undefined {

@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T19:35:00+09:00 - issue-100 langfuse env precedence follow-up
+
+- Result: PR #101 follow-up review에 따라 Langfuse disabled flag와 legacy capture alias precedence를 정리했다.
+- Coverage: `lib/rag/model-config.ts`는 `MUNJIB_LANGFUSE_ENABLED=false`를 credential보다 우선해 disabled config를 반환하고, `lib/rag/langfuse-otel.ts`와 model config는 `MUNJIB_LANGFUSE_CAPTURE_MODE` 또는 legacy `MUNJIB_LANGFUSE_CAPTURE` 중 하나라도 `full`이면 full capture로 해석한다. `docker-compose.yml`은 legacy `MUNJIB_LANGFUSE_CAPTURE=full`을 덮지 않도록 `MUNJIB_LANGFUSE_CAPTURE_MODE` 기본값을 주입하지 않고, env samples는 disabled flag와 alias precedence를 문서화한다.
+- Pages: [[Production Observability Workflow]], [[Local Development Workflow]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/model-config.ts`, `lib/rag/langfuse-otel.ts`, `docker-compose.yml`, `.env.example`, `.env.docker.example`, `tests/rag/model-config.test.ts`, `tests/rag/langfuse-otel.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/langfuse-otel.test.ts tests/rag/langfuse.test.ts tests/rag/model-config.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`.
+
 ## 2026-06-13T19:24:00+09:00 - issue-100 langfuse full capture exporter follow-up
 
 - Result: PR #101 review feedback에 따라 Langfuse full capture가 LangChain callback뿐 아니라 Node runtime OpenTelemetry exporter도 초기화하도록 보강했다.

@@ -25,6 +25,26 @@ describe("Langfuse OpenTelemetry startup", () => {
     expect(loadModules).not.toHaveBeenCalled();
   });
 
+  it("does not load OpenTelemetry modules when Langfuse is explicitly disabled", async () => {
+    const loadModules = vi.fn();
+
+    await expect(
+      initializeLangfuseOtel({
+        env: {
+          NEXT_RUNTIME: "nodejs",
+          LANGFUSE_PUBLIC_KEY: "pk-test",
+          LANGFUSE_SECRET_KEY: "sk-test",
+          MUNJIB_LANGFUSE_ENABLED: "false",
+          MUNJIB_LANGFUSE_CAPTURE_MODE: "full",
+        },
+        loadModules,
+        state: {},
+      }),
+    ).resolves.toEqual({ started: false, reason: "disabled" });
+
+    expect(loadModules).not.toHaveBeenCalled();
+  });
+
   it("starts a NodeSDK with the Langfuse span processor for full capture", async () => {
     const start = vi.fn();
     const processorInstances: unknown[] = [];
@@ -71,6 +91,35 @@ describe("Langfuse OpenTelemetry startup", () => {
       environment: "production",
     });
     expect(sdkConfigs).toEqual([{ spanProcessors: processorInstances }]);
+  });
+
+  it("starts full capture when the legacy capture alias is full and capture mode is metadata", async () => {
+    const start = vi.fn();
+    class FakeLangfuseSpanProcessor {}
+    class FakeNodeSDK {
+      start() {
+        start();
+      }
+    }
+
+    await expect(
+      initializeLangfuseOtel({
+        env: {
+          NEXT_RUNTIME: "nodejs",
+          LANGFUSE_PUBLIC_KEY: "pk-test",
+          LANGFUSE_SECRET_KEY: "sk-test",
+          MUNJIB_LANGFUSE_CAPTURE_MODE: "metadata",
+          MUNJIB_LANGFUSE_CAPTURE: "full",
+        },
+        loadModules: vi.fn().mockResolvedValue({
+          NodeSDK: FakeNodeSDK,
+          LangfuseSpanProcessor: FakeLangfuseSpanProcessor,
+        }),
+        state: {},
+      }),
+    ).resolves.toEqual({ started: true, reason: "started" });
+
+    expect(start).toHaveBeenCalledTimes(1);
   });
 
   it("is idempotent once the SDK has started", async () => {

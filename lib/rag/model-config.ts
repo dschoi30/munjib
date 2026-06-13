@@ -179,19 +179,17 @@ function readEmbedDimensions(env: RagEnv): number {
 function readLangfuseConfig(env: RagEnv): RagLangfuseConfig {
   const publicKey = readOptionalEnv(env, "LANGFUSE_PUBLIC_KEY");
   const secretKey = readOptionalEnv(env, "LANGFUSE_SECRET_KEY");
-  if (!publicKey || !secretKey) {
+  const capture = readLangfuseCapture(env);
+  const environment = readOptionalEnv(env, "LANGFUSE_TRACING_ENVIRONMENT") ?? "development";
+  if (readBooleanEnv(env, "MUNJIB_LANGFUSE_ENABLED") === false || !publicKey || !secretKey) {
     return {
       enabled: false,
-      capture: "metadata",
-      captureMode: "metadata",
-      environment: readOptionalEnv(env, "LANGFUSE_TRACING_ENVIRONMENT") ?? "development",
+      capture,
+      captureMode: capture,
+      environment,
     };
   }
 
-  const captureEnv =
-    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE_MODE") ??
-    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE");
-  const capture = captureEnv?.toLowerCase() === "full" ? "full" : "metadata";
   const baseUrl =
     readOptionalEnv(env, "LANGFUSE_BASEURL") ??
     readOptionalEnv(env, "LANGFUSE_BASE_URL") ??
@@ -200,12 +198,34 @@ function readLangfuseConfig(env: RagEnv): RagLangfuseConfig {
     enabled: true,
     capture,
     captureMode: capture,
-    environment: readOptionalEnv(env, "LANGFUSE_TRACING_ENVIRONMENT") ?? "development",
+    environment,
     publicKey,
     secretKey,
     ...(baseUrl ? { baseUrl } : {}),
     ...(baseUrl ? { host: baseUrl } : {}),
   };
+}
+
+function readLangfuseCapture(env: RagEnv): RagLangfuseCapture {
+  const values = [
+    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE_MODE"),
+    readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE"),
+  ];
+  return values.some((value) => value?.toLowerCase() === "full") ? "full" : "metadata";
+}
+
+function readBooleanEnv(env: RagEnv, name: string): boolean | undefined {
+  const value = readOptionalEnv(env, name)?.toLowerCase();
+  if (!value) {
+    return undefined;
+  }
+  if (["1", "true", "yes", "on"].includes(value)) {
+    return true;
+  }
+  if (["0", "false", "no", "off"].includes(value)) {
+    return false;
+  }
+  return undefined;
 }
 
 function readOptionalEnv(env: RagEnv, name: string): string | undefined {
