@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
-import { RAG_ERROR_CODES } from "@/lib/rag/ollama";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 vi.mock("@/lib/auth/session", () => ({
   requireCurrentUser: vi.fn(),
@@ -80,7 +80,7 @@ describe("RAG ask route", () => {
 
   it("returns a generic unavailable response for RAG runtime failures", async () => {
     vi.mocked(askDocumentQuestion).mockRejectedValueOnce(
-      new Error(RAG_ERROR_CODES.OLLAMA_REQUEST_FAILED),
+      new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
     );
 
     const response = await POST(jsonRequest({ question: "What is saved?" }), {

@@ -5,7 +5,11 @@ import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { askDocumentQuestion } from "@/lib/rag/ask";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
-import { embedText, chatWithContext } from "@/lib/rag/ollama";
+import { invokeAnswerChain } from "@/lib/rag/answer-chain";
+import { embedText } from "@/lib/rag/embedding-client";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
+import { createChatModel } from "@/lib/rag/model-factory";
 import { searchSimilarChunks } from "@/lib/rag/vector-store";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -13,9 +17,33 @@ vi.mock("@/lib/rag/index-document", () => ({
   safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock("@/lib/rag/ollama", () => ({
+const chatModel = { invoke: vi.fn() };
+
+vi.mock("@/lib/rag/embedding-client", () => ({
+  assertCurrentEmbeddingIndex: vi.fn(),
   embedText: vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01)),
-  chatWithContext: vi.fn().mockResolvedValue("Saved answer"),
+}));
+
+vi.mock("@/lib/rag/model-factory", () => ({
+  createChatModel: vi.fn(() => chatModel),
+}));
+
+vi.mock("@/lib/rag/answer-chain", () => ({
+  invokeAnswerChain: vi.fn().mockResolvedValue("Saved answer"),
+}));
+
+vi.mock("@/lib/rag/langfuse", () => ({
+  createLangfuseCallbackConfig: vi.fn(() => ({
+    callbacks: [],
+    metadata: {
+      operation: "rag.answer",
+      chatProvider: "ollama",
+      chatModel: "gemma4:e4b",
+      embeddingProvider: "ollama",
+      embeddingModel: "bge-m3",
+      embeddingDimensions: 1024,
+    },
+  })),
 }));
 
 vi.mock("@/lib/rag/vector-store", () => ({
@@ -89,8 +117,22 @@ describe("RAG ask service", () => {
         headingPath: "Facts",
       },
     ]);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith({ documentId: selected.id });
-    expect(embedText).toHaveBeenCalledWith("What is saved?");
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
+      documentId: selected.id,
+      embeddingModel: "bge-m3",
+    });
+    expect(embedText).toHaveBeenCalledWith(
+      "What is saved?",
+      expect.objectContaining({
+        config: expect.objectContaining({
+          embedding: expect.objectContaining({
+            provider: "ollama",
+            model: "bge-m3",
+            dimensions: 1024,
+          }),
+        }),
+      }),
+    );
     expect(searchSimilarChunks).toHaveBeenCalledWith(
       expect.objectContaining({
         workspaceId: fixture.workspace.id,
@@ -99,13 +141,47 @@ describe("RAG ask service", () => {
         limit: 60,
       }),
     );
-    expect(chatWithContext).toHaveBeenCalledWith(
-      expect.stringContaining("Use only the saved document context"),
-      expect.stringContaining("Saved database content"),
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "gemma4:e4b",
+        baseUrl: "http://localhost:11434",
+      }),
     );
-    expect(chatWithContext).not.toHaveBeenCalledWith(
-      expect.any(String),
-      expect.stringContaining("Do not use this"),
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        operation: "rag.answer",
+        chatProvider: "ollama",
+        chatModel: "gemma4:e4b",
+        embeddingProvider: "ollama",
+        embeddingModel: "bge-m3",
+        embeddingDimensions: 1024,
+        retrievedChunkCount: 1,
+        citationDocumentIds: [selected.id],
+        metadata: expect.objectContaining({
+          workspaceSlug: fixture.workspace.slug,
+          workspaceId: fixture.workspace.id,
+          selectedDocumentId: selected.id,
+          actorId: fixture.user.id,
+        }),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("Use only the saved document context"),
+        userPrompt: expect.stringContaining("Saved database content"),
+        chatModel,
+        callbacks: [],
+        metadata: expect.objectContaining({
+          operation: "rag.answer",
+          chatProvider: "ollama",
+        }),
+      }),
+    );
+    expect(invokeAnswerChain).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Do not use this"),
+      }),
     );
   });
 
@@ -151,7 +227,7 @@ describe("RAG ask service", () => {
     ).rejects.toThrow("QUESTION_REQUIRED");
   });
 
-  it("propagates Ollama and vector search failures", async () => {
+  it("propagates RAG provider and vector search failures", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -159,7 +235,7 @@ describe("RAG ask service", () => {
       title: "Saved Title",
       contentMarkdown: "Saved content",
     });
-    const failure = new Error("OLLAMA_REQUEST_FAILED");
+    const failure = new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
     vi.mocked(embedText).mockRejectedValueOnce(failure);
 
     await expect(
@@ -169,7 +245,7 @@ describe("RAG ask service", () => {
         actorId: fixture.user.id,
         question: "What happened?",
       }),
-    ).rejects.toThrow("OLLAMA_REQUEST_FAILED");
+    ).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
 
     vi.mocked(embedText).mockResolvedValueOnce(Array.from({ length: 1024 }, () => 0.01));
     vi.mocked(searchSimilarChunks).mockRejectedValueOnce(new Error("VECTOR_SEARCH_FAILED"));
@@ -211,7 +287,10 @@ describe("RAG ask service", () => {
     });
 
     expect(safeIndexSavedDocument).toHaveBeenCalledTimes(1);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith({ documentId: selected.id });
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
+      documentId: selected.id,
+      embeddingModel: "bge-m3",
+    });
     expect(linkFindMany.mock.calls[0]?.[0]).not.toHaveProperty("orderBy");
   });
 });

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-06
-source_count: 171
+updated: 2026-06-13
+source_count: 183
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-13T18:35:00+09:00 - issue-100 langchain langfuse rag provider implementation
+
+- Result: Issue #100 구현으로 saved-content-only Ask AI RAG의 model boundary를 LangChain provider seam으로 옮기고 optional Langfuse metadata tracing을 추가했다.
+- Coverage: `lib/rag/model-config.ts`가 Ollama/OpenAI/OpenAI-compatible chat/embedding env를 검증하고, current indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity는 live Ask AI에서 fail-fast한다. `lib/rag/model-factory.ts`, `lib/rag/embedding-client.ts`, `lib/rag/answer-chain.ts`, `lib/rag/langfuse.ts`, `lib/rag/errors.ts`가 provider-neutral boundary를 맡고, `lib/rag/ask.ts`는 기존 permission/readable document filtering, saved document indexing, graph-aware retrieval, pgvector search, rerank, citation metadata를 유지한 채 LangChain answer chain과 Langfuse invocation metadata를 연결한다. `.env.example`, `.env.docker.example`, `docker-compose.yml`은 provider/Langfuse env passthrough를 문서화한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #100, `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`, `lib/rag/model-config.ts`, `lib/rag/model-factory.ts`, `lib/rag/embedding-client.ts`, `lib/rag/answer-chain.ts`, `lib/rag/langfuse.ts`, `lib/rag/errors.ts`, `lib/rag/ask.ts`, `lib/rag/index-document.ts`, `docker-compose.yml`, `.env.example`, `.env.docker.example`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/model-factory.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts tests/rag/langfuse.test.ts tests/rag/index-document.test.ts tests/rag/ask-route.test.ts tests/docker/compose.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm exec vitest run tests/rag`.
 
 ## 2026-06-06T00:28:56+0900 - issue-100 langchain langfuse rag provider design
 
