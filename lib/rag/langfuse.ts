@@ -6,8 +6,12 @@ export type LangfuseCallbackFactory = (options: {
   baseUrl?: string;
 }) => unknown;
 
+export type LangfuseCaptureMode = "metadata" | "full";
+
 export type LangfuseCallbackConfigInput = {
   enabled?: boolean;
+  capture?: LangfuseCaptureMode;
+  captureMode?: LangfuseCaptureMode;
   callbackFactory?: LangfuseCallbackFactory;
   operation?: string;
   chatProvider: string;
@@ -49,7 +53,7 @@ export function createLangfuseCallbackConfig(
   input: LangfuseCallbackConfigInput,
 ): LangfuseCallbackConfig {
   const metadata = buildMetadata(input);
-  if (!isLangfuseEnabled(input)) {
+  if (!isLangfuseEnabled(input) || readCaptureMode(input) !== "full") {
     return { callbacks: [], metadata };
   }
 
@@ -87,8 +91,12 @@ function buildMetadata(input: LangfuseCallbackConfigInput): Record<string, unkno
     ...(input.citationChunkIds ? { citationChunkIds: uniqueStrings(input.citationChunkIds) } : {}),
     ...(input.errorCode ? { errorCode: input.errorCode } : {}),
     ...sanitizeExtraMetadata(input.metadata ?? {}),
-    captureMode: "metadata",
+    captureMode: readCaptureMode(input),
   };
+}
+
+function readCaptureMode(input: LangfuseCallbackConfigInput): LangfuseCaptureMode {
+  return input.captureMode ?? input.capture ?? "metadata";
 }
 
 function sanitizeExtraMetadata(metadata: Record<string, unknown>): Record<string, unknown> {

@@ -27,6 +27,8 @@ type EmbeddingConstructors = Pick<
 >;
 type ConstructorInstance<T> = T extends new (...args: any[]) => infer Instance ? Instance : never;
 
+const OPENAI_COMPATIBLE_PLACEHOLDER_API_KEY = "not-needed";
+
 const defaultConstructors: LangChainModelConstructors = {
   ChatOllama: ChatOllama as ModelConstructor,
   OllamaEmbeddings: OllamaEmbeddings as ModelConstructor,
@@ -51,12 +53,13 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
     return new resolved.ChatOpenAI({
       model: config.model,
       ...apiKeyOption(config.apiKey),
+      ...baseUrlConfiguration(config.baseUrl),
     }) as ConstructorInstance<C["ChatOpenAI"]>;
   }
 
   return new resolved.ChatOpenAI({
     model: config.model,
-    ...apiKeyOption(config.apiKey),
+    ...openAiCompatibleApiKeyOption(config.apiKey),
     configuration: {
       baseURL: requireBaseUrl(config.baseUrl),
     },
@@ -81,12 +84,13 @@ export function createEmbeddingModel<C extends EmbeddingConstructors = Embedding
       model: config.model,
       ...apiKeyOption(config.apiKey),
       dimensions: config.dimensions,
+      ...baseUrlConfiguration(config.baseUrl),
     }) as ConstructorInstance<C["OpenAIEmbeddings"]>;
   }
 
   return new resolved.OpenAIEmbeddings({
     model: config.model,
-    ...apiKeyOption(config.apiKey),
+    ...openAiCompatibleApiKeyOption(config.apiKey),
     dimensions: config.dimensions,
     configuration: {
       baseURL: requireBaseUrl(config.baseUrl),
@@ -96,6 +100,16 @@ export function createEmbeddingModel<C extends EmbeddingConstructors = Embedding
 
 function apiKeyOption(apiKey: string | undefined): { apiKey?: string } {
   return apiKey === undefined ? {} : { apiKey };
+}
+
+function openAiCompatibleApiKeyOption(apiKey: string | undefined): { apiKey: string } {
+  return { apiKey: apiKey ?? OPENAI_COMPATIBLE_PLACEHOLDER_API_KEY };
+}
+
+function baseUrlConfiguration(
+  baseUrl: string | undefined,
+): { configuration?: { baseURL: string } } {
+  return baseUrl ? { configuration: { baseURL: baseUrl } } : {};
 }
 
 function requireBaseUrl(baseUrl: string | undefined): string {

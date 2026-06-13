@@ -31,6 +31,7 @@ describe("RAG Langfuse callback config", () => {
     const config = createLangfuseCallbackConfig({
       enabled: true,
       callbackFactory,
+      captureMode: "full",
       operation: "rag.answer",
       chatProvider: "ollama",
       chatModel: "gemma4:e4b",
@@ -58,13 +59,34 @@ describe("RAG Langfuse callback config", () => {
       errorCode: "RAG_CHAT_REQUEST_FAILED",
       workspaceSlug: "handbook",
       selectedDocumentId: "doc-1",
-      captureMode: "metadata",
+      captureMode: "full",
     });
     expect(callbackFactory).toHaveBeenCalledWith({
       publicKey: "pk-test",
       secretKey: "sk-test",
       baseUrl: undefined,
     });
+  });
+
+  it("does not attach a Langfuse callback in metadata capture mode", () => {
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-test");
+    vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-test");
+    const callbackFactory: LangfuseCallbackFactory = vi.fn(() => ({ handler: "fake-langfuse" }));
+
+    const config = createLangfuseCallbackConfig({
+      enabled: true,
+      callbackFactory,
+      captureMode: "metadata",
+      chatProvider: "ollama",
+      chatModel: "gemma4:e4b",
+      embeddingProvider: "ollama",
+      embeddingModel: "bge-m3",
+      embeddingDimensions: 1024,
+    } as Parameters<typeof createLangfuseCallbackConfig>[0] & { captureMode: "metadata" });
+
+    expect(config.callbacks).toEqual([]);
+    expect(callbackFactory).not.toHaveBeenCalled();
+    expect(config.metadata.captureMode).toBe("metadata");
   });
 
   it("omits prompt, question, answer, and raw context in metadata capture mode", () => {
