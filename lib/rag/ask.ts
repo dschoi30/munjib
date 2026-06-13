@@ -152,6 +152,7 @@ export async function askDocumentQuestion(
   const prompt = buildRagPrompt({ question, chunks: rankedChunks });
   const trace = createLangfuseCallbackConfig({
     enabled: modelConfig.langfuse.enabled,
+    captureMode: modelConfig.langfuse.captureMode,
     operation: "rag.answer",
     chatProvider: modelConfig.chat.provider,
     chatModel: modelConfig.chat.model,

@@ -1,5 +1,6 @@
+import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
-import { ChatPromptTemplate } from "@langchain/core/prompts";
+import { ChatPromptValue } from "@langchain/core/prompt_values";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 export { RAG_ERROR_CODES };
@@ -34,11 +35,10 @@ export type InvokeAnswerChainInput = {
 
 export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<string> {
   try {
-    const prompt = ChatPromptTemplate.fromMessages([
-      ["system", input.systemPrompt],
-      ["human", input.userPrompt],
+    const promptValue = new ChatPromptValue([
+      new SystemMessage(input.systemPrompt),
+      new HumanMessage(input.userPrompt),
     ]);
-    const promptValue = await prompt.invoke({});
     const result = await input.chatModel.invoke(promptValue, buildInvocationConfig(input));
     const answer = (
       await new StringOutputParser().invoke(

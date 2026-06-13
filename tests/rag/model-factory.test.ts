@@ -77,6 +77,27 @@ describe("RAG LangChain model factory", () => {
     });
   });
 
+  it("passes an official OpenAI base URL override to chat models", () => {
+    const model = createChatModel(
+      {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        apiKey: "sk-test",
+        baseUrl: "https://openai-proxy.example.com/v1",
+      },
+      constructors,
+    );
+
+    expect(model).toBeInstanceOf(FakeChatOpenAI);
+    expect(model.options).toEqual({
+      model: "gpt-4.1-mini",
+      apiKey: "sk-test",
+      configuration: {
+        baseURL: "https://openai-proxy.example.com/v1",
+      },
+    });
+  });
+
   it("creates an official OpenAI embedding model with dimensions", () => {
     const model = createEmbeddingModel(
       {
@@ -93,6 +114,29 @@ describe("RAG LangChain model factory", () => {
       model: "text-embedding-3-large",
       apiKey: "sk-test",
       dimensions: 1024,
+    });
+  });
+
+  it("passes an official OpenAI base URL override to embedding models", () => {
+    const model = createEmbeddingModel(
+      {
+        provider: "openai",
+        model: "text-embedding-3-large",
+        apiKey: "sk-test",
+        baseUrl: "https://openai-proxy.example.com/v1",
+        dimensions: 1024,
+      },
+      constructors,
+    );
+
+    expect(model).toBeInstanceOf(FakeOpenAIEmbeddings);
+    expect(model.options).toEqual({
+      model: "text-embedding-3-large",
+      apiKey: "sk-test",
+      dimensions: 1024,
+      configuration: {
+        baseURL: "https://openai-proxy.example.com/v1",
+      },
     });
   });
 
@@ -117,6 +161,26 @@ describe("RAG LangChain model factory", () => {
     });
   });
 
+  it("uses a non-secret placeholder key for unauthenticated OpenAI-compatible chat endpoints", () => {
+    const model = createChatModel(
+      {
+        provider: "openai-compatible",
+        model: "qwen2.5",
+        baseUrl: "http://localhost:1234/v1",
+      },
+      constructors,
+    );
+
+    expect(model).toBeInstanceOf(FakeChatOpenAI);
+    expect(model.options).toEqual({
+      model: "qwen2.5",
+      apiKey: "not-needed",
+      configuration: {
+        baseURL: "http://localhost:1234/v1",
+      },
+    });
+  });
+
   it("creates an OpenAI-compatible embedding model with custom base URL and dimensions", () => {
     const model = createEmbeddingModel(
       {
@@ -136,6 +200,28 @@ describe("RAG LangChain model factory", () => {
       dimensions: 1024,
       configuration: {
         baseURL: "https://models.example.com/v1",
+      },
+    });
+  });
+
+  it("uses a non-secret placeholder key for unauthenticated OpenAI-compatible embedding endpoints", () => {
+    const model = createEmbeddingModel(
+      {
+        provider: "openai-compatible",
+        model: "bge-m3-compatible",
+        baseUrl: "http://localhost:1234/v1",
+        dimensions: 1024,
+      },
+      constructors,
+    );
+
+    expect(model).toBeInstanceOf(FakeOpenAIEmbeddings);
+    expect(model.options).toEqual({
+      model: "bge-m3-compatible",
+      apiKey: "not-needed",
+      dimensions: 1024,
+      configuration: {
+        baseURL: "http://localhost:1234/v1",
       },
     });
   });

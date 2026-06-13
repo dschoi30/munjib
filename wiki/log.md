@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T18:55:00+09:00 - issue-100 PR review privacy and provider follow-up
+
+- Result: PR #101 follow-up review에 따라 Ask AI answer prompts의 literal brace handling, OpenAI base URL passthrough, OpenAI-compatible blank-key runtime support, and Langfuse metadata-mode privacy behavior를 보강했다.
+- Coverage: `lib/rag/answer-chain.ts`는 dynamic prompt template 대신 literal chat messages를 사용해 JSON/code brace content를 template variable로 해석하지 않는다. `lib/rag/model-factory.ts`는 official OpenAI `baseUrl`을 LangChain configuration에 전달하고, unauthenticated OpenAI-compatible endpoint에는 non-secret placeholder API key를 넣어 OpenAI SDK credential preflight를 통과시킨다. `lib/rag/langfuse.ts`는 metadata mode에서 external callback을 붙이지 않고 explicit `full` capture에서만 callback을 연결한다.
+- Pages: [[Munjib]], [[Document Editing Workflow]], [[Production Observability Workflow]], [[Project PRD]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/answer-chain.ts`, `lib/rag/model-factory.ts`, `lib/rag/langfuse.ts`, `lib/rag/ask.ts`, `tests/rag/answer-chain.test.ts`, `tests/rag/model-factory.test.ts`, `tests/rag/langfuse.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/model-factory.test.ts tests/rag/langfuse.test.ts`.
+
 ## 2026-06-13T18:46:00+09:00 - issue-100 PR review follow-up
 
 - Result: PR #101 automated review feedback에 따라 LangChain model factory의 dynamic `require`를 static imports로 바꾸고, OpenAI-compatible provider의 API key를 optional로 유지하며, answer/embedding provider failure logging을 보강했다.

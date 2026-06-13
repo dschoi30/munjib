@@ -36,6 +36,28 @@ describe("RAG answer chain", () => {
     ]);
   });
 
+  it("passes saved context and questions with braces as literal message content", async () => {
+    const chatModel = fakeChatModel(new AIMessage("Literal brace answer."));
+
+    const answer = await invokeAnswerChain({
+      systemPrompt: "Use JSON literally: {\"policy\":\"saved-only\"}",
+      userPrompt: "Context: ```json\n{\"answer\":\"saved\"}\n```\nQuestion: What does {answer} mean?",
+      chatModel,
+    });
+
+    expect(answer).toBe("Literal brace answer.");
+    const promptValue = vi.mocked(chatModel.invoke).mock.calls[0]?.[0] as {
+      toChatMessages(): unknown;
+    };
+    expect(promptValue?.toChatMessages()).toMatchObject([
+      { content: "Use JSON literally: {\"policy\":\"saved-only\"}" },
+      {
+        content:
+          "Context: ```json\n{\"answer\":\"saved\"}\n```\nQuestion: What does {answer} mean?",
+      },
+    ]);
+  });
+
   it("maps chat model request failures to a recoverable RAG error", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     const providerError = new Error("provider unavailable");
