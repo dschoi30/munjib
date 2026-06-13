@@ -147,6 +147,21 @@ describe("RAG model configuration", () => {
     });
   });
 
+  it("accepts the Langfuse base URL alias used by environment examples", () => {
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", " pk-test ");
+    vi.stubEnv("LANGFUSE_SECRET_KEY", " sk-test ");
+    vi.stubEnv("LANGFUSE_BASE_URL", " https://langfuse.example.com ");
+    vi.stubEnv("MUNJIB_LANGFUSE_CAPTURE_MODE", " full ");
+
+    expect(getRagModelConfig().langfuse).toMatchObject({
+      enabled: true,
+      capture: "full",
+      captureMode: "full",
+      baseUrl: "https://langfuse.example.com",
+      host: "https://langfuse.example.com",
+    });
+  });
+
   it("recognizes provider-neutral RAG runtime error codes", () => {
     expect(isRagRuntimeError(RAG_ERROR_CODES.INVALID_EMBEDDING)).toBe(true);
     expect(isRagRuntimeError(RAG_ERROR_CODES.EMBEDDING_INDEX_INCOMPATIBLE)).toBe(true);
