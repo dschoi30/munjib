@@ -162,6 +162,32 @@ describe("RAG model configuration", () => {
     });
   });
 
+  it("keeps Langfuse disabled when the explicit disable flag is set with credentials present", () => {
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", " pk-test ");
+    vi.stubEnv("LANGFUSE_SECRET_KEY", " sk-test ");
+    vi.stubEnv("MUNJIB_LANGFUSE_ENABLED", " false ");
+    vi.stubEnv("MUNJIB_LANGFUSE_CAPTURE_MODE", " full ");
+
+    expect(getRagModelConfig().langfuse).toMatchObject({
+      enabled: false,
+      capture: "full",
+      captureMode: "full",
+    });
+  });
+
+  it("honors the legacy full Langfuse capture alias even when capture mode defaults to metadata", () => {
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", " pk-test ");
+    vi.stubEnv("LANGFUSE_SECRET_KEY", " sk-test ");
+    vi.stubEnv("MUNJIB_LANGFUSE_CAPTURE_MODE", " metadata ");
+    vi.stubEnv("MUNJIB_LANGFUSE_CAPTURE", " full ");
+
+    expect(getRagModelConfig().langfuse).toMatchObject({
+      enabled: true,
+      capture: "full",
+      captureMode: "full",
+    });
+  });
+
   it("recognizes provider-neutral RAG runtime error codes", () => {
     expect(isRagRuntimeError(RAG_ERROR_CODES.INVALID_EMBEDDING)).toBe(true);
     expect(isRagRuntimeError(RAG_ERROR_CODES.EMBEDDING_INDEX_INCOMPATIBLE)).toBe(true);
