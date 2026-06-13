@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T19:24:00+09:00 - issue-100 langfuse full capture exporter follow-up
+
+- Result: PR #101 review feedback에 따라 Langfuse full capture가 LangChain callback뿐 아니라 Node runtime OpenTelemetry exporter도 초기화하도록 보강했다.
+- Coverage: `instrumentation.ts`는 Node runtime에서 `initializeLangfuseOtel()`을 먼저 호출하고, `lib/rag/langfuse-otel.ts`는 explicit full capture와 credential이 있을 때만 `NodeSDK`와 `LangfuseSpanProcessor`를 시작한다. Metadata mode, disabled env, missing credential, non-node runtime, startup failure는 fail-open으로 callback/exporter를 붙이지 않는다. `.env.example`, `.env.docker.example`, `docker-compose.yml`은 `MUNJIB_LANGFUSE_ENABLED`와 full capture exporter contract를 문서화하고 web container로 전달한다.
+- Pages: [[Production Observability Workflow]], [[Local Development Workflow]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: PR #101 review thread, Langfuse JS/TS SDK docs, Langfuse LangChain integration docs, `instrumentation.ts`, `lib/rag/langfuse-otel.ts`, `tests/rag/langfuse-otel.test.ts`, `tests/observability/sentry-files.test.ts`, `.env.example`, `.env.docker.example`, `docker-compose.yml`, `package.json`, `pnpm-lock.yaml`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/langfuse-otel.test.ts tests/rag/langfuse.test.ts tests/observability/sentry-files.test.ts tests/docker/compose.test.ts tests/rag/model-config.test.ts`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test`; `pnpm wiki:manifest`; `pnpm wiki:lint`.
+
 ## 2026-06-13T19:03:00+09:00 - issue-100 environment sample alignment
 
 - Result: RAG provider and Langfuse environment samples now document the latest review follow-up contract and Docker runtime passthrough.

@@ -47,7 +47,7 @@ NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0.05
 
 Issue #89 구현은 이 로그 흐름을 대체하지 않고 `@sentry/nextjs` 기반 SaaS error monitoring과 낮은 sample rate의 tracing을 추가한다. Next.js App Router manual setup에 맞춰 `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `instrumentation.ts`, `app/global-error.tsx`를 사용한다.
 
-Issue #100 구현은 Ask AI RAG의 LLM-specific observability에 Langfuse를 추가하되 Sentry/Docker 로그 역할을 대체하지 않는다. Langfuse는 LangChain answer generation callback 관측에 한정하고, 설정 누락이나 callback 생성 실패는 Ask AI request를 실패시키지 않는 fail-open layer다.
+Issue #100 구현은 Ask AI RAG의 LLM-specific observability에 Langfuse를 추가하되 Sentry/Docker 로그 역할을 대체하지 않는다. Langfuse full capture는 Node runtime instrumentation에서 OpenTelemetry `NodeSDK`와 `LangfuseSpanProcessor` exporter를 시작하고, answer generation에는 LangChain callback을 연결한다. 설정 누락, metadata capture, startup/exporter 실패, callback 생성 실패는 Ask AI request를 실패시키지 않는 fail-open layer다.
 
 ## Steps
 
@@ -72,7 +72,7 @@ Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure,
 
 문서 본문, query parameter 기반 document/search state, cookie, authorization header, network address, user IP, `DATABASE_URL`, `NEXTAUTH_SECRET` 같은 민감 값은 Sentry event context에 넣지 않는다. 첫 slice에서는 `sendDefaultPii`를 켜지 않는다.
 
-Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback을 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 LangChain Langfuse callback을 연결한다.
+Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 Node runtime Langfuse OpenTelemetry exporter와 LangChain Langfuse callback을 연결한다.
 
 ## Tests
 
@@ -93,6 +93,7 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 - `app/global-error.tsx`
 - `docker-compose.yml`
 - `lib/rag/langfuse.ts`
+- `lib/rag/langfuse-otel.ts`
 - `lib/rag/answer-chain.ts`
 - `Dockerfile`
 - `next.config.mjs`
@@ -103,5 +104,6 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 - `tests/observability/sentry-files.test.ts`
 - `tests/docker/compose.test.ts`
 - `tests/rag/langfuse.test.ts`
+- `tests/rag/langfuse-otel.test.ts`
 - `tests/rag/answer-chain.test.ts`
 - [[Local Development Workflow]]
