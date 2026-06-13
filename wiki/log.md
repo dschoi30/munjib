@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T18:46:00+09:00 - issue-100 PR review follow-up
+
+- Result: PR #101 automated review feedback에 따라 LangChain model factory의 dynamic `require`를 static imports로 바꾸고, OpenAI-compatible provider의 API key를 optional로 유지하며, answer/embedding provider failure logging을 보강했다.
+- Coverage: `lib/rag/model-factory.ts`는 bundler/static analysis friendly imports를 사용한다. `lib/rag/model-config.ts`는 OpenAI-compatible base URL은 계속 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값으로 둔다. `lib/rag/answer-chain.ts`와 `lib/rag/embedding-client.ts`는 provider 실패의 원본 error를 server log에 남긴 뒤 기존 stable RAG error code로 매핑한다.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #101 review threads, `lib/rag/model-factory.ts`, `lib/rag/model-config.ts`, `lib/rag/answer-chain.ts`, `lib/rag/embedding-client.ts`, `.env.example`, `.env.docker.example`.
+- Verification: `pnpm exec vitest run tests/rag/model-factory.test.ts tests/rag/model-config.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-06-13T18:35:00+09:00 - issue-100 langchain langfuse rag provider implementation
 
 - Result: Issue #100 구현으로 saved-content-only Ask AI RAG의 model boundary를 LangChain provider seam으로 옮기고 optional Langfuse metadata tracing을 추가했다.

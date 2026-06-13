@@ -1,4 +1,5 @@
-import { createRequire } from "node:module";
+import { ChatOllama, OllamaEmbeddings } from "@langchain/ollama";
+import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import type {
   RagChatModelConfig,
   RagEmbeddingModelConfig,
@@ -26,8 +27,12 @@ type EmbeddingConstructors = Pick<
 >;
 type ConstructorInstance<T> = T extends new (...args: any[]) => infer Instance ? Instance : never;
 
-const require = createRequire(import.meta.url);
-let cachedDefaultConstructors: LangChainModelConstructors | null = null;
+const defaultConstructors: LangChainModelConstructors = {
+  ChatOllama: ChatOllama as ModelConstructor,
+  OllamaEmbeddings: OllamaEmbeddings as ModelConstructor,
+  ChatOpenAI: ChatOpenAI as ModelConstructor,
+  OpenAIEmbeddings: OpenAIEmbeddings as ModelConstructor,
+};
 
 export function createChatModel<C extends ChatConstructors = ChatConstructors>(
   config: RagChatModelConfig,
@@ -101,23 +106,5 @@ function requireBaseUrl(baseUrl: string | undefined): string {
 }
 
 function getDefaultConstructors(): LangChainModelConstructors {
-  if (cachedDefaultConstructors) {
-    return cachedDefaultConstructors;
-  }
-
-  const ollama = require("@langchain/ollama") as Pick<
-    LangChainModelConstructors,
-    "ChatOllama" | "OllamaEmbeddings"
-  >;
-  const openai = require("@langchain/openai") as Pick<
-    LangChainModelConstructors,
-    "ChatOpenAI" | "OpenAIEmbeddings"
-  >;
-  cachedDefaultConstructors = {
-    ChatOllama: ollama.ChatOllama,
-    OllamaEmbeddings: ollama.OllamaEmbeddings,
-    ChatOpenAI: openai.ChatOpenAI,
-    OpenAIEmbeddings: openai.OpenAIEmbeddings,
-  };
-  return cachedDefaultConstructors;
+  return defaultConstructors;
 }

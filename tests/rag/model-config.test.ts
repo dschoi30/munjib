@@ -81,6 +81,18 @@ describe("RAG model configuration", () => {
     });
   });
 
+  it("allows OpenAI-compatible providers without an API key for local deployments", () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", " openai-compatible ");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", " llama3.1 ");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", " http://localhost:1234/v1 ");
+
+    expect(getRagModelConfig().chat).toEqual({
+      provider: "openai-compatible",
+      model: "llama3.1",
+      baseUrl: "http://localhost:1234/v1",
+    });
+  });
+
   it.each([
     ["MUNJIB_RAG_CHAT_PROVIDER", "anthropic"],
     ["MUNJIB_RAG_EMBED_PROVIDER", "azure-openai"],
@@ -107,14 +119,6 @@ describe("RAG model configuration", () => {
         MUNJIB_RAG_CHAT_PROVIDER: "openai-compatible",
         MUNJIB_RAG_CHAT_MODEL: "llama3.1",
         MUNJIB_OPENAI_COMPATIBLE_API_KEY: "compat-key",
-      },
-    ],
-    [
-      "OpenAI-compatible API key",
-      {
-        MUNJIB_RAG_CHAT_PROVIDER: "openai-compatible",
-        MUNJIB_RAG_CHAT_MODEL: "llama3.1",
-        MUNJIB_OPENAI_COMPATIBLE_BASE_URL: "https://llm.example.test/v1",
       },
     ],
   ])("rejects missing required %s", (_label, env) => {

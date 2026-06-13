@@ -80,7 +80,8 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
   let embedding: unknown;
   try {
     embedding = await embeddingModel.embedQuery(text);
-  } catch {
+  } catch (error) {
+    console.error("Embedding request failed:", error);
     throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
   }
 
