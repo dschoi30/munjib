@@ -9,6 +9,8 @@ describe("Sentry Next.js integration files", () => {
   test("registers server and edge Sentry config through Next instrumentation", () => {
     const source = read("instrumentation.ts");
 
+    expect(source).toContain('await import("./lib/rag/langfuse-otel")');
+    expect(source).toContain("initializeLangfuseOtel");
     expect(source).toContain('await import("./sentry.server.config")');
     expect(source).toContain('await import("./sentry.edge.config")');
     expect(source).toContain("Sentry.captureRequestError");

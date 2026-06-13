@@ -109,6 +109,7 @@ describe("Docker web service configuration", () => {
       LANGFUSE_BASEURL: "${LANGFUSE_BASEURL:-}",
       LANGFUSE_BASE_URL: "${LANGFUSE_BASE_URL:-}",
       LANGFUSE_TRACING_ENVIRONMENT: "${LANGFUSE_TRACING_ENVIRONMENT:-production}",
+      MUNJIB_LANGFUSE_ENABLED: "${MUNJIB_LANGFUSE_ENABLED:-}",
       MUNJIB_LANGFUSE_CAPTURE_MODE: "${MUNJIB_LANGFUSE_CAPTURE_MODE:-metadata}",
       MUNJIB_LANGFUSE_CAPTURE: "${MUNJIB_LANGFUSE_CAPTURE:-metadata}",
     });
@@ -227,6 +228,7 @@ describe("Docker web service configuration", () => {
       "LANGFUSE_HOST=",
       "LANGFUSE_BASEURL=",
       "LANGFUSE_BASE_URL=",
+      "MUNJIB_LANGFUSE_ENABLED=",
       "MUNJIB_LANGFUSE_CAPTURE_MODE=metadata",
       "MUNJIB_LANGFUSE_CAPTURE=metadata",
     ];
