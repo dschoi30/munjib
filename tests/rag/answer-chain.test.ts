@@ -1,6 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { AIMessage } from "@langchain/core/messages";
 import { invokeAnswerChain, RAG_ERROR_CODES, type ChatModelLike } from "@/lib/rag/answer-chain";
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("RAG answer chain", () => {
   it("invokes the chat model with saved-context prompts and invocation config", async () => {
@@ -33,7 +37,9 @@ describe("RAG answer chain", () => {
   });
 
   it("maps chat model request failures to a recoverable RAG error", async () => {
-    const chatModel = fakeChatModel(new Error("provider unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const providerError = new Error("provider unavailable");
+    const chatModel = fakeChatModel(providerError);
 
     await expect(
       invokeAnswerChain({
@@ -42,9 +48,15 @@ describe("RAG answer chain", () => {
         chatModel,
       }),
     ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "RAG answer chain invocation failed:",
+      providerError,
+    );
   });
 
   it("maps empty model output to a recoverable RAG error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
     const chatModel = fakeChatModel(new AIMessage(" \n\t "));
 
     await expect(

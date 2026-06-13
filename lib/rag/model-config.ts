@@ -128,11 +128,12 @@ function buildProviderConfig({
     return baseUrl ? { ...config, baseUrl } : config;
   }
 
+  const apiKey = readOptionalEnv(env, "MUNJIB_OPENAI_COMPATIBLE_API_KEY");
   return {
     provider,
     model,
     baseUrl: readRequiredEnv(env, "MUNJIB_OPENAI_COMPATIBLE_BASE_URL"),
-    apiKey: readRequiredEnv(env, "MUNJIB_OPENAI_COMPATIBLE_API_KEY"),
+    ...(apiKey ? { apiKey } : {}),
   };
 }
 

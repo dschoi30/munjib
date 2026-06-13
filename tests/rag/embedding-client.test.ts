@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   assertCurrentEmbeddingIndex,
   embedText,
@@ -15,6 +15,10 @@ const currentConfig = {
     isCurrentIndexedIdentity: true,
   },
 } satisfies RagEmbeddingClientConfig;
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("provider-neutral embedding client", () => {
   it("validates a finite embedding with the expected dimensions", () => {
@@ -92,13 +96,18 @@ describe("provider-neutral embedding client", () => {
   });
 
   it("maps provider request failures to a stable embedding request error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const providerError = new Error("provider unavailable");
+
     await expect(
       embedText("saved chunk", {
         config: currentConfig,
         embeddingModel: {
-          embedQuery: vi.fn().mockRejectedValue(new Error("provider unavailable")),
+          embedQuery: vi.fn().mockRejectedValue(providerError),
         },
       }),
     ).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledWith("Embedding request failed:", providerError);
   });
 });

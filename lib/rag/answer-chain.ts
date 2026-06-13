@@ -49,7 +49,8 @@ export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<
       throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
     }
     return answer;
-  } catch {
+  } catch (error) {
+    console.error("RAG answer chain invocation failed:", error);
     throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
   }
 }
