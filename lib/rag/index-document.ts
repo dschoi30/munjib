@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { after as scheduleAfterRequest } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
-import { getRagConfig } from "@/lib/rag/config";
-import { embedText as defaultEmbedText } from "@/lib/rag/ollama";
+import { getRagModelConfig } from "@/lib/rag/config";
+import { embedText as defaultEmbedText } from "@/lib/rag/embedding-client";
 import { chunkMarkdownDocument } from "@/lib/rag/chunk-markdown";
 import { replaceDocumentChunks as defaultReplaceDocumentChunks } from "@/lib/rag/vector-store";
 
@@ -41,7 +41,7 @@ type ScheduleSavedDocumentIndexInput = SafeIndexSavedDocumentInput & {
 
 export async function indexSavedDocument(input: IndexSavedDocumentInput) {
   const document = input.document;
-  const embeddingModel = input.embeddingModel ?? getRagConfig().embedModel;
+  const embeddingModel = input.embeddingModel ?? getRagModelConfig().embedding.indexId;
   const embedText = input.embedText ?? defaultEmbedText;
   const replaceDocumentChunks = input.replaceDocumentChunks ?? replaceDocumentChunksInTransaction;
   const chunks = chunkMarkdownDocument({

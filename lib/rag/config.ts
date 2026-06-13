@@ -1,3 +1,20 @@
+import {
+  getRagModelConfig,
+  RAG_CONFIG_ERROR_CODES as PROVIDER_RAG_CONFIG_ERROR_CODES,
+} from "@/lib/rag/model-config";
+
+export {
+  CURRENT_EMBEDDING_INDEX,
+  getRagModelConfig,
+  type RagChatModelConfig,
+  type RagEmbeddingModelConfig,
+  type RagEnv,
+  type RagLangfuseCapture,
+  type RagLangfuseConfig,
+  type RagModelConfig,
+  type RagProvider,
+} from "@/lib/rag/model-config";
+
 export type RagConfig = {
   ollamaBaseUrl: string;
   chatModel: string;
@@ -6,40 +23,26 @@ export type RagConfig = {
 };
 
 export const RAG_CONFIG_ERROR_CODES = {
-  INVALID_EMBED_DIMENSIONS: "RAG_INVALID_EMBED_DIMENSIONS",
-} as const;
-
-const DEFAULT_RAG_CONFIG = {
-  ollamaBaseUrl: "http://localhost:11434",
-  chatModel: "gemma4:e4b",
-  embedModel: "bge-m3",
-  embedDimensions: 1024,
+  ...PROVIDER_RAG_CONFIG_ERROR_CODES,
+  INVALID_EMBED_DIMENSIONS: PROVIDER_RAG_CONFIG_ERROR_CODES.INVALID_CONFIG,
 } as const;
 
 export function getRagConfig(): RagConfig {
+  const config = getRagModelConfig();
   return {
-    ollamaBaseUrl: readStringEnv("MUNJIB_OLLAMA_BASE_URL", DEFAULT_RAG_CONFIG.ollamaBaseUrl),
-    chatModel: readStringEnv("MUNJIB_RAG_CHAT_MODEL", DEFAULT_RAG_CONFIG.chatModel),
-    embedModel: readStringEnv("MUNJIB_RAG_EMBED_MODEL", DEFAULT_RAG_CONFIG.embedModel),
-    embedDimensions: readEmbedDimensions(),
+    ollamaBaseUrl: readLegacyOllamaBaseUrl(config),
+    chatModel: config.chat.model,
+    embedModel: config.embedding.model,
+    embedDimensions: config.embedding.dimensions,
   };
 }
 
-function readStringEnv(name: string, fallback: string): string {
-  const value = process.env[name]?.trim();
-  return value ? value : fallback;
-}
-
-function readEmbedDimensions(): number {
-  const value = process.env.MUNJIB_RAG_EMBED_DIMENSIONS?.trim();
-  if (!value) {
-    return DEFAULT_RAG_CONFIG.embedDimensions;
+function readLegacyOllamaBaseUrl(config: ReturnType<typeof getRagModelConfig>): string {
+  if (config.chat.provider === "ollama" && config.chat.baseUrl) {
+    return config.chat.baseUrl;
   }
-
-  const dimensions = Number(value);
-  if (!Number.isInteger(dimensions) || dimensions <= 0) {
-    throw new Error(RAG_CONFIG_ERROR_CODES.INVALID_EMBED_DIMENSIONS);
+  if (config.embedding.provider === "ollama" && config.embedding.baseUrl) {
+    return config.embedding.baseUrl;
   }
-
-  return dimensions;
+  return process.env.MUNJIB_OLLAMA_BASE_URL?.trim() || "http://localhost:11434";
 }

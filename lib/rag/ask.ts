@@ -1,8 +1,11 @@
 import { prisma } from "@/lib/db/client";
 import { highestPermissionLevel } from "@/lib/permissions/document";
-import { getRagConfig } from "@/lib/rag/config";
+import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
+import { getRagModelConfig } from "@/lib/rag/config";
+import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
-import { chatWithContext, embedText } from "@/lib/rag/ollama";
+import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
+import { createChatModel } from "@/lib/rag/model-factory";
 import { buildRagPrompt, type RagCitation } from "@/lib/rag/prompt";
 import { buildRetrievalScopes, rerankRetrievedChunks } from "@/lib/rag/retriever";
 import { searchSimilarChunks } from "@/lib/rag/vector-store";
@@ -96,6 +99,8 @@ export async function askDocumentQuestion(
   if (!selectedDocument) {
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
+  const modelConfig = getRagModelConfig();
+  assertCurrentEmbeddingIndex(modelConfig);
 
   const persistedLinks = await prisma.documentLink.findMany({
     where: { workspaceId: workspace.id },
@@ -108,7 +113,10 @@ export async function askDocumentQuestion(
     },
   });
 
-  await safeIndexSavedDocument({ documentId: selectedDocument.id });
+  await safeIndexSavedDocument({
+    documentId: selectedDocument.id,
+    embeddingModel: modelConfig.embedding.indexId,
+  });
 
   const scopes = buildRetrievalScopes({
     selectedDocumentId: selectedDocument.id,
@@ -127,10 +135,10 @@ export async function askDocumentQuestion(
     ...scopes.sameTagDocumentIds,
     ...scopes.fallbackDocumentIds,
   ]);
-  const embedding = await embedText(question);
+  const embedding = await embedText(question, { config: modelConfig });
   const chunks = await searchSimilarChunks({
     workspaceId: workspace.id,
-    embeddingModel: getRagConfig().embedModel,
+    embeddingModel: modelConfig.embedding.indexId,
     embedding,
     readableDocumentIds: scopedDocumentIds,
     limit: 60,
@@ -142,7 +150,32 @@ export async function askDocumentQuestion(
     limit: 20,
   });
   const prompt = buildRagPrompt({ question, chunks: rankedChunks });
-  const answer = await chatWithContext(prompt.system, prompt.user);
+  const trace = createLangfuseCallbackConfig({
+    enabled: modelConfig.langfuse.enabled,
+    captureMode: modelConfig.langfuse.captureMode,
+    operation: "rag.answer",
+    chatProvider: modelConfig.chat.provider,
+    chatModel: modelConfig.chat.model,
+    embeddingProvider: modelConfig.embedding.provider,
+    embeddingModel: modelConfig.embedding.indexId,
+    embeddingDimensions: modelConfig.embedding.dimensions,
+    retrievedChunkCount: rankedChunks.length,
+    citationDocumentIds: prompt.citations.map((citation) => citation.documentId),
+    citationChunkIds: rankedChunks.map((chunk) => chunk.id),
+    metadata: {
+      workspaceSlug: input.workspaceSlug,
+      workspaceId: workspace.id,
+      selectedDocumentId: selectedDocument.id,
+      actorId: input.actorId,
+    },
+  });
+  const answer = await invokeAnswerChain({
+    systemPrompt: prompt.system,
+    userPrompt: prompt.user,
+    chatModel: createChatModel(modelConfig.chat) as ChatModelLike,
+    callbacks: trace.callbacks,
+    metadata: trace.metadata,
+  });
 
   return { answer, citations: prompt.citations };
 }
