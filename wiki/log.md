@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-13T19:03:00+09:00 - issue-100 environment sample alignment
+
+- Result: RAG provider and Langfuse environment samples now document the latest review follow-up contract and Docker runtime passthrough.
+- Coverage: `.env.example` and `.env.docker.example` include `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_BASE_URL`, `MUNJIB_LANGFUSE_CAPTURE_MODE`, metadata-mode privacy notes, and OpenAI-compatible blank-key guidance. `docker-compose.yml` passes those Langfuse aliases through to the web service, and `lib/rag/model-config.ts` recognizes `LANGFUSE_BASE_URL` alongside existing Langfuse host/base URL names.
+- Pages: [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: `.env.example`, `.env.docker.example`, `docker-compose.yml`, `lib/rag/model-config.ts`, `tests/docker/compose.test.ts`, `tests/rag/model-config.test.ts`.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts`; `pnpm exec vitest run tests/rag/model-config.test.ts`.
+
 ## 2026-06-13T18:55:00+09:00 - issue-100 PR review privacy and provider follow-up
 
 - Result: PR #101 follow-up review에 따라 Ask AI answer prompts의 literal brace handling, OpenAI base URL passthrough, OpenAI-compatible blank-key runtime support, and Langfuse metadata-mode privacy behavior를 보강했다.

@@ -192,7 +192,10 @@ function readLangfuseConfig(env: RagEnv): RagLangfuseConfig {
     readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE_MODE") ??
     readOptionalEnv(env, "MUNJIB_LANGFUSE_CAPTURE");
   const capture = captureEnv?.toLowerCase() === "full" ? "full" : "metadata";
-  const baseUrl = readOptionalEnv(env, "LANGFUSE_BASEURL") ?? readOptionalEnv(env, "LANGFUSE_HOST");
+  const baseUrl =
+    readOptionalEnv(env, "LANGFUSE_BASEURL") ??
+    readOptionalEnv(env, "LANGFUSE_BASE_URL") ??
+    readOptionalEnv(env, "LANGFUSE_HOST");
   return {
     enabled: true,
     capture,

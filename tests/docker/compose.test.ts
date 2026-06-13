@@ -107,6 +107,9 @@ describe("Docker web service configuration", () => {
       LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}",
       LANGFUSE_HOST: "${LANGFUSE_HOST:-}",
       LANGFUSE_BASEURL: "${LANGFUSE_BASEURL:-}",
+      LANGFUSE_BASE_URL: "${LANGFUSE_BASE_URL:-}",
+      LANGFUSE_TRACING_ENVIRONMENT: "${LANGFUSE_TRACING_ENVIRONMENT:-production}",
+      MUNJIB_LANGFUSE_CAPTURE_MODE: "${MUNJIB_LANGFUSE_CAPTURE_MODE:-metadata}",
       MUNJIB_LANGFUSE_CAPTURE: "${MUNJIB_LANGFUSE_CAPTURE:-metadata}",
     });
   });
@@ -223,6 +226,8 @@ describe("Docker web service configuration", () => {
       "LANGFUSE_SECRET_KEY=",
       "LANGFUSE_HOST=",
       "LANGFUSE_BASEURL=",
+      "LANGFUSE_BASE_URL=",
+      "MUNJIB_LANGFUSE_CAPTURE_MODE=metadata",
       "MUNJIB_LANGFUSE_CAPTURE=metadata",
     ];
 
@@ -230,5 +235,9 @@ describe("Docker web service configuration", () => {
       expect(envExample).toContain(key);
       expect(dockerEnvExample).toContain(key);
     }
+    expect(envExample).toContain("LANGFUSE_TRACING_ENVIRONMENT=development");
+    expect(dockerEnvExample).toContain("LANGFUSE_TRACING_ENVIRONMENT=production");
+    expect(envExample).toContain("Metadata mode does not attach a Langfuse callback");
+    expect(dockerEnvExample).toContain("Metadata mode does not attach a Langfuse callback");
   });
 });
