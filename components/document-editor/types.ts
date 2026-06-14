@@ -22,6 +22,7 @@ export type CommentItem = {
 
 export type DocumentEditorProps = {
   workspaceSlug: string;
+  defaultChatModel: string;
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;

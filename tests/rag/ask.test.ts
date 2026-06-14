@@ -227,6 +227,71 @@ describe("RAG ask service", () => {
     ).rejects.toThrow("QUESTION_REQUIRED");
   });
 
+  it("overrides only the chat model for answer generation", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Saved Title",
+      contentMarkdown: "# Facts\n\nSaved database content",
+    });
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce([
+      {
+        id: "chunk-1",
+        documentId: selected.id,
+        documentTitle: "Saved Title",
+        documentPath: "/saved-title",
+        headingPath: "Facts",
+        content: "Saved database content",
+        distance: 0.1,
+      },
+    ]);
+
+    await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What is saved?",
+      chatModelOverride: "moonshotai/kimi-k2.7-code",
+    });
+
+    expect(embedText).toHaveBeenCalledWith(
+      "What is saved?",
+      expect.objectContaining({
+        config: expect.objectContaining({
+          chat: expect.objectContaining({
+            model: "moonshotai/kimi-k2.7-code",
+          }),
+          embedding: expect.objectContaining({
+            provider: "ollama",
+            model: "bge-m3",
+            dimensions: 1024,
+          }),
+        }),
+      }),
+    );
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
+      documentId: selected.id,
+      embeddingModel: "bge-m3",
+    });
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "moonshotai/kimi-k2.7-code",
+        baseUrl: "http://localhost:11434",
+      }),
+    );
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatProvider: "ollama",
+        chatModel: "moonshotai/kimi-k2.7-code",
+        embeddingProvider: "ollama",
+        embeddingModel: "bge-m3",
+        embeddingDimensions: 1024,
+      }),
+    );
+  });
+
   it("propagates RAG provider and vector search failures", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({

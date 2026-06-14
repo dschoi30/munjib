@@ -10,8 +10,15 @@ import {
   useState,
   useTransition,
 } from "react";
-import { FileText, Upload, X } from "lucide-react";
+import { Bot, FileText, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  RAG_CHAT_MODEL_PRESETS,
+  readStoredChatModel,
+  resetStoredChatModel,
+  validateChatModelId,
+  writeStoredChatModel,
+} from "@/lib/rag/client-model-settings";
 
 type WorkspaceSettingsFolder = {
   id: string;
@@ -44,25 +51,36 @@ type ImportRun = {
   currentFileName: string | null;
 };
 
+type SettingsSection = "import" | "ai";
+
 export function WorkspaceSettingsPanel({
   canWrite,
+  defaultChatModel,
   folders,
   importMarkdownAction,
   onClose,
+  workspaceSlug,
 }: {
   canWrite: boolean;
+  defaultChatModel: string;
   folders: WorkspaceSettingsFolder[];
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   onClose: () => void;
+  workspaceSlug: string;
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSection>("import");
+  const [customModel, setCustomModel] = useState("");
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
+  const [modelStatus, setModelStatus] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
+  const storedChatModel = readStoredChatModel(workspaceSlug);
+  const effectiveChatModel = storedChatModel ?? defaultChatModel;
   const importLocked = isImportPending || isImporting;
   const isImportActive = isImporting || importRun?.status === "importing";
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
@@ -95,6 +113,49 @@ export function WorkspaceSettingsPanel({
     setDestinationFolderId(folderId);
     setDestinationPickerOpen(false);
   }, []);
+
+  const handleSavePresetModel = useCallback(
+    (modelId: string) => {
+      const result = writeStoredChatModel(workspaceSlug, modelId);
+      if (!result.ok) {
+        setModelStatus("Enter a valid model id.");
+        return;
+      }
+
+      setModelStatus(
+        result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
+      );
+    },
+    [workspaceSlug],
+  );
+
+  const handleSaveCustomModel = useCallback(() => {
+    const validation = validateChatModelId(customModel);
+    if (!validation.ok) {
+      setModelStatus("Enter a valid model id.");
+      return;
+    }
+
+    const result = writeStoredChatModel(workspaceSlug, validation.value);
+    if (result.ok) {
+      setCustomModel(result.value);
+      setModelStatus(
+        result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
+      );
+      return;
+    }
+
+    setModelStatus("Enter a valid model id.");
+  }, [customModel, workspaceSlug]);
+
+  const handleResetModel = useCallback(() => {
+    const reset = resetStoredChatModel(workspaceSlug);
+    setModelStatus(
+      reset
+        ? `Using server default: ${defaultChatModel}`
+        : "Model setting could not be reset.",
+    );
+  }, [defaultChatModel, workspaceSlug]);
 
   const handleImportMarkdown = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -214,123 +275,243 @@ export function WorkspaceSettingsPanel({
             <Button
               type="button"
               aria-label="Import"
-              aria-pressed="true"
-              className="h-9 w-full justify-start gap-2 bg-slate-200 px-2 text-sm text-ink"
+              aria-pressed={activeSection === "import"}
+              onClick={() => setActiveSection("import")}
+              className={settingsNavButtonClassName(activeSection === "import")}
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
               Import
             </Button>
+            <Button
+              type="button"
+              aria-label="AI"
+              aria-pressed={activeSection === "ai"}
+              onClick={() => setActiveSection("ai")}
+              className={settingsNavButtonClassName(activeSection === "ai")}
+            >
+              <Bot className="h-4 w-4" aria-hidden="true" />
+              AI
+            </Button>
           </nav>
         </aside>
         <div className="min-w-0 overflow-y-auto p-8">
-          <div className="mb-8 flex items-start gap-4">
-            <div>
-              <p className="text-xs font-medium text-slate-500">Workspace</p>
-              <h3 className="mt-2 text-2xl font-semibold text-ink">Import your contents</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Markdown files become documents.
-              </p>
-            </div>
-            <Button
-              type="button"
-              aria-label="Close settings"
-              onClick={() => {
-                if (!isImportActive) onClose();
-              }}
-              disabled={isImportActive}
-              className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <X className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </div>
-          {importRun ? (
-            <MarkdownImportProgressPanel
-              run={importRun}
-              onClose={() => {
-                if (!isImportActive) setImportRun(null);
-              }}
-              canClose={!isImportActive}
-            />
-          ) : null}
-          {!importRun ? (
-            <form onSubmit={handleImportMarkdown} className="space-y-4">
-            <input
-              ref={fileInputRef}
-              id="markdownFiles"
-              name="markdownFiles"
-              type="file"
-              aria-label="Markdown files"
-              accept=".md,.markdown,text/markdown,text/x-markdown"
-              multiple
-              tabIndex={-1}
-              disabled={!canWrite || importLocked}
-              className="sr-only"
-              onChange={handleSelectedFilesChange}
-            />
-            <button
-              type="button"
-              onClick={handleOpenFilePicker}
-              disabled={!canWrite || importLocked}
-              className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
-              <span className="mt-4 text-base font-semibold text-ink">Markdown files</span>
-              <span className="mt-2 text-sm leading-6 text-slate-600">
-                {selectedFiles.length > 0
-                  ? `${selectedFiles.length} file${selectedFiles.length === 1 ? "" : "s"} selected`
-                  : ".md or .markdown"}
-              </span>
-            </button>
-            <div className="grid grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)] gap-3">
-              <div className="relative min-w-0">
-                <button
+          {activeSection === "import" ? (
+            <>
+              <div className="mb-8 flex items-start gap-4">
+                <div>
+                  <p className="text-xs font-medium text-slate-500">Workspace</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">
+                    Import your contents
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Markdown files become documents.
+                  </p>
+                </div>
+                <Button
                   type="button"
-                  aria-label={`Import destination: ${destinationPath}`}
-                  aria-expanded={destinationPickerOpen}
-                  onClick={() => setDestinationPickerOpen((open) => !open)}
-                  disabled={!canWrite || importLocked}
-                  className="h-10 w-full truncate rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-ink shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                  aria-label="Close settings"
+                  onClick={() => {
+                    if (!isImportActive) onClose();
+                  }}
+                  disabled={isImportActive}
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {destinationPath}
-                </button>
-                {destinationPickerOpen ? (
-                  <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
-                    <div role="tree" aria-label="Import destination folders" className="space-y-1">
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+              {importRun ? (
+                <MarkdownImportProgressPanel
+                  run={importRun}
+                  onClose={() => {
+                    if (!isImportActive) setImportRun(null);
+                  }}
+                  canClose={!isImportActive}
+                />
+              ) : null}
+              {!importRun ? (
+                <form onSubmit={handleImportMarkdown} className="space-y-4">
+                  <input
+                    ref={fileInputRef}
+                    id="markdownFiles"
+                    name="markdownFiles"
+                    type="file"
+                    aria-label="Markdown files"
+                    accept=".md,.markdown,text/markdown,text/x-markdown"
+                    multiple
+                    tabIndex={-1}
+                    disabled={!canWrite || importLocked}
+                    className="sr-only"
+                    onChange={handleSelectedFilesChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleOpenFilePicker}
+                    disabled={!canWrite || importLocked}
+                    className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
+                    <span className="mt-4 text-base font-semibold text-ink">
+                      Markdown files
+                    </span>
+                    <span className="mt-2 text-sm leading-6 text-slate-600">
+                      {selectedFiles.length > 0
+                        ? `${selectedFiles.length} file${
+                            selectedFiles.length === 1 ? "" : "s"
+                          } selected`
+                        : ".md or .markdown"}
+                    </span>
+                  </button>
+                  <div className="grid grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)] gap-3">
+                    <div className="relative min-w-0">
                       <button
                         type="button"
-                        role="treeitem"
-                        aria-selected={destinationFolderId === null}
-                        onClick={() => handleSelectDestination(null)}
-                        className="block w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                        aria-label={`Import destination: ${destinationPath}`}
+                        aria-expanded={destinationPickerOpen}
+                        onClick={() => setDestinationPickerOpen((open) => !open)}
+                        disabled={!canWrite || importLocked}
+                        className="h-10 w-full truncate rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-ink shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                       >
-                        /
+                        {destinationPath}
                       </button>
-                      {sortedFolders.map((folder) => (
-                        <button
-                          key={folder.id}
-                          type="button"
-                          role="treeitem"
-                          aria-selected={destinationFolderId === folder.id}
-                          onClick={() => handleSelectDestination(folder.id)}
-                          className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
-                        >
-                          {folder.path}
-                        </button>
-                      ))}
+                      {destinationPickerOpen ? (
+                        <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                          <div
+                            role="tree"
+                            aria-label="Import destination folders"
+                            className="space-y-1"
+                          >
+                            <button
+                              type="button"
+                              role="treeitem"
+                              aria-selected={destinationFolderId === null}
+                              onClick={() => handleSelectDestination(null)}
+                              className="block w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                            >
+                              /
+                            </button>
+                            {sortedFolders.map((folder) => (
+                              <button
+                                key={folder.id}
+                                type="button"
+                                role="treeitem"
+                                aria-selected={destinationFolderId === folder.id}
+                                onClick={() => handleSelectDestination(folder.id)}
+                                className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                              >
+                                {folder.path}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
+                    <Button type="submit" disabled={isSubmitDisabled} className="h-10 w-full">
+                      Import Markdown
+                    </Button>
                   </div>
+                </form>
+              ) : null}
+            </>
+          ) : (
+            <section aria-label="AI model settings" className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">Workspace</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">AI model</h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Credentials stay on the server.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  aria-label="Close settings"
+                  onClick={() => {
+                    if (!isImportActive) onClose();
+                  }}
+                  disabled={isImportActive}
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+                <p className="text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
+                  {storedChatModel ? "Browser override" : "Server default"}
+                </p>
+                <p className="mt-2 break-all text-sm font-semibold text-ink">
+                  {effectiveChatModel}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-semibold text-ink">Presets</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {RAG_CHAT_MODEL_PRESETS.map((preset) => (
+                    <Button
+                      key={preset.id}
+                      type="button"
+                      aria-label={`Use ${preset.label}`}
+                      onClick={() => handleSavePresetModel(preset.id)}
+                      className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{preset.label}</span>
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="customChatModel"
+                  className="text-sm font-semibold text-ink"
+                >
+                  Custom model id
+                </label>
+                <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
+                  <input
+                    id="customChatModel"
+                    value={customModel}
+                    onChange={(event) => setCustomModel(event.target.value)}
+                    className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  />
+                  <Button type="button" onClick={handleSaveCustomModel} className="h-10">
+                    Save custom model
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={handleResetModel}
+                  className="h-10 border border-slate-200 bg-white text-ink hover:bg-slate-50"
+                >
+                  Reset model
+                </Button>
+                {modelStatus ? (
+                  <p role="status" className="text-sm font-medium text-slate-700">
+                    {modelStatus}
+                  </p>
                 ) : null}
               </div>
-              <Button type="submit" disabled={isSubmitDisabled} className="h-10 w-full">
-                Import Markdown
-              </Button>
-            </div>
-          </form>
-          ) : null}
+            </section>
+          )}
         </div>
       </section>
     </div>
   );
+}
+
+function settingsNavButtonClassName(isActive: boolean) {
+  return [
+    "h-9 w-full justify-start gap-2 px-2 text-sm",
+    isActive
+      ? "bg-slate-200 text-ink"
+      : "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-ink",
+  ].join(" ");
 }
 
 function MarkdownImportProgressPanel({

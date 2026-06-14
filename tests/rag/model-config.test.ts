@@ -3,6 +3,7 @@ import { getRagConfig } from "@/lib/rag/config";
 import { isRagRuntimeError, RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   CURRENT_EMBEDDING_INDEX,
+  getDefaultRagChatModel,
   getRagModelConfig,
   RAG_CONFIG_ERROR_CODES,
 } from "@/lib/rag/model-config";
@@ -47,6 +48,20 @@ describe("RAG model configuration", () => {
       embedModel: "bge-m3",
       embedDimensions: 1024,
     });
+  });
+
+  it("reads the default chat model for display without requiring provider credentials", () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "openai-compatible");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "openrouter/fusion");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "");
+
+    expect(getDefaultRagChatModel()).toBe("openrouter/fusion");
+  });
+
+  it("falls back to the Ollama default display model when no chat model env is set", () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "");
+
+    expect(getDefaultRagChatModel()).toBe("gemma4:e4b");
   });
 
   it("uses trimmed official OpenAI chat environment values", () => {

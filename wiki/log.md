@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 184
+source_count: 191
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T01:07:12+0900 - issue-102 openrouter chat model selection implementation
+
+- Result: Workspace settings panel의 AI tab에서 browser/workspace별 Ask AI chat model override를 저장하고, assistant request가 optional `chatModel` field로 answer generation model만 바꾸도록 구현했다.
+- Coverage: `lib/rag/client-model-settings.ts` validates model ids, stores overrides in `localStorage`, reports storage failure to the UI, and emits same-tab plus cross-tab change events. `AiAssistantPanel` displays the effective model and sends `chatModel` only when an override exists. Ask route validates override input and `askDocumentQuestion()` replaces only `chat.model`, preserving the current Ollama `bge-m3` 1024 embedding index contract.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[Document Editing Workflow]], [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #102, `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`, `docs/superpowers/plans/2026-06-15-openrouter-chat-model-selection.md`, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/rag/model-config.test.ts tests/rag/ask-route.test.ts tests/rag/langfuse.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx`; DB-backed `tests/rag/ask.test.ts` still requires a reachable `DATABASE_URL`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-15T00:25:36+0900 - issue-102 openrouter chat model selection design
 

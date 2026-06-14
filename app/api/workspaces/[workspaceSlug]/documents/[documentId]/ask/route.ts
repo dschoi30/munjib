@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
+import {
+  INVALID_CHAT_MODEL_ERROR,
+  validateChatModelId,
+} from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
@@ -10,8 +14,17 @@ export async function POST(
 ) {
   const user = await requireCurrentUser();
   const { workspaceSlug, documentId } = await params;
-  const body = (await request.json().catch(() => ({}))) as { question?: unknown };
+  const body = (await request.json().catch(() => ({}))) as {
+    question?: unknown;
+    chatModel?: unknown;
+  };
   const question = typeof body.question === "string" ? body.question : "";
+  const chatModelValidation =
+    body.chatModel === undefined ? null : validateChatModelId(body.chatModel);
+
+  if (chatModelValidation && !chatModelValidation.ok) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
 
   try {
     const result = await askDocumentQuestion({
@@ -19,6 +32,7 @@ export async function POST(
       documentId,
       actorId: user.id,
       question,
+      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
 
     return NextResponse.json(result);

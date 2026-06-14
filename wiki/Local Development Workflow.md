@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-13
-source_count: 34
+updated: 2026-06-15
+source_count: 35
 tags:
   - munjib
   - workflow
@@ -77,6 +77,18 @@ postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public
 NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다.
 
 Issue #100 이후 Ask AI RAG provider는 server-wide env로 고른다. 기본값은 기존 local Ollama 경로와 같은 chat provider `ollama`, embedding provider `ollama`, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimensions `1024`, local base URL `http://localhost:11434`다. Official OpenAI는 `MUNJIB_RAG_CHAT_PROVIDER=openai` 또는 `MUNJIB_RAG_EMBED_PROVIDER=openai`와 `OPENAI_API_KEY`를 사용하고, OpenAI-compatible endpoint는 `openai-compatible`과 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 사용한다. `MUNJIB_OPENAI_COMPATIBLE_API_KEY`는 endpoint가 인증을 요구할 때만 설정하며, LM Studio, LocalAI, vLLM 같은 local unauthenticated endpoint에서는 비워둘 수 있다. 현재 DB vector index identity는 Ollama `bge-m3` 1024라 다른 embedding identity는 live Ask AI에서 fail-fast하며, reindex workflow는 별도 follow-up이다.
+
+OpenRouter chat 테스트는 existing OpenAI-compatible provider path를 사용한다. API key와 base URL은 server env에만 두고, settings panel은 browser-local chat model id override만 저장한다.
+
+```text
+MUNJIB_RAG_CHAT_PROVIDER=openai-compatible
+MUNJIB_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1
+MUNJIB_OPENAI_COMPATIBLE_API_KEY=...
+MUNJIB_RAG_CHAT_MODEL=openrouter/fusion
+MUNJIB_RAG_EMBED_PROVIDER=ollama
+MUNJIB_RAG_EMBED_MODEL=bge-m3
+MUNJIB_RAG_EMBED_DIMENSIONS=1024
+```
 
 Langfuse tracing은 optional이다. `LANGFUSE_PUBLIC_KEY`와 `LANGFUSE_SECRET_KEY`가 없으면 disabled/fail-open이고, production-safe metadata capture가 기본이다. 기본 metadata mode는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. `MUNJIB_LANGFUSE_CAPTURE=full` 또는 `MUNJIB_LANGFUSE_CAPTURE_MODE=full`은 명시적 opt-in으로만 사용하며, 둘 중 하나라도 `full`이면 full capture가 이긴다. 이때 Node runtime instrumentation이 Langfuse OpenTelemetry `NodeSDK`/`LangfuseSpanProcessor` exporter를 시작하고 answer generation에는 LangChain Langfuse callback이 연결된다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 있어도 Langfuse startup과 callback을 끈다. Env sample은 `LANGFUSE_TRACING_ENVIRONMENT`, `LANGFUSE_BASEURL`, `LANGFUSE_BASE_URL`, `LANGFUSE_HOST`, `MUNJIB_LANGFUSE_ENABLED`를 문서화하고, Docker compose는 같은 값을 web container로 전달하되 legacy `MUNJIB_LANGFUSE_CAPTURE=full`을 덮지 않도록 `MUNJIB_LANGFUSE_CAPTURE_MODE` 기본값을 주입하지 않는다.
 
