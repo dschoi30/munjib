@@ -76,6 +76,7 @@ afterEach(() => {
 
 const baseProps = {
   workspaceSlug: "company-handbook",
+  defaultChatModel: "gemma4:e4b",
   canWrite: true,
   action: async () => {},
   uploadAttachmentAction: async () => {},
@@ -342,6 +343,67 @@ describe("DocumentEditor heading preview folding", () => {
     const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
     expect(requestBody).not.toContain("Unsaved title");
     expect(requestBody).not.toContain("Draft body");
+  });
+
+  it("shows the server default AI model when no browser override is stored", () => {
+    renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+
+    expect(screen.getByText("Model")).toBeTruthy();
+    expect(screen.getByText("openrouter/fusion")).toBeTruthy();
+  });
+
+  it("includes the browser chat model override in Ask AI requests", async () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "moonshotai/kimi-k2.7-code",
+    );
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ answer: "Cloud model answer", citations: [] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    expect(screen.getByText("moonshotai/kimi-k2.7-code")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "Which model answered?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    await screen.findByText("Cloud model answer");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      expect.objectContaining({
+        body: JSON.stringify({
+          question: "Which model answered?",
+          chatModel: "moonshotai/kimi-k2.7-code",
+        }),
+      }),
+    );
+  });
+
+  it("updates the displayed AI model when settings change in the same browser tab", () => {
+    renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    expect(screen.getByText("openrouter/fusion")).toBeTruthy();
+
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "qwen/qwen3.7-plus",
+    );
+    window.dispatchEvent(
+      new CustomEvent("munjib:rag-chat-model-setting-changed", {
+        detail: { workspaceSlug: "company-handbook", chatModel: "qwen/qwen3.7-plus" },
+      }),
+    );
+
+    expect(screen.getByText("qwen/qwen3.7-plus")).toBeTruthy();
   });
 
   it("shows an AI error when a successful response body is not valid JSON", async () => {

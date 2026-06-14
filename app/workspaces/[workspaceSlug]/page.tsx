@@ -11,6 +11,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
+import { getDefaultRagChatModel } from "@/lib/rag/model-config";
 import {
   canWriteDocument,
   highestPermissionLevel,
@@ -257,6 +258,7 @@ export default async function WorkspacePage({
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
   const pasteImageAttachmentAction = pasteDocumentImageAttachmentAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
+  const defaultChatModel = getDefaultRagChatModel();
   const selectedCenterFolder = selectedFolder
     ? {
         id: selectedFolder.id,
@@ -300,6 +302,7 @@ export default async function WorkspacePage({
           folderError={folderError ?? ""}
           selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
           selectedDocumentId={selectedDocument?.id ?? null}
+          defaultChatModel={defaultChatModel}
           isGraphView={isGraphView}
         />
       }
@@ -376,6 +379,7 @@ export default async function WorkspacePage({
               linkPanels={linkPanels}
               createFromBrokenLinkAction={createFromBrokenLinkAction}
               createCommentAction={commentAction}
+              defaultChatModel={defaultChatModel}
             />
           )}
         </WorkspaceCenterShell>

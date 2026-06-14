@@ -33,6 +33,7 @@ const folderFixtures = [
 
 const baseProps = {
   workspaceSlug: "company-handbook",
+  defaultChatModel: "gemma4:e4b",
   folders: folderFixtures,
   documents: [
     {
@@ -217,6 +218,120 @@ describe("DocumentList", () => {
       "/",
     );
     expect(screen.getByRole("button", { name: "Import Markdown" })).toBeTruthy();
+  });
+
+  it("opens the AI settings tab and shows the server default model", () => {
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.getByRole("button", { name: "AI" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "AI model" })).toBeTruthy();
+    expect(screen.getByText("Server default")).toBeTruthy();
+    expect(screen.getByText("openrouter/fusion")).toBeTruthy();
+    expect(screen.queryByLabelText(/api key/i)).toBeNull();
+    expect(screen.queryByLabelText(/base url/i)).toBeNull();
+  });
+
+  it("saves a preset chat model override in workspace-scoped storage", () => {
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
+
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
+      "moonshotai/kimi-k2.7-code",
+    );
+    expect(screen.getByText("Saved model: moonshotai/kimi-k2.7-code")).toBeTruthy();
+  });
+
+  it("saves a custom chat model override and can reset to server default", () => {
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    fireEvent.change(screen.getByLabelText("Custom model id"), {
+      target: { value: "qwen/qwen3.7-plus" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
+
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
+      "qwen/qwen3.7-plus",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
+
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
+    expect(screen.getByText("Using server default: openrouter/fusion")).toBeTruthy();
+  });
+
+  it("rejects invalid custom chat model ids in settings", () => {
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByLabelText("Custom model id"), {
+      target: { value: "bad model" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
+
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
+    expect(screen.getByText("Enter a valid model id.")).toBeTruthy();
+  });
+
+  it("reports when a model override cannot be saved to browser storage", () => {
+    const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+    vi.spyOn(window.localStorage, "setItem").mockImplementation((key, value) => {
+      if (key === "munjib:rag-chat-model:company-handbook") {
+        throw new Error("storage unavailable");
+      }
+      originalSetItem(key, value);
+    });
+
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
+
+    expect(screen.getByText("Model setting could not be saved.")).toBeTruthy();
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
+  });
+
+  it("reports when a model override cannot be reset in browser storage", () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "moonshotai/kimi-k2.7-code",
+    );
+    const originalRemoveItem = window.localStorage.removeItem.bind(window.localStorage);
+    vi.spyOn(window.localStorage, "removeItem").mockImplementation((key) => {
+      if (key === "munjib:rag-chat-model:company-handbook") {
+        throw new Error("storage unavailable");
+      }
+      originalRemoveItem(key);
+    });
+
+    renderList({ defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
+
+    expect(screen.getByText("Model setting could not be reset.")).toBeTruthy();
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
+      "moonshotai/kimi-k2.7-code",
+    );
   });
 
   it("keeps the document list visible behind the workspace settings dialog", () => {

@@ -59,6 +59,7 @@ export function DocumentList({
   folderError,
   selectedFolderId,
   selectedDocumentId,
+  defaultChatModel,
   isGraphView = false,
 }: {
   workspaceSlug: string;
@@ -75,6 +76,7 @@ export function DocumentList({
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
+  defaultChatModel: string;
   isGraphView?: boolean;
 }) {
   const router = useRouter();
@@ -268,8 +270,10 @@ export function DocumentList({
       {settingsOpen ? (
         <WorkspaceSettingsPanel
           canWrite={canWrite}
+          workspaceSlug={workspaceSlug}
           folders={folders}
           importMarkdownAction={importMarkdownAction}
+          defaultChatModel={defaultChatModel}
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}

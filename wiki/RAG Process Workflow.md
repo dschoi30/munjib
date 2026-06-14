@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI RAG의 saved-content-only request, indexing, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-06-13
-source_count: 32
+updated: 2026-06-15
+source_count: 34
 tags:
   - munjib
   - workflow
@@ -30,9 +30,9 @@ links:
 
 ## Entry points
 
-사용자 entry point는 `components/document-editor/ai-assistant-panel.tsx`다. Panel은 현재 문서 id와 trimmed `question`만 ask route로 보내고, unsaved title/content markdown이나 pending clipboard image paste payload는 request body에 넣지 않는다. 현재 editor draft가 saved DB document와 다르거나 pending paste upload가 있으면 saved-content-only warning을 표시한다.
+사용자 entry point는 `components/document-editor/ai-assistant-panel.tsx`다. Panel은 현재 문서 id와 trimmed `question`, 그리고 browser/workspace별로 저장된 optional `chatModel` override만 ask route로 보낸다. Unsaved title/content markdown이나 pending clipboard image paste payload는 request body에 넣지 않는다. 현재 editor draft가 saved DB document와 다르거나 pending paste upload가 있으면 saved-content-only warning을 표시한다.
 
-Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`만 읽고, malformed JSON은 missing question과 같은 `QUESTION_REQUIRED` 400으로 정규화한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
+Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`과 optional `chatModel`만 읽고, malformed JSON은 missing question과 같은 `QUESTION_REQUIRED` 400으로 정규화한다. `chatModel`은 shared model-id validator를 통과해야 하며 invalid override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
 
 Core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수가 permission check, provider config, selected document indexing refresh, retrieval scopes, embedding/vector search, rerank, prompt, LangChain answer generation, optional Langfuse metadata를 연결한다.
 
@@ -41,13 +41,13 @@ Core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수가
 1. `askDocumentQuestion()`은 question을 trim하고 빈 질문이면 `QUESTION_REQUIRED`를 던진다.
 2. Workspace membership과 active documents를 load한 뒤, workspace role과 explicit document permissions를 `filterReadableDocuments()`로 계산한다.
 3. Selected document가 readable set에 없으면 `DOCUMENT_NOT_FOUND`로 중단한다.
-4. `getRagModelConfig()`가 server-wide env에서 chat provider, embedding provider, Langfuse config를 읽는다. 현재 live Ask AI는 indexed embedding identity가 Ollama `bge-m3` 1024와 다르면 `assertCurrentEmbeddingIndex()`에서 fail-fast한다.
+4. `getRagModelConfig()`가 server-wide env에서 chat provider, embedding provider, Langfuse config를 읽는다. Ask route가 validated `chatModel` override를 전달한 경우 service는 `chat.model`만 in-memory로 바꾸고 embedding provider/model/dimension은 그대로 둔다. 현재 live Ask AI는 indexed embedding identity가 Ollama `bge-m3` 1024와 다르면 `assertCurrentEmbeddingIndex()`에서 fail-fast한다.
 5. Selected saved document는 `safeIndexSavedDocument()`로 best-effort refresh한다. Save/attachment/version/broken-link 후에도 Next.js `after()` hook 기반 indexing refresh가 예약되지만, ask path는 selected document의 latest saved content를 다시 확인한다.
 6. `buildRetrievalScopes()`는 selected document, saved markdown wiki link targets, persisted outgoing links, backlinks, same-tag documents, workspace fallback 순서로 readable document scopes를 만든다. Broken/ambiguous links와 unreadable documents는 scope에 들어가지 않는다.
 7. Question embedding은 provider-neutral `embedText()`로 만들고, `searchSimilarChunks()`가 scoped readable document ids와 current embedding model identity로 pgvector similarity search를 실행한다.
 8. `rerankRetrievedChunks()`는 vector similarity, scope boost, bounded keyword overlap boost를 합산해 prompt/citation 후보를 고른다.
 9. `buildRagPrompt()`는 saved chunks만 근거로 system/user prompt와 citation metadata를 만든다. Prompt는 outside knowledge 금지, insufficient evidence response, question language matching, citation labels를 포함한다.
-10. `createLangfuseCallbackConfig()`는 provider/model/chunk/citation metadata를 만들고, explicit full capture에서만 LangChain callback을 붙인다. Metadata mode에서는 raw prompt/context/question/answer body egress를 막기 위해 callback을 붙이지 않는다.
+10. `createLangfuseCallbackConfig()`는 effective provider/model/chunk/citation metadata를 만들고, explicit full capture에서만 LangChain callback을 붙인다. Metadata mode에서는 raw prompt/context/question/answer body egress를 막기 위해 callback을 붙이지 않는다.
 11. `invokeAnswerChain()`은 literal `SystemMessage`와 `HumanMessage`를 만들어 LangChain chat model에 전달한다. Saved context나 question 안의 JSON/code braces는 template 변수로 해석되지 않는다.
 12. Service는 answer와 citations를 route에 반환하고, UI는 answer body와 `[n] Document Title > Heading` citation을 표시한다.
 
@@ -65,6 +65,8 @@ MUNJIB_RAG_EMBED_DIMENSIONS=1024
 ```
 
 Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가 맡는다. Official OpenAI는 `OPENAI_API_KEY` 또는 `MUNJIB_OPENAI_API_KEY`를 요구하고 optional `MUNJIB_OPENAI_BASE_URL`을 LangChain/OpenAI SDK configuration으로 전달한다. OpenAI-compatible provider는 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값이며, runtime factory는 non-secret placeholder key로 SDK credential preflight를 통과시킨다.
+
+Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 한다. 이 override는 Ask AI request의 `chatModel` field로만 전달되고, server는 validated string으로 `chat.model`만 대체한다. Provider, base URL, API key, embedding provider/model/dimension은 request에서 받지 않는다.
 
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. 그래서 current indexed identity인 Ollama `bge-m3` 1024가 아니면 live Ask AI는 partial selected-document indexing을 만들지 않고 fail-fast한다.
 
@@ -118,11 +120,14 @@ pnpm wiki:sync-check --staged
 
 - GitHub issue #73
 - GitHub issue #100
+- GitHub issue #102
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
+- `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `components/document-editor/ai-assistant-panel.tsx`
 - `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`
 - `lib/rag/ask.ts`
+- `lib/rag/client-model-settings.ts`
 - `lib/rag/model-config.ts`
 - `lib/rag/model-factory.ts`
 - `lib/rag/embedding-client.ts`

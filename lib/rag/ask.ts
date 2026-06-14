@@ -21,6 +21,7 @@ export type AskDocumentQuestionInput = {
   documentId: string;
   actorId: string;
   question: string;
+  chatModelOverride?: string;
 };
 
 export type AskDocumentQuestionResult = {
@@ -100,7 +101,16 @@ export async function askDocumentQuestion(
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
   const modelConfig = getRagModelConfig();
-  assertCurrentEmbeddingIndex(modelConfig);
+  const effectiveModelConfig = input.chatModelOverride
+    ? {
+        ...modelConfig,
+        chat: {
+          ...modelConfig.chat,
+          model: input.chatModelOverride,
+        },
+      }
+    : modelConfig;
+  assertCurrentEmbeddingIndex(effectiveModelConfig);
 
   const persistedLinks = await prisma.documentLink.findMany({
     where: { workspaceId: workspace.id },
@@ -115,7 +125,7 @@ export async function askDocumentQuestion(
 
   await safeIndexSavedDocument({
     documentId: selectedDocument.id,
-    embeddingModel: modelConfig.embedding.indexId,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
   });
 
   const scopes = buildRetrievalScopes({
@@ -135,10 +145,10 @@ export async function askDocumentQuestion(
     ...scopes.sameTagDocumentIds,
     ...scopes.fallbackDocumentIds,
   ]);
-  const embedding = await embedText(question, { config: modelConfig });
+  const embedding = await embedText(question, { config: effectiveModelConfig });
   const chunks = await searchSimilarChunks({
     workspaceId: workspace.id,
-    embeddingModel: modelConfig.embedding.indexId,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
     embedding,
     readableDocumentIds: scopedDocumentIds,
     limit: 60,
@@ -151,14 +161,14 @@ export async function askDocumentQuestion(
   });
   const prompt = buildRagPrompt({ question, chunks: rankedChunks });
   const trace = createLangfuseCallbackConfig({
-    enabled: modelConfig.langfuse.enabled,
-    captureMode: modelConfig.langfuse.captureMode,
+    enabled: effectiveModelConfig.langfuse.enabled,
+    captureMode: effectiveModelConfig.langfuse.captureMode,
     operation: "rag.answer",
-    chatProvider: modelConfig.chat.provider,
-    chatModel: modelConfig.chat.model,
-    embeddingProvider: modelConfig.embedding.provider,
-    embeddingModel: modelConfig.embedding.indexId,
-    embeddingDimensions: modelConfig.embedding.dimensions,
+    chatProvider: effectiveModelConfig.chat.provider,
+    chatModel: effectiveModelConfig.chat.model,
+    embeddingProvider: effectiveModelConfig.embedding.provider,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
+    embeddingDimensions: effectiveModelConfig.embedding.dimensions,
     retrievedChunkCount: rankedChunks.length,
     citationDocumentIds: prompt.citations.map((citation) => citation.documentId),
     citationChunkIds: rankedChunks.map((chunk) => chunk.id),
@@ -172,7 +182,7 @@ export async function askDocumentQuestion(
   const answer = await invokeAnswerChain({
     systemPrompt: prompt.system,
     userPrompt: prompt.user,
-    chatModel: createChatModel(modelConfig.chat) as ChatModelLike,
+    chatModel: createChatModel(effectiveModelConfig.chat) as ChatModelLike,
     callbacks: trace.callbacks,
     metadata: trace.metadata,
   });
