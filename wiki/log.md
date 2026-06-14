@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-13
-source_count: 183
+updated: 2026-06-15
+source_count: 184
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T00:25:36+0900 - issue-102 openrouter chat model selection design
+
+- Result: Issue #102 설계를 추가해 workspace settings panel에서 OpenRouter-compatible chat model id를 쉽게 바꿔 Ask AI answer generation을 테스트하는 방향을 정했다.
+- Coverage: 설계는 OpenRouter API key/base URL을 server env에만 두고, browser에는 workspace-scoped `localStorage` chat model override만 저장하며, Ask AI request는 optional `chatModel`만 추가한다. Embedding provider/model/dimension, current Ollama `bge-m3` 1024 index identity, saved-content-only retrieval contract는 구현 범위 밖으로 고정한다. 아직 구현된 동작이 아니므로 workflow page의 실제 request steps는 변경하지 않았다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #102, `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-13T19:44:00+09:00 - rag process workflow page
 
