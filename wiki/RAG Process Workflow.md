@@ -32,7 +32,7 @@ links:
 
 사용자 entry point는 `components/document-editor/ai-assistant-panel.tsx`다. Panel은 현재 문서 id와 trimmed `question`, 그리고 browser/workspace별로 저장된 optional `chatModel` override만 ask route로 보낸다. Unsaved title/content markdown이나 pending clipboard image paste payload는 request body에 넣지 않는다. 현재 editor draft가 saved DB document와 다르거나 pending paste upload가 있으면 saved-content-only warning을 표시한다.
 
-Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`과 optional `chatModel`만 읽고, malformed JSON은 missing question과 같은 `QUESTION_REQUIRED` 400으로 정규화한다. `chatModel`은 shared model-id validator를 통과해야 하며 invalid override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
+Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`과 optional `chatModel`만 읽고, malformed JSON은 missing question과 같은 `QUESTION_REQUIRED` 400으로 정규화한다. Missing 또는 `null` `chatModel`은 no override로 처리한다. String override는 shared model-id validator를 통과해야 하며 invalid override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
 
 Core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수가 permission check, provider config, selected document indexing refresh, retrieval scopes, embedding/vector search, rerank, prompt, LangChain answer generation, optional Langfuse metadata를 연결한다.
 

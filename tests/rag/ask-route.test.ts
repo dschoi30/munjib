@@ -93,6 +93,22 @@ describe("RAG ask route", () => {
     expect(askDocumentQuestion).not.toHaveBeenCalled();
   });
 
+  it("treats null chat model override as absent", async () => {
+    await POST(jsonRequest({
+      question: "What is saved?",
+      chatModel: null,
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    expect(askDocumentQuestion).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      documentId: "doc-1",
+      actorId: "user-1",
+      question: "What is saved?",
+    });
+  });
+
   it("returns a generic unavailable response for RAG runtime failures", async () => {
     vi.mocked(askDocumentQuestion).mockRejectedValueOnce(
       new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
