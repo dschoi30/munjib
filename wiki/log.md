@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 191
+source_count: 193
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T01:22:05+0900 - issue-102 PR review follow-up
+
+- Result: PR #103 review feedback removed `flushSync` from the assistant model setting subscription and made `chatModel: null` equivalent to an absent override in the Ask route.
+- Coverage: Assistant tests now wrap the synthetic settings event in React `act()`, and route tests pin `null` override behavior so clients can explicitly send no override without receiving `INVALID_CHAT_MODEL`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #103 review comments, `components/document-editor/ai-assistant-panel.tsx`, `tests/components/document-editor-preview.test.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/ask-route.test.ts tests/components/document-editor-preview.test.tsx`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-15T01:07:12+0900 - issue-102 openrouter chat model selection implementation
 

@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { flushSync } from "react-dom";
 import { Button } from "@/components/ui/button";
 import {
   readStoredChatModel,
@@ -50,7 +49,7 @@ export function AiAssistantPanel({
     setChatModelOverride(readStoredChatModel(workspaceSlug));
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
-      flushSync(() => setChatModelOverride(change.chatModel));
+      setChatModelOverride(change.chatModel);
     });
   }, [workspaceSlug]);
 

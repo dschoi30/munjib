@@ -20,7 +20,9 @@ export async function POST(
   };
   const question = typeof body.question === "string" ? body.question : "";
   const chatModelValidation =
-    body.chatModel === undefined ? null : validateChatModelId(body.chatModel);
+    body.chatModel === undefined || body.chatModel === null
+      ? null
+      : validateChatModelId(body.chatModel);
 
   if (chatModelValidation && !chatModelValidation.ok) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });

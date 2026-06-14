@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
@@ -397,11 +397,13 @@ describe("DocumentEditor heading preview folding", () => {
       "munjib:rag-chat-model:company-handbook",
       "qwen/qwen3.7-plus",
     );
-    window.dispatchEvent(
-      new CustomEvent("munjib:rag-chat-model-setting-changed", {
-        detail: { workspaceSlug: "company-handbook", chatModel: "qwen/qwen3.7-plus" },
-      }),
-    );
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent("munjib:rag-chat-model-setting-changed", {
+          detail: { workspaceSlug: "company-handbook", chatModel: "qwen/qwen3.7-plus" },
+        }),
+      );
+    });
 
     expect(screen.getByText("qwen/qwen3.7-plus")).toBeTruthy();
   });
