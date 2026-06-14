@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-13",
+  "updated": "2026-06-14",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -186,7 +186,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 78,
+      "source_count": 79,
       "searchPriority": 5
     },
     {
@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 183,
+      "source_count": 184,
       "searchPriority": 1
     },
     {
@@ -278,7 +278,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 37,
+      "source_count": 38,
       "searchPriority": 50
     },
     {
@@ -348,7 +348,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 75,
+      "source_count": 76,
       "searchPriority": 30
     },
     {
