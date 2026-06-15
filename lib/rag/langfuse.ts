@@ -16,9 +16,9 @@ export type LangfuseCallbackConfigInput = {
   operation?: string;
   chatProvider: string;
   chatModel: string;
-  embeddingProvider: string;
-  embeddingModel: string;
-  embeddingDimensions: number;
+  embeddingProvider?: string;
+  embeddingModel?: string;
+  embeddingDimensions?: number;
   retrievedChunkCount?: number;
   citationDocumentIds?: string[];
   citationChunkIds?: string[];
@@ -79,9 +79,11 @@ function buildMetadata(input: LangfuseCallbackConfigInput): Record<string, unkno
     operation: input.operation ?? "rag.answer",
     chatProvider: input.chatProvider,
     chatModel: input.chatModel,
-    embeddingProvider: input.embeddingProvider,
-    embeddingModel: input.embeddingModel,
-    embeddingDimensions: input.embeddingDimensions,
+    ...(input.embeddingProvider ? { embeddingProvider: input.embeddingProvider } : {}),
+    ...(input.embeddingModel ? { embeddingModel: input.embeddingModel } : {}),
+    ...(typeof input.embeddingDimensions === "number"
+      ? { embeddingDimensions: input.embeddingDimensions }
+      : {}),
     ...(typeof input.retrievedChunkCount === "number"
       ? { retrievedChunkCount: input.retrievedChunkCount }
       : {}),

@@ -33,6 +33,7 @@ type SectionCandidate = MarkdownSection & {
 };
 
 const DEFAULT_CONTEXT_TOKEN_BUDGET = 8_000;
+const UNHEADED_SECTION_TARGET_TOKENS = 200;
 const LATIN_KEYWORD_TERM_MIN_LENGTH = 3;
 const CJK_KEYWORD_TERM_MIN_LENGTH = 2;
 const STOP_WORDS = new Set([
@@ -73,7 +74,14 @@ export function buildCurrentDocumentContext(
   if (!body) return { context: "", sections: [], partial: false };
 
   const budget = Math.max(1, Math.floor(input.maxTokens ?? DEFAULT_CONTEXT_TOKEN_BUDGET));
-  const sections = splitIntoHeadingSections(body).map((section, order) => ({
+  const markdownSections = splitIntoHeadingSections(body);
+  const sections = (
+    markdownSections.length > 0 || estimateTokens(body) <= budget
+      ? markdownSections.length > 0
+        ? markdownSections
+        : [{ headingPath: null, content: body }]
+      : splitUnheadedSections(body, budget)
+  ).map((section, order) => ({
     ...section,
     tokenCount: estimateTokens(section.content),
     score: scoreSection(section, input.question),
@@ -112,6 +120,7 @@ function splitIntoHeadingSections(markdown: string): MarkdownSection[] {
   let currentHeadingPath: string | null = null;
   let currentLines: string[] = [];
   let activeFence: string | null = null;
+  let sawHeading = false;
 
   const flushCurrent = () => {
     const content = currentLines.join("\n").trim();
@@ -131,6 +140,7 @@ function splitIntoHeadingSections(markdown: string): MarkdownSection[] {
 
     const heading = activeFence === null ? parseHeading(line) : null;
     if (heading) {
+      sawHeading = true;
       flushCurrent();
       while (
         headingStack.length > 0 &&
@@ -146,7 +156,56 @@ function splitIntoHeadingSections(markdown: string): MarkdownSection[] {
   }
 
   flushCurrent();
+  return sawHeading ? sections : [];
+}
+
+function splitUnheadedSections(markdown: string, budget: number): MarkdownSection[] {
+  const targetTokens = Math.max(1, Math.min(UNHEADED_SECTION_TARGET_TOKENS, budget));
+  const paragraphs = markdown
+    .split(/\n{2,}/)
+    .flatMap((paragraph) => splitOversizedParagraph(paragraph.trim(), targetTokens))
+    .filter(Boolean);
+  const sections: MarkdownSection[] = [];
+  let currentParagraphs: string[] = [];
+  let currentTokens = 0;
+
+  const flushCurrent = () => {
+    const content = currentParagraphs.join("\n\n").trim();
+    if (content) {
+      sections.push({ headingPath: null, content });
+    }
+    currentParagraphs = [];
+    currentTokens = 0;
+  };
+
+  for (const paragraph of paragraphs) {
+    const tokenCount = estimateTokens(paragraph);
+    if (currentParagraphs.length > 0 && currentTokens + tokenCount > targetTokens) {
+      flushCurrent();
+    }
+    currentParagraphs.push(paragraph);
+    currentTokens += tokenCount;
+  }
+
+  flushCurrent();
   return sections.length > 0 ? sections : [{ headingPath: null, content: markdown.trim() }];
+}
+
+function splitOversizedParagraph(paragraph: string, targetTokens: number): string[] {
+  const maxChars = Math.max(1, targetTokens * 4);
+  if (paragraph.length <= maxChars) return paragraph ? [paragraph] : [];
+
+  const chunks: string[] = [];
+  let remaining = paragraph;
+  while (remaining.length > maxChars) {
+    const slice = remaining.slice(0, maxChars);
+    const splitIndex = Math.max(slice.lastIndexOf(". "), slice.lastIndexOf(" "));
+    const endIndex = splitIndex > maxChars / 2 ? splitIndex + 1 : maxChars;
+    chunks.push(remaining.slice(0, endIndex).trim());
+    remaining = remaining.slice(endIndex).trim();
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
 }
 
 function scoreSection(section: MarkdownSection, question: string) {

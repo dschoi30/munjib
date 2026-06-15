@@ -4,6 +4,7 @@ import { isRagRuntimeError, RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   CURRENT_EMBEDDING_INDEX,
   getDefaultRagChatModel,
+  getRagGenerationConfig,
   getRagModelConfig,
   RAG_CONFIG_ERROR_CODES,
 } from "@/lib/rag/model-config";
@@ -62,6 +63,25 @@ describe("RAG model configuration", () => {
     vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "");
 
     expect(getDefaultRagChatModel()).toBe("gemma4:e4b");
+  });
+
+  it("reads chat generation config without validating embedding index settings", () => {
+    vi.stubEnv("MUNJIB_RAG_EMBED_DIMENSIONS", "768");
+
+    expect(getRagGenerationConfig()).toEqual({
+      chat: {
+        provider: "ollama",
+        model: "gemma4:e4b",
+        baseUrl: "http://localhost:11434",
+      },
+      langfuse: {
+        enabled: false,
+        capture: "metadata",
+        captureMode: "metadata",
+        environment: "development",
+      },
+    });
+    expect(() => getRagModelConfig()).toThrow(RAG_CONFIG_ERROR_CODES.INVALID_CONFIG);
   });
 
   it("uses trimmed official OpenAI chat environment values", () => {

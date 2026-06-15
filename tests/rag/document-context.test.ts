@@ -253,6 +253,36 @@ describe("current document context", () => {
     ]);
   });
 
+  it("selects relevant paragraph chunks in long documents without headings", () => {
+    const context = buildCurrentDocumentContext({
+      documentTitle: "Imported Notes",
+      documentPath: "/imported-notes",
+      contentMarkdown: [
+        Array.from({ length: 12 }, (_, index) => `Intro filler paragraph ${index}.`).join(
+          "\n\n",
+        ),
+        "Refund policy exceptions require CFO approval and legal review.",
+        Array.from({ length: 12 }, (_, index) => `Trailing filler paragraph ${index}.`).join(
+          "\n\n",
+        ),
+      ].join("\n\n"),
+      question: "What are the refund policy exceptions?",
+      maxTokens: 20,
+    });
+
+    expect(context.partial).toBe(true);
+    expect(context.context).toContain("Refund policy exceptions");
+    expect(context.context).not.toContain("Intro filler paragraph 0");
+    expect(context.sections).toEqual([
+      {
+        index: 1,
+        documentTitle: "Imported Notes",
+        documentPath: "/imported-notes",
+        headingPath: null,
+      },
+    ]);
+  });
+
   it("returns no sections for an empty saved document", () => {
     const context = buildCurrentDocumentContext({
       documentTitle: "Empty",
