@@ -60,12 +60,43 @@ describe("RAG ask route", () => {
     });
   });
 
-  it("passes only the question from request JSON to the ask service", async () => {
+  it("passes the question and valid chat model override to the ask service", async () => {
     await POST(jsonRequest({
       question: "What is saved?",
+      chatModel: "moonshotai/kimi-k2.7-code",
       draftTitle: "Unsaved",
       draftContentMarkdown: "Do not send me",
       contentMarkdown: "Draft body",
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    expect(askDocumentQuestion).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      documentId: "doc-1",
+      actorId: "user-1",
+      question: "What is saved?",
+      chatModelOverride: "moonshotai/kimi-k2.7-code",
+    });
+  });
+
+  it("rejects invalid chat model override input", async () => {
+    const response = await POST(jsonRequest({
+      question: "What is saved?",
+      chatModel: "bad model",
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
+    expect(response.status).toBe(400);
+    expect(askDocumentQuestion).not.toHaveBeenCalled();
+  });
+
+  it("treats null chat model override as absent", async () => {
+    await POST(jsonRequest({
+      question: "What is saved?",
+      chatModel: null,
     }), {
       params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
     });

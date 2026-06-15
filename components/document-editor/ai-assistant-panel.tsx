@@ -1,7 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  readStoredChatModel,
+  subscribeToStoredChatModelChanges,
+} from "@/lib/rag/client-model-settings";
 
 type AssistantCitation = {
   index?: number;
@@ -21,19 +25,33 @@ type AiAssistantPanelProps = {
   workspaceSlug: string;
   documentId: string;
   hasUnsavedChanges: boolean;
+  defaultChatModel: string;
 };
 
 export function AiAssistantPanel({
   workspaceSlug,
   documentId,
   hasUnsavedChanges,
+  defaultChatModel,
 }: AiAssistantPanelProps) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
+    readStoredChatModel(workspaceSlug),
+  );
   const trimmedQuestion = question.trim();
+  const effectiveChatModel = chatModelOverride ?? defaultChatModel;
+
+  useEffect(() => {
+    setChatModelOverride(readStoredChatModel(workspaceSlug));
+    return subscribeToStoredChatModelChanges((change) => {
+      if (change.workspaceSlug !== workspaceSlug) return;
+      setChatModelOverride(change.chatModel);
+    });
+  }, [workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,12 +63,15 @@ export function AiAssistantPanel({
     setCitations([]);
 
     try {
+      const requestBody = chatModelOverride
+        ? { question: trimmedQuestion, chatModel: chatModelOverride }
+        : { question: trimmedQuestion };
       const response = await fetch(
         `/api/workspaces/${workspaceSlug}/documents/${documentId}/ask`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question: trimmedQuestion }),
+          body: JSON.stringify(requestBody),
         },
       );
       const body = (await response.json()) as AskResponse;
@@ -78,6 +99,12 @@ export function AiAssistantPanel({
           저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.
         </p>
       ) : null}
+      <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+        <span>Model</span>
+        <span className="min-w-0 truncate font-medium text-slate-700" title={effectiveChatModel}>
+          {effectiveChatModel}
+        </span>
+      </div>
       <form className="space-y-2" onSubmit={handleSubmit}>
         <textarea
           aria-label="AI question"

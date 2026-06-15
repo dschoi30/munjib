@@ -10,7 +10,7 @@ import {
   Sparkles,
   Upload,
 } from "lucide-react";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { toast } from "sonner";
 import { useHeadingNavigation, type HeadingNavigationTarget } from "@/components/app-shell";
@@ -203,6 +203,7 @@ function withImageExtension(fileName: string, mimeType: string) {
 
 export function DocumentEditor({
   workspaceSlug,
+  defaultChatModel,
   document,
   canWrite,
   action,
@@ -601,6 +602,7 @@ export function DocumentEditor({
           workspaceSlug={workspaceSlug}
           documentId={document.id}
           hasUnsavedChanges={hasUnsavedChanges}
+          defaultChatModel={defaultChatModel}
         />
       ) : null}
       <DocumentProperties

@@ -64,6 +64,10 @@ const DEFAULTS = {
   embedDimensions: 1024,
 } as const;
 
+export function getDefaultRagChatModel(env: RagEnv = process.env): string {
+  return readOptionalEnv(env, "MUNJIB_RAG_CHAT_MODEL") ?? DEFAULTS.chatModel;
+}
+
 const PROVIDERS = new Set<RagProvider>(["ollama", "openai", "openai-compatible"]);
 
 export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {

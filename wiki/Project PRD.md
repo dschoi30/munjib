@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-13
-source_count: 75
+updated: 2026-06-15
+source_count: 80
 tags:
   - munjib
   - source
@@ -92,6 +92,8 @@ Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추
 
 Issue #100 구현은 Issue #73 RAG assistant의 saved-content-only product contract를 유지하면서 model/provider 운영성을 확장했다. Permission filtering, saved document indexing, graph-aware retrieval, pgvector search, rerank, citation metadata는 유지하고, prompt formatting과 chat invocation은 LangChain prompt/model/parser chain으로 옮겼다. Server-wide env는 Ollama, OpenAI, OpenAI-compatible chat/embedding provider 설정을 이해하지만, embedding provider/model/dimension은 현재 indexed identity인 Ollama `bge-m3` 1024와 다르면 live Ask AI에서 fail-fast한다. OpenAI-compatible provider의 base URL은 필수이고 API key는 local unauthenticated endpoint 지원을 위해 선택값이다. Workspace/request-level provider override, automatic reindex, vector dimension migration은 후속 범위다. Langfuse는 explicit `full` capture에서만 Node runtime OpenTelemetry exporter와 LangChain callback을 붙이고, 기본 metadata mode는 prompt/context/question/answer body가 Langfuse로 나가지 않도록 외부 callback/exporter를 붙이지 않는다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 있어도 tracing을 끄고, legacy `MUNJIB_LANGFUSE_CAPTURE=full`은 newer capture mode 기본값에 덮이지 않도록 full-wins 해석을 쓴다. 구현은 `lib/rag/model-config.ts`, `lib/rag/model-factory.ts`, `lib/rag/embedding-client.ts`, `lib/rag/answer-chain.ts`, `lib/rag/langfuse.ts`, `lib/rag/langfuse-otel.ts`, `lib/rag/errors.ts`로 provider-neutral boundary를 나누고, `.env.example`, `.env.docker.example`, `docker-compose.yml`에 provider/Langfuse env를 문서화한다. End-to-end runtime 흐름은 [[RAG Process Workflow]]에 정리하고, 설계 근거는 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`이다.
 
+Issue #102 구현은 OpenRouter cloud model 테스트를 위해 server-wide `openai-compatible` provider env는 그대로 두고, workspace settings panel에서 browser/workspace별 chat model override만 선택하게 한다. 이 구현은 API key/base URL을 client에 노출하지 않고, DB나 Prisma schema를 추가하지 않으며, saved-content-only retrieval과 current indexed embedding identity Ollama `bge-m3` 1024를 유지한다. Settings panel은 preset/custom model id만 `localStorage`에 저장하고, assistant panel은 effective model을 표시하며 optional `chatModel` field를 Ask route로 보낸다. Ask route는 override를 validation하고, service는 `chat.model`만 대체해 provider credential과 embedding/index 설정을 server env 기준으로 유지한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
+
 Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 응답하도록 host Ollama 운영 설정을 적용했다. 서버 host에 Ollama `gemma4:e4b`와 `bge-m3`를 설치했고, Docker web container는 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 host Ollama에 접근한다. `docker-compose.yml`은 Docker `host-gateway`를 `host.docker.internal`로 매핑해 Linux host gateway IP를 동적으로 해석한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent`에 저장했다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
 Issue #88은 GitHub Actions CI/CD를 추가했다. PR과 `main` push는 pgvector PostgreSQL service, pnpm install, Prisma generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 검증한다. 초기 구현은 `main` push에서 GitHub Container Registry에 `ghcr.io/dschoi30/munjib` image를 publish한 뒤 SSH로 production compose project를 갱신했지만, Issue #98 이후 현재 deploy path는 CI 성공 뒤 OCI host의 server checkout에서 workflow가 검증한 `github.sha`로 checkout을 고정하고 `docker compose build web tools`를 native ARM64로 실행한 뒤 migration/index/up/health check를 이어간다. Native build는 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 server `.env`와 deploy release env에서 받아 browser Sentry 설정이 compiled bundle에서 빠지지 않게 한다. Production compose `web` service는 `WEB_IMAGE=munjib-web:latest`를 받고, deploy job은 exact SHA checkout, native `web`/`tools` build, tools container Prisma migration deploy, RAG vector index setup, `docker compose up -d web`, remote local health check, dangling image prune, GitHub runner public health check를 실행한다. 설계 근거는 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`와 [[CI CD And Monitoring Workflow]]이다.
@@ -115,7 +117,8 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - `lib/document-metadata/*`: tags와 YAML frontmatter properties extraction.
 - `lib/attachments/service.ts`: attachment upload/download와 markdown link append.
 - `lib/comments/service.ts`: document comment creation.
-- `lib/rag/config.ts`, `lib/rag/model-config.ts`: provider-neutral RAG config, Ollama/OpenAI/OpenAI-compatible env parsing, current embedding index identity, and legacy config compatibility.
+- `lib/rag/config.ts`, `lib/rag/model-config.ts`: provider-neutral RAG config, Ollama/OpenAI/OpenAI-compatible env parsing, current embedding index identity, default chat model display helper, and legacy config compatibility.
+- `lib/rag/client-model-settings.ts`: browser/workspace-scoped chat model id validation, storage, and settings-change events for Ask AI model override.
 - `lib/rag/model-factory.ts`: LangChain chat and embedding model factory for Ollama, OpenAI, and OpenAI-compatible endpoints.
 - `lib/rag/embedding-client.ts`: provider-neutral embedding request wrapper, current-index guard, request error mapping, embedding dimension/finite-value validation.
 - `lib/rag/answer-chain.ts`: LangChain prompt/model/parser chain for final answer generation.
@@ -127,10 +130,11 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - `lib/rag/retriever.ts`: graph-aware retrieval scopes and deterministic reranking for saved/readable documents.
 - `lib/rag/prompt.ts`: saved context only prompt, insufficient evidence instruction, question language matching, citation labels.
 - `lib/rag/ask.ts`: saved-document-only ask service with readable document filtering, indexing refresh, vector search, reranking, prompt, LangChain chat, and optional Langfuse invocation metadata.
-- `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`: route handler that accepts only `question` from JSON body and maps service errors to JSON responses.
+- `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`: route handler that accepts `question` plus optional validated `chatModel` from JSON body and maps service errors to JSON responses.
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
-- `components/document-editor/ai-assistant-panel.tsx`: title-row assistant panel that posts only trimmed questions and renders answer/citations/error state.
+- `components/workspace-settings-panel.tsx`: workspace settings dialog that includes Markdown import and AI chat model override controls.
+- `components/document-editor/ai-assistant-panel.tsx`: title-row assistant panel that posts trimmed questions plus optional browser model override and renders answer/citations/error state.
 - `lib/markdown/folding.ts`: heading hierarchy fold tree와 stored fold key parsing.
 - `components/document-navigation.tsx`: search, quick switcher, recent/favorites navigation.
 - `components/folder-detail.tsx`: selected folder detail state.
@@ -147,6 +151,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
 - GitHub issue #100와 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`: LangChain provider abstraction과 Langfuse RAG observability 설계.
+- GitHub issue #102와 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`: OpenRouter chat model selection 설계와 구현.
 - GitHub issue #88와 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`: GitHub Actions CI/CD 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`: production Docker 로그와 Sentry SaaS error/tracing 역할 분리 설계 및 구현 계획.
@@ -154,12 +159,12 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - GitHub issue #96와 GitHub Actions run `27016407598`: OCI ARM64 instance가 amd64-only GHCR image를 pull하지 못한 deploy failure와 multi-platform publish 중간 fix.
 - GitHub issue #98와 GitHub Actions run `27017475831`: QEMU 기반 multi-platform publish가 장시간 지연되어 취소된 뒤 OCI host native build deploy로 바꾼 follow-up.
 - PR #99 review threads: OCI native build deploy를 exact GitHub SHA에 pinning하고, remote local health check, public runner health check, dangling image prune을 추가한 review follow-up.
-- `tests/rag/model-config.test.ts`, `tests/rag/model-factory.test.ts`, `tests/rag/embedding-client.test.ts`, `tests/rag/answer-chain.test.ts`, `tests/rag/langfuse.test.ts`, `tests/rag/langfuse-otel.test.ts`: provider-neutral RAG config, LangChain model factory, embedding client, answer chain, Langfuse metadata, and Langfuse OpenTelemetry startup coverage.
+- `tests/rag/client-model-settings.test.ts`, `tests/rag/model-config.test.ts`, `tests/rag/model-factory.test.ts`, `tests/rag/embedding-client.test.ts`, `tests/rag/answer-chain.test.ts`, `tests/rag/langfuse.test.ts`, `tests/rag/langfuse-otel.test.ts`: browser model setting validation/storage, provider-neutral RAG config, LangChain model factory, embedding client, answer chain, Langfuse metadata, and Langfuse OpenTelemetry startup coverage.
 - `tests/rag/vector-store.test.ts`: vector literal validation, static pgvector SQL cast syntax, stale-safe search SQL, replacement metadata validation, and bound-parameter coverage.
 - `tests/rag/vector-index.test.ts`: Prisma migrate-dev-safe HNSW index setup SQL and migration-history guard coverage.
 - `tests/rag/retriever.test.ts`: current/wiki/backlink/tag/fallback scope coverage, path-qualified resolver coverage, duplicate scope suppression, and bounded keyword boost coverage.
 - `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`: saved-context prompt, service permission/input contract, and route error mapping coverage.
-- `tests/components/document-editor-preview.test.tsx`: assistant button/panel, question-only POST, saved-content warning, pending paste warning, and document-switch state reset coverage.
+- `tests/components/document-list.test.tsx`, `tests/components/document-editor-preview.test.tsx`: settings AI tab model override, assistant button/panel, question plus optional chat model POST, saved-content warning, pending paste warning, and document-switch state reset coverage.
 - `tests/markdown/folding.test.ts`, `tests/components/document-editor-preview.test.tsx`: heading folding과 preview reference-definition regression.
 - Issue #25 final review blocker fix: edit-mode fold persistence와 multi-line definition sharing.
 
