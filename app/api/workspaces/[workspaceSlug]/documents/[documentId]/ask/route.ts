@@ -40,7 +40,7 @@ export async function POST(
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === ASK_ERROR_CODES.QUESTION_REQUIRED) {
+    if (message === ASK_ERROR_CODES.QUESTION_REQUIRED || message === INVALID_CHAT_MODEL_ERROR) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
     if (

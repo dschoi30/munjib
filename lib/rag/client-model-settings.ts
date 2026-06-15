@@ -14,6 +14,8 @@ export type StoredChatModelChange = {
   chatModel: string | null;
 };
 
+export type ClientRagChatProvider = "ollama" | "openai" | "openai-compatible";
+
 export const RAG_CHAT_MODEL_PRESETS = [
   { id: "openrouter/fusion", label: "OpenRouter Fusion" },
   { id: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code" },
@@ -23,8 +25,12 @@ export const RAG_CHAT_MODEL_PRESETS = [
 const CHAT_MODEL_STORAGE_PREFIX = "munjib:rag-chat-model:";
 const CHAT_MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9/._:-]*$/;
 const MAX_CHAT_MODEL_ID_LENGTH = 160;
+const OPENROUTER_MODEL_PREFIXES = new Set(["google", "moonshotai", "openrouter", "qwen"]);
 
-export function validateChatModelId(value: unknown): ChatModelValidationResult {
+export function validateChatModelId(
+  value: unknown,
+  chatProvider?: ClientRagChatProvider,
+): ChatModelValidationResult {
   if (typeof value !== "string") {
     return invalidChatModel();
   }
@@ -38,10 +44,20 @@ export function validateChatModelId(value: unknown): ChatModelValidationResult {
     return invalidChatModel();
   }
 
+  if (
+    chatProvider &&
+    !isChatModelCompatibleWithProvider({ chatProvider, chatModel: normalized })
+  ) {
+    return invalidChatModel();
+  }
+
   return { ok: true, value: normalized };
 }
 
-export function readStoredChatModel(workspaceSlug: string): string | null {
+export function readStoredChatModel(
+  workspaceSlug: string,
+  chatProvider?: ClientRagChatProvider,
+): string | null {
   const storage = getBrowserStorage();
   if (!storage) {
     return null;
@@ -58,6 +74,12 @@ export function readStoredChatModel(workspaceSlug: string): string | null {
     safeRemoveItem(storage, storageKey);
     return null;
   }
+  if (
+    chatProvider &&
+    !isChatModelCompatibleWithProvider({ chatProvider, chatModel: result.value })
+  ) {
+    return null;
+  }
 
   return result.value;
 }
@@ -65,8 +87,9 @@ export function readStoredChatModel(workspaceSlug: string): string | null {
 export function writeStoredChatModel(
   workspaceSlug: string,
   value: unknown,
+  chatProvider?: ClientRagChatProvider,
 ): ChatModelWriteResult {
-  const result = validateChatModelId(value);
+  const result = validateChatModelId(value, chatProvider);
   if (!result.ok) {
     return result;
   }
@@ -99,6 +122,7 @@ export function resetStoredChatModel(workspaceSlug: string): boolean {
 
 export function subscribeToStoredChatModelChanges(
   handler: (change: StoredChatModelChange) => void,
+  options: { chatProvider?: ClientRagChatProvider } = {},
 ): () => void {
   if (typeof window === "undefined") {
     return () => {};
@@ -109,11 +133,31 @@ export function subscribeToStoredChatModelChanges(
     if (!isStoredChatModelChange(detail)) {
       return;
     }
+    if (
+      detail.chatModel &&
+      options.chatProvider &&
+      !isChatModelCompatibleWithProvider({
+        chatProvider: options.chatProvider,
+        chatModel: detail.chatModel,
+      })
+    ) {
+      return;
+    }
 
     handler(detail);
   };
   const storageListener = (event: StorageEvent) => {
     const change = storedChatModelChangeFromStorageEvent(event);
+    if (
+      change?.chatModel &&
+      options.chatProvider &&
+      !isChatModelCompatibleWithProvider({
+        chatProvider: options.chatProvider,
+        chatModel: change.chatModel,
+      })
+    ) {
+      return;
+    }
     if (change) {
       handler(change);
     }
@@ -129,6 +173,29 @@ export function subscribeToStoredChatModelChanges(
 
 function invalidChatModel(): ChatModelValidationResult {
   return { ok: false, error: INVALID_CHAT_MODEL_ERROR };
+}
+
+export function isChatModelCompatibleWithProvider({
+  chatProvider,
+  chatModel,
+}: {
+  chatProvider: ClientRagChatProvider;
+  chatModel: string;
+}): boolean {
+  if (chatProvider === "openai-compatible") {
+    return true;
+  }
+
+  return !hasOpenRouterModelPrefix(chatModel);
+}
+
+function hasOpenRouterModelPrefix(chatModel: string): boolean {
+  const slashIndex = chatModel.indexOf("/");
+  if (slashIndex <= 0) {
+    return false;
+  }
+
+  return OPENROUTER_MODEL_PREFIXES.has(chatModel.slice(0, slashIndex).toLowerCase());
 }
 
 function getChatModelStorageKey(workspaceSlug: string): string {

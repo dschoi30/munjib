@@ -34,6 +34,7 @@ const folderFixtures = [
 const baseProps = {
   workspaceSlug: "company-handbook",
   defaultChatModel: "gemma4:e4b",
+  defaultChatProvider: "openai-compatible" as const,
   folders: folderFixtures,
   documents: [
     {

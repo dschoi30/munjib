@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { WorkspaceRole } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
+import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { invokeAnswerChain } from "@/lib/rag/answer-chain";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
@@ -436,7 +437,9 @@ describe("workspace chat service", () => {
     );
   });
 
-  it("uses a chat model override without changing the embedding index contract", async () => {
+  it("uses an OpenAI-compatible chat model override without changing the embedding index contract", async () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "openai-compatible");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1");
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -454,9 +457,9 @@ describe("workspace chat service", () => {
 
     expect(createChatModel).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: "ollama",
+        provider: "openai-compatible",
         model: "google/gemma-4-31b-it:free",
-        baseUrl: "http://localhost:11434",
+        baseUrl: "https://openrouter.ai/api/v1",
       }),
     );
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
@@ -910,6 +913,28 @@ describe("workspace chat service", () => {
         },
       }),
     ).resolves.toBe(0);
+  });
+
+  it("rejects known OpenRouter-style chat model overrides when the server chat provider is Ollama", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+
+    await expect(
+      sendWorkspaceChatMessage({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        message: "What should I know?",
+        chatModelOverride: "google/gemma-4-31b-it:free",
+      }),
+    ).rejects.toThrow(INVALID_CHAT_MODEL_ERROR);
+
+    expect(createChatModel).not.toHaveBeenCalled();
+    expect(invokeAnswerChain).not.toHaveBeenCalled();
   });
 });
 

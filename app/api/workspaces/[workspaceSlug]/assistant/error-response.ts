@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import { WORKSPACE_CHAT_ERROR_CODES } from "@/lib/rag/workspace-chat";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -8,6 +9,9 @@ export function workspaceChatErrorResponse(error: unknown) {
 
   if (message === SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND) {
     return NextResponse.json({ error: message }, { status: 404 });
+  }
+  if (message === INVALID_CHAT_MODEL_ERROR) {
+    return NextResponse.json({ error: message }, { status: 400 });
   }
   if (message === WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED) {
     return NextResponse.json({ error: message }, { status: 400 });
