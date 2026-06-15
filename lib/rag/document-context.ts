@@ -75,11 +75,20 @@ export function buildCurrentDocumentContext(
 
   const budget = Math.max(1, Math.floor(input.maxTokens ?? DEFAULT_CONTEXT_TOKEN_BUDGET));
   const markdownSections = splitIntoHeadingSections(body);
+
+  if (estimateTokens(body) <= budget) {
+    const fullSections =
+      markdownSections.length > 0 ? markdownSections : [{ headingPath: null, content: body }];
+    return {
+      context: body,
+      sections: fullSections.map((section, index) => toContextSection(section, input, index + 1)),
+      partial: false,
+    };
+  }
+
   const sections = (
-    markdownSections.length > 0 || estimateTokens(body) <= budget
-      ? markdownSections.length > 0
-        ? markdownSections
-        : [{ headingPath: null, content: body }]
+    markdownSections.length > 0
+      ? splitOversizedHeadingSections(markdownSections, budget)
       : splitUnheadedSections(body, budget)
   ).map((section, order) => ({
     ...section,
@@ -87,14 +96,6 @@ export function buildCurrentDocumentContext(
     score: scoreSection(section, input.question),
     order,
   }));
-
-  if (estimateTokens(body) <= budget) {
-    return {
-      context: body,
-      sections: sections.map((section, index) => toContextSection(section, input, index + 1)),
-      partial: false,
-    };
-  }
 
   const selectedSections = selectSectionsWithinBudget(sections, budget);
   return {
@@ -157,6 +158,22 @@ function splitIntoHeadingSections(markdown: string): MarkdownSection[] {
 
   flushCurrent();
   return sawHeading ? sections : [];
+}
+
+function splitOversizedHeadingSections(sections: MarkdownSection[], budget: number) {
+  return sections.flatMap((section) => {
+    if (estimateTokens(section.content) <= budget) return [section];
+
+    const chunkSource = stripLeadingHeadingLine(section.content);
+    return splitUnheadedSections(chunkSource || section.content, budget).map((chunk) => ({
+      headingPath: section.headingPath,
+      content: chunk.content,
+    }));
+  });
+}
+
+function stripLeadingHeadingLine(content: string) {
+  return content.replace(/^[ \t]{0,3}#{1,6}[ \t]+.+?(?:\n+|$)/, "").trim();
 }
 
 function splitUnheadedSections(markdown: string, budget: number): MarkdownSection[] {
@@ -223,7 +240,10 @@ function scoreSection(section: MarkdownSection, question: string) {
 }
 
 function selectSectionsWithinBudget(sections: SectionCandidate[], budget: number) {
-  const rankedSections = [...sections].sort((left, right) => {
+  const highestScore = Math.max(...sections.map((section) => section.score));
+  const eligibleSections =
+    highestScore > 0 ? sections.filter((section) => section.score > 0) : sections;
+  const rankedSections = [...eligibleSections].sort((left, right) => {
     if (right.score !== left.score) return right.score - left.score;
     return left.order - right.order;
   });
