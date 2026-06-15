@@ -7,7 +7,7 @@ import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-clie
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
-import { buildRagPrompt, filterCitationsToAnswer } from "@/lib/rag/prompt";
+import { buildRagPrompt, normalizeAnswerCitations } from "@/lib/rag/prompt";
 import { searchSimilarChunks, type RetrievedChunk } from "@/lib/rag/vector-store";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { filterReadableDocuments } from "@/lib/workspace-tree";
@@ -183,7 +183,8 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     callbacks: trace.callbacks,
     metadata: trace.metadata,
   });
-  const answerCitations = filterCitationsToAnswer(answer, prompt.citations);
+  const normalizedAnswer = normalizeAnswerCitations(answer, prompt.citations);
+  const answerCitations = normalizedAnswer.citations;
   const contextMeta = {
     retrievedChunkCount: promptChunks.length,
     citationChunkIds,
@@ -208,7 +209,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
       data: {
         threadId: thread.id,
         role: "ASSISTANT",
-        content: answer,
+        content: normalizedAnswer.answer,
         citations: answerCitations as Prisma.InputJsonValue,
         contextMeta,
         model: effectiveModelConfig.chat.model,

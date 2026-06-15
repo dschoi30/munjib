@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,13 +9,7 @@ import {
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
 
-type AssistantCitation = {
-  index?: number;
-  documentTitle?: string;
-  title?: string;
-  documentPath?: string;
-  headingPath?: string | string[] | null;
-};
+type AssistantCitation = AiCitation;
 
 type AskResponse = {
   answer?: string;
@@ -125,27 +120,14 @@ export function AiAssistantPanel({
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       {answer ? (
         <div className="mt-3 space-y-2 border-t border-border pt-3">
-          <p className="whitespace-pre-wrap text-slate-700">{answer}</p>
-          {citations.length > 0 ? (
-            <ol className="space-y-1 text-xs text-slate-500">
-              {citations.map((citation, index) => (
-                <li key={`${citation.documentTitle ?? citation.title ?? "citation"}-${index}`}>
-                  [{citation.index ?? index + 1}] {citation.documentTitle ?? citation.title ?? "Saved document"}
-                  {formatHeadingPath(citation.headingPath)}
-                </li>
-              ))}
-            </ol>
-          ) : null}
+          <AiAnswer content={answer} className="text-slate-700" />
+          <AiCitations
+            citations={citations}
+            workspaceSlug={workspaceSlug}
+            className="text-xs text-slate-500"
+          />
         </div>
       ) : null}
     </section>
   );
-}
-
-function formatHeadingPath(headingPath: AssistantCitation["headingPath"]) {
-  if (Array.isArray(headingPath)) {
-    return headingPath.length > 0 ? ` > ${headingPath.join(" > ")}` : "";
-  }
-
-  return headingPath ? ` > ${headingPath}` : "";
 }

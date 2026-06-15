@@ -7,7 +7,7 @@ import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
 import {
   buildDirectDocumentPrompt,
-  filterCitationsToAnswer,
+  normalizeAnswerCitations,
   type RagCitation,
 } from "@/lib/rag/prompt";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -146,5 +146,5 @@ export async function askDocumentQuestion(
     metadata: trace.metadata,
   });
 
-  return { answer, citations: filterCitationsToAnswer(answer, citations) };
+  return normalizeAnswerCitations(answer, citations);
 }
