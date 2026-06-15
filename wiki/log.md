@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-16
-source_count: 215
+source_count: 216
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-16T00:31:00+0900 - issue-104 workspace chat review ordering follow-up
+
+- Result: PR #106의 추가 Codex review feedback으로 selected-document backfill cap, persisted turn ordering, history citation namespace 문제를 보강했다.
+- Coverage: `selectIndexBackfillDocuments()`는 selected-document referential prompt에서 readable selected document를 lexical top-8 cap 밖에서도 backfill 후보로 보존한다. `orderedMessagesForDisplay()`는 동일 `createdAt` turn에서 `USER`를 `ASSISTANT`보다 먼저 정렬하고, conversation-aware retrieval/prompt history는 이전 assistant answer의 numeric citation marker를 제거해 새 prompt citation 번호와 충돌하지 않게 한다.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
 
 ## 2026-06-16T00:00:48+0900 - attachment missing file response
 
