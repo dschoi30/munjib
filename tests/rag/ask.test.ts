@@ -334,9 +334,10 @@ describe("RAG ask service", () => {
       question: "How are approvals handled?",
     });
 
+    expect(result.answer).toBe("Approvals require manager signoff [1].");
     expect(result.citations).toEqual([
       {
-        index: 2,
+        index: 1,
         documentId: selected.id,
         documentTitle: "Saved Title",
         documentPath: "/saved-title",

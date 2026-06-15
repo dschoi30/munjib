@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, RotateCcw, Send, X } from "lucide-react";
+import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,13 +10,7 @@ import {
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
 
-type ChatCitation = {
-  index?: number;
-  documentTitle?: string;
-  title?: string;
-  documentPath?: string;
-  headingPath?: string | string[] | null;
-};
+type ChatCitation = AiCitation;
 
 type ChatMessage = {
   id?: string;
@@ -241,7 +236,11 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
           <p className="text-sm text-slate-500">Ask across this workspace.</p>
         ) : null}
         {messages.map((message, index) => (
-          <ChatBubble key={message.id ?? `${message.role}-${index}`} message={message} />
+          <ChatBubble
+            key={message.id ?? `${message.role}-${index}`}
+            message={message}
+            workspaceSlug={workspaceSlug}
+          />
         ))}
         <ThinkingIndicator active={isLoading} className="text-sm text-slate-500" />
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -269,7 +268,7 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
   );
 }
 
-function ChatBubble({ message }: { message: ChatMessage }) {
+function ChatBubble({ message, workspaceSlug }: { message: ChatMessage; workspaceSlug: string }) {
   const isUser = message.role === "USER";
 
   return (
@@ -281,17 +280,18 @@ function ChatBubble({ message }: { message: ChatMessage }) {
             : "inline-block max-w-[88%] rounded-md bg-slate-100 px-3 py-2 text-left text-slate-800"
         }
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser ? (
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        ) : (
+          <AiAnswer content={message.content} />
+        )}
       </div>
-      {!isUser && message.citations?.length ? (
-        <ol className="mt-1 space-y-1 text-xs text-slate-500">
-          {message.citations.map((citation, index) => (
-            <li key={`${citation.documentTitle ?? citation.title ?? "citation"}-${index}`}>
-              [{citation.index ?? index + 1}] {citation.documentTitle ?? citation.title ?? "Saved document"}
-              {formatHeadingPath(citation.headingPath)}
-            </li>
-          ))}
-        </ol>
+      {!isUser ? (
+        <AiCitations
+          citations={message.citations}
+          workspaceSlug={workspaceSlug}
+          className="mt-1 text-xs text-slate-500"
+        />
       ) : null}
     </div>
   );
@@ -303,12 +303,4 @@ function normalizeMessages(messages: ChatMessage[]) {
       (message.role === "USER" || message.role === "ASSISTANT") &&
       typeof message.content === "string",
   );
-}
-
-function formatHeadingPath(headingPath: ChatCitation["headingPath"]) {
-  if (Array.isArray(headingPath)) {
-    return headingPath.length > 0 ? ` > ${headingPath.join(" > ")}` : "";
-  }
-
-  return headingPath ? ` > ${headingPath}` : "";
 }

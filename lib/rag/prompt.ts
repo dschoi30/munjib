@@ -118,6 +118,36 @@ export function filterCitationsToAnswer(answer: string, citations: RagCitation[]
   return citations.filter((citation) => referencedIndices.has(citation.index));
 }
 
+export function normalizeAnswerCitations(answer: string, citations: RagCitation[]) {
+  const citationByIndex = new Map(citations.map((citation) => [citation.index, citation]));
+  const displayIndexBySourceIndex = new Map<number, number>();
+  const normalizedCitations: RagCitation[] = [];
+  const normalizedAnswer = answer.replace(/\[([\d,\s]+)\]/g, (match, group: string) => {
+    const displayIndices: number[] = [];
+
+    for (const token of group.split(",")) {
+      const sourceIndex = Number.parseInt(token.trim(), 10);
+      const citation = citationByIndex.get(sourceIndex);
+      if (!citation) continue;
+
+      let displayIndex = displayIndexBySourceIndex.get(sourceIndex);
+      if (!displayIndex) {
+        displayIndex = normalizedCitations.length + 1;
+        displayIndexBySourceIndex.set(sourceIndex, displayIndex);
+        normalizedCitations.push({ ...citation, index: displayIndex });
+      }
+      if (!displayIndices.includes(displayIndex)) displayIndices.push(displayIndex);
+    }
+
+    return displayIndices.length > 0 ? `[${displayIndices.join(", ")}]` : match;
+  });
+
+  return {
+    answer: normalizedAnswer,
+    citations: normalizedCitations,
+  };
+}
+
 function citationLabel(
   index: number,
   citationSource: Pick<RagCitation, "documentTitle" | "headingPath">,

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 213
+source_count: 214
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T23:50:34+0900 - issue-104 citation display and source link follow-up
+
+- Result: Ask AI와 workspace chatbot의 source display를 사용자 기준으로 정규화하고 source click navigation과 Markdown answer rendering을 보강했다.
+- Coverage: `normalizeAnswerCitations()`는 answer text에 실제로 등장한 citation만 남기고 prompt/chunk 내부 번호를 answer 등장 순서의 `1..n` display number로 다시 쓴다. `askDocumentQuestion()`과 `sendWorkspaceChatMessage()`는 정규화된 answer/citations를 반환하거나 저장한다. `components/ai/answer.tsx`는 Ask AI panel과 workspace chatbot이 공유하는 Markdown answer renderer와 clickable citation list를 제공하며, citation의 `documentId`가 있으면 workspace document URL로 이동한다.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported source-number/source-link/Markdown rendering issue, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `components/ai/answer.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts`, `pnpm exec vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`, and `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/components/document-editor-preview.test.tsx`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-15T23:16:06+0900 - issue-104 pr review prompt persistence follow-up
 

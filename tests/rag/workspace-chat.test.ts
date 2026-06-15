@@ -151,6 +151,7 @@ describe("workspace chat service", () => {
       ),
     ];
     vi.mocked(searchSimilarChunks).mockResolvedValueOnce(returnedChunks);
+    vi.mocked(invokeAnswerChain).mockResolvedValueOnce("Workspace answer [5].");
 
     const result = await sendWorkspaceChatMessage({
       workspaceSlug: fixture.workspace.slug,
@@ -163,9 +164,9 @@ describe("workspace chat service", () => {
     expect(result.citations).toEqual([
       {
         index: 1,
-        documentId: handbook.id,
-        documentTitle: "Handbook",
-        documentPath: handbook.path,
+        documentId: runbook.id,
+        documentTitle: "Runbook",
+        documentPath: runbook.path,
         headingPath: "Evidence",
       },
     ]);

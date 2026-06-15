@@ -84,6 +84,50 @@ describe("WorkspaceChatbot", () => {
     );
   });
 
+  it("renders assistant markdown and links citations to source documents", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return jsonResponse({
+          assistantMessage: {
+            id: "message-3",
+            role: "ASSISTANT",
+            content: "*   **CAPEX:** Investment continues [1].",
+          },
+          citations: [
+            {
+              index: 1,
+              documentId: "doc-capex",
+              documentTitle: "Hyperscaler CAPEX",
+              documentPath: "/hyperscaler-capex",
+              headingPath: "Investment",
+            },
+          ],
+        });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "Why keep investing?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    const strong = await screen.findByText("CAPEX:");
+    expect(strong.tagName).toBe("STRONG");
+    const citationLink = screen.getByRole("link", {
+      name: "[1] Hyperscaler CAPEX > Investment",
+    });
+    expect(citationLink.getAttribute("href")).toBe(
+      "/workspaces/company-handbook?document=doc-capex",
+    );
+  });
+
   it("sends the stored workspace chat model override with new messages", async () => {
     window.localStorage.setItem(
       "munjib:rag-chat-model:company-handbook",

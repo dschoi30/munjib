@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 90
+source_count: 91
 tags:
   - munjib
   - workflow
@@ -58,7 +58,7 @@ Issue #40 이후 workspace settings dialog는 document list를 교체하지 않�
 
 Issue #73 이후 `DocumentEditor` title input 우측에는 `AI에게 묻기` button이 있고, 선택 문서가 있을 때 작은 assistant panel을 열고 닫는다. Panel은 `/api/workspaces/{workspaceSlug}/documents/{documentId}/ask`에 trimmed question과 optional browser/workspace-scoped `chatModel` override만 POST하며, 현재 editor의 unsaved title/content draft는 request body에 넣지 않는다. 현재 title 또는 markdown state가 선택된 saved document와 다르거나 clipboard image paste가 아직 업로드 중이면 `저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.` warning을 보여 saved DB content 기준 답변임을 알린다. 문서 전환 시 assistant panel은 document id 기준으로 새로 mount되어 이전 문서의 질문, 답변, citation state를 다음 문서에 보여주지 않는다.
 
-Issue #104 backend slice 이후 Ask AI service의 기본 답변 근거는 현재 저장 문서 direct context다. Service는 workspace membership과 selected active document read permission만 확인하고, `buildCurrentDocumentContext()`로 현재 saved markdown을 전체, heading-aware section subset, 또는 heading 없는 긴 문서의 paragraph chunk subset으로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain을 호출한다. 기본 Ask AI path는 selected document re-indexing, question embedding, pgvector search, graph-aware scope expansion, rerank, embedding config parsing을 호출하지 않으므로 citation도 현재 문서 section만 가리킨다. Ask route는 invalid chat model override를 `INVALID_CHAT_MODEL` 400으로 거절하고 recoverable model/runtime failure를 `AI_UNAVAILABLE` 503으로 정규화하며, assistant panel은 raw server/model details 없이 generic failure state를 보여준다. pgvector 기반 chunk index는 saved `Document`에서만 파생하고, workspace chatbot RAG retrieval에서 계속 사용한다. 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다.
+Issue #104 backend slice 이후 Ask AI service의 기본 답변 근거는 현재 저장 문서 direct context다. Service는 workspace membership과 selected active document read permission만 확인하고, `buildCurrentDocumentContext()`로 현재 saved markdown을 전체, heading-aware section subset, 또는 heading 없는 긴 문서의 paragraph chunk subset으로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain을 호출한다. 기본 Ask AI path는 selected document re-indexing, question embedding, pgvector search, graph-aware scope expansion, rerank, embedding config parsing을 호출하지 않으므로 citation도 현재 문서 section만 가리킨다. Ask route는 invalid chat model override를 `INVALID_CHAT_MODEL` 400으로 거절하고 recoverable model/runtime failure를 `AI_UNAVAILABLE` 503으로 정규화하며, assistant panel은 raw server/model details 없이 generic failure state를 보여준다. Ask AI와 workspace chatbot은 answer에서 실제 참조된 source만 사용자 기준 `1..n` 번호로 다시 표시하고, citation에 `documentId`가 있으면 해당 workspace document link로 렌더링한다. Assistant answer body는 공통 Markdown renderer를 사용해 bullet/bold marker를 raw text로 노출하지 않는다. pgvector 기반 chunk index는 saved `Document`에서만 파생하고, workspace chatbot RAG retrieval에서 계속 사용한다. 세부 데이터 모델은 [[Document Knowledge Model]]에 기록한다.
 
 Issue #100 구현은 AI answer generation boundary를 provider-neutral LangChain seam으로 옮겼다. Chat provider는 server env로 Ollama, OpenAI, OpenAI-compatible endpoint 중 선택할 수 있고, embedding provider 설정도 같은 provider set을 이해한다. Issue #104 direct Ask path는 embedding index guard에 묶이지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval은 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity를 reindex follow-up 전까지 fail-fast한다. Langfuse tracing은 optional/fail-open이고, production 기본 metadata mode에서는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback을 붙이지 않으며 explicit `full` capture에서만 LangChain invocation config에 callback을 연결한다.
 
@@ -166,6 +166,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `components/document-editor.tsx`
 - `components/document-editor/ai-assistant-panel.tsx`
 - `components/workspace-chatbot.tsx`
+- `components/ai/answer.tsx`
 - `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
 - `lib/rag/workspace-chat.ts`
 - `components/document-editor/markdown-preview.tsx`

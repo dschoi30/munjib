@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-15
-source_count: 68
+source_count: 75
 tags:
   - munjib
   - workflow
@@ -46,7 +46,8 @@ flowchart TD
     AskContext --> AskPrompt["buildDirectDocumentPrompt()<br/>current document sections only"]
     AskPrompt --> AskTrace["Langfuse metadata<br/>operation rag.ask_document"]
     AskTrace --> AskAnswer["invokeAnswerChain()<br/>LangChain chat model"]
-    AskAnswer --> AskUI["Answer + current-document citations"]
+    AskAnswer --> AskNormalize["normalizeAnswerCitations()<br/>used sources renumbered 1..n"]
+    AskNormalize --> AskUI["Markdown answer + clickable current-document citations"]
 
     ChatUser["Workspace chatbot panel<br/>message + selectedDocumentId"] --> ChatRoute["Assistant routes<br/>thread, messages, reset"]
     ChatRoute --> ChatService["sendWorkspaceChatMessage()"]
@@ -59,7 +60,7 @@ flowchart TD
     ChatSearch --> ChatCap["Cap prompt chunks<br/>12 total, 3 per document"]
     ChatCap --> ChatPrompt["buildRagPrompt()<br/>recent conversation + chunks"]
     ChatPrompt --> ChatAnswer["invokeAnswerChain()"]
-    ChatAnswer --> UsedCitations["filterCitationsToAnswer()<br/>keep only answer-referenced sources"]
+    ChatAnswer --> UsedCitations["normalizeAnswerCitations()<br/>keep and renumber answer-referenced sources"]
     UsedCitations --> ActiveCheck{"Thread still ACTIVE?"}
     ActiveCheck -- "No" --> Stale["THREAD_ARCHIVED<br/>drop stale assistant response"]
     ActiveCheck -- "Yes" --> Persist["Persist ASSISTANT<br/>citations, contextMeta, model"]
@@ -72,7 +73,7 @@ flowchart TD
 | Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Workspace role, selected active document, explicit document permissions | Permission-safe selected document |
 | Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and in-memory override | Server env plus optional `chatModel` | Effective chat model; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
 | Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown, heading-aware section subset, no-heading paragraph chunk subset, or oversized-heading paragraph chunk subset with inline citation labels |
-| Ask prompt and citations | `buildDirectDocumentPrompt()`, `filterCitationsToAnswer()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations |
+| Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
 | Chatbot UI | `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx` | Workspace slug, selected document id, active thread state, optional browser/workspace `chatModel` | Fixed bottom-right launcher, compact panel, thread history, send/reset controls |
 | Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional `chatModel`, message send, reset/archive responses with stable error mapping |
@@ -80,10 +81,10 @@ flowchart TD
 | Chat index guard | `assertCurrentEmbeddingIndex()` | Server model config | Fail-fast unless workspace retrieval index identity is Ollama `bge-m3` 1024 |
 | Chat targeted index backfill | `ensureWorkspaceChatRetrievalIndex()`, `safeIndexSavedDocument()` | Conversation-aware query, readable active documents, current embedding model | Missing/stale chunks for lexically relevant readable documents are refreshed before vector search |
 | Chat retrieval | `embedText()`, `searchSimilarChunks()` | Conversation-aware query embedding, readable document ids | Candidate saved chunks from current `DocumentChunk` rows |
-| Chat prompt and citations | `buildRagPrompt()`, `filterCitationsToAnswer()` | Recent conversation, capped chunks, and answer text | Saved-context prompt plus answer-referenced chunk citations |
+| Chat prompt and citations | `buildRagPrompt()`, `normalizeAnswerCitations()` | Recent conversation, capped chunks, and answer text | Saved-context prompt plus answer-referenced chunk citations renumbered by answer appearance |
 | Chat stale response guard | Prisma transaction in `sendWorkspaceChatMessage()` | Thread id and delayed answer | Assistant response is saved only if the thread is still `ACTIVE` |
 | Langfuse metadata | `createLangfuseCallbackConfig()` | operation/provider/model/citation metadata | Metadata-only by default; callbacks only in explicit full mode |
-| UI result | Assistant panel or future chatbot panel | Answer and filtered citations | Rendered answer plus only `[n]` citations used by the answer |
+| UI result | Assistant panel or chatbot panel | Answer and filtered citations | Markdown-rendered answer plus clickable `[n]` citations used by the answer |
 
 Legacy/vector maintenance phases still exist for saved document indexing and future expanded-scope retrieval:
 
@@ -116,8 +117,8 @@ Ask AI direct-context request:
 6. `buildDirectDocumentPrompt()`는 현재 저장 문서 context만 근거로 system/user prompt와 current-document section citation metadata를 만든다.
 7. `createLangfuseCallbackConfig()`는 `rag.ask_document` operation, effective chat model, selected document id, current context partial 여부, prompt citation document ids를 metadata에 담는다. Direct Ask path는 retrieval-only fields인 `retrievedChunkCount`, `citationChunkIds`, embedding provider/model/dimension metadata를 보내지 않는다.
 8. `invokeAnswerChain()`은 literal `SystemMessage`와 `HumanMessage`를 만들어 LangChain chat model에 전달한다. Saved context나 question 안의 JSON/code braces는 template 변수로 해석되지 않는다.
-9. `filterCitationsToAnswer()`는 answer text에 실제로 등장한 `[n]` citation만 남긴다. 근거 부족 답변처럼 citation marker가 없는 answer는 빈 citation list를 반환한다.
-10. Service는 answer와 answer-referenced 현재 문서 section citations를 route에 반환하고, UI는 answer body와 `[n] Document Title > Heading` citation을 표시한다.
+9. `normalizeAnswerCitations()`는 answer text에 실제로 등장한 `[n]` citation만 남기고, prompt 내부 source 번호가 `[8], [9], [3]`처럼 흩어져 있어도 answer 등장 순서대로 `[1], [2], [3]` display 번호를 다시 붙인다. 근거 부족 답변처럼 citation marker가 없는 answer는 빈 citation list를 반환한다.
+10. Service는 정규화된 answer와 answer-referenced 현재 문서 section citations를 route에 반환하고, UI는 Markdown-rendered answer와 클릭 가능한 `[n] Document Title > Heading` source link를 표시한다.
 
 Workspace chatbot UI/API/service request:
 
@@ -135,9 +136,9 @@ Workspace chatbot UI/API/service request:
 12. Service는 readable `selectedDocumentId`에 해당하는 chunks가 top vector result와 충분히 가까울 때만 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다. 선택 문서가 검색상 너무 멀면 기존 vector order를 유지해 무관 문서가 context를 차지하지 않게 한다.
 13. `buildRagPrompt()`는 최근 thread message와 현재 user message를 합친 conversation question, 그리고 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
 14. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
-15. `invokeAnswerChain()`이 answer를 생성하면 `filterCitationsToAnswer()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남긴다.
+15. `invokeAnswerChain()`이 answer를 생성하면 `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
 16. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
-17. Thread가 active이면 user message와 assistant message를 같은 successful transaction에서 저장하고, filtered `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation이나 retrieval이 실패하면 orphan `USER` message를 남기지 않는다.
+17. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation이나 retrieval이 실패하면 orphan `USER` message를 남기지 않는다.
 18. Client는 request generation/version guard로 delayed thread load나 delayed send response가 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
 
 ## Provider And Index Contract
@@ -193,9 +194,11 @@ Current document boost는 `0.5`, linked document `0.3`, backlink `0.25`, same-ta
 
 Issue #104는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request profile을 분리한다. 구현 범위는 `lib/rag/document-context.ts`의 현재 문서 context packer, `components/ai/thinking-indicator.tsx`의 공통 elapsed-time indicator, `AiChatThread`/`AiChatMessage` schema, Ask AI direct-context service, workspace chatbot RAG service, authenticated chatbot API routes, 우측 하단 workspace chatbot UI다.
 
-Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer 또는 no-heading paragraph chunk fallback으로 관련 섹션을 선택한다. Ask AI citation은 현재 문서 section만 후보로 만들되, answer text가 실제로 참조한 `[n]` section만 UI에 반환한다.
+Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer 또는 no-heading paragraph chunk fallback으로 관련 섹션을 선택한다. Ask AI citation은 현재 문서 section만 후보로 만들되, answer text가 실제로 참조한 `[n]` section만 UI에 반환하고, display number는 answer 등장 순서대로 다시 `1..n`으로 붙인다.
 
-새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 질문과 readable documents의 lexical overlap으로 missing/stale chunks를 targeted refresh한 뒤 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, follow-up 질문의 지시어가 이전 대화 주제를 잃지 않도록 conversation-aware query를 embedding한다. Readable selected document chunks는 vector distance가 top result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, returned citations는 answer가 실제로 참조한 citation marker로 필터링한다.
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 질문과 readable documents의 lexical overlap으로 missing/stale chunks를 targeted refresh한 뒤 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, follow-up 질문의 지시어가 이전 대화 주제를 잃지 않도록 conversation-aware query를 embedding한다. Readable selected document chunks는 vector distance가 top result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, returned citations는 answer가 실제로 참조한 citation marker로 필터링한 뒤 display number를 answer 등장 순서대로 정규화한다.
+
+Ask AI panel과 workspace chatbot은 `components/ai/answer.tsx`의 공통 renderer로 assistant answer Markdown을 표시한다. 따라서 model output의 bullet, bold, inline code 같은 Markdown marker는 raw text로 노출하지 않고 읽을 수 있는 HTML로 렌더링한다. Citation list는 citation에 `documentId`가 있을 때 `workspaceDocumentHref()` 기반 source link로 표시하며, 클릭하면 해당 workspace document URL로 이동한다.
 
 Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
@@ -254,6 +257,7 @@ pnpm wiki:sync-check --staged
 - `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`
 - `components/workspace-chatbot.tsx`
+- `components/ai/answer.tsx`
 - `lib/rag/client-model-settings.ts`
 - `lib/rag/model-config.ts`
 - `lib/rag/model-factory.ts`

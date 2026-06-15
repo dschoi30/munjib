@@ -3,6 +3,7 @@ import {
   buildDirectDocumentPrompt,
   buildRagPrompt,
   filterCitationsToAnswer,
+  normalizeAnswerCitations,
 } from "@/lib/rag/prompt";
 
 describe("RAG prompt builder", () => {
@@ -100,6 +101,54 @@ describe("RAG prompt builder", () => {
     );
     expect(filterCitationsToAnswer("The saved documents do not contain enough evidence.", citations))
       .toEqual([]);
+  });
+
+  it("renumbers cited sources by first appearance in the answer", () => {
+    const citations = [
+      {
+        index: 3,
+        documentId: "doc-demand",
+        documentTitle: "AI Demand",
+        documentPath: "/ai-demand",
+        headingPath: "Demand",
+      },
+      {
+        index: 7,
+        documentId: "doc-fear",
+        documentTitle: "AI Fear",
+        documentPath: "/ai-fear",
+        headingPath: "Adoption",
+      },
+      {
+        index: 8,
+        documentId: "doc-capex",
+        documentTitle: "Hyperscaler CAPEX",
+        documentPath: "/hyperscaler-capex",
+        headingPath: "Investment",
+      },
+      {
+        index: 9,
+        documentId: "doc-survival",
+        documentTitle: "Survival Cost",
+        documentPath: "/survival-cost",
+        headingPath: null,
+      },
+    ];
+
+    expect(
+      normalizeAnswerCitations(
+        "CAPEX continues [8], [9]. Demand compounds [3, 7].",
+        citations,
+      ),
+    ).toEqual({
+      answer: "CAPEX continues [1], [2]. Demand compounds [3, 4].",
+      citations: [
+        { ...citations[2], index: 1 },
+        { ...citations[3], index: 2 },
+        { ...citations[0], index: 3 },
+        { ...citations[1], index: 4 },
+      ],
+    });
   });
 });
 
