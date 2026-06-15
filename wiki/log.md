@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 212
+source_count: 213
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T22:32:20+0900 - issue-104 pr review retrieval follow-up
+
+- Result: PR #106 review follow-up으로 direct Ask와 workspace chatbot retrieval robustness를 보강했다.
+- Coverage: `askDocumentQuestion()` now uses chat/Langfuse generation config without validating embedding env, direct Ask Langfuse metadata omits embedding fields, `buildCurrentDocumentContext()` splits long no-heading documents into paragraph chunks before selecting context, and `sendWorkspaceChatMessage()` embeds the recent conversation plus current message for retrieval.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/model-config.ts`, `lib/rag/ask.ts`, `lib/rag/langfuse.ts`, `lib/rag/document-context.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/model-config.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/langfuse.test.ts`, `tests/rag/document-context.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/langfuse.test.ts tests/rag/ask.test.ts tests/rag/document-context.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
 
 ## 2026-06-15T22:15:40+0900 - issue-104 chatbot model override follow-up
 

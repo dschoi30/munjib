@@ -156,7 +156,7 @@ describe("workspace chat service", () => {
       }),
     );
     expect(embedText).toHaveBeenCalledWith(
-      "What is the workspace policy?",
+      expect.stringContaining("Current user message: What is the workspace policy?"),
       expect.objectContaining({
         config: expect.objectContaining({
           embedding: expect.objectContaining({
@@ -166,6 +166,10 @@ describe("workspace chat service", () => {
           }),
         }),
       }),
+    );
+    expect(embedText).toHaveBeenCalledWith(
+      expect.stringContaining("Earlier question?"),
+      expect.any(Object),
     );
     expect(searchSimilarChunks).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -391,6 +395,14 @@ describe("workspace chat service", () => {
       message: "What is newest?",
     });
 
+    expect(embedText).toHaveBeenCalledWith(
+      expect.stringContaining("Historical message 60"),
+      expect.any(Object),
+    );
+    expect(embedText).toHaveBeenCalledWith(
+      expect.stringContaining("Current user message: What is newest?"),
+      expect.any(Object),
+    );
     expect(invokeAnswerChain).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining("Historical message 60"),

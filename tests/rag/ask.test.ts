@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { WorkspaceRole } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LangfuseCallbackConfigInput } from "@/lib/rag/langfuse";
 import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -39,9 +39,11 @@ vi.mock("@/lib/rag/langfuse", () => ({
       operation: input.operation ?? "rag.answer",
       chatProvider: input.chatProvider,
       chatModel: input.chatModel,
-      embeddingProvider: input.embeddingProvider,
-      embeddingModel: input.embeddingModel,
-      embeddingDimensions: input.embeddingDimensions,
+      ...(input.embeddingProvider ? { embeddingProvider: input.embeddingProvider } : {}),
+      ...(input.embeddingModel ? { embeddingModel: input.embeddingModel } : {}),
+      ...(typeof input.embeddingDimensions === "number"
+        ? { embeddingDimensions: input.embeddingDimensions }
+        : {}),
       ...(input.citationDocumentIds
         ? { citationDocumentIds: Array.from(new Set(input.citationDocumentIds)) }
         : {}),
@@ -79,7 +81,16 @@ void _askInputMustRejectDraftFields;
 describe("RAG ask service", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "ollama");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "gemma4:e4b");
+    vi.stubEnv("MUNJIB_RAG_EMBED_PROVIDER", "ollama");
+    vi.stubEnv("MUNJIB_RAG_EMBED_MODEL", "bge-m3");
+    vi.stubEnv("MUNJIB_RAG_EMBED_DIMENSIONS", "1024");
     await resetTestData();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("answers from current saved document context without indexing or vector retrieval", async () => {
@@ -127,9 +138,6 @@ describe("RAG ask service", () => {
         operation: "rag.ask_document",
         chatProvider: "ollama",
         chatModel: "gemma4:e4b",
-        embeddingProvider: "ollama",
-        embeddingModel: "bge-m3",
-        embeddingDimensions: 1024,
         citationDocumentIds: [selected.id],
         metadata: expect.objectContaining({
           workspaceSlug: fixture.workspace.slug,
@@ -243,9 +251,6 @@ describe("RAG ask service", () => {
       expect.objectContaining({
         chatProvider: "ollama",
         chatModel: "moonshotai/kimi-k2.7-code",
-        embeddingProvider: "ollama",
-        embeddingModel: "bge-m3",
-        embeddingDimensions: 1024,
         citationDocumentIds: [selected.id],
         metadata: expect.objectContaining({
           selectedDocumentId: selected.id,
@@ -279,6 +284,35 @@ describe("RAG ask service", () => {
     expect(safeIndexSavedDocument).not.toHaveBeenCalled();
     expect(embedText).not.toHaveBeenCalled();
     expect(searchSimilarChunks).not.toHaveBeenCalled();
+    expect(createChatModel).toHaveBeenCalled();
+    expect(invokeAnswerChain).toHaveBeenCalled();
+  });
+
+  it("does not require valid embedding env for direct current-document answers", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Saved Title",
+      contentMarkdown: "Saved content",
+    });
+    vi.stubEnv("MUNJIB_RAG_EMBED_DIMENSIONS", "768");
+
+    const result = await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What happened?",
+    });
+
+    expect(result.answer).toBe("Saved answer");
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        embeddingProvider: expect.anything(),
+        embeddingModel: expect.anything(),
+        embeddingDimensions: expect.anything(),
+      }),
+    );
     expect(createChatModel).toHaveBeenCalled();
     expect(invokeAnswerChain).toHaveBeenCalled();
   });

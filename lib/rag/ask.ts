@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
-import { getRagModelConfig } from "@/lib/rag/config";
+import { getRagGenerationConfig } from "@/lib/rag/config";
 import { buildCurrentDocumentContext } from "@/lib/rag/document-context";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
@@ -97,7 +97,7 @@ export async function askDocumentQuestion(
   if (!selectedDocument) {
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
-  const modelConfig = getRagModelConfig();
+  const modelConfig = getRagGenerationConfig();
   const effectiveModelConfig = input.chatModelOverride
     ? {
         ...modelConfig,
@@ -125,9 +125,6 @@ export async function askDocumentQuestion(
     operation: "rag.ask_document",
     chatProvider: effectiveModelConfig.chat.provider,
     chatModel: effectiveModelConfig.chat.model,
-    embeddingProvider: effectiveModelConfig.embedding.provider,
-    embeddingModel: effectiveModelConfig.embedding.indexId,
-    embeddingDimensions: effectiveModelConfig.embedding.dimensions,
     citationDocumentIds: citations.map((citation) => citation.documentId),
     metadata: {
       workspaceSlug: input.workspaceSlug,

@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-15
-source_count: 49
+source_count: 50
 tags:
   - munjib
   - workflow
@@ -28,7 +28,7 @@ links:
 
 이 page는 document editor의 `AI에게 묻기` direct-context request와 workspace chatbot의 saved DB content RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
-Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()`, `resetWorkspaceChatThread()`를 감싼다. Response streaming은 Issue #105 follow-up으로 분리한다.
+Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()`, `resetWorkspaceChatThread()`를 감싼다. Response streaming은 Issue #105 follow-up으로 분리한다.
 
 ## Process Map
 
@@ -42,7 +42,7 @@ flowchart TD
     AskService --> AskPermission["Load workspace membership<br/>and selected active document"]
     AskPermission --> AskReadable{"Selected document readable?"}
     AskReadable -- "No" --> AskNotFound["DOCUMENT_NOT_FOUND"]
-    AskReadable -- "Yes" --> AskContext["buildCurrentDocumentContext()<br/>full doc or heading-aware pack"]
+    AskReadable -- "Yes" --> AskContext["buildCurrentDocumentContext()<br/>full doc, heading-aware pack,<br/>or no-heading paragraph chunks"]
     AskContext --> AskPrompt["buildDirectDocumentPrompt()<br/>current document sections only"]
     AskPrompt --> AskTrace["Langfuse metadata<br/>operation rag.ask_document"]
     AskTrace --> AskAnswer["invokeAnswerChain()<br/>LangChain chat model"]
@@ -53,7 +53,7 @@ flowchart TD
     ChatService --> Thread["Get/create active AiChatThread<br/>P2002 retry"]
     Thread --> UserMessage["Persist USER message"]
     UserMessage --> ChatConfig["getRagModelConfig()<br/>embedding index guard"]
-    ChatConfig --> ChatEmbed["embedText(current message)"]
+    ChatConfig --> ChatEmbed["embedText(conversation-aware query)"]
     ChatEmbed --> ChatSearch["searchSimilarChunks()<br/>readable active document ids"]
     ChatSearch --> ChatCap["Cap prompt chunks<br/>12 total, 3 per document"]
     ChatCap --> ChatPrompt["buildRagPrompt()<br/>recent conversation + chunks"]
@@ -68,15 +68,15 @@ flowchart TD
 | UI request | `components/document-editor/ai-assistant-panel.tsx` | Saved document id, trimmed question, optional browser/workspace `chatModel` | Ask route payload; unsaved draft stays out of RAG |
 | Route validation | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts` | JSON body | Normalized `question`, validated optional `chatModel`, or stable 400 error |
 | Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Workspace role, selected active document, explicit document permissions | Permission-safe selected document |
-| Provider boundary | `getRagModelConfig()` and in-memory override | Server env plus optional `chatModel` | Effective chat model; embedding provider/model/dimension unchanged |
-| Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown or heading-aware section subset |
+| Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and in-memory override | Server env plus optional `chatModel` | Effective chat model; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
+| Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown, heading-aware section subset, or no-heading paragraph chunk subset |
 | Ask prompt and citations | `buildDirectDocumentPrompt()` | Current document context | System/user prompt plus current document section citations |
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
 | Chatbot UI | `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx` | Workspace slug, selected document id, active thread state, optional browser/workspace `chatModel` | Fixed bottom-right launcher, compact panel, thread history, send/reset controls |
 | Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional `chatModel`, message send, reset/archive responses with stable error mapping |
 | Chat thread persistence | `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()` | Workspace/user and message | Active thread, persisted user message, persisted assistant message |
 | Chat index guard | `assertCurrentEmbeddingIndex()` | Server model config | Fail-fast unless workspace retrieval index identity is Ollama `bge-m3` 1024 |
-| Chat retrieval | `embedText()`, `searchSimilarChunks()` | Current message embedding, readable document ids | Candidate saved chunks from existing `DocumentChunk` rows |
+| Chat retrieval | `embedText()`, `searchSimilarChunks()` | Conversation-aware query embedding, readable document ids | Candidate saved chunks from existing `DocumentChunk` rows |
 | Chat prompt and citations | `buildRagPrompt()` | Recent conversation and capped chunks | Saved-context prompt plus chunk citations |
 | Chat stale response guard | Prisma transaction in `sendWorkspaceChatMessage()` | Thread id and delayed answer | Assistant response is saved only if the thread is still `ACTIVE` |
 | Langfuse metadata | `createLangfuseCallbackConfig()` | operation/provider/model/citation metadata | Metadata-only by default; callbacks only in explicit full mode |
@@ -97,7 +97,7 @@ Legacy/vector maintenance phases still exist for saved document indexing and fut
 
 Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`과 optional `chatModel`만 읽고, malformed JSON은 missing question과 같은 `QUESTION_REQUIRED` 400으로 정규화한다. Missing 또는 `null` `chatModel`은 no override로 처리한다. String override는 shared model-id validator를 통과해야 하며 invalid override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
 
-Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 permission check, provider config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다.
+Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다.
 
 Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+workspace의 active thread를 만들거나 재사용하고, `sendWorkspaceChatMessage()`는 user message persistence, existing `DocumentChunk` retrieval, recent conversation prompt, answer generation, assistant message persistence를 담당한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`, `/messages`, `/thread/reset` route는 이 service를 인증된 JSON API로 노출하고, `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 호출한다.
 
@@ -108,10 +108,10 @@ Ask AI direct-context request:
 1. `askDocumentQuestion()`은 question을 trim하고 빈 질문이면 `QUESTION_REQUIRED`를 던진다.
 2. Workspace membership과 selected active document만 load한 뒤, workspace role과 explicit document permissions를 `filterReadableDocuments()`로 계산한다.
 3. Selected document가 readable set에 없으면 `DOCUMENT_NOT_FOUND`로 중단한다.
-4. `getRagModelConfig()`가 server-wide env에서 chat provider와 Langfuse config를 읽는다. Ask route가 validated `chatModel` override를 전달한 경우 service는 `chat.model`만 in-memory로 바꾸고 provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
-5. `buildCurrentDocumentContext()`가 selected saved markdown을 context budget에 맞게 pack한다. 문서가 budget 안에 들어가면 전체 saved markdown을 사용하고, 너무 길면 frontmatter/fenced-code heading을 고려한 heading-aware section subset을 만든다.
+4. `getRagGenerationConfig()`가 server-wide env에서 chat provider와 Langfuse config만 읽는다. Ask route가 validated `chatModel` override를 전달한 경우 service는 `chat.model`만 in-memory로 바꾸고 provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
+5. `buildCurrentDocumentContext()`가 selected saved markdown을 context budget에 맞게 pack한다. 문서가 budget 안에 들어가면 전체 saved markdown을 사용하고, 너무 길면 frontmatter/fenced-code heading을 고려한 heading-aware section subset을 만든다. Heading이 없는 긴 문서는 paragraph/chunk fallback으로 쪼갠 뒤 질문 keyword score로 관련 chunk를 고른다.
 6. `buildDirectDocumentPrompt()`는 현재 저장 문서 context만 근거로 system/user prompt와 current-document section citation metadata를 만든다.
-7. `createLangfuseCallbackConfig()`는 `rag.ask_document` operation, effective chat model, selected document id, current context partial 여부, returned citation document ids를 metadata에 담는다. Direct Ask path는 retrieval-only fields인 `retrievedChunkCount`와 `citationChunkIds`를 보내지 않는다.
+7. `createLangfuseCallbackConfig()`는 `rag.ask_document` operation, effective chat model, selected document id, current context partial 여부, returned citation document ids를 metadata에 담는다. Direct Ask path는 retrieval-only fields인 `retrievedChunkCount`, `citationChunkIds`, embedding provider/model/dimension metadata를 보내지 않는다.
 8. `invokeAnswerChain()`은 literal `SystemMessage`와 `HumanMessage`를 만들어 LangChain chat model에 전달한다. Saved context나 question 안의 JSON/code braces는 template 변수로 해석되지 않는다.
 9. Service는 answer와 현재 문서 section citations를 route에 반환하고, UI는 answer body와 `[n] Document Title > Heading` citation을 표시한다.
 
@@ -126,7 +126,7 @@ Workspace chatbot UI/API/service request:
 7. User message를 `AiChatMessage(role=USER)`로 저장한다.
 8. `getRagModelConfig()`로 server-wide provider/base URL/API key와 default model을 읽고, validated `chatModel` override가 있으면 `chat.model`만 in-memory로 대체한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
 9. `assertCurrentEmbeddingIndex()`로 현재 workspace retrieval이 Ollama `bge-m3` 1024 index identity와 맞는지 확인한다.
-10. `embedText()`는 현재 user message를 embedding하고, `searchSimilarChunks()`는 readable active document ids와 current embedding model identity로 existing `DocumentChunk` rows를 검색한다.
+10. `embedText()`는 최근 thread messages와 현재 user message를 합친 conversation-aware query를 embedding하고, `searchSimilarChunks()`는 readable active document ids와 current embedding model identity로 existing `DocumentChunk` rows를 검색한다.
 11. Service는 readable `selectedDocumentId`에 해당하는 chunks를 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다.
 12. `buildRagPrompt()`는 최근 thread message와 현재 user message를 합친 conversation question, 그리고 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
 13. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
@@ -165,13 +165,13 @@ Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가
 
 Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 한다. 이 override는 Ask AI request와 workspace chatbot message request의 `chatModel` field로 전달되고, server는 validated string으로 `chat.model`만 대체한다. Provider, base URL, API key, embedding provider/model/dimension은 request에서 받지 않는다.
 
-Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
+Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 
 ## Retrieval And Ranking
 
-Issue #104 direct Ask path는 retrieval scope expansion을 기본으로 사용하지 않는다. 현재 문서 질문은 selected saved markdown을 직접 pack하고, citation도 현재 문서 section만 가리킨다.
+Issue #104 direct Ask path는 retrieval scope expansion을 기본으로 사용하지 않는다. 현재 문서 질문은 selected saved markdown을 직접 pack하고, citation도 현재 문서 section만 가리킨다. Heading이 없는 긴 문서는 전체 body를 앞에서부터 자르지 않고 paragraph/chunk sections로 나눠 관련 evidence가 뒤쪽에 있어도 context 후보가 될 수 있게 한다.
 
-Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 user message embedding으로 existing `DocumentChunk` rows를 검색하고, readable selected document id에 해당하는 chunks를 prompt cap 전에 stable하게 우선 배치한다. 그 뒤 prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval priority에 반영하지 않는다.
+Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 최근 thread messages와 현재 user message를 합친 conversation-aware query embedding으로 existing `DocumentChunk` rows를 검색하고, readable selected document id에 해당하는 chunks를 prompt cap 전에 stable하게 우선 배치한다. 그 뒤 prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval priority에 반영하지 않는다.
 
 Legacy graph-aware scope expansion helper는 selected current document를 우선하고, saved markdown wiki links와 persisted outgoing links를 합친 linked documents, persisted backlinks, shared normalized tags, workspace fallback 순서로 중복 없이 채운다. 이 helper는 Issue #104 direct Ask default path에서는 호출하지 않고, future explicit expanded-scope Ask AI나 retrieval tuning의 근거로 남아 있다.
 
@@ -187,9 +187,9 @@ Current document boost는 `0.5`, linked document `0.3`, backlink `0.25`, same-ta
 
 Issue #104는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request profile을 분리한다. 구현 범위는 `lib/rag/document-context.ts`의 현재 문서 context packer, `components/ai/thinking-indicator.tsx`의 공통 elapsed-time indicator, `AiChatThread`/`AiChatMessage` schema, Ask AI direct-context service, workspace chatbot RAG service, authenticated chatbot API routes, 우측 하단 workspace chatbot UI다.
 
-Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
+Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer 또는 no-heading paragraph chunk fallback으로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
 
-새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, readable selected document chunks를 prompt cap 전에 우선 배치한다.
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, follow-up 질문의 지시어가 이전 대화 주제를 잃지 않도록 conversation-aware query를 embedding하며, readable selected document chunks를 prompt cap 전에 우선 배치한다.
 
 Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
@@ -203,7 +203,7 @@ Full capture가 켜진 Node runtime에서는 `instrumentation.ts`가 `initialize
 
 ## Failure Modes
 
-Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. Provider env가 불완전하거나 unsupported provider/dimension이면 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다.
+Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. Chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
 
 Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다.
 

@@ -86,6 +86,22 @@ describe("RAG Langfuse callback config", () => {
     }));
   });
 
+  it("omits embedding metadata when a direct answer path does not provide it", () => {
+    const config = createLangfuseCallbackConfig({
+      enabled: false,
+      operation: "rag.ask_document",
+      chatProvider: "ollama",
+      chatModel: "gemma4:e4b",
+    });
+
+    expect(config.metadata).toEqual({
+      operation: "rag.ask_document",
+      chatProvider: "ollama",
+      chatModel: "gemma4:e4b",
+      captureMode: "metadata",
+    });
+  });
+
   it("does not attach a Langfuse callback in metadata capture mode", () => {
     vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-test");
     vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-test");

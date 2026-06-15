@@ -75,7 +75,11 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     : modelConfig;
   assertCurrentEmbeddingIndex(effectiveModelConfig);
 
-  const embedding = await embedText(message, { config: effectiveModelConfig });
+  const conversationQuestion = buildConversationQuestion(
+    orderedMessagesForDisplay(thread.messages),
+    message,
+  );
+  const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? input.selectedDocumentId
@@ -89,7 +93,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   });
   const promptChunks = capPromptChunks(prioritizeSelectedDocumentChunks(chunks, selectedDocumentId));
   const prompt = buildRagPrompt({
-    question: buildConversationQuestion(orderedMessagesForDisplay(thread.messages), message),
+    question: conversationQuestion,
     chunks: promptChunks,
   });
   const citationChunkIds = promptChunks.map((chunk) => chunk.id);
