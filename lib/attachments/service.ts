@@ -226,7 +226,7 @@ export async function getReadableAttachment(attachmentId: string, actorId: strin
     },
   });
 
-  if (!attachment) throw new Error("ATTACHMENT_NOT_FOUND");
+  if (!attachment) throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_NOT_FOUND);
   const role = attachment.document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   const access = await getDocumentAccess(attachment.documentId, actorId);
@@ -236,10 +236,17 @@ export async function getReadableAttachment(attachmentId: string, actorId: strin
     userPermission: access.userPermission,
   });
 
-  return {
-    attachment,
-    bytes: await readFile(attachmentPath(attachment.storageKey)),
-  };
+  try {
+    return {
+      attachment,
+      bytes: await readFile(attachmentPath(attachment.storageKey)),
+    };
+  } catch (error) {
+    if (isMissingAttachmentFileError(error)) {
+      throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_NOT_FOUND);
+    }
+    throw error;
+  }
 }
 
 async function getWritableDocument(documentId: string, actorId: string) {
@@ -296,6 +303,12 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
 
 function attachmentPath(storageKey: string) {
   return path.join(process.cwd(), "storage", "attachments", storageKey);
+}
+
+function isMissingAttachmentFileError(error: unknown) {
+  if (!error || typeof error !== "object") return false;
+  const code = (error as { code?: unknown }).code;
+  return code === "ENOENT" || code === "ENOTDIR";
 }
 
 function sanitizeFileName(fileName: string) {
