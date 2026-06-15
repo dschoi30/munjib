@@ -9,6 +9,7 @@ export type CurrentDocumentContextSection = {
 
 export type CurrentDocumentContext = {
   context: string;
+  labeledContext?: string;
   sections: CurrentDocumentContextSection[];
   partial: boolean;
 };
@@ -81,6 +82,7 @@ export function buildCurrentDocumentContext(
       markdownSections.length > 0 ? markdownSections : [{ headingPath: null, content: body }];
     return {
       context: body,
+      labeledContext: buildLabeledContext(fullSections, input),
       sections: fullSections.map((section, index) => toContextSection(section, input, index + 1)),
       partial: false,
     };
@@ -100,6 +102,7 @@ export function buildCurrentDocumentContext(
   const selectedSections = selectSectionsWithinBudget(sections, budget);
   return {
     context: selectedSections.map((section) => section.content).join("\n\n"),
+    labeledContext: buildLabeledContext(selectedSections, input),
     sections: selectedSections.map((section, index) =>
       toContextSection(section, input, index + 1),
     ),
@@ -287,6 +290,18 @@ function toContextSection(
     documentPath: input.documentPath,
     headingPath: section.headingPath,
   };
+}
+
+function buildLabeledContext(
+  sections: Array<Pick<MarkdownSection, "headingPath" | "content">>,
+  input: Pick<BuildCurrentDocumentContextInput, "documentTitle">,
+) {
+  return sections
+    .map((section, index) => {
+      const headingSuffix = section.headingPath ? ` > ${section.headingPath}` : "";
+      return `[${index + 1}] ${input.documentTitle}${headingSuffix}\n${section.content.trim()}`;
+    })
+    .join("\n\n");
 }
 
 function normalizedKeywordTerms(text: string) {

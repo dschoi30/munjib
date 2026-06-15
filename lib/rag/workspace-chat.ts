@@ -104,13 +104,6 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     workspaceId: workspace.id,
     actorId: input.actorId,
   });
-  const userMessage = await prisma.aiChatMessage.create({
-    data: {
-      threadId: thread.id,
-      role: "USER",
-      content: message,
-    },
-  });
 
   const modelConfig = getRagModelConfig();
   const effectiveModelConfig = input.chatModelOverride
@@ -130,13 +123,14 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   );
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
-    ? input.selectedDocumentId
+    ? (input.selectedDocumentId ?? undefined)
     : undefined;
   await ensureWorkspaceChatRetrievalIndex({
     workspaceId: workspace.id,
     readableDocuments: workspace.readableDocuments,
     query: conversationQuestion,
     embeddingModel: effectiveModelConfig.embedding.indexId,
+    selectedDocumentId,
   });
   const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
   const globalChunks = await searchSimilarChunks({
@@ -194,7 +188,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     retrievedChunkCount: promptChunks.length,
     citationChunkIds,
   };
-  const { assistantMessage, updatedThread } = await prisma.$transaction(async (tx) => {
+  const { userMessage, assistantMessage, updatedThread } = await prisma.$transaction(async (tx) => {
     const activeThread = await tx.aiChatThread.updateMany({
       where: { id: thread.id, status: "ACTIVE" },
       data: { lastMessageAt: new Date() },
@@ -203,6 +197,13 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
       throw new Error(WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED);
     }
 
+    const persistedUserMessage = await tx.aiChatMessage.create({
+      data: {
+        threadId: thread.id,
+        role: "USER",
+        content: message,
+      },
+    });
     const persistedAssistantMessage = await tx.aiChatMessage.create({
       data: {
         threadId: thread.id,
@@ -225,6 +226,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     });
 
     return {
+      userMessage: persistedUserMessage,
       assistantMessage: persistedAssistantMessage,
       updatedThread: persistedThread,
     };
@@ -387,10 +389,12 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   }>;
   query: string;
   embeddingModel: string;
+  selectedDocumentId: string | undefined;
 }) {
   const candidates = selectIndexBackfillDocuments({
     documents: input.readableDocuments,
     query: input.query,
+    selectedDocumentId: input.selectedDocumentId,
   });
   if (candidates.length === 0) return;
 
@@ -435,15 +439,22 @@ function selectIndexBackfillDocuments(input: {
     updatedAt: Date;
   }>;
   query: string;
+  selectedDocumentId?: string;
 }) {
   const queryTerms = normalizedKeywordTerms(input.query);
-  if (queryTerms.size === 0) return [];
+  const shouldIncludeSelectedDocument = Boolean(
+    input.selectedDocumentId && isDocumentReferentialQuery(input.query),
+  );
+  if (queryTerms.size === 0 && !shouldIncludeSelectedDocument) return [];
 
   return input.documents
     .map((document, order) => ({
       document,
       order,
-      score: scoreDocumentForBackfill(document, queryTerms),
+      score: Math.max(
+        scoreDocumentForBackfill(document, queryTerms),
+        shouldIncludeSelectedDocument && document.id === input.selectedDocumentId ? 1 : 0,
+      ),
     }))
     .filter((candidate) => candidate.score > 0)
     .sort((left, right) => {
@@ -547,6 +558,23 @@ function isKeywordCandidate(term: string) {
   }
 
   return term.length >= 3;
+}
+
+function isDocumentReferentialQuery(query: string) {
+  const normalized = query.normalize("NFKC").toLowerCase();
+  return (
+    /\b(this|current|open|selected)\s+(document|doc|page|note)\b/.test(normalized) ||
+    /\b(summarize|summary|explain|describe)\s+(this|current|open|selected)\b/.test(
+      normalized,
+    ) ||
+    normalized.includes("이 문서") ||
+    normalized.includes("현재 문서") ||
+    normalized.includes("열린 문서") ||
+    normalized.includes("이 페이지") ||
+    normalized.includes("현재 페이지") ||
+    normalized.includes("문서 요약") ||
+    normalized.includes("페이지 요약")
+  );
 }
 
 function withDisplayOrderedMessages<TThread extends { messages: Array<{ createdAt: Date }> }>(

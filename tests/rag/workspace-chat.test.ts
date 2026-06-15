@@ -332,6 +332,36 @@ describe("workspace chat service", () => {
     ).toBeLessThan(vi.mocked(searchSimilarChunks).mock.invocationCallOrder[0] ?? 0);
   });
 
+  it("backfills the readable selected document for document-referential prompts", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Welcome",
+      contentMarkdown: "# Welcome\n\nSelected document evidence.",
+    });
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Security",
+      contentMarkdown: "# Security\n\nRotate credentials every quarter.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Summarize this document.",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: selected.id,
+        embeddingModel: "bge-m3",
+      }),
+    );
+  });
+
   it("uses a chat model override without changing the embedding index contract", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
@@ -620,6 +650,36 @@ describe("workspace chat service", () => {
         where: {
           threadId: reset.thread?.id,
           role: "ASSISTANT",
+        },
+      }),
+    ).resolves.toBe(0);
+  });
+
+  it("does not persist an orphan user message when answer generation fails", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    vi.mocked(invokeAnswerChain).mockRejectedValueOnce(new Error("provider down"));
+
+    await expect(
+      sendWorkspaceChatMessage({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        message: "Will this fail?",
+      }),
+    ).rejects.toThrow("provider down");
+
+    await expect(
+      prisma.aiChatMessage.count({
+        where: {
+          thread: {
+            workspaceId: fixture.workspace.id,
+            userId: fixture.user.id,
+          },
         },
       }),
     ).resolves.toBe(0);
