@@ -55,6 +55,8 @@ workspace chatbot retrieval and for future Ask AI expanded-scope fallback.
 - Add a shared thinking indicator pattern for Ask AI and chatbot requests.
 - Add regression tests for accuracy, scope, persistence, permissions, and UI
   loading behavior.
+- Keep chatbot response streaming out of the Issue #104 MVP and track it in
+  follow-up Issue #105.
 
 ## Non-Goals
 
@@ -67,6 +69,7 @@ workspace chatbot retrieval and for future Ask AI expanded-scope fallback.
 - Do not build a multi-thread conversation browser in the MVP.
 - Do not add organization-wide AI policy management in this slice.
 - Do not implement a full RAG evaluation dashboard in this slice.
+- Do not stream chatbot responses in this slice.
 
 ## Architecture
 
@@ -305,19 +308,20 @@ Behavior:
 - Use `aria-live="polite"` so screen readers receive the state change.
 - Clear timers on success, failure, cancellation, unmount, and conversation
   reset.
-- If streaming is implemented in the same slice, keep the indicator visible
-  until the first answer token arrives, then replace it with the streaming
-  assistant message.
-- If streaming is deferred, keep the indicator until the full response arrives.
+- Keep the indicator visible until the full non-streaming response arrives.
+- Leave the component boundary ready for Issue #105 to replace the indicator
+  with a streaming assistant message after the first answer token arrives.
 
 The shared implementation can be a small hook such as `useThinkingIndicator()`
 plus a presentational component used by both AI surfaces.
 
 ## Streaming
 
-Streaming is recommended for perceived speed, but the MVP may ship without
-streaming if the service split and thinking indicator land first. The design
-should avoid blocking it:
+Streaming is explicitly deferred from Issue #104 and tracked separately in
+Issue #105. The Issue #104 MVP ships non-streaming chatbot responses with the
+elapsed-time thinking indicator.
+
+The Issue #104 design should still avoid blocking the later streaming slice:
 
 - API response shapes should leave room for streaming later.
 - UI state should distinguish "thinking before first token" from "answer is
@@ -325,8 +329,9 @@ should avoid blocking it:
 - saved chatbot messages should be created or finalized only once the assistant
   content is complete.
 
-If streaming is deferred, the MVP still benefits from removing Ask AI's default
-embedding and vector search work.
+Deferring streaming keeps Issue #104 focused on Ask AI accuracy, chatbot
+persistence, workspace retrieval, and stable loading states. Issue #105 can
+then add streaming after the non-streaming chatbot contract is tested.
 
 ## Error Handling
 
@@ -429,5 +434,5 @@ Implementation should happen in small slices:
 
 The first implementation should favor correctness and clear boundaries over
 aggressive retrieval expansion. Once the two profiles are stable, future work
-can add scope controls, streaming, multiple chat threads, and evaluation
-fixtures.
+can add scope controls, response streaming through Issue #105, multiple chat
+threads, and evaluation fixtures.

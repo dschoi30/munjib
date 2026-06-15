@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 81
+source_count: 82
 tags:
   - munjib
   - source
@@ -94,7 +94,7 @@ Issue #100 구현은 Issue #73 RAG assistant의 saved-content-only product contr
 
 Issue #102 구현은 OpenRouter cloud model 테스트를 위해 server-wide `openai-compatible` provider env는 그대로 두고, workspace settings panel에서 browser/workspace별 chat model override만 선택하게 한다. 이 구현은 API key/base URL을 client에 노출하지 않고, DB나 Prisma schema를 추가하지 않으며, saved-content-only retrieval과 current indexed embedding identity Ollama `bge-m3` 1024를 유지한다. Settings panel은 preset/custom model id만 `localStorage`에 저장하고, assistant panel은 effective model을 표시하며 optional `chatModel` field를 Ask route로 보낸다. Ask route는 override를 validation하고, service는 `chat.model`만 대체해 provider credential과 embedding/index 설정을 server env 기준으로 유지한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
 
-Issue #104 설계는 AI assistant 경험을 두 request profile로 나누는 계획이다. Ask AI는 현재 문서에 대한 editor-local assistant로 유지하고, 기본 path에서는 current saved markdown을 context budget 안에 직접 pack해 답변한다. 현재 문서가 너무 길 때만 heading-aware section packer를 쓰며, 기본 path에서는 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 새 우측 하단 workspace chatbot은 사용자+workspace별 active thread와 message history를 저장하고, 기존 `DocumentChunk` pgvector store를 readable workspace document retrieval에 재사용한다. Thinking indicator는 공통 elapsed-time UI로 설계하고 영어 메시지만 표시한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
+Issue #104 설계는 AI assistant 경험을 두 request profile로 나누는 계획이다. Ask AI는 현재 문서에 대한 editor-local assistant로 유지하고, 기본 path에서는 current saved markdown을 context budget 안에 직접 pack해 답변한다. 현재 문서가 너무 길 때만 heading-aware section packer를 쓰며, 기본 path에서는 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 새 우측 하단 workspace chatbot은 사용자+workspace별 active thread와 message history를 저장하고, 기존 `DocumentChunk` pgvector store를 readable workspace document retrieval에 재사용한다. Thinking indicator는 공통 elapsed-time UI로 설계하고 영어 메시지만 표시한다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
 
 Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 응답하도록 host Ollama 운영 설정을 적용했다. 서버 host에 Ollama `gemma4:e4b`와 `bge-m3`를 설치했고, Docker web container는 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 host Ollama에 접근한다. `docker-compose.yml`은 Docker `host-gateway`를 `host.docker.internal`로 매핑해 Linux host gateway IP를 동적으로 해석한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent`에 저장했다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
@@ -155,6 +155,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.example.invalid` production
 - GitHub issue #100와 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`: LangChain provider abstraction과 Langfuse RAG observability 설계.
 - GitHub issue #102와 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`: OpenRouter chat model selection 설계와 구현.
 - GitHub issue #104와 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`: Ask AI direct-context 전환과 workspace chatbot 설계.
+- GitHub issue #105: chatbot response streaming follow-up.
 - GitHub issue #88와 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`: GitHub Actions CI/CD 설계.
 - `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`: pgvector, Ollama, retriever, UI, wiki/PR workflow 구현 계획.
 - GitHub issue #89, `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`, `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`: production Docker 로그와 Sentry SaaS error/tracing 역할 분리 설계 및 구현 계획.
