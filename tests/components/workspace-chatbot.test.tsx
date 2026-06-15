@@ -3,10 +3,12 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
+import { writeStoredChatModel } from "@/lib/rag/client-model-settings";
 
 const fetchMock = vi.fn();
 
 beforeEach(() => {
+  window.localStorage.clear();
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
     if (url.endsWith("/assistant/thread")) {
@@ -77,6 +79,61 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+        }),
+      }),
+    );
+  });
+
+  it("sends the stored workspace chat model override with new messages", async () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "google/gemma-4-31b-it:free",
+    );
+    render(<WorkspaceChatbot workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Earlier workspace answer.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "What is the policy?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await screen.findByText("Workspace answer.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/assistant/messages",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          message: "What is the policy?",
+          selectedDocumentId: "doc-1",
+          chatModel: "google/gemma-4-31b-it:free",
+        }),
+      }),
+    );
+  });
+
+  it("uses updated workspace chat model settings without remounting", async () => {
+    render(<WorkspaceChatbot workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Earlier workspace answer.");
+    await act(async () => {
+      writeStoredChatModel("company-handbook", "google/gemma-4-31b-it:free");
+    });
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "What is the policy?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await screen.findByText("Workspace answer.");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/assistant/messages",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          message: "What is the policy?",
+          selectedDocumentId: "doc-1",
+          chatModel: "google/gemma-4-31b-it:free",
         }),
       }),
     );

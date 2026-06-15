@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 211
+source_count: 212
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T22:15:40+0900 - issue-104 chatbot model override follow-up
+
+- Result: Workspace chatbot now honors the same settings-panel chat model override as Ask AI.
+- Coverage: `WorkspaceChatbot` reads and subscribes to the workspace-scoped `munjib:rag-chat-model:<workspaceSlug>` override, `/assistant/messages` validates optional `chatModel` before calling the service, and `sendWorkspaceChatMessage()` changes only `chat.model` while preserving server-side provider credentials, base URL, and the embedding index identity.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/workspace-chatbot.tsx`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat-route.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED first with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/rag/workspace-chat-route.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`, then GREEN with the same command.
 
 ## 2026-06-15T21:52:48+0900 - issue-104 selected document retrieval review
 

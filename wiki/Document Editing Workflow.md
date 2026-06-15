@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 88
+source_count: 89
 tags:
   - munjib
   - workflow
@@ -62,9 +62,9 @@ Issue #104 backend slice 이후 Ask AI service의 기본 답변 근거는 현재
 
 Issue #100 구현은 AI answer generation boundary를 provider-neutral LangChain seam으로 옮겼다. Chat provider는 server env로 Ollama, OpenAI, OpenAI-compatible endpoint 중 선택할 수 있고, embedding provider 설정도 같은 provider set을 이해한다. Issue #104 direct Ask path는 embedding index guard에 묶이지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval은 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity를 reindex follow-up 전까지 fail-fast한다. Langfuse tracing은 optional/fail-open이고, production 기본 metadata mode에서는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback을 붙이지 않으며 explicit `full` capture에서만 LangChain invocation config에 callback을 연결한다.
 
-Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/workspace별 chat model id override를 저장한다. 이 state는 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key를 사용하며, 같은 tab custom event와 cross-tab storage event를 통해 열린 assistant panel에 반영된다. Settings UI는 preset과 custom model id 입력만 제공하고 API key/base URL은 노출하지 않는다. Server는 request의 `chatModel` string을 validation한 뒤 `chat.model`만 바꾸고 provider credential과 embedding/index configuration은 server env를 그대로 사용한다.
+Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/workspace별 chat model id override를 저장한다. 이 state는 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key를 사용하며, 같은 tab custom event와 cross-tab storage event를 통해 열린 assistant panel과 workspace chatbot에 반영된다. Settings UI는 preset과 custom model id 입력만 제공하고 API key/base URL은 노출하지 않는다. Server는 request의 `chatModel` string을 validation한 뒤 `chat.model`만 바꾸고 provider credential과 embedding/index configuration은 server env를 그대로 사용한다.
 
-Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Submit button text는 loading 중에도 `Ask AI`로 유지하고, indicator가 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time status를 표시한다. Workspace page는 같은 indicator를 쓰는 `WorkspaceChatbot`을 우측 하단 fixed AI icon launcher로 mount한다. Icon을 클릭하면 compact chat panel이 열리고 active thread history를 load하며, message send는 selected document id를 API에 함께 보낼 수 있다. Service는 readable selected document chunks를 prompt cap 전에 우선 배치하고, reset은 active thread를 archive한 뒤 visible conversation을 비운다. Chatbot client는 workspace 전환, delayed thread load, delayed send response, reset pending 중 send race를 generation/version guard와 disabled controls로 방어한다.
+Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Submit button text는 loading 중에도 `Ask AI`로 유지하고, indicator가 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time status를 표시한다. Workspace page는 같은 indicator를 쓰는 `WorkspaceChatbot`을 우측 하단 fixed AI icon launcher로 mount한다. Icon을 클릭하면 compact chat panel이 열리고 active thread history를 load하며, message send는 selected document id와 optional settings-panel `chatModel` override를 API에 함께 보낼 수 있다. Service는 readable selected document chunks를 prompt cap 전에 우선 배치하고, validated override가 있으면 provider credential/base URL과 embedding index identity는 유지한 채 answer generation `chat.model`만 바꾼다. Reset은 active thread를 archive한 뒤 visible conversation을 비운다. Chatbot client는 workspace 전환, delayed thread load, delayed send response, reset pending 중 send race를 generation/version guard와 disabled controls로 방어한다.
 
 ## 생성 흐름
 
@@ -165,6 +165,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - GitHub issue #26
 - `components/document-editor.tsx`
 - `components/document-editor/ai-assistant-panel.tsx`
+- `components/workspace-chatbot.tsx`
+- `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
+- `lib/rag/workspace-chat.ts`
 - `components/document-editor/markdown-preview.tsx`
 - `components/document-editor/document-properties.tsx`
 - `components/document-editor/folding-storage.ts`

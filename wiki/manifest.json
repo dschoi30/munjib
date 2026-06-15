@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 88,
+      "source_count": 89,
       "searchPriority": 50
     },
     {
@@ -186,7 +186,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 85,
+      "source_count": 86,
       "searchPriority": 5
     },
     {
@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 211,
+      "source_count": 212,
       "searchPriority": 1
     },
     {
@@ -278,7 +278,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 49,
+      "source_count": 50,
       "searchPriority": 50
     },
     {
@@ -348,7 +348,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 90,
+      "source_count": 91,
       "searchPriority": 30
     },
     {
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 48,
+      "source_count": 49,
       "searchPriority": 50
     },
     {

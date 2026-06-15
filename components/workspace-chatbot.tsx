@@ -4,6 +4,10 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, RotateCcw, Send, X } from "lucide-react";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
+import {
+  readStoredChatModel,
+  subscribeToStoredChatModelChanges,
+} from "@/lib/rag/client-model-settings";
 
 type ChatCitation = {
   index?: number;
@@ -42,6 +46,9 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
+  const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
+    readStoredChatModel(workspaceSlug),
+  );
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
@@ -51,11 +58,19 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
     hasLoadedThreadRef.current = false;
+    setChatModelOverride(readStoredChatModel(workspaceSlug));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
     setIsResetting(false);
     setError("");
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    return subscribeToStoredChatModelChanges((change) => {
+      if (change.workspaceSlug !== workspaceSlug) return;
+      setChatModelOverride(change.chatModel);
+    });
   }, [workspaceSlug]);
 
   useEffect(() => {
@@ -113,6 +128,7 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
         body: JSON.stringify({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
+          ...(chatModelOverride ? { chatModel: chatModelOverride } : {}),
         }),
       });
       const body = (await response.json()) as SendMessageResponse;
