@@ -6,6 +6,7 @@ import { invokeAnswerChain } from "@/lib/rag/answer-chain";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import {
   getOrCreateWorkspaceChatThread,
   resetWorkspaceChatThread,
@@ -29,6 +30,10 @@ vi.mock("@/lib/rag/model-factory", () => ({
 
 vi.mock("@/lib/rag/answer-chain", () => ({
   invokeAnswerChain: vi.fn().mockResolvedValue("Workspace answer [1]."),
+}));
+
+vi.mock("@/lib/rag/index-document", () => ({
+  safeIndexSavedDocument: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("@/lib/rag/langfuse", () => ({
@@ -149,6 +154,15 @@ describe("workspace chat service", () => {
     });
 
     expect(result.assistantMessage.content).toBe("Workspace answer [1].");
+    expect(result.citations).toEqual([
+      {
+        index: 1,
+        documentId: handbook.id,
+        documentTitle: "Handbook",
+        documentPath: handbook.path,
+        headingPath: "Evidence",
+      },
+    ]);
     expect(result.thread.lastMessageAt).toBeInstanceOf(Date);
     expect(assertCurrentEmbeddingIndex).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -267,6 +281,51 @@ describe("workspace chat service", () => {
     );
   });
 
+  it("backfills lexically relevant readable documents before workspace retrieval", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const welcome = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Welcome",
+      contentMarkdown: "# Welcome\n\nGeneral onboarding intro.",
+    });
+    const ptoPolicy = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "PTO Policy",
+      contentMarkdown: "# PTO Exceptions\n\nPTO exception requests require manager approval.",
+    });
+    const security = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Security",
+      contentMarkdown: "# Security\n\nRotate credentials every quarter.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "How are PTO exception requests approved?",
+      selectedDocumentId: welcome.id,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: ptoPolicy.id,
+        embeddingModel: "bge-m3",
+      }),
+    );
+    expect(safeIndexSavedDocument).not.toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: welcome.id }),
+    );
+    expect(safeIndexSavedDocument).not.toHaveBeenCalledWith(
+      expect.objectContaining({ documentId: security.id }),
+    );
+    expect(
+      vi.mocked(safeIndexSavedDocument).mock.invocationCallOrder[0],
+    ).toBeLessThan(vi.mocked(searchSimilarChunks).mock.invocationCallOrder[0] ?? 0);
+  });
+
   it("uses a chat model override without changing the embedding index contract", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
@@ -362,6 +421,66 @@ describe("workspace chat service", () => {
     expect(invokeAnswerChain).toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining("[1] Selected > Evidence"),
+      }),
+    );
+  });
+
+  it("does not promote selected document chunks when they are much less relevant", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const first = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "First",
+      contentMarkdown: "First evidence.",
+    });
+    const second = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Second",
+      contentMarkdown: "Second evidence.",
+    });
+    const third = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Third",
+      contentMarkdown: "Third evidence.",
+    });
+    const fourth = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Fourth",
+      contentMarkdown: "Fourth evidence.",
+    });
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Selected",
+      contentMarkdown: "Selected evidence.",
+    });
+    const returnedChunks = [
+      ...makeChunks(first, 1, 3),
+      ...makeChunks(second, 4, 3),
+      ...makeChunks(third, 7, 3),
+      ...makeChunks(fourth, 10, 3),
+      ...makeChunks(selected, 13, 2).map((chunk) => ({ ...chunk, distance: 0.95 })),
+    ];
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce(returnedChunks);
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Explain the relevant policy",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        citationChunkIds: expect.not.arrayContaining(["chunk-13", "chunk-14"]),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.not.stringContaining("Selected > Evidence"),
       }),
     );
   });

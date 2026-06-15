@@ -52,6 +52,7 @@ export function buildRagPrompt(input: BuildRagPromptInput): RagPrompt {
       "If the saved documents do not contain enough evidence, say that the saved documents do not contain enough evidence to answer.",
       "Answer in the same language as the question where possible.",
       "Cite supporting context with bracketed citation numbers like [1].",
+      "Only cite context that directly supports the answer; if there is not enough evidence, do not include citations.",
     ].join(" "),
     user: [`Question:\n${input.question.trim()}`, `Saved document context:\n${context}`].join("\n\n"),
     citations,
@@ -88,6 +89,7 @@ export function buildDirectDocumentPrompt(input: BuildDirectDocumentPromptInput)
       "If the current saved document does not contain enough evidence, say that the current saved document does not contain enough evidence to answer.",
       "Answer in the same language as the question where possible.",
       "Cite supporting context with bracketed citation numbers like [1].",
+      "Only cite current document sections that directly support the answer; if there is not enough evidence, do not include citations.",
     ].join(" "),
     user: [
       `Question:\n${input.question.trim()}`,
@@ -99,6 +101,19 @@ export function buildDirectDocumentPrompt(input: BuildDirectDocumentPromptInput)
       .join("\n\n"),
     citations,
   };
+}
+
+export function filterCitationsToAnswer(answer: string, citations: RagCitation[]) {
+  const referencedIndices = new Set<number>();
+  for (const match of answer.matchAll(/\[([\d,\s]+)\]/g)) {
+    for (const token of match[1]!.split(",")) {
+      const index = Number.parseInt(token.trim(), 10);
+      if (Number.isInteger(index)) referencedIndices.add(index);
+    }
+  }
+  if (referencedIndices.size === 0) return [];
+
+  return citations.filter((citation) => referencedIndices.has(citation.index));
 }
 
 function citationLabel(

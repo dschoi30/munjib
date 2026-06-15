@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-15T23:04:45+0900 - issue-104 workspace ai retrieval and citation follow-up
+
+- Result: Workspace AI가 Welcome chunk만 검색하고 무관한 source를 표시하던 local regression을 보정했다.
+- Coverage: Local `company-handbook` DB 상태는 active documents 219개 대비 `DocumentChunk` 1개, 그 1개가 Welcome 문서인 상태였으므로 workspace chatbot retrieval 후보가 Welcome으로 고정될 수 있었다. `sendWorkspaceChatMessage()`는 이제 conversation-aware query와 readable documents의 lexical overlap으로 missing/stale chunks를 최대 8개 targeted refresh한 뒤 vector search를 실행한다. Readable selected document chunks는 top vector result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, Ask AI와 workspace chatbot 모두 answer text에 실제로 등장한 `[n]` citation만 returned/persisted citations로 남긴다.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported Workspace AI test result, local DB probe, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`.
+
 ## 2026-06-15T22:32:20+0900 - issue-104 pr review retrieval follow-up
 
 - Result: PR #106 review follow-up으로 direct Ask와 workspace chatbot retrieval robustness를 보강했다.

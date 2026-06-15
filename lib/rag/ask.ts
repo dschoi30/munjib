@@ -5,7 +5,11 @@ import { getRagGenerationConfig } from "@/lib/rag/config";
 import { buildCurrentDocumentContext } from "@/lib/rag/document-context";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
-import { buildDirectDocumentPrompt, type RagCitation } from "@/lib/rag/prompt";
+import {
+  buildDirectDocumentPrompt,
+  filterCitationsToAnswer,
+  type RagCitation,
+} from "@/lib/rag/prompt";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { filterReadableDocuments } from "@/lib/workspace-tree";
 
@@ -142,5 +146,5 @@ export async function askDocumentQuestion(
     metadata: trace.metadata,
   });
 
-  return { answer, citations };
+  return { answer, citations: filterCitationsToAnswer(answer, citations) };
 }

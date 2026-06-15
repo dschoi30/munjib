@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildDirectDocumentPrompt, buildRagPrompt } from "@/lib/rag/prompt";
+import {
+  buildDirectDocumentPrompt,
+  buildRagPrompt,
+  filterCitationsToAnswer,
+} from "@/lib/rag/prompt";
 
 describe("RAG prompt builder", () => {
   it("labels citation context with document title and heading path", () => {
@@ -68,6 +72,34 @@ describe("RAG prompt builder", () => {
 
     expect(prompt.system).toContain("saved documents do not contain enough evidence");
     expect(prompt.system).toContain("same language as the question");
+  });
+
+  it("keeps only citations referenced by the answer text", () => {
+    const citations = [
+      {
+        index: 1,
+        documentId: "doc-1",
+        documentTitle: "Welcome",
+        documentPath: "/welcome",
+        headingPath: null,
+      },
+      {
+        index: 2,
+        documentId: "doc-2",
+        documentTitle: "Policy",
+        documentPath: "/policy",
+        headingPath: "Approvals",
+      },
+    ];
+
+    expect(filterCitationsToAnswer("Requests require approval [2].", citations)).toEqual([
+      citations[1],
+    ]);
+    expect(filterCitationsToAnswer("Requests use both sources [1, 2].", citations)).toEqual(
+      citations,
+    );
+    expect(filterCitationsToAnswer("The saved documents do not contain enough evidence.", citations))
+      .toEqual([]);
   });
 });
 
