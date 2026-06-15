@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-13
-source_count: 183
+updated: 2026-06-15
+source_count: 193
 tags:
   - log
   - munjib
@@ -18,6 +18,30 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T01:22:05+0900 - issue-102 PR review follow-up
+
+- Result: PR #103 review feedback removed `flushSync` from the assistant model setting subscription and made `chatModel: null` equivalent to an absent override in the Ask route.
+- Coverage: Assistant tests now wrap the synthetic settings event in React `act()`, and route tests pin `null` override behavior so clients can explicitly send no override without receiving `INVALID_CHAT_MODEL`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #103 review comments, `components/document-editor/ai-assistant-panel.tsx`, `tests/components/document-editor-preview.test.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `tests/rag/ask-route.test.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/ask-route.test.ts tests/components/document-editor-preview.test.tsx`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+
+## 2026-06-15T01:07:12+0900 - issue-102 openrouter chat model selection implementation
+
+- Result: Workspace settings panel의 AI tab에서 browser/workspace별 Ask AI chat model override를 저장하고, assistant request가 optional `chatModel` field로 answer generation model만 바꾸도록 구현했다.
+- Coverage: `lib/rag/client-model-settings.ts` validates model ids, stores overrides in `localStorage`, reports storage failure to the UI, and emits same-tab plus cross-tab change events. `AiAssistantPanel` displays the effective model and sends `chatModel` only when an override exists. Ask route validates override input and `askDocumentQuestion()` replaces only `chat.model`, preserving the current Ollama `bge-m3` 1024 embedding index contract.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[Document Editing Workflow]], [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #102, `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`, `docs/superpowers/plans/2026-06-15-openrouter-chat-model-selection.md`, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/rag/model-config.test.ts tests/rag/ask-route.test.ts tests/rag/langfuse.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx`; DB-backed `tests/rag/ask.test.ts` still requires a reachable `DATABASE_URL`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+
+## 2026-06-15T00:25:36+0900 - issue-102 openrouter chat model selection design
+
+- Result: Issue #102 설계를 추가해 workspace settings panel에서 OpenRouter-compatible chat model id를 쉽게 바꿔 Ask AI answer generation을 테스트하는 방향을 정했다.
+- Coverage: 설계는 OpenRouter API key/base URL을 server env에만 두고, browser에는 workspace-scoped `localStorage` chat model override만 저장하며, Ask AI request는 optional `chatModel`만 추가한다. Embedding provider/model/dimension, current Ollama `bge-m3` 1024 index identity, saved-content-only retrieval contract는 구현 범위 밖으로 고정한다. 아직 구현된 동작이 아니므로 workflow page의 실제 request steps는 변경하지 않았다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #102, `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`.
+- Verification: spec self-review for placeholders, contradictions, scope, and ambiguity.
 
 ## 2026-06-13T19:44:00+09:00 - rag process workflow page
 

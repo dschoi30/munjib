@@ -68,6 +68,24 @@ describe("RAG Langfuse callback config", () => {
     });
   });
 
+  it("records the effective overridden chat model in metadata", () => {
+    const config = createLangfuseCallbackConfig({
+      enabled: false,
+      operation: "rag.answer",
+      chatProvider: "openai-compatible",
+      chatModel: "moonshotai/kimi-k2.7-code",
+      embeddingProvider: "ollama",
+      embeddingModel: "bge-m3",
+      embeddingDimensions: 1024,
+    });
+
+    expect(config.metadata).toEqual(expect.objectContaining({
+      operation: "rag.answer",
+      chatProvider: "openai-compatible",
+      chatModel: "moonshotai/kimi-k2.7-code",
+    }));
+  });
+
   it("does not attach a Langfuse callback in metadata capture mode", () => {
     vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-test");
     vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-test");
