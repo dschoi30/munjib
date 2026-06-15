@@ -139,13 +139,23 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     embeddingModel: effectiveModelConfig.embedding.indexId,
   });
   const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
-  const chunks = await searchSimilarChunks({
+  const globalChunks = await searchSimilarChunks({
     workspaceId: workspace.id,
     embeddingModel: effectiveModelConfig.embedding.indexId,
     embedding,
     readableDocumentIds,
     limit: RETRIEVAL_LIMIT,
   });
+  const selectedDocumentChunks = selectedDocumentId
+    ? await searchSimilarChunks({
+        workspaceId: workspace.id,
+        embeddingModel: effectiveModelConfig.embedding.indexId,
+        embedding,
+        readableDocumentIds: [selectedDocumentId],
+        limit: PROMPT_CHUNK_LIMIT,
+      })
+    : [];
+  const chunks = mergeRetrievedChunks(globalChunks, selectedDocumentChunks);
   const promptChunks = capPromptChunks(prioritizeSelectedDocumentChunks(chunks, selectedDocumentId));
   const prompt = buildRagPrompt({
     question: conversationQuestion,
@@ -465,6 +475,20 @@ function scoreDocumentForBackfill(
   }
 
   return score;
+}
+
+function mergeRetrievedChunks(primaryChunks: RetrievedChunk[], additionalChunks: RetrievedChunk[]) {
+  const merged: RetrievedChunk[] = [];
+  const seenChunkIds = new Set<string>();
+
+  for (const chunk of [...primaryChunks, ...additionalChunks]) {
+    if (seenChunkIds.has(chunk.id)) continue;
+
+    seenChunkIds.add(chunk.id);
+    merged.push(chunk);
+  }
+
+  return merged;
 }
 
 function capPromptChunks(chunks: RetrievedChunk[]) {

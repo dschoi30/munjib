@@ -57,6 +57,12 @@ vi.mock("@/lib/rag/vector-store", () => ({
 describe("workspace chat service", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.mocked(invokeAnswerChain).mockReset();
+    vi.mocked(invokeAnswerChain).mockResolvedValue("Workspace answer [1].");
+    vi.mocked(safeIndexSavedDocument).mockReset();
+    vi.mocked(safeIndexSavedDocument).mockResolvedValue(true);
+    vi.mocked(searchSimilarChunks).mockReset();
+    vi.mocked(searchSimilarChunks).mockResolvedValue([]);
     vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "ollama");
     vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "gemma4:e4b");
     vi.stubEnv("MUNJIB_RAG_EMBED_PROVIDER", "ollama");
@@ -416,6 +422,50 @@ describe("workspace chat service", () => {
       expect.objectContaining({
         retrievedChunkCount: 12,
         citationChunkIds: expect.arrayContaining(["chunk-13", "chunk-14"]),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("[1] Selected > Evidence"),
+      }),
+    );
+  });
+
+  it("retrieves readable selected document chunks separately before the global cap", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const noise = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Noise",
+      contentMarkdown: "Lots of similar workspace evidence.",
+    });
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Selected",
+      contentMarkdown: "Selected evidence.",
+    });
+    const globalChunks = makeChunks(noise, 1, 60);
+    const selectedChunks = makeChunks(selected, 61, 2).map((chunk, index) => ({
+      ...chunk,
+      distance: 0.08 + index / 100,
+    }));
+    vi.mocked(searchSimilarChunks)
+      .mockResolvedValueOnce(globalChunks)
+      .mockResolvedValueOnce(selectedChunks);
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Explain the open document",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(searchSimilarChunks).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        readableDocumentIds: [selected.id],
+        limit: 12,
       }),
     );
     expect(invokeAnswerChain).toHaveBeenCalledWith(

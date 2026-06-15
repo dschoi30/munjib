@@ -41,7 +41,6 @@ describe("current document context", () => {
     });
 
     expect(context.partial).toBe(true);
-    expect(context.context).toContain("Incident Response");
     expect(context.context).toContain("Rollback uses the previous stable deployment");
     expect(context.context).not.toContain("Interview loops");
     expect(context.sections).toEqual([
@@ -279,6 +278,37 @@ describe("current document context", () => {
         documentTitle: "Imported Notes",
         documentPath: "/imported-notes",
         headingPath: null,
+      },
+    ]);
+  });
+
+  it("selects relevant paragraph chunks inside oversized headed sections", () => {
+    const context = buildCurrentDocumentContext({
+      documentTitle: "Operations Manual",
+      documentPath: "/ops-manual",
+      contentMarkdown: [
+        "# Incident Response",
+        Array.from({ length: 12 }, (_, index) => `Intro incident filler ${index}.`).join(
+          "\n\n",
+        ),
+        "Refund policy exceptions require CFO approval and legal review.",
+        Array.from({ length: 12 }, (_, index) => `Trailing incident filler ${index}.`).join(
+          "\n\n",
+        ),
+      ].join("\n\n"),
+      question: "What are the refund policy exceptions?",
+      maxTokens: 20,
+    });
+
+    expect(context.partial).toBe(true);
+    expect(context.context).toContain("Refund policy exceptions");
+    expect(context.context).not.toContain("Intro incident filler 0");
+    expect(context.sections).toEqual([
+      {
+        index: 1,
+        documentTitle: "Operations Manual",
+        documentPath: "/ops-manual",
+        headingPath: "Incident Response",
       },
     ]);
   });

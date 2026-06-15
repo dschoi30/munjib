@@ -319,6 +319,39 @@ describe("WorkspaceChatbot", () => {
     expect(screen.getByLabelText("Workspace chat message")).toHaveProperty("disabled", false);
   });
 
+  it("shows a recoverable error when initial thread loading returns an error", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ error: "AI_UNAVAILABLE" }, { status: 503 });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+  });
+
+  it("shows a recoverable error when reset fails", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/thread/reset")) {
+        return jsonResponse({ error: "AI_UNAVAILABLE" }, { status: 503 });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+  });
+
   it("shows a recoverable error when sending fails", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url.endsWith("/assistant/thread")) {

@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-15T23:10:42+0900 - issue-104 pr review retrieval context follow-up
+
+- Result: PR #106의 남은 actionable review feedback 중 workspace chatbot error handling, selected-document retrieval cap, oversized headed context packing 항목을 보강했다.
+- Coverage: `WorkspaceChatbot`의 thread load/reset recoverable error handling은 regression tests로 고정했다. `sendWorkspaceChatMessage()`는 global readable chunk search와 selected-document-only search를 병합해 selected document chunks가 global top-60 밖이어도 prompt 후보에 남게 한다. `buildCurrentDocumentContext()`는 budget보다 큰 headed section을 paragraph chunks로 나누고 answer-relevant chunk만 선택하며, positive-score 후보가 있으면 score 0 filler sections를 context budget에 넣지 않는다.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `components/workspace-chatbot.tsx`, `lib/rag/document-context.ts`, `lib/rag/workspace-chat.ts`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/document-context.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/rag/document-context.test.ts tests/rag/workspace-chat.test.ts`.
+
 ## 2026-06-15T23:04:45+0900 - issue-104 workspace ai retrieval and citation follow-up
 
 - Result: Workspace AI가 Welcome chunk만 검색하고 무관한 source를 표시하던 local regression을 보정했다.
