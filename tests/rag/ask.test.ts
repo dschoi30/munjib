@@ -1,13 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { LangfuseCallbackConfigInput } from "@/lib/rag/langfuse";
 import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { askDocumentQuestion } from "@/lib/rag/ask";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { invokeAnswerChain } from "@/lib/rag/answer-chain";
-import { embedText } from "@/lib/rag/embedding-client";
-import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
 import { searchSimilarChunks } from "@/lib/rag/vector-store";
@@ -33,15 +33,20 @@ vi.mock("@/lib/rag/answer-chain", () => ({
 }));
 
 vi.mock("@/lib/rag/langfuse", () => ({
-  createLangfuseCallbackConfig: vi.fn(() => ({
+  createLangfuseCallbackConfig: vi.fn((input: LangfuseCallbackConfigInput) => ({
     callbacks: [],
     metadata: {
-      operation: "rag.answer",
-      chatProvider: "ollama",
-      chatModel: "gemma4:e4b",
-      embeddingProvider: "ollama",
-      embeddingModel: "bge-m3",
-      embeddingDimensions: 1024,
+      operation: input.operation ?? "rag.answer",
+      chatProvider: input.chatProvider,
+      chatModel: input.chatModel,
+      embeddingProvider: input.embeddingProvider,
+      embeddingModel: input.embeddingModel,
+      embeddingDimensions: input.embeddingDimensions,
+      ...(input.citationDocumentIds
+        ? { citationDocumentIds: Array.from(new Set(input.citationDocumentIds)) }
+        : {}),
+      ...(input.metadata ?? {}),
+      captureMode: input.captureMode ?? input.capture ?? "metadata",
     },
   })),
 }));
@@ -77,7 +82,7 @@ describe("RAG ask service", () => {
     await resetTestData();
   });
 
-  it("answers from saved DB content and ignores draft-like caller fields", async () => {
+  it("answers from current saved document context without indexing or vector retrieval", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -85,17 +90,6 @@ describe("RAG ask service", () => {
       title: "Saved Title",
       contentMarkdown: "# Facts\n\nSaved database content",
     });
-    vi.mocked(searchSimilarChunks).mockResolvedValueOnce([
-      {
-        id: "chunk-1",
-        documentId: selected.id,
-        documentTitle: "Saved Title",
-        documentPath: "/saved-title",
-        headingPath: "Facts",
-        content: "Saved database content",
-        distance: 0.1,
-      },
-    ]);
 
     const result = await askDocumentQuestion({
       workspaceSlug: fixture.workspace.slug,
@@ -117,30 +111,10 @@ describe("RAG ask service", () => {
         headingPath: "Facts",
       },
     ]);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
-      documentId: selected.id,
-      embeddingModel: "bge-m3",
-    });
-    expect(embedText).toHaveBeenCalledWith(
-      "What is saved?",
-      expect.objectContaining({
-        config: expect.objectContaining({
-          embedding: expect.objectContaining({
-            provider: "ollama",
-            model: "bge-m3",
-            dimensions: 1024,
-          }),
-        }),
-      }),
-    );
-    expect(searchSimilarChunks).toHaveBeenCalledWith(
-      expect.objectContaining({
-        workspaceId: fixture.workspace.id,
-        embeddingModel: "bge-m3",
-        readableDocumentIds: [selected.id],
-        limit: 60,
-      }),
-    );
+    expect(assertCurrentEmbeddingIndex).not.toHaveBeenCalled();
+    expect(safeIndexSavedDocument).not.toHaveBeenCalled();
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
     expect(createChatModel).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: "ollama",
@@ -150,31 +124,41 @@ describe("RAG ask service", () => {
     );
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        operation: "rag.answer",
+        operation: "rag.ask_document",
         chatProvider: "ollama",
         chatModel: "gemma4:e4b",
         embeddingProvider: "ollama",
         embeddingModel: "bge-m3",
         embeddingDimensions: 1024,
-        retrievedChunkCount: 1,
         citationDocumentIds: [selected.id],
         metadata: expect.objectContaining({
           workspaceSlug: fixture.workspace.slug,
           workspaceId: fixture.workspace.id,
           selectedDocumentId: selected.id,
           actorId: fixture.user.id,
+          contextPartial: false,
         }),
       }),
     );
+    const traceInput = vi.mocked(createLangfuseCallbackConfig).mock.calls[0]?.[0];
+    expect(traceInput).toEqual(expect.any(Object));
+    expect(traceInput).not.toHaveProperty("retrievedChunkCount");
+    expect(traceInput).not.toHaveProperty("citationChunkIds");
+    const answerInput = vi.mocked(invokeAnswerChain).mock.calls[0]?.[0];
+    expect(answerInput?.systemPrompt).toContain("Use only the current saved document context");
+    expect(answerInput?.systemPrompt).toContain("Do not use other workspace documents");
+    expect(answerInput?.userPrompt).toContain("# Facts\n\nSaved database content");
+    expect(answerInput?.userPrompt).toContain("Saved database content");
     expect(invokeAnswerChain).toHaveBeenCalledWith(
       expect.objectContaining({
-        systemPrompt: expect.stringContaining("Use only the saved document context"),
-        userPrompt: expect.stringContaining("Saved database content"),
         chatModel,
         callbacks: [],
         metadata: expect.objectContaining({
-          operation: "rag.answer",
+          operation: "rag.ask_document",
           chatProvider: "ollama",
+          citationDocumentIds: [selected.id],
+          selectedDocumentId: selected.id,
+          contextPartial: false,
         }),
       }),
     );
@@ -235,17 +219,6 @@ describe("RAG ask service", () => {
       title: "Saved Title",
       contentMarkdown: "# Facts\n\nSaved database content",
     });
-    vi.mocked(searchSimilarChunks).mockResolvedValueOnce([
-      {
-        id: "chunk-1",
-        documentId: selected.id,
-        documentTitle: "Saved Title",
-        documentPath: "/saved-title",
-        headingPath: "Facts",
-        content: "Saved database content",
-        distance: 0.1,
-      },
-    ]);
 
     await askDocumentQuestion({
       workspaceSlug: fixture.workspace.slug,
@@ -255,25 +228,10 @@ describe("RAG ask service", () => {
       chatModelOverride: "moonshotai/kimi-k2.7-code",
     });
 
-    expect(embedText).toHaveBeenCalledWith(
-      "What is saved?",
-      expect.objectContaining({
-        config: expect.objectContaining({
-          chat: expect.objectContaining({
-            model: "moonshotai/kimi-k2.7-code",
-          }),
-          embedding: expect.objectContaining({
-            provider: "ollama",
-            model: "bge-m3",
-            dimensions: 1024,
-          }),
-        }),
-      }),
-    );
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
-      documentId: selected.id,
-      embeddingModel: "bge-m3",
-    });
+    expect(assertCurrentEmbeddingIndex).not.toHaveBeenCalled();
+    expect(safeIndexSavedDocument).not.toHaveBeenCalled();
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
     expect(createChatModel).toHaveBeenCalledWith(
       expect.objectContaining({
         provider: "ollama",
@@ -288,11 +246,16 @@ describe("RAG ask service", () => {
         embeddingProvider: "ollama",
         embeddingModel: "bge-m3",
         embeddingDimensions: 1024,
+        citationDocumentIds: [selected.id],
+        metadata: expect.objectContaining({
+          selectedDocumentId: selected.id,
+          contextPartial: false,
+        }),
       }),
     );
   });
 
-  it("propagates RAG provider and vector search failures", async () => {
+  it("answers direct current-document questions even when embedding index config would fail", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -300,32 +263,55 @@ describe("RAG ask service", () => {
       title: "Saved Title",
       contentMarkdown: "Saved content",
     });
-    const failure = new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
-    vi.mocked(embedText).mockRejectedValueOnce(failure);
+    vi.mocked(assertCurrentEmbeddingIndex).mockImplementationOnce(() => {
+      throw new Error("EMBEDDING_INDEX_INCOMPATIBLE");
+    });
 
-    await expect(
-      askDocumentQuestion({
-        workspaceSlug: fixture.workspace.slug,
-        documentId: selected.id,
-        actorId: fixture.user.id,
-        question: "What happened?",
-      }),
-    ).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
+    const result = await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What happened?",
+    });
 
-    vi.mocked(embedText).mockResolvedValueOnce(Array.from({ length: 1024 }, () => 0.01));
-    vi.mocked(searchSimilarChunks).mockRejectedValueOnce(new Error("VECTOR_SEARCH_FAILED"));
-
-    await expect(
-      askDocumentQuestion({
-        workspaceSlug: fixture.workspace.slug,
-        documentId: selected.id,
-        actorId: fixture.user.id,
-        question: "What happened?",
-      }),
-    ).rejects.toThrow("VECTOR_SEARCH_FAILED");
+    expect(result.answer).toBe("Saved answer");
+    expect(assertCurrentEmbeddingIndex).not.toHaveBeenCalled();
+    expect(safeIndexSavedDocument).not.toHaveBeenCalled();
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
+    expect(createChatModel).toHaveBeenCalled();
+    expect(invokeAnswerChain).toHaveBeenCalled();
   });
 
-  it("refreshes only the selected saved document id before retrieval", async () => {
+  it("returns no citations and no citation ids for an empty current document", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Empty",
+      contentMarkdown: "   \n",
+    });
+
+    const result = await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What is here?",
+    });
+
+    expect(result.citations).toEqual([]);
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        citationDocumentIds: [],
+        metadata: expect.objectContaining({
+          selectedDocumentId: selected.id,
+          contextPartial: false,
+        }),
+      }),
+    );
+  });
+
+  it("does not load linked document context for direct document answers", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const originalFindMany = prisma.documentLink.findMany.bind(prisma.documentLink);
     const linkFindMany = vi
@@ -351,12 +337,20 @@ describe("RAG ask service", () => {
       question: "What is linked?",
     });
 
-    expect(safeIndexSavedDocument).toHaveBeenCalledTimes(1);
-    expect(safeIndexSavedDocument).toHaveBeenCalledWith({
-      documentId: selected.id,
-      embeddingModel: "bge-m3",
-    });
-    expect(linkFindMany.mock.calls[0]?.[0]).not.toHaveProperty("orderBy");
+    expect(linkFindMany).not.toHaveBeenCalled();
+    expect(safeIndexSavedDocument).not.toHaveBeenCalled();
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("[[Linked]]"),
+      }),
+    );
+    expect(invokeAnswerChain).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Linked content"),
+      }),
+    );
   });
 });
 

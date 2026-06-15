@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 82,
+      "source_count": 83,
       "searchPriority": 50
     },
     {
@@ -131,7 +131,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 20,
+      "source_count": 21,
       "searchPriority": 50
     },
     {
@@ -186,7 +186,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 82,
+      "source_count": 83,
       "searchPriority": 5
     },
     {
@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 197,
+      "source_count": 198,
       "searchPriority": 1
     },
     {
@@ -278,7 +278,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 43,
+      "source_count": 44,
       "searchPriority": 50
     },
     {
@@ -348,7 +348,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 83,
+      "source_count": 84,
       "searchPriority": 30
     },
     {
@@ -357,7 +357,7 @@
       "title": "RAG Process Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib Ask AI RAG의 saved-content-only request, indexing, retrieval, provider, observability 흐름.",
+      "summary": "Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.",
       "tags": [
         "munjib",
         "workflow",
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 37,
+      "source_count": 42,
       "searchPriority": 50
     },
     {
