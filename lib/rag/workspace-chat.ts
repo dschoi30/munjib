@@ -24,6 +24,7 @@ export type WorkspaceChatInput = {
 export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   message: string;
   selectedDocumentId?: string | null;
+  chatModelOverride?: string;
 };
 
 const RECENT_MESSAGE_LIMIT = 12;
@@ -63,16 +64,25 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   });
 
   const modelConfig = getRagModelConfig();
-  assertCurrentEmbeddingIndex(modelConfig);
+  const effectiveModelConfig = input.chatModelOverride
+    ? {
+        ...modelConfig,
+        chat: {
+          ...modelConfig.chat,
+          model: input.chatModelOverride,
+        },
+      }
+    : modelConfig;
+  assertCurrentEmbeddingIndex(effectiveModelConfig);
 
-  const embedding = await embedText(message, { config: modelConfig });
+  const embedding = await embedText(message, { config: effectiveModelConfig });
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? input.selectedDocumentId
     : undefined;
   const chunks = await searchSimilarChunks({
     workspaceId: workspace.id,
-    embeddingModel: modelConfig.embedding.indexId,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
     embedding,
     readableDocumentIds,
     limit: RETRIEVAL_LIMIT,
@@ -84,14 +94,14 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   });
   const citationChunkIds = promptChunks.map((chunk) => chunk.id);
   const trace = createLangfuseCallbackConfig({
-    enabled: modelConfig.langfuse.enabled,
-    captureMode: modelConfig.langfuse.captureMode,
+    enabled: effectiveModelConfig.langfuse.enabled,
+    captureMode: effectiveModelConfig.langfuse.captureMode,
     operation: "rag.workspace_chat",
-    chatProvider: modelConfig.chat.provider,
-    chatModel: modelConfig.chat.model,
-    embeddingProvider: modelConfig.embedding.provider,
-    embeddingModel: modelConfig.embedding.indexId,
-    embeddingDimensions: modelConfig.embedding.dimensions,
+    chatProvider: effectiveModelConfig.chat.provider,
+    chatModel: effectiveModelConfig.chat.model,
+    embeddingProvider: effectiveModelConfig.embedding.provider,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
+    embeddingDimensions: effectiveModelConfig.embedding.dimensions,
     retrievedChunkCount: promptChunks.length,
     citationDocumentIds: prompt.citations.map((citation) => citation.documentId),
     citationChunkIds,
@@ -106,7 +116,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   const answer = await invokeAnswerChain({
     systemPrompt: prompt.system,
     userPrompt: prompt.user,
-    chatModel: createChatModel(modelConfig.chat) as ChatModelLike,
+    chatModel: createChatModel(effectiveModelConfig.chat) as ChatModelLike,
     callbacks: trace.callbacks,
     metadata: trace.metadata,
   });
@@ -130,7 +140,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
         content: answer,
         citations: prompt.citations as Prisma.InputJsonValue,
         contextMeta,
-        model: modelConfig.chat.model,
+        model: effectiveModelConfig.chat.model,
       },
     });
     const persistedThread = await tx.aiChatThread.update({

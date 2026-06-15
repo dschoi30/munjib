@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import {
+  INVALID_CHAT_MODEL_ERROR,
+  validateChatModelId,
+} from "@/lib/rag/client-model-settings";
+import {
   sendWorkspaceChatMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
@@ -35,12 +39,21 @@ export async function POST(
     return NextResponse.json({ error: "INVALID_SELECTED_DOCUMENT_ID" }, { status: 400 });
   }
 
+  const chatModelValidation =
+    body.value.chatModel === undefined || body.value.chatModel === null
+      ? null
+      : validateChatModelId(body.value.chatModel);
+  if (chatModelValidation && !chatModelValidation.ok) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+
   try {
     const result = await sendWorkspaceChatMessage({
       workspaceSlug,
       actorId: user.id,
       message,
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
+      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
 
     return NextResponse.json(result);

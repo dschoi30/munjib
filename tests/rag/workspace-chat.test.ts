@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { WorkspaceRole } from "@prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { invokeAnswerChain } from "@/lib/rag/answer-chain";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
@@ -52,7 +52,16 @@ vi.mock("@/lib/rag/vector-store", () => ({
 describe("workspace chat service", () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "ollama");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "gemma4:e4b");
+    vi.stubEnv("MUNJIB_RAG_EMBED_PROVIDER", "ollama");
+    vi.stubEnv("MUNJIB_RAG_EMBED_MODEL", "bge-m3");
+    vi.stubEnv("MUNJIB_RAG_EMBED_DIMENSIONS", "1024");
     await resetTestData();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("creates and reuses one active thread per user and workspace", async () => {
@@ -251,6 +260,44 @@ describe("workspace chat service", () => {
           model: "gemma4:e4b",
         }),
       ]),
+    );
+  });
+
+  it("uses a chat model override without changing the embedding index contract", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What should I know?",
+      chatModelOverride: "google/gemma-4-31b-it:free",
+    });
+
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "google/gemma-4-31b-it:free",
+        baseUrl: "http://localhost:11434",
+      }),
+    );
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatModel: "google/gemma-4-31b-it:free",
+        embeddingProvider: "ollama",
+        embeddingModel: "bge-m3",
+        embeddingDimensions: 1024,
+      }),
+    );
+    expect(assertCurrentEmbeddingIndex).toHaveBeenCalledWith(
+      expect.objectContaining({
+        embedding: expect.objectContaining({ indexId: "bge-m3" }),
+      }),
     );
   });
 
