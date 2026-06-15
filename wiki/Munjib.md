@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 43
+source_count: 44
 tags:
   - munjib
   - product
@@ -48,7 +48,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - attachments, versions, audit log를 tab으로 전환하고 닫힘 상태에서는 reopen icon만 남기는 metadata panel.
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
-- document title row의 `AI에게 묻기` assistant, saved DB content 기반 RAG answer, pgvector chunk index.
+- document title row의 `AI에게 묻기` assistant, 현재 저장 문서 direct-context answer, workspace chatbot backend RAG service, pgvector chunk index.
 
 ## Folder hierarchy
 
@@ -76,7 +76,7 @@ Issue #100 구현으로 이 RAG assistant의 permission, saved-content, graph-aw
 
 Issue #102 구현으로 OpenRouter를 `openai-compatible` provider env로 연결한 뒤 workspace settings panel에서 browser/workspace별 chat model id만 바꿔 Ask AI answer generation 모델을 테스트할 수 있다. API key와 base URL은 server env에 유지하고, browser에는 model id만 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key로 저장한다. Ask route는 optional `chatModel` override를 validation한 뒤 service에 전달하고, service는 `chat.model`만 바꾸며 embedding provider/model/dimension과 현재 Ollama `bge-m3` 1024 index contract는 건드리지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
 
-Issue #104 첫 구현 slice는 Ask AI를 현재 문서 direct-context path로 전환하기 위한 context packer, Ask AI/chatbot 공통 thinking indicator, workspace chatbot 대화 이력 schema를 추가했다. 아직 Ask AI service default path와 우측 하단 chatbot UI/API는 후속 task 범위다. 방향은 기존 Ask AI를 editor-local 현재 문서 assistant로 유지하되 기본 답변 경로를 현재 저장 문서 direct context로 바꿔 per-request indexing/question embedding/vector search를 제거하는 것이다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, 우측 하단 sticky workspace chatbot이 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
+Issue #104 backend slice는 Ask AI를 현재 문서 direct-context path로 전환하기 위한 context packer, Ask AI/chatbot 공통 thinking indicator, workspace chatbot 대화 이력 schema, Ask AI direct service, workspace chatbot RAG service를 추가했다. 기존 Ask AI는 editor-local 현재 문서 assistant로 유지되며, 기본 답변 경로는 현재 저장 문서 direct context라 per-request indexing/question embedding/vector search를 호출하지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot service가 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. 우측 하단 sticky chatbot API/UI는 후속 task 범위이고, chatbot response streaming은 Issue #104 MVP에서 제외해 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
 Ask AI RAG의 request, provider/env, indexing, retrieval, reranking, prompt, answer generation, observability 흐름은 [[RAG Process Workflow]]에서 본다.
 
@@ -111,6 +111,8 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `components/document-editor/ai-assistant-panel.tsx`
 - `components/workspace-settings-panel.tsx`
 - `lib/rag/client-model-settings.ts`
+- `lib/rag/document-context.ts`
+- `lib/rag/workspace-chat.ts`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
 - `components/folder-detail.tsx`

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 197
+source_count: 198
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T19:06:48+0900 - issue-104 ask direct and chatbot service
+
+- Result: Issue #104 backend slice로 Ask AI service를 current-document direct context path로 전환하고 workspace chatbot RAG service를 추가했다.
+- Coverage: `askDocumentQuestion()`은 selected active document와 permission만 읽고 `buildCurrentDocumentContext()` / `buildDirectDocumentPrompt()`로 답변해 selected document indexing, question embedding, vector search, graph-aware retrieval, rerank를 호출하지 않는다. `sendWorkspaceChatMessage()`는 active thread create/reuse, user/assistant message persistence, readable `DocumentChunk` retrieval, recent conversation prompt, Langfuse metadata, reset/archive를 처리하며 delayed answer가 archived thread에 저장되지 않도록 active-thread transaction guard를 둔다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`, `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, `lib/rag/ask.ts`, `lib/rag/prompt.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/prompt.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/document-context.test.ts tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/langfuse.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-15T18:25:00+0900 - issue-104 first implementation slice
 
