@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 41
+source_count: 42
 tags:
   - munjib
   - product
@@ -76,7 +76,7 @@ Issue #100 구현으로 이 RAG assistant의 permission, saved-content, graph-aw
 
 Issue #102 구현으로 OpenRouter를 `openai-compatible` provider env로 연결한 뒤 workspace settings panel에서 browser/workspace별 chat model id만 바꿔 Ask AI answer generation 모델을 테스트할 수 있다. API key와 base URL은 server env에 유지하고, browser에는 model id만 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key로 저장한다. Ask route는 optional `chatModel` override를 validation한 뒤 service에 전달하고, service는 `chat.model`만 바꾸며 embedding provider/model/dimension과 현재 Ollama `bge-m3` 1024 index contract는 건드리지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
 
-Issue #104 설계는 아직 구현 전 계획이다. 방향은 기존 Ask AI를 editor-local 현재 문서 assistant로 유지하되 기본 답변 경로를 현재 저장 문서 direct context로 바꿔 per-request indexing/question embedding/vector search를 제거하는 것이다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, 우측 하단 sticky workspace chatbot이 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
+Issue #104 설계는 아직 구현 전 계획이다. 방향은 기존 Ask AI를 editor-local 현재 문서 assistant로 유지하되 기본 답변 경로를 현재 저장 문서 direct context로 바꿔 per-request indexing/question embedding/vector search를 제거하는 것이다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, 우측 하단 sticky workspace chatbot이 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
 
 Ask AI RAG의 request, provider/env, indexing, retrieval, reranking, prompt, answer generation, observability 흐름은 [[RAG Process Workflow]]에서 본다.
 
@@ -138,6 +138,7 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
+- GitHub issue #105
 - `tests/rag/model-config.test.ts`
 - `tests/rag/model-factory.test.ts`
 - `tests/rag/embedding-client.test.ts`

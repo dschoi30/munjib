@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 194
+source_count: 195
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T11:40:00+0900 - issue-105 chatbot streaming split
+
+- Result: Chatbot response streaming을 Issue #104 MVP에서 제외하고 별도 Issue #105 follow-up으로 분리했다.
+- Coverage: Issue #104는 non-streaming chatbot response와 elapsed-time Thinking indicator를 구현하고, Issue #105는 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 후속 작업으로 둔다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`.
+- Verification: `pnpm wiki:manifest`; `git diff --check`; spec/wiki placeholder scan.
 
 ## 2026-06-15T11:25:00+0900 - issue-104 ai assistant chatbot design
 

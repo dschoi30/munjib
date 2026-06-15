@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI RAG의 saved-content-only request, indexing, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-15
-source_count: 35
+source_count: 36
 tags:
   - munjib
   - workflow
@@ -28,7 +28,7 @@ links:
 
 이 page는 document editor의 `AI에게 묻기`에서 시작해 saved DB content만 사용하는 현재 Ask AI RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
-Issue #104 설계는 아직 구현 전 계획이며 현재 process map을 대체한 상태가 아니다. 계획된 방향은 Ask AI 기본 path를 현재 문서 direct-context answer로 바꾸고, 기존 `DocumentChunk` pgvector store는 새 workspace chatbot의 전역 readable document retrieval에 주로 재사용하는 것이다.
+Issue #104 설계는 아직 구현 전 계획이며 현재 process map을 대체한 상태가 아니다. 계획된 방향은 Ask AI 기본 path를 현재 문서 direct-context answer로 바꾸고, 기존 `DocumentChunk` pgvector store는 새 workspace chatbot의 전역 readable document retrieval에 주로 재사용하는 것이다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다.
 
 ## Process Map
 
@@ -157,7 +157,7 @@ Issue #104 설계는 기존 RAG/vector DB를 제거하지 않고 AI surface별 r
 
 새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, answer turn마다 기존 `DocumentChunk` rows에서 readable active document chunks를 검색한다. Retrieval은 document별 chunk cap, relevance threshold calibration, optional selected-document boost, answer context에 포함된 chunk만 citation으로 반환하는 방향이다.
 
-Ask AI와 chatbot은 model config, chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
+Ask AI와 chatbot은 model config, chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
 
 ## Observability And Privacy
 
@@ -199,6 +199,7 @@ pnpm wiki:sync-check --staged
 - GitHub issue #100
 - GitHub issue #102
 - GitHub issue #104
+- GitHub issue #105
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
