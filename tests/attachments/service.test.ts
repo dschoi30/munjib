@@ -1,3 +1,5 @@
+import { unlink } from "node:fs/promises";
+import path from "node:path";
 import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +9,7 @@ vi.mock("@/lib/rag/index-document", () => ({
 }));
 
 import {
+  getReadableAttachment,
   uploadDocumentAttachment,
   uploadPastedDocumentImageAttachment,
 } from "@/lib/attachments/service";
@@ -76,6 +79,31 @@ describe("attachment service", () => {
         bytes: new TextEncoder().encode("hello"),
       }),
     ).rejects.toThrow("WORKSPACE_WRITE_FORBIDDEN");
+  });
+
+  it("maps a missing attachment file to a stable not-found error", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Missing File Target",
+      contentMarkdown: "# Missing File Target",
+    });
+    const attachment = await uploadDocumentAttachment({
+      documentId: document.id,
+      actorId: fixture.user.id,
+      fileName: "missing.txt",
+      mimeType: "text/plain",
+      bytes: new TextEncoder().encode("missing soon"),
+    });
+    const persisted = await prisma.attachment.findUniqueOrThrow({
+      where: { id: attachment.id },
+    });
+    await unlink(path.join(process.cwd(), "storage", "attachments", persisted.storageKey));
+
+    await expect(getReadableAttachment(attachment.id, fixture.user.id)).rejects.toThrow(
+      "ATTACHMENT_NOT_FOUND",
+    );
   });
 
   it("uploads a pasted image attachment without changing document markdown or versions", async () => {
