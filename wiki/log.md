@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 198
+source_count: 207
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T19:32:52+0900 - issue-104 workspace chatbot api ui
+
+- Result: Issue #104 UI/API slice로 workspace chatbot의 authenticated API routes와 우측 하단 floating chatbot panel을 추가했다.
+- Coverage: `/assistant/thread`는 active thread와 history를 load하고, `/assistant/messages`는 trimmed message와 optional selected document id를 받아 workspace RAG answer를 생성하며, `/assistant/thread/reset`은 active thread를 archive한다. Shared error mapper는 workspace not found, blank message, archived-thread race, RAG runtime failure를 stable JSON status로 정규화한다. `WorkspaceChatbot`은 fixed launcher, compact panel, active thread load, send/reset controls, citations, Thinking indicator, workspace-change isolation, delayed thread/send response guard, reset-pending disabled state를 제공한다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `app/api/workspaces/[workspaceSlug]/assistant/thread/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/rag/workspace-chat-route.test.ts`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/rag/ask-route.test.ts tests/components/workspace-chatbot.test.tsx tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
 
 ## 2026-06-15T19:06:48+0900 - issue-104 ask direct and chatbot service
 

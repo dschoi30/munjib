@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 83
+source_count: 87
 tags:
   - munjib
   - workflow
@@ -64,7 +64,7 @@ Issue #100 구현은 AI answer generation boundary를 provider-neutral LangChain
 
 Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/workspace별 chat model id override를 저장한다. 이 state는 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key를 사용하며, 같은 tab custom event와 cross-tab storage event를 통해 열린 assistant panel에 반영된다. Settings UI는 preset과 custom model id 입력만 제공하고 API key/base URL은 노출하지 않는다. Server는 request의 `chatModel` string을 validation한 뒤 `chat.model`만 바꾸고 provider credential과 embedding/index configuration은 server env를 그대로 사용한다.
 
-Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Submit button text는 loading 중에도 `Ask AI`로 유지하고, indicator가 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time status를 표시한다. 우측 하단 workspace chatbot API/UI는 후속 task 범위다.
+Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Submit button text는 loading 중에도 `Ask AI`로 유지하고, indicator가 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time status를 표시한다. Workspace page는 같은 indicator를 쓰는 `WorkspaceChatbot`을 우측 하단 fixed AI icon launcher로 mount한다. Icon을 클릭하면 compact chat panel이 열리고 active thread history를 load하며, message send는 selected document id를 API에 함께 보낼 수 있고 reset은 active thread를 archive한 뒤 visible conversation을 비운다. Chatbot client는 workspace 전환, delayed thread load, delayed send response, reset pending 중 send race를 generation/version guard와 disabled controls로 방어한다.
 
 ## 생성 흐름
 
