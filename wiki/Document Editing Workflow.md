@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 79
+source_count: 82
 tags:
   - munjib
   - workflow
@@ -61,6 +61,8 @@ Issue #73 이후 `DocumentEditor` title input 우측에는 `AI에게 묻기` but
 Issue #100 구현은 RAG model boundary를 provider-neutral LangChain seam으로 옮겼다. Ask flow의 permission check, saved document indexing, graph-aware scope, pgvector search, rerank, citation metadata는 유지하고, prompt formatting과 chat invocation은 LangChain prompt/model/parser chain으로 구성한다. Chat provider는 server env로 Ollama, OpenAI, OpenAI-compatible endpoint 중 선택할 수 있고, embedding provider 설정도 같은 provider set을 이해하지만 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding identity는 reindex follow-up 전까지 live Ask AI에서 fail-fast한다. Langfuse tracing은 optional/fail-open이고, production 기본 metadata mode에서는 prompt/context/question/answer body egress를 막기 위해 Langfuse callback을 붙이지 않으며 explicit `full` capture에서만 LangChain invocation config에 callback을 연결한다.
 
 Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/workspace별 chat model id override를 저장한다. 이 state는 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key를 사용하며, 같은 tab custom event와 cross-tab storage event를 통해 열린 assistant panel에 반영된다. Settings UI는 preset과 custom model id 입력만 제공하고 API key/base URL은 노출하지 않는다. Server는 request의 `chatModel` string을 validation한 뒤 `chat.model`만 바꾸고 provider credential과 embedding/index configuration은 server env를 그대로 사용한다.
+
+Issue #104 첫 UI slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙였다. Submit button text는 loading 중에도 `Ask AI`로 유지하고, indicator가 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time status를 표시한다. 이 slice는 Ask AI request payload나 service retrieval path를 아직 바꾸지 않는다.
 
 ## 생성 흐름
 

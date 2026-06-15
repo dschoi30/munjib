@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 17
+updated: 2026-06-15
+source_count: 20
 tags:
   - munjib
   - data-model
@@ -121,6 +121,27 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  AiChatThread {
+    String id PK
+    String workspaceId FK
+    String userId FK
+    String title
+    AiChatThreadStatus status
+    DateTime lastMessageAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  AiChatMessage {
+    String id PK
+    String threadId FK
+    AiChatMessageRole role
+    String content
+    Json citations
+    Json contextMeta
+    String model
+    DateTime createdAt
+    DateTime updatedAt
+  }
   DocumentLink {
     String id PK
     String workspaceId FK
@@ -201,6 +222,7 @@ erDiagram
   Workspace ||--o{ WorkspaceMember : has
   Workspace ||--o{ Folder : contains
   Workspace ||--o{ Document : contains
+  Workspace ||--o{ AiChatThread : has
   Workspace ||--o{ DocumentLink : indexes
   Workspace ||--o{ Tag : owns
   User ||--o{ Document : creates
@@ -212,6 +234,8 @@ erDiagram
   Document ||--o{ Document : parents
   Document ||--o{ DocumentVersion : snapshots
   Document ||--o{ DocumentChunk : indexes
+  User ||--o{ AiChatThread : owns
+  AiChatThread ||--o{ AiChatMessage : contains
   User ||--o{ DocumentVersion : authors
   Document ||--o{ DocumentLink : source
   Document ||--o{ DocumentLink : target
@@ -249,6 +273,8 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
 - `DocumentChunk`: saved `Document.contentMarkdown`에서 만든 RAG retrieval chunk다. `workspaceId`는 denormalized field지만 caller/draft 값이 아니라 DB에서 다시 읽은 saved `Document.workspaceId`에서만 파생한다.
+- `AiChatThread`: Issue #104 workspace chatbot의 사용자+workspace별 대화 thread다. `status`는 `ACTIVE` 또는 `ARCHIVED`이며 PostgreSQL partial unique index가 `(workspaceId, userId)`별 active thread를 하나로 제한한다.
+- `AiChatMessage`: workspace chatbot thread 안의 사용자/assistant message다. Assistant message는 nullable `citations` JSON과 nullable `contextMeta` JSON으로 answer turn의 citation payload와 retrieval/model metadata를 저장할 수 있다.
 
 현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 

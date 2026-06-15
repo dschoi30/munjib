@@ -223,14 +223,17 @@ AiChatMessage
   threadId
   role
   content
-  citationsJson
+  citations
+  contextMeta
   model
   createdAt
+  updatedAt
 ```
 
 Thread `status` uses `ACTIVE` and `ARCHIVED`. Message `role` uses `USER` and
-`ASSISTANT`. `citationsJson` stores the assistant message citation payload as
-JSON. User messages use an empty citation payload.
+`ASSISTANT`. `citations` stores the assistant message citation payload as
+nullable JSON, and `contextMeta` stores nullable retrieval/model context metadata
+for the answer turn. User messages leave citation and context metadata empty.
 
 Suggested relations:
 
@@ -241,14 +244,19 @@ Suggested relations:
 Suggested constraints and indexes:
 
 - index `AiChatThread(workspaceId, userId, status, lastMessageAt)`
+- PostgreSQL partial unique index on `AiChatThread(workspaceId, userId)` where
+  `status = 'ACTIVE'`
 - index `AiChatMessage(threadId, createdAt)`
 - cascade messages when a thread is deleted
 - cascade threads when a workspace or user is deleted
 
-MVP behavior uses one active thread per user/workspace. The schema uses a thread
-model instead of a single settings row so future work can add thread lists,
-renaming, archiving, and multiple topic conversations without changing the core
-message model.
+MVP behavior uses one active thread per user/workspace, enforced by the partial
+unique index because Prisma cannot model that partial unique constraint in
+`schema.prisma`. The Task 5 service should handle concurrent create races
+against that database invariant intentionally. The schema uses a thread model
+instead of a single settings row so future work can add thread lists, renaming,
+archiving, and multiple topic conversations without changing the core message
+model.
 
 Reset behavior archives the current active thread and clears the visible
 conversation. The next thread load or message send creates a fresh active
