@@ -72,6 +72,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const baseProps = {
@@ -304,8 +305,8 @@ describe("DocumentEditor heading preview folding", () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => ({
       ok: true,
       json: async () => ({
-        answer: "Follow the handbook process.",
-        citations: [{ documentId: "doc-1", title: "Foldable", headingPath: ["Process"] }],
+        answer: "*   **Process:** Follow the handbook process [1].",
+        citations: [{ index: 1, documentId: "doc-1", title: "Foldable", headingPath: ["Process"] }],
       }),
     }));
     vi.stubGlobal("fetch", fetchMock);
@@ -330,7 +331,12 @@ describe("DocumentEditor heading preview folding", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
 
-    await screen.findByText("Follow the handbook process.");
+    const strong = await screen.findByText("Process:");
+    expect(strong.tagName).toBe("STRONG");
+    const citationLink = screen.getByRole("link", { name: "[1] Foldable > Process" });
+    expect(citationLink.getAttribute("href")).toBe(
+      "/workspaces/company-handbook?document=doc-1",
+    );
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/documents/doc-1/ask",
@@ -343,6 +349,35 @@ describe("DocumentEditor heading preview folding", () => {
     const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
     expect(requestBody).not.toContain("Unsaved title");
     expect(requestBody).not.toContain("Draft body");
+  });
+
+  it("shows the Ask AI thinking indicator while the request is pending", async () => {
+    vi.useFakeTimers();
+    const deferred = createDeferred<Response>();
+    vi.stubGlobal("fetch", vi.fn(() => deferred.promise));
+
+    renderEditor("# Saved\n\nContent");
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.change(screen.getByLabelText("AI question"), {
+      target: { value: "What is saved?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    expect(screen.getByText("Thinking...")).toBeTruthy();
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(screen.getByText("Reviewing the relevant document context...")).toBeTruthy();
+
+    await act(async () => {
+      deferred.resolve(new Response(JSON.stringify({ answer: "Saved answer", citations: [] })));
+      await deferred.promise;
+    });
+    vi.useRealTimers();
+
+    await screen.findByText("Saved answer");
+    expect(screen.queryByText("Reviewing the relevant document context...")).toBeNull();
   });
 
   it("shows the server default AI model when no browser override is stored", () => {

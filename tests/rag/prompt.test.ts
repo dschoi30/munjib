@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildRagPrompt } from "@/lib/rag/prompt";
+import {
+  buildDirectDocumentPrompt,
+  buildRagPrompt,
+  filterCitationsToAnswer,
+  normalizeAnswerCitations,
+} from "@/lib/rag/prompt";
 
 describe("RAG prompt builder", () => {
   it("labels citation context with document title and heading path", () => {
@@ -68,5 +73,223 @@ describe("RAG prompt builder", () => {
 
     expect(prompt.system).toContain("saved documents do not contain enough evidence");
     expect(prompt.system).toContain("same language as the question");
+  });
+
+  it("keeps only citations referenced by the answer text", () => {
+    const citations = [
+      {
+        index: 1,
+        documentId: "doc-1",
+        documentTitle: "Welcome",
+        documentPath: "/welcome",
+        headingPath: null,
+      },
+      {
+        index: 2,
+        documentId: "doc-2",
+        documentTitle: "Policy",
+        documentPath: "/policy",
+        headingPath: "Approvals",
+      },
+    ];
+
+    expect(filterCitationsToAnswer("Requests require approval [2].", citations)).toEqual([
+      citations[1],
+    ]);
+    expect(filterCitationsToAnswer("Requests use both sources [1, 2].", citations)).toEqual(
+      citations,
+    );
+    expect(filterCitationsToAnswer("The saved documents do not contain enough evidence.", citations))
+      .toEqual([]);
+  });
+
+  it("renumbers cited sources by first appearance in the answer", () => {
+    const citations = [
+      {
+        index: 3,
+        documentId: "doc-demand",
+        documentTitle: "AI Demand",
+        documentPath: "/ai-demand",
+        headingPath: "Demand",
+      },
+      {
+        index: 7,
+        documentId: "doc-fear",
+        documentTitle: "AI Fear",
+        documentPath: "/ai-fear",
+        headingPath: "Adoption",
+      },
+      {
+        index: 8,
+        documentId: "doc-capex",
+        documentTitle: "Hyperscaler CAPEX",
+        documentPath: "/hyperscaler-capex",
+        headingPath: "Investment",
+      },
+      {
+        index: 9,
+        documentId: "doc-survival",
+        documentTitle: "Survival Cost",
+        documentPath: "/survival-cost",
+        headingPath: null,
+      },
+    ];
+
+    expect(
+      normalizeAnswerCitations(
+        "CAPEX continues [8], [9]. Demand compounds [3, 7].",
+        citations,
+      ),
+    ).toEqual({
+      answer: "CAPEX continues [1], [2]. Demand compounds [3, 4].",
+      citations: [
+        { ...citations[2], index: 1 },
+        { ...citations[3], index: 2 },
+        { ...citations[0], index: 3 },
+        { ...citations[1], index: 4 },
+      ],
+    });
+  });
+});
+
+describe("direct current document prompt builder", () => {
+  it("instructs the model to answer only from the current saved document", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "What is the rollout plan?",
+      currentDocumentContext: {
+        context: "# Rollout\n\nShip the saved plan.",
+        partial: false,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Launch Plan",
+            documentPath: "/launch-plan",
+            headingPath: "Rollout",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.system).toContain("current saved document");
+    expect(prompt.system).toContain("Do not use other workspace documents");
+    expect(prompt.system).toContain("Do not use unsaved editor drafts");
+  });
+
+  it("includes the provided current document context in the user prompt", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "What is saved?",
+      currentDocumentContext: {
+        context: "# Facts\n\nSaved database content",
+        labeledContext: "[1] Saved Title > Facts\n# Facts\n\nSaved database content",
+        partial: false,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "Facts",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.user).toContain("Question:\nWhat is saved?");
+    expect(prompt.user).toContain(
+      "Current saved document context:\n[1] Saved Title > Facts\n# Facts\n\nSaved database content",
+    );
+  });
+
+  it("labels each current document context section inline with its content", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "Which sections matter?",
+      currentDocumentContext: {
+        context: "# First\n\nAlpha\n\n# Second\n\nBeta",
+        labeledContext: [
+          "[1] Saved Title > First\n# First\n\nAlpha",
+          "[2] Saved Title > Second\n# Second\n\nBeta",
+        ].join("\n\n"),
+        partial: false,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "First",
+          },
+          {
+            index: 2,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "Second",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.user).toContain("[1] Saved Title > First\n# First\n\nAlpha");
+    expect(prompt.user).toContain("[2] Saved Title > Second\n# Second\n\nBeta");
+  });
+
+  it("maps current document sections to current-document citations", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "Which sections matter?",
+      currentDocumentContext: {
+        context: "# First\n\nAlpha\n\n# Second\n\nBeta",
+        partial: false,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "First",
+          },
+          {
+            index: 2,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "Second",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.user).toContain("[1] Saved Title > First");
+    expect(prompt.user).toContain("[2] Saved Title > Second");
+    expect(prompt.citations).toEqual([
+      {
+        index: 1,
+        documentId: "current",
+        documentTitle: "Saved Title",
+        documentPath: "/saved-title",
+        headingPath: "First",
+      },
+      {
+        index: 2,
+        documentId: "current",
+        documentTitle: "Saved Title",
+        documentPath: "/saved-title",
+        headingPath: "Second",
+      },
+    ]);
+  });
+
+  it("notes when only selected sections of a long document were included", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "What is the incident rollback?",
+      currentDocumentContext: {
+        context: "# Incident\n\nRollback with health checks.",
+        partial: true,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Operations Manual",
+            documentPath: "/ops-manual",
+            headingPath: "Incident",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.user).toContain("Only selected sections of this long document were included.");
   });
 });

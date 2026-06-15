@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-16
-source_count: 194
+source_count: 216
 tags:
   - log
   - munjib
@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-16T00:31:00+0900 - issue-104 workspace chat review ordering follow-up
+
+- Result: PR #106의 추가 Codex review feedback으로 selected-document backfill cap, persisted turn ordering, history citation namespace 문제를 보강했다.
+- Coverage: `selectIndexBackfillDocuments()`는 selected-document referential prompt에서 readable selected document를 lexical top-8 cap 밖에서도 backfill 후보로 보존한다. `orderedMessagesForDisplay()`는 동일 `createdAt` turn에서 `USER`를 `ASSISTANT`보다 먼저 정렬하고, conversation-aware retrieval/prompt history는 이전 assistant answer의 numeric citation marker를 제거해 새 prompt citation 번호와 충돌하지 않게 한다.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
 ## 2026-06-16T00:00:48+0900 - attachment missing file response
 
 - Result: Attachment image requests no longer return raw 500 errors when the DB row exists but the file is missing from `storage/attachments`.
@@ -26,6 +34,110 @@ links:
 - Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: user-reported `/api/attachments/*` ENOENT stack trace, `lib/attachments/service.ts`, `app/api/attachments/[attachmentId]/route.ts`, `lib/service-errors.ts`, `tests/attachments/service.test.ts`, `tests/attachments/route.test.ts`.
 - Verification: RED then GREEN with `pnpm exec vitest run tests/attachments/service.test.ts tests/attachments/route.test.ts`.
+
+## 2026-06-15T23:50:34+0900 - issue-104 citation display and source link follow-up
+
+- Result: Ask AI와 workspace chatbot의 source display를 사용자 기준으로 정규화하고 source click navigation과 Markdown answer rendering을 보강했다.
+- Coverage: `normalizeAnswerCitations()`는 answer text에 실제로 등장한 citation만 남기고 prompt/chunk 내부 번호를 answer 등장 순서의 `1..n` display number로 다시 쓴다. `askDocumentQuestion()`과 `sendWorkspaceChatMessage()`는 정규화된 answer/citations를 반환하거나 저장한다. `components/ai/answer.tsx`는 Ask AI panel과 workspace chatbot이 공유하는 Markdown answer renderer와 clickable citation list를 제공하며, citation의 `documentId`가 있으면 workspace document URL로 이동한다.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported source-number/source-link/Markdown rendering issue, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `components/ai/answer.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts`, `pnpm exec vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`, and `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/components/document-editor-preview.test.tsx`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-15T23:16:06+0900 - issue-104 pr review prompt persistence follow-up
+
+- Result: PR #106의 추가 review feedback으로 selected-document referential backfill, failed turn persistence, direct-context citation labeling을 보강했다.
+- Coverage: `buildCurrentDocumentContext()` now returns labeled context blocks and `buildDirectDocumentPrompt()` uses them so each current-document section content is adjacent to its `[n]` citation label. `sendWorkspaceChatMessage()` includes a readable selected document in backfill candidates for document-referential prompts such as "Summarize this document", and user/assistant chat messages are persisted together only after answer generation succeeds to avoid orphan failed USER turns.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/document-context.ts`, `lib/rag/prompt.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/prompt.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/workspace-chat.test.ts`; follow-up GREEN with `pnpm exec vitest run tests/rag/document-context.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-15T23:10:42+0900 - issue-104 pr review retrieval context follow-up
+
+- Result: PR #106의 남은 actionable review feedback 중 workspace chatbot error handling, selected-document retrieval cap, oversized headed context packing 항목을 보강했다.
+- Coverage: `WorkspaceChatbot`의 thread load/reset recoverable error handling은 regression tests로 고정했다. `sendWorkspaceChatMessage()`는 global readable chunk search와 selected-document-only search를 병합해 selected document chunks가 global top-60 밖이어도 prompt 후보에 남게 한다. `buildCurrentDocumentContext()`는 budget보다 큰 headed section을 paragraph chunks로 나누고 answer-relevant chunk만 선택하며, positive-score 후보가 있으면 score 0 filler sections를 context budget에 넣지 않는다.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `components/workspace-chatbot.tsx`, `lib/rag/document-context.ts`, `lib/rag/workspace-chat.ts`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/document-context.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/rag/document-context.test.ts tests/rag/workspace-chat.test.ts`.
+
+## 2026-06-15T23:04:45+0900 - issue-104 workspace ai retrieval and citation follow-up
+
+- Result: Workspace AI가 Welcome chunk만 검색하고 무관한 source를 표시하던 local regression을 보정했다.
+- Coverage: Local `company-handbook` DB 상태는 active documents 219개 대비 `DocumentChunk` 1개, 그 1개가 Welcome 문서인 상태였으므로 workspace chatbot retrieval 후보가 Welcome으로 고정될 수 있었다. `sendWorkspaceChatMessage()`는 이제 conversation-aware query와 readable documents의 lexical overlap으로 missing/stale chunks를 최대 8개 targeted refresh한 뒤 vector search를 실행한다. Readable selected document chunks는 top vector result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, Ask AI와 workspace chatbot 모두 answer text에 실제로 등장한 `[n]` citation만 returned/persisted citations로 남긴다.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported Workspace AI test result, local DB probe, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/prompt.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`.
+
+## 2026-06-15T22:32:20+0900 - issue-104 pr review retrieval follow-up
+
+- Result: PR #106 review follow-up으로 direct Ask와 workspace chatbot retrieval robustness를 보강했다.
+- Coverage: `askDocumentQuestion()` now uses chat/Langfuse generation config without validating embedding env, direct Ask Langfuse metadata omits embedding fields, `buildCurrentDocumentContext()` splits long no-heading documents into paragraph chunks before selecting context, and `sendWorkspaceChatMessage()` embeds the recent conversation plus current message for retrieval.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/model-config.ts`, `lib/rag/ask.ts`, `lib/rag/langfuse.ts`, `lib/rag/document-context.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/model-config.test.ts`, `tests/rag/ask.test.ts`, `tests/rag/langfuse.test.ts`, `tests/rag/document-context.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/langfuse.test.ts tests/rag/ask.test.ts tests/rag/document-context.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-15T22:15:40+0900 - issue-104 chatbot model override follow-up
+
+- Result: Workspace chatbot now honors the same settings-panel chat model override as Ask AI.
+- Coverage: `WorkspaceChatbot` reads and subscribes to the workspace-scoped `munjib:rag-chat-model:<workspaceSlug>` override, `/assistant/messages` validates optional `chatModel` before calling the service, and `sendWorkspaceChatMessage()` changes only `chat.model` while preserving server-side provider credentials, base URL, and the embedding index identity.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/workspace-chatbot.tsx`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat-route.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED first with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx tests/rag/workspace-chat-route.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`, then GREEN with the same command.
+
+## 2026-06-15T21:52:48+0900 - issue-104 selected document retrieval review
+
+- Result: PR #106 review follow-up으로 workspace chatbot retrieval이 readable selected document chunks를 prompt cap 전에 우선 배치하도록 보강했다.
+- Coverage: `sendWorkspaceChatMessage()`는 selected document id가 readable document set에 있을 때 해당 chunks를 stable하게 앞쪽으로 재정렬한 뒤 기존 prompt cap 12개, 문서당 3개 제한을 적용한다. Readable하지 않은 selected document id는 metadata와 priority에 반영하지 않는다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review thread, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-15T19:32:52+0900 - issue-104 workspace chatbot api ui
+
+- Result: Issue #104 UI/API slice로 workspace chatbot의 authenticated API routes와 우측 하단 floating chatbot panel을 추가했다.
+- Coverage: `/assistant/thread`는 active thread와 history를 load하고, `/assistant/messages`는 trimmed message와 optional selected document id를 받아 workspace RAG answer를 생성하며, `/assistant/thread/reset`은 active thread를 archive한다. Shared error mapper는 workspace not found, blank message, archived-thread race, RAG runtime failure를 stable JSON status로 정규화한다. `WorkspaceChatbot`은 fixed launcher, compact panel, active thread load, send/reset controls, citations, Thinking indicator, workspace-change isolation, delayed thread/send response guard, reset-pending disabled state를 제공한다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `app/api/workspaces/[workspaceSlug]/assistant/thread/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/rag/workspace-chat-route.test.ts`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/rag/ask-route.test.ts tests/components/workspace-chatbot.test.tsx tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
+
+## 2026-06-15T19:06:48+0900 - issue-104 ask direct and chatbot service
+
+- Result: Issue #104 backend slice로 Ask AI service를 current-document direct context path로 전환하고 workspace chatbot RAG service를 추가했다.
+- Coverage: `askDocumentQuestion()`은 selected active document와 permission만 읽고 `buildCurrentDocumentContext()` / `buildDirectDocumentPrompt()`로 답변해 selected document indexing, question embedding, vector search, graph-aware retrieval, rerank를 호출하지 않는다. `sendWorkspaceChatMessage()`는 active thread create/reuse, user/assistant message persistence, readable `DocumentChunk` retrieval, recent conversation prompt, Langfuse metadata, reset/archive를 처리하며 delayed answer가 archived thread에 저장되지 않도록 active-thread transaction guard를 둔다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`, `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, `lib/rag/ask.ts`, `lib/rag/prompt.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/prompt.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/document-context.test.ts tests/rag/prompt.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/langfuse.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-15T18:25:00+0900 - issue-104 first implementation slice
+
+- Result: Issue #104 첫 구현 slice로 Ask AI current-document context packer, 공통 AI thinking indicator, workspace chatbot thread/message persistence schema를 추가했다.
+- Coverage: `buildCurrentDocumentContext()`는 frontmatter 제거, heading-aware section packing, fenced code heading 제외, nested heading path, oversized section order 보존을 담당한다. `ThinkingIndicator`는 Ask AI pending state에 영어 elapsed-time status를 표시한다. `AiChatThread`/`AiChatMessage`는 사용자+workspace 대화 이력을 저장하며 PostgreSQL partial unique index가 user+workspace별 active thread를 하나로 제한한다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`, `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, `lib/rag/document-context.ts`, `components/ai/thinking-indicator.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `prisma/schema.prisma`, `prisma/migrations/20260615120000_add_ai_chat_threads/migration.sql`, `tests/rag/document-context.test.ts`, `tests/components/thinking-indicator.test.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`, `pnpm exec prisma validate`, `pnpm exec vitest run tests/rag/document-context.test.ts tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx --reporter=dot`.
+
+## 2026-06-15T11:55:00+0900 - issue-104 ai assistant chatbot plan
+
+- Result: Issue #104 구현 계획을 추가했다.
+- Coverage: 계획은 Ask AI current-document context packer, direct-context prompt/service 전환, 공통 Thinking indicator, `AiChatThread`/`AiChatMessage` schema, workspace chatbot service/API/UI, verification/wiki cleanup 순서로 TDD task를 나눈다. Chatbot response streaming은 Issue #105 follow-up으로 유지한다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, GitHub issue #104.
+- Verification: plan self-review for spec coverage, placeholders, and type consistency; `git diff --check`.
+
+## 2026-06-15T11:40:00+0900 - issue-105 chatbot streaming split
+
+- Result: Chatbot response streaming을 Issue #104 MVP에서 제외하고 별도 Issue #105 follow-up으로 분리했다.
+- Coverage: Issue #104는 non-streaming chatbot response와 elapsed-time Thinking indicator를 구현하고, Issue #105는 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 후속 작업으로 둔다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`.
+- Verification: `pnpm wiki:manifest`; `git diff --check`; spec/wiki placeholder scan.
+
+## 2026-06-15T11:25:00+0900 - issue-104 ai assistant chatbot design
+
+- Result: Issue #104 설계를 추가해 Ask AI 정확도/속도 개선과 우측 하단 workspace chatbot의 역할을 분리했다.
+- Coverage: Ask AI는 current saved document direct-context 기본 path로 전환하는 계획이며, 기존 `DocumentChunk` pgvector store는 제거하지 않고 workspace chatbot RAG retrieval에 재사용한다. Chatbot은 사용자+workspace별 active thread/message history를 저장하고, Thinking indicator는 영어 elapsed-time 메시지 schedule을 공통 UI로 사용한다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`.
+- Verification: spec self-review; `git diff --check`.
 
 ## 2026-06-15T11:04:01+0900 - rag process visual map
 

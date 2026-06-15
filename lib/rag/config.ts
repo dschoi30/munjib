@@ -6,9 +6,11 @@ import {
 export {
   CURRENT_EMBEDDING_INDEX,
   getRagModelConfig,
+  getRagGenerationConfig,
   type RagChatModelConfig,
   type RagEmbeddingModelConfig,
   type RagEnv,
+  type RagGenerationConfig,
   type RagLangfuseCapture,
   type RagLangfuseConfig,
   type RagModelConfig,

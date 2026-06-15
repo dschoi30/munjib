@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-05-30
-source_count: 17
+updated: 2026-06-15
+source_count: 21
 tags:
   - munjib
   - data-model
@@ -121,6 +121,27 @@ erDiagram
     DateTime createdAt
     DateTime updatedAt
   }
+  AiChatThread {
+    String id PK
+    String workspaceId FK
+    String userId FK
+    String title
+    AiChatThreadStatus status
+    DateTime lastMessageAt
+    DateTime createdAt
+    DateTime updatedAt
+  }
+  AiChatMessage {
+    String id PK
+    String threadId FK
+    AiChatMessageRole role
+    String content
+    Json citations
+    Json contextMeta
+    String model
+    DateTime createdAt
+    DateTime updatedAt
+  }
   DocumentLink {
     String id PK
     String workspaceId FK
@@ -201,6 +222,7 @@ erDiagram
   Workspace ||--o{ WorkspaceMember : has
   Workspace ||--o{ Folder : contains
   Workspace ||--o{ Document : contains
+  Workspace ||--o{ AiChatThread : has
   Workspace ||--o{ DocumentLink : indexes
   Workspace ||--o{ Tag : owns
   User ||--o{ Document : creates
@@ -212,6 +234,8 @@ erDiagram
   Document ||--o{ Document : parents
   Document ||--o{ DocumentVersion : snapshots
   Document ||--o{ DocumentChunk : indexes
+  User ||--o{ AiChatThread : owns
+  AiChatThread ||--o{ AiChatMessage : contains
   User ||--o{ DocumentVersion : authors
   Document ||--o{ DocumentLink : source
   Document ||--o{ DocumentLink : target
@@ -249,6 +273,8 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `parentId`는 기존 document tree 구조를 위한 필드지만, Issue #20 이후 신규 위치 모델의 source of truth는 `Document.folderId`다.
 - `DocumentVersion`: 문서 저장 시점의 title과 markdown content snapshot이다.
 - `DocumentChunk`: saved `Document.contentMarkdown`에서 만든 RAG retrieval chunk다. `workspaceId`는 denormalized field지만 caller/draft 값이 아니라 DB에서 다시 읽은 saved `Document.workspaceId`에서만 파생한다.
+- `AiChatThread`: Issue #104 workspace chatbot의 사용자+workspace별 대화 thread다. `status`는 `ACTIVE` 또는 `ARCHIVED`이며 PostgreSQL partial unique index가 `(workspaceId, userId)`별 active thread를 하나로 제한한다. Service layer는 concurrent active-thread create race를 이 DB invariant에 맞춰 retry한다.
+- `AiChatMessage`: workspace chatbot thread 안의 사용자/assistant message다. Assistant message는 nullable `citations` JSON과 nullable `contextMeta` JSON으로 answer turn의 citation payload와 retrieval/model metadata를 저장할 수 있다. `sendWorkspaceChatMessage()`는 reset으로 thread가 archive된 뒤 늦게 도착한 assistant response를 저장하지 않도록 active-thread guard를 둔다.
 
 현재 schema는 `Document.path`를 workspace 안 unique location으로 둔다. root 문서와 folder 안 문서의 slug uniqueness는 migration의 partial unique index로 보호한다.
 
@@ -280,6 +306,8 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 ## Document RAG chunks
 
 Issue #73의 saved-content-only RAG assistant는 `DocumentChunk`를 pgvector-backed retrieval index로 사용한다. Chunk source는 저장된 DB 문서의 `title`, `contentMarkdown`, `workspaceId`, `updatedAt`이며, editor의 unsaved draft title/content는 indexing input에 포함하지 않는다.
+
+Issue #104 이후 Ask AI 기본 path는 current saved document direct context라 `DocumentChunk` retrieval을 호출하지 않는다. `DocumentChunk` index는 saved document mutation 뒤 계속 refresh되며, workspace chatbot service가 readable active document retrieval에 재사용한다.
 
 `DocumentChunk.embedding`은 Prisma schema에서 `Unsupported("vector(1024)")`로 선언된다. Prisma Client가 pgvector 타입을 직접 다루지 않으므로 vector 저장과 similarity search는 `lib/rag/vector-store.ts`의 raw SQL seam으로 격리하고, SQL text는 static string과 positional parameter만 사용한다. pgvector cast는 `$n::vector` shorthand가 아니라 `CAST($n AS vector(1024))` 형식으로 유지해 Prisma/PostgreSQL parser 차이를 피한다. Local Docker PostgreSQL은 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 migration은 `vector` extension과 chunk table/indexes를 만든다. Prisma Migrate가 `Unsupported("vector(1024)")` field의 HNSW index를 datamodel로 round-trip하지 못하므로 cosine HNSW index는 `lib/rag/vector-index.ts`와 `pnpm run db:rag:index`의 idempotent `CREATE INDEX IF NOT EXISTS` step으로 관리한다.
 
@@ -321,8 +349,10 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `tests/documents/service.test.ts`
 - `tests/attachments/service.test.ts`
 - `lib/rag/index-document.ts`
+- `lib/rag/workspace-chat.ts`
 - `lib/rag/vector-store.ts`
 - `tests/rag/index-document.test.ts`
+- `tests/rag/workspace-chat.test.ts`
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
 - GitHub issue #73
