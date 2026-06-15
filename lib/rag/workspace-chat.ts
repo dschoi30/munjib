@@ -77,7 +77,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     readableDocumentIds,
     limit: RETRIEVAL_LIMIT,
   });
-  const promptChunks = capPromptChunks(chunks);
+  const promptChunks = capPromptChunks(prioritizeSelectedDocumentChunks(chunks, selectedDocumentId));
   const prompt = buildRagPrompt({
     question: buildConversationQuestion(orderedMessagesForDisplay(thread.messages), message),
     chunks: promptChunks,
@@ -310,6 +310,28 @@ function capPromptChunks(chunks: RetrievedChunk[]) {
   }
 
   return capped;
+}
+
+function prioritizeSelectedDocumentChunks(
+  chunks: RetrievedChunk[],
+  selectedDocumentId: string | null | undefined,
+) {
+  if (!selectedDocumentId) return chunks;
+
+  return chunks
+    .map((chunk, index) => ({
+      chunk,
+      index,
+      isSelectedDocument: chunk.documentId === selectedDocumentId,
+    }))
+    .sort((left, right) => {
+      if (left.isSelectedDocument !== right.isSelectedDocument) {
+        return left.isSelectedDocument ? -1 : 1;
+      }
+
+      return left.index - right.index;
+    })
+    .map((entry) => entry.chunk);
 }
 
 function withDisplayOrderedMessages<TThread extends { messages: Array<{ createdAt: Date }> }>(

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 207
+source_count: 211
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T21:52:48+0900 - issue-104 selected document retrieval review
+
+- Result: PR #106 review follow-up으로 workspace chatbot retrieval이 readable selected document chunks를 prompt cap 전에 우선 배치하도록 보강했다.
+- Coverage: `sendWorkspaceChatMessage()`는 selected document id가 readable document set에 있을 때 해당 chunks를 stable하게 앞쪽으로 재정렬한 뒤 기존 prompt cap 12개, 문서당 3개 제한을 적용한다. Readable하지 않은 selected document id는 metadata와 priority에 반영하지 않는다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review thread, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
 
 ## 2026-06-15T19:32:52+0900 - issue-104 workspace chatbot api ui
 

@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-15
-source_count: 47
+source_count: 48
 tags:
   - munjib
   - workflow
@@ -126,7 +126,7 @@ Workspace chatbot UI/API/service request:
 7. User message를 `AiChatMessage(role=USER)`로 저장한다.
 8. `getRagModelConfig()`와 `assertCurrentEmbeddingIndex()`로 현재 workspace retrieval이 Ollama `bge-m3` 1024 index identity와 맞는지 확인한다.
 9. `embedText()`는 현재 user message를 embedding하고, `searchSimilarChunks()`는 readable active document ids와 current embedding model identity로 existing `DocumentChunk` rows를 검색한다.
-10. Service는 prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다.
+10. Service는 readable `selectedDocumentId`에 해당하는 chunks를 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다.
 11. `buildRagPrompt()`는 최근 thread message와 현재 user message를 합친 conversation question, 그리고 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
 12. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, provider/model, retrieved chunk count, citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
 13. `invokeAnswerChain()`이 answer를 생성한 뒤, Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
@@ -170,7 +170,7 @@ Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector d
 
 Issue #104 direct Ask path는 retrieval scope expansion을 기본으로 사용하지 않는다. 현재 문서 질문은 selected saved markdown을 직접 pack하고, citation도 현재 문서 section만 가리킨다.
 
-Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 user message embedding으로 existing `DocumentChunk` rows를 검색하고, prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval filter에 반영하지 않는다.
+Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 user message embedding으로 existing `DocumentChunk` rows를 검색하고, readable selected document id에 해당하는 chunks를 prompt cap 전에 stable하게 우선 배치한다. 그 뒤 prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval priority에 반영하지 않는다.
 
 Legacy graph-aware scope expansion helper는 selected current document를 우선하고, saved markdown wiki links와 persisted outgoing links를 합친 linked documents, persisted backlinks, shared normalized tags, workspace fallback 순서로 중복 없이 채운다. 이 helper는 Issue #104 direct Ask default path에서는 호출하지 않고, future explicit expanded-scope Ask AI나 retrieval tuning의 근거로 남아 있다.
 
@@ -188,7 +188,7 @@ Issue #104는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request 
 
 Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
 
-새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 기존 `DocumentChunk` rows에서 readable active document chunks를 검색한다.
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, readable selected document chunks를 prompt cap 전에 우선 배치한다.
 
 Ask AI와 chatbot은 model config, chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 

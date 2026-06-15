@@ -254,6 +254,67 @@ describe("workspace chat service", () => {
     );
   });
 
+  it("prioritizes readable selected document chunks before capping prompt context", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const first = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "First",
+      contentMarkdown: "First evidence.",
+    });
+    const second = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Second",
+      contentMarkdown: "Second evidence.",
+    });
+    const third = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Third",
+      contentMarkdown: "Third evidence.",
+    });
+    const fourth = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Fourth",
+      contentMarkdown: "Fourth evidence.",
+    });
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Selected",
+      contentMarkdown: "Selected evidence.",
+    });
+    const returnedChunks = [
+      ...makeChunks(first, 1, 3),
+      ...makeChunks(second, 4, 3),
+      ...makeChunks(third, 7, 3),
+      ...makeChunks(fourth, 10, 3),
+      ...makeChunks(selected, 13, 2),
+    ];
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce(returnedChunks);
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Explain the open document",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retrievedChunkCount: 12,
+        citationChunkIds: expect.arrayContaining(["chunk-13", "chunk-14"]),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("[1] Selected > Evidence"),
+      }),
+    );
+  });
+
   it("uses recent thread messages when building the conversation prompt", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
