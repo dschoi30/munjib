@@ -39,6 +39,8 @@ export type RagModelConfig = {
   langfuse: RagLangfuseConfig;
 };
 
+export type RagGenerationConfig = Pick<RagModelConfig, "chat" | "langfuse">;
+
 export const RAG_CONFIG_ERROR_CODES = {
   INVALID_CONFIG: RAG_ERROR_CODES.INVALID_CONFIG,
 } as const;
@@ -71,14 +73,9 @@ export function getDefaultRagChatModel(env: RagEnv = process.env): string {
 const PROVIDERS = new Set<RagProvider>(["ollama", "openai", "openai-compatible"]);
 
 export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {
-  const chatProvider = readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
+  const generation = getRagGenerationConfig(env);
   const embedProvider = readProvider(env, "MUNJIB_RAG_EMBED_PROVIDER", DEFAULTS.embedProvider);
   const embedDimensions = readEmbedDimensions(env);
-  const chat = buildProviderConfig({
-    env,
-    provider: chatProvider,
-    model: readModel(env, "MUNJIB_RAG_CHAT_MODEL", chatProvider, DEFAULTS.chatModel),
-  });
   const embeddingProviderConfig = buildProviderConfig({
     env,
     provider: embedProvider,
@@ -99,8 +96,19 @@ export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {
   };
 
   return {
-    chat,
+    ...generation,
     embedding,
+  };
+}
+
+export function getRagGenerationConfig(env: RagEnv = process.env): RagGenerationConfig {
+  const chatProvider = readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
+  return {
+    chat: buildProviderConfig({
+      env,
+      provider: chatProvider,
+      model: readModel(env, "MUNJIB_RAG_CHAT_MODEL", chatProvider, DEFAULTS.chatModel),
+    }),
     langfuse: readLangfuseConfig(env),
   };
 }

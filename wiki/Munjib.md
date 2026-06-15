@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 40
+source_count: 51
 tags:
   - munjib
   - product
@@ -48,7 +48,7 @@ Munjib은 Obsidian의 `[[문서 링크]]`, backlink, Markdown 중심 작성 경�
 - attachments, versions, audit log를 tab으로 전환하고 닫힘 상태에서는 reopen icon만 남기는 metadata panel.
 - attachment upload/download와 comment creation.
 - explicit document permission이 있는 문서에 대한 read/write filtering.
-- document title row의 `AI에게 묻기` assistant, saved DB content 기반 RAG answer, pgvector chunk index.
+- document title row의 `AI에게 묻기` assistant, 현재 저장 문서 direct-context answer, 우측 하단 workspace chatbot UI/API/RAG service, pgvector chunk index.
 
 ## Folder hierarchy
 
@@ -74,7 +74,9 @@ Issue #73은 document editor title row 우측 `AI에게 묻기` button과 saved-
 
 Issue #100 구현으로 이 RAG assistant의 permission, saved-content, graph-aware retrieval, pgvector freshness contract는 유지하면서 chat/embedding provider boundary가 LangChain으로 이동했다. Provider 설정은 server-wide env 기반이고 Ollama, OpenAI, OpenAI-compatible endpoint를 대상으로 한다. 현재 indexed identity인 Ollama `bge-m3` 1024와 다른 embedding provider/model/dimension은 live Ask AI에서 fail-fast해 partial selected-document indexing을 만들지 않는다. Answer generation은 LangChain prompt/model/parser chain을 사용한다. Langfuse integration은 optional/fail-open이고, production 기본 metadata mode에서는 문서 본문, retrieved context, full prompt, question, answer body, unsaved draft title/markdown egress를 막기 위해 external callback을 붙이지 않는다. Explicit `full` capture에서만 LangChain invocation config에 Langfuse callback을 연결한다. 설계 근거는 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`이다.
 
-Issue #102 구현으로 OpenRouter를 `openai-compatible` provider env로 연결한 뒤 workspace settings panel에서 browser/workspace별 chat model id만 바꿔 Ask AI answer generation 모델을 테스트할 수 있다. API key와 base URL은 server env에 유지하고, browser에는 model id만 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key로 저장한다. Ask route는 optional `chatModel` override를 validation한 뒤 service에 전달하고, service는 `chat.model`만 바꾸며 embedding provider/model/dimension과 현재 Ollama `bge-m3` 1024 index contract는 건드리지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
+Issue #102 구현으로 OpenRouter를 `openai-compatible` provider env로 연결한 뒤 workspace settings panel에서 browser/workspace별 chat model id만 바꿔 Ask AI와 workspace chatbot answer generation 모델을 테스트할 수 있다. API key와 base URL은 server env에 유지하고, browser에는 model id만 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key로 저장한다. Ask route와 workspace chatbot message route는 optional `chatModel` override를 validation한 뒤 service에 전달하고, 각 service는 `chat.model`만 바꾸며 embedding provider/model/dimension과 현재 Ollama `bge-m3` 1024 index contract는 건드리지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
+
+Issue #104는 Ask AI를 현재 문서 direct-context path로 전환하기 위한 context packer, Ask AI/chatbot 공통 thinking indicator, workspace chatbot 대화 이력 schema, Ask AI direct service, workspace chatbot RAG service, authenticated chatbot API routes, 우측 하단 sticky chatbot UI를 추가했다. 기존 Ask AI는 editor-local 현재 문서 assistant로 유지되며, 기본 답변 경로는 현재 저장 문서 direct context라 per-request indexing/question embedding/vector search를 호출하지 않고 chat/Langfuse generation config만 읽는다. Context packer는 heading-aware section pack뿐 아니라 heading 없는 긴 문서의 paragraph chunk fallback도 지원한다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot service가 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Chatbot UI는 workspace page 우측 하단 AI icon으로 열리고, active thread history load, message send, conversation reset, citations, selected document id pass-through, conversation-aware retrieval query, readable selected-document pre-cap retrieval priority, settings-panel chat model override, reset/send race guard를 제공한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. Chatbot response streaming은 Issue #104 MVP에서 제외해 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
 Ask AI RAG의 request, provider/env, indexing, retrieval, reranking, prompt, answer generation, observability 흐름은 [[RAG Process Workflow]]에서 본다.
 
@@ -109,6 +111,8 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `components/document-editor/ai-assistant-panel.tsx`
 - `components/workspace-settings-panel.tsx`
 - `lib/rag/client-model-settings.ts`
+- `lib/rag/document-context.ts`
+- `lib/rag/workspace-chat.ts`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
 - `components/folder-detail.tsx`
@@ -135,6 +139,9 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
+- `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
+- `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`
+- GitHub issue #105
 - `tests/rag/model-config.test.ts`
 - `tests/rag/model-factory.test.ts`
 - `tests/rag/embedding-client.test.ts`

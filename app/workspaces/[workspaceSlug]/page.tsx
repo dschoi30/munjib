@@ -6,6 +6,7 @@ import { FolderDetail } from "@/components/folder-detail";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
+import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { LoginForm } from "@/app/login/login-form";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
@@ -268,136 +269,143 @@ export default async function WorkspacePage({
     : null;
 
   return (
-    <AppShell
-      left={
-        <DocumentList
-          workspaceSlug={workspaceSlug}
-          folders={workspace.folders.map((folder) => ({
-            id: folder.id,
-            parentFolderId: folder.parentFolderId,
-            name: folder.name,
-            path: folder.path,
-          }))}
-          documents={readableDocuments.map((document) => ({
-            id: document.id,
-            folderId: document.folderId,
-            title: document.title,
-            path: document.path,
-            contentText: document.contentText,
-            tagNames: tagNamesByDocumentId.get(document.id) ?? [],
-            canWrite: canWriteDocument({
-              workspaceRole: role,
-              explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
-              userPermission: userPermissionByDocumentId.get(document.id),
-            }),
-          }))}
-          folderDocumentCounts={activeDocumentCountsByFolderId}
-          canWrite={canWrite}
-          createAction={createAction}
-          createFolderAction={createFolder}
-          importMarkdownAction={importMarkdown}
-          renameFolderAction={renameFolder}
-          archiveFolderAction={archiveFolder}
-          archiveDocumentAction={archiveDocument}
-          folderError={folderError ?? ""}
-          selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
-          selectedDocumentId={selectedDocument?.id ?? null}
-          defaultChatModel={defaultChatModel}
-          isGraphView={isGraphView}
-        />
-      }
-      center={
-        <WorkspaceCenterShell
-          workspaceSlug={workspaceSlug}
-          documents={readableDocuments.map((document) => ({
-            id: document.id,
-            title: document.title,
-            path: document.path,
-          }))}
-          selectedDocument={
-            selectedDocument
-              ? {
-                  id: selectedDocument.id,
-                  title: selectedDocument.title,
-                  path: selectedDocument.path,
+    <>
+      <AppShell
+        left={
+          <DocumentList
+            workspaceSlug={workspaceSlug}
+            folders={workspace.folders.map((folder) => ({
+              id: folder.id,
+              parentFolderId: folder.parentFolderId,
+              name: folder.name,
+              path: folder.path,
+            }))}
+            documents={readableDocuments.map((document) => ({
+              id: document.id,
+              folderId: document.folderId,
+              title: document.title,
+              path: document.path,
+              contentText: document.contentText,
+              tagNames: tagNamesByDocumentId.get(document.id) ?? [],
+              canWrite: canWriteDocument({
+                workspaceRole: role,
+                explicitPermissionCount: explicitDocumentIds.has(document.id) ? 1 : 0,
+                userPermission: userPermissionByDocumentId.get(document.id),
+              }),
+            }))}
+            folderDocumentCounts={activeDocumentCountsByFolderId}
+            canWrite={canWrite}
+            createAction={createAction}
+            createFolderAction={createFolder}
+            importMarkdownAction={importMarkdown}
+            renameFolderAction={renameFolder}
+            archiveFolderAction={archiveFolder}
+            archiveDocumentAction={archiveDocument}
+            folderError={folderError ?? ""}
+            selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
+            selectedDocumentId={selectedDocument?.id ?? null}
+            defaultChatModel={defaultChatModel}
+            isGraphView={isGraphView}
+          />
+        }
+        center={
+          <WorkspaceCenterShell
+            workspaceSlug={workspaceSlug}
+            documents={readableDocuments.map((document) => ({
+              id: document.id,
+              title: document.title,
+              path: document.path,
+            }))}
+            selectedDocument={
+              selectedDocument
+                ? {
+                    id: selectedDocument.id,
+                    title: selectedDocument.title,
+                    path: selectedDocument.path,
+                  }
+                : null
+            }
+            selectedFolder={selectedCenterFolder}
+            isGraphView={isGraphView}
+            restoreStoredActiveTab={!hasRequestedDocument && !hasRequestedFolder && !isGraphView}
+          >
+            {isGraphView ? (
+              <KnowledgeGraphView
+                workspaceSlug={workspaceSlug}
+                graph={graphData}
+                selectedDocumentId={selectedDocument?.id ?? null}
+              />
+            ) : selectedFolder ? (
+              <FolderDetail
+                folder={{
+                  id: selectedFolder.id,
+                  name: selectedFolder.name,
+                  path: selectedFolder.path,
+                  childCount: countFolderChildren({
+                    folderId: selectedFolder.id,
+                    folders: workspace.folders,
+                    documents: readableDocuments,
+                  }),
+                }}
+                canWrite={canWrite}
+              />
+            ) : (
+              <DocumentEditor
+                workspaceSlug={workspaceSlug}
+                document={
+                  selectedDocument
+                    ? {
+                        id: selectedDocument.id,
+                        title: selectedDocument.title,
+                        contentMarkdown: selectedDocument.contentMarkdown,
+                      }
+                    : null
                 }
-              : null
-          }
-          selectedFolder={selectedCenterFolder}
-          isGraphView={isGraphView}
-          restoreStoredActiveTab={!hasRequestedDocument && !hasRequestedFolder && !isGraphView}
-        >
-          {isGraphView ? (
-            <KnowledgeGraphView
-              workspaceSlug={workspaceSlug}
-              graph={graphData}
-              selectedDocumentId={selectedDocument?.id ?? null}
-            />
-          ) : selectedFolder ? (
-            <FolderDetail
-              folder={{
-                id: selectedFolder.id,
-                name: selectedFolder.name,
-                path: selectedFolder.path,
-                childCount: countFolderChildren({
-                  folderId: selectedFolder.id,
-                  folders: workspace.folders,
-                  documents: readableDocuments,
-                }),
-              }}
-              canWrite={canWrite}
-            />
-          ) : (
-            <DocumentEditor
-              workspaceSlug={workspaceSlug}
-              document={
-                selectedDocument
-                  ? {
-                      id: selectedDocument.id,
-                      title: selectedDocument.title,
-                      contentMarkdown: selectedDocument.contentMarkdown,
-                    }
-                  : null
-              }
-              canWrite={canWriteSelectedDocument}
-              action={updateAction}
-              uploadAttachmentAction={uploadAttachmentAction}
-              pasteImageAttachmentAction={pasteImageAttachmentAction}
-              linkCandidates={readableDocuments.map((document) => ({
-                id: document.id,
-                slug: document.slug,
-                title: document.title,
-                path: document.path,
-              }))}
-              tags={documentTags.map((documentTag) => documentTag.tag)}
-              properties={documentProperties}
-              comments={comments.map((comment) => ({
-                id: comment.id,
-                body: comment.body,
-                user: comment.user,
-              }))}
-              linkPanels={linkPanels}
-              createFromBrokenLinkAction={createFromBrokenLinkAction}
-              createCommentAction={commentAction}
-              defaultChatModel={defaultChatModel}
-            />
-          )}
-        </WorkspaceCenterShell>
-      }
-      right={
-        <MetadataPanel
-          document={
-            selectedDocument
-              ? { id: selectedDocument.id, contentMarkdown: selectedDocument.contentMarkdown }
-              : null
-          }
-          versions={versions}
-          auditLogs={auditLogs}
-          attachments={attachments}
-          canWrite={canWriteSelectedDocument}
-          restoreVersionAction={restoreVersionAction}
-        />
-      }
-    />
+                canWrite={canWriteSelectedDocument}
+                action={updateAction}
+                uploadAttachmentAction={uploadAttachmentAction}
+                pasteImageAttachmentAction={pasteImageAttachmentAction}
+                linkCandidates={readableDocuments.map((document) => ({
+                  id: document.id,
+                  slug: document.slug,
+                  title: document.title,
+                  path: document.path,
+                }))}
+                tags={documentTags.map((documentTag) => documentTag.tag)}
+                properties={documentProperties}
+                comments={comments.map((comment) => ({
+                  id: comment.id,
+                  body: comment.body,
+                  user: comment.user,
+                }))}
+                linkPanels={linkPanels}
+                createFromBrokenLinkAction={createFromBrokenLinkAction}
+                createCommentAction={commentAction}
+                defaultChatModel={defaultChatModel}
+              />
+            )}
+          </WorkspaceCenterShell>
+        }
+        right={
+          <MetadataPanel
+            document={
+              selectedDocument
+                ? { id: selectedDocument.id, contentMarkdown: selectedDocument.contentMarkdown }
+                : null
+            }
+            versions={versions}
+            auditLogs={auditLogs}
+            attachments={attachments}
+            canWrite={canWriteSelectedDocument}
+            restoreVersionAction={restoreVersionAction}
+          />
+        }
+      />
+      <WorkspaceChatbot
+        key={workspaceSlug}
+        workspaceSlug={workspaceSlug}
+        selectedDocumentId={selectedDocument?.id ?? null}
+      />
+    </>
   );
 }

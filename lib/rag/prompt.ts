@@ -1,3 +1,4 @@
+import type { CurrentDocumentContext } from "@/lib/rag/document-context";
 import type { RetrievedChunk } from "@/lib/rag/vector-store";
 
 export type RagCitation = {
@@ -19,6 +20,11 @@ type PromptChunk = RetrievedChunk & { score?: number };
 type BuildRagPromptInput = {
   question: string;
   chunks: PromptChunk[];
+};
+
+type BuildDirectDocumentPromptInput = {
+  question: string;
+  currentDocumentContext: CurrentDocumentContext;
 };
 
 export function buildRagPrompt(input: BuildRagPromptInput): RagPrompt {
@@ -46,13 +52,106 @@ export function buildRagPrompt(input: BuildRagPromptInput): RagPrompt {
       "If the saved documents do not contain enough evidence, say that the saved documents do not contain enough evidence to answer.",
       "Answer in the same language as the question where possible.",
       "Cite supporting context with bracketed citation numbers like [1].",
+      "Only cite context that directly supports the answer; if there is not enough evidence, do not include citations.",
     ].join(" "),
     user: [`Question:\n${input.question.trim()}`, `Saved document context:\n${context}`].join("\n\n"),
     citations,
   };
 }
 
-function citationLabel(index: number, chunk: PromptChunk) {
-  const headingSuffix = chunk.headingPath ? ` > ${chunk.headingPath}` : "";
-  return `[${index}] ${chunk.documentTitle}${headingSuffix}`;
+export function buildDirectDocumentPrompt(input: BuildDirectDocumentPromptInput): RagPrompt {
+  const citations = input.currentDocumentContext.sections.map((section) => ({
+    index: section.index,
+    documentId: "current",
+    documentTitle: section.documentTitle,
+    documentPath: section.documentPath,
+    headingPath: section.headingPath,
+  }));
+  const sectionMap =
+    input.currentDocumentContext.sections.length > 0
+      ? input.currentDocumentContext.sections
+          .map((section) => citationLabel(section.index, section))
+          .join("\n")
+      : "No current document sections were available.";
+  const context =
+    input.currentDocumentContext.labeledContext?.trim() ||
+    input.currentDocumentContext.context.trim() ||
+    "The current saved document is empty.";
+  const partialNote = input.currentDocumentContext.partial
+    ? "Only selected sections of this long document were included."
+    : null;
+
+  return {
+    system: [
+      "You are Munjib's current-document AI assistant.",
+      "Use only the current saved document context provided in this request.",
+      "Do not use other workspace documents.",
+      "Do not use unsaved editor drafts, draft titles, or draft markdown.",
+      "Do not use outside knowledge.",
+      "If the current saved document does not contain enough evidence, say that the current saved document does not contain enough evidence to answer.",
+      "Answer in the same language as the question where possible.",
+      "Cite supporting context with bracketed citation numbers like [1].",
+      "Only cite current document sections that directly support the answer; if there is not enough evidence, do not include citations.",
+    ].join(" "),
+    user: [
+      `Question:\n${input.question.trim()}`,
+      `Current saved document sections:\n${sectionMap}`,
+      `Current saved document context:\n${context}`,
+      partialNote,
+    ]
+      .filter((part): part is string => Boolean(part))
+      .join("\n\n"),
+    citations,
+  };
+}
+
+export function filterCitationsToAnswer(answer: string, citations: RagCitation[]) {
+  const referencedIndices = new Set<number>();
+  for (const match of answer.matchAll(/\[([\d,\s]+)\]/g)) {
+    for (const token of match[1]!.split(",")) {
+      const index = Number.parseInt(token.trim(), 10);
+      if (Number.isInteger(index)) referencedIndices.add(index);
+    }
+  }
+  if (referencedIndices.size === 0) return [];
+
+  return citations.filter((citation) => referencedIndices.has(citation.index));
+}
+
+export function normalizeAnswerCitations(answer: string, citations: RagCitation[]) {
+  const citationByIndex = new Map(citations.map((citation) => [citation.index, citation]));
+  const displayIndexBySourceIndex = new Map<number, number>();
+  const normalizedCitations: RagCitation[] = [];
+  const normalizedAnswer = answer.replace(/\[([\d,\s]+)\]/g, (match, group: string) => {
+    const displayIndices: number[] = [];
+
+    for (const token of group.split(",")) {
+      const sourceIndex = Number.parseInt(token.trim(), 10);
+      const citation = citationByIndex.get(sourceIndex);
+      if (!citation) continue;
+
+      let displayIndex = displayIndexBySourceIndex.get(sourceIndex);
+      if (!displayIndex) {
+        displayIndex = normalizedCitations.length + 1;
+        displayIndexBySourceIndex.set(sourceIndex, displayIndex);
+        normalizedCitations.push({ ...citation, index: displayIndex });
+      }
+      if (!displayIndices.includes(displayIndex)) displayIndices.push(displayIndex);
+    }
+
+    return displayIndices.length > 0 ? `[${displayIndices.join(", ")}]` : match;
+  });
+
+  return {
+    answer: normalizedAnswer,
+    citations: normalizedCitations,
+  };
+}
+
+function citationLabel(
+  index: number,
+  citationSource: Pick<RagCitation, "documentTitle" | "headingPath">,
+) {
+  const headingSuffix = citationSource.headingPath ? ` > ${citationSource.headingPath}` : "";
+  return `[${index}] ${citationSource.documentTitle}${headingSuffix}`;
 }
