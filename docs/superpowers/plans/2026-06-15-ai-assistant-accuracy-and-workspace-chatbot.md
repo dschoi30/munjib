@@ -1001,7 +1001,7 @@ model AiChatThread {
   id            String             @id @default(cuid())
   workspaceId   String
   userId        String
-  title         String             @default("Workspace chat")
+  title         String?
   status        AiChatThreadStatus @default(ACTIVE)
   lastMessageAt DateTime?
   createdAt     DateTime           @default(now())
@@ -1018,14 +1018,22 @@ model AiChatMessage {
   threadId      String
   role          AiChatMessageRole
   content       String
-  citationsJson Json              @default("[]")
+  citations     Json?
+  contextMeta   Json?
   model         String?
   createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
   thread        AiChatThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId, createdAt])
 }
 ```
+
+The PostgreSQL migration must enforce one `ACTIVE` thread per
+`(workspaceId, userId)` with a partial unique index. Keep the Prisma schema
+index non-unique because Prisma does not support partial unique index syntax;
+Task 5 service code should handle create races against that database invariant
+intentionally.
 
 - [ ] **Step 2: Add migration SQL**
 
@@ -1039,7 +1047,7 @@ CREATE TABLE "AiChatThread" (
   "id" TEXT NOT NULL,
   "workspaceId" TEXT NOT NULL,
   "userId" TEXT NOT NULL,
-  "title" TEXT NOT NULL DEFAULT 'Workspace chat',
+  "title" TEXT,
   "status" "AiChatThreadStatus" NOT NULL DEFAULT 'ACTIVE',
   "lastMessageAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1053,15 +1061,21 @@ CREATE TABLE "AiChatMessage" (
   "threadId" TEXT NOT NULL,
   "role" "AiChatMessageRole" NOT NULL,
   "content" TEXT NOT NULL,
-  "citationsJson" JSONB NOT NULL DEFAULT '[]',
+  "citations" JSONB,
+  "contextMeta" JSONB,
   "model" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMP(3) NOT NULL,
 
   CONSTRAINT "AiChatMessage_pkey" PRIMARY KEY ("id")
 );
 
 CREATE INDEX "AiChatThread_workspaceId_userId_status_lastMessageAt_idx"
 ON "AiChatThread"("workspaceId", "userId", "status", "lastMessageAt");
+
+CREATE UNIQUE INDEX "AiChatThread_workspaceId_userId_active_key"
+ON "AiChatThread"("workspaceId", "userId")
+WHERE "status" = 'ACTIVE';
 
 CREATE INDEX "AiChatMessage_threadId_createdAt_idx"
 ON "AiChatMessage"("threadId", "createdAt");
@@ -1315,7 +1329,6 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
       threadId: threadState.thread.id,
       role: "USER",
       content: message,
-      citationsJson: [],
     },
   });
 
@@ -1364,7 +1377,11 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
       threadId: threadState.thread.id,
       role: "ASSISTANT",
       content: answer,
-      citationsJson: prompt.citations,
+      citations: prompt.citations,
+      contextMeta: {
+        retrievedChunkCount: promptChunks.length,
+        citationChunkIds: promptChunks.map((chunk) => chunk.id),
+      },
       model: modelConfig.chat.model,
     },
   });
@@ -1834,7 +1851,7 @@ type ChatMessage = {
   id?: string;
   role: "USER" | "ASSISTANT";
   content: string;
-  citationsJson?: ChatCitation[];
+  citations?: ChatCitation[];
 };
 
 type ChatCitation = {
@@ -1903,7 +1920,7 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
           ...(body.assistantMessage ?? {}),
           role: "ASSISTANT",
           content: body.assistantMessage?.content ?? "",
-          citationsJson: body.citations ?? body.assistantMessage?.citationsJson ?? [],
+          citations: body.citations ?? body.assistantMessage?.citations ?? [],
         },
       ]);
     } catch {
@@ -1943,9 +1960,9 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
                 <div className={message.role === "USER" ? "inline-block rounded-md bg-ink px-3 py-2 text-white" : "inline-block rounded-md bg-slate-100 px-3 py-2 text-slate-800"}>
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 </div>
-                {message.role === "ASSISTANT" && message.citationsJson?.length ? (
+                {message.role === "ASSISTANT" && message.citations?.length ? (
                   <ol className="mt-1 space-y-1 text-xs text-slate-500">
-                    {message.citationsJson.map((citation, citationIndex) => (
+                    {message.citations.map((citation, citationIndex) => (
                       <li key={`${citation.documentTitle ?? citation.title ?? "citation"}-${citationIndex}`}>
                         [{citation.index ?? citationIndex + 1}] {citation.documentTitle ?? citation.title ?? "Saved document"}
                         {formatHeadingPath(citation.headingPath)}

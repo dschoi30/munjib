@@ -28,7 +28,7 @@ links:
 
 이 page는 document editor의 `AI에게 묻기`에서 시작해 saved DB content만 사용하는 현재 Ask AI RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
-Issue #104 설계는 아직 구현 전 계획이며 현재 process map을 대체한 상태가 아니다. 계획된 방향은 Ask AI 기본 path를 현재 문서 direct-context answer로 바꾸고, 기존 `DocumentChunk` pgvector store는 새 workspace chatbot의 전역 readable document retrieval에 주로 재사용하는 것이다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다.
+Issue #104 첫 구현 slice는 현재 process map을 아직 완전히 대체하지 않는다. 구현된 범위는 현재 문서 direct-context packer, Ask AI 공통 thinking indicator, workspace chatbot conversation persistence schema다. 다음 slice에서 Ask AI service가 현재 저장 문서 direct-context answer로 전환되며, 기존 `DocumentChunk` pgvector store는 새 workspace chatbot의 전역 readable document retrieval에 주로 재사용한다. Chatbot response streaming은 Issue #104 MVP에서 제외하고 Issue #105 follow-up으로 분리한다.
 
 ## Process Map
 
@@ -151,11 +151,11 @@ Reranking score는 다음 공식이다.
 
 Current document boost는 `0.5`, linked document `0.3`, backlink `0.25`, same-tag `0.15`다. Keyword boost는 unique term당 `0.05`, maximum `0.2`다. Token overlap은 punctuation-normalized Unicode terms를 사용하고, English stop words와 too-short Latin terms는 제외하지만 Korean/CJK 2글자 terms는 후보로 유지한다.
 
-## Planned Issue #104 Split
+## Issue #104 Split
 
-Issue #104 설계는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request profile을 분리한다. Ask AI는 editor-local 현재 문서 assistant로 유지하고, 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
+Issue #104는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request profile을 분리한다. 첫 구현 slice는 `lib/rag/document-context.ts`의 현재 문서 context packer와 `components/ai/thinking-indicator.tsx`의 공통 elapsed-time indicator를 추가했다. Ask AI service 전환은 다음 task 범위이며, 전환 후에는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
 
-새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, answer turn마다 기존 `DocumentChunk` rows에서 readable active document chunks를 검색한다. Retrieval은 document별 chunk cap, relevance threshold calibration, optional selected-document boost, answer context에 포함된 chunk만 citation으로 반환하는 방향이다.
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. 첫 schema slice는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장할 Prisma/PostgreSQL 모델과 migration을 추가했다. PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한하므로 service layer는 concurrent create race를 이 DB invariant에 맞춰 처리해야 한다. Answer turn retrieval은 다음 task에서 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하도록 구현한다.
 
 Ask AI와 chatbot은 model config, chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 

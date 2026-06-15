@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 196
+source_count: 197
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T18:25:00+0900 - issue-104 first implementation slice
+
+- Result: Issue #104 첫 구현 slice로 Ask AI current-document context packer, 공통 AI thinking indicator, workspace chatbot thread/message persistence schema를 추가했다.
+- Coverage: `buildCurrentDocumentContext()`는 frontmatter 제거, heading-aware section packing, fenced code heading 제외, nested heading path, oversized section order 보존을 담당한다. `ThinkingIndicator`는 Ask AI pending state에 영어 elapsed-time status를 표시한다. `AiChatThread`/`AiChatMessage`는 사용자+workspace 대화 이력을 저장하며 PostgreSQL partial unique index가 user+workspace별 active thread를 하나로 제한한다.
+- Pages: [[RAG Process Workflow]], [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`, `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, `lib/rag/document-context.ts`, `components/ai/thinking-indicator.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `prisma/schema.prisma`, `prisma/migrations/20260615120000_add_ai_chat_threads/migration.sql`, `tests/rag/document-context.test.ts`, `tests/components/thinking-indicator.test.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`, `pnpm exec prisma validate`, `pnpm exec vitest run tests/rag/document-context.test.ts tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx --reporter=dot`.
 
 ## 2026-06-15T11:55:00+0900 - issue-104 ai assistant chatbot plan
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
   readStoredChatModel,
@@ -116,10 +117,11 @@ export function AiAssistantPanel({
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={!trimmedQuestion || isLoading} className="h-8 px-2 text-xs">
-            {isLoading ? "Asking..." : "Ask AI"}
+            Ask AI
           </Button>
         </div>
       </form>
+      <ThinkingIndicator active={isLoading} className="mt-3 text-sm text-slate-500" />
       {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
       {answer ? (
         <div className="mt-3 space-y-2 border-t border-border pt-3">
