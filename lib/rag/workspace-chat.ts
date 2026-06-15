@@ -448,7 +448,7 @@ function selectIndexBackfillDocuments(input: {
   );
   if (queryTerms.size === 0 && !shouldIncludeSelectedDocument) return [];
 
-  return input.documents
+  const candidates = input.documents
     .map((document, order) => ({
       document,
       order,
@@ -461,9 +461,28 @@ function selectIndexBackfillDocuments(input: {
     .sort((left, right) => {
       if (right.score !== left.score) return right.score - left.score;
       return left.order - right.order;
-    })
-    .slice(0, INDEX_BACKFILL_DOCUMENT_LIMIT)
-    .map((candidate) => candidate.document);
+    });
+  if (!shouldIncludeSelectedDocument || !input.selectedDocumentId) {
+    return candidates
+      .slice(0, INDEX_BACKFILL_DOCUMENT_LIMIT)
+      .map((candidate) => candidate.document);
+  }
+
+  const selectedCandidate = candidates.find(
+    (candidate) => candidate.document.id === input.selectedDocumentId,
+  );
+  if (!selectedCandidate) {
+    return candidates
+      .slice(0, INDEX_BACKFILL_DOCUMENT_LIMIT)
+      .map((candidate) => candidate.document);
+  }
+
+  const remainingCandidates = candidates.filter(
+    (candidate) => candidate.document.id !== input.selectedDocumentId,
+  );
+  return [selectedCandidate, ...remainingCandidates.slice(0, INDEX_BACKFILL_DOCUMENT_LIMIT - 1)].map(
+    (candidate) => candidate.document,
+  );
 }
 
 function scoreDocumentForBackfill(
@@ -578,21 +597,26 @@ function isDocumentReferentialQuery(query: string) {
   );
 }
 
-function withDisplayOrderedMessages<TThread extends { messages: Array<{ createdAt: Date }> }>(
-  thread: TThread,
-) {
+function withDisplayOrderedMessages<
+  TThread extends { messages: Array<{ createdAt: Date; id?: string; role?: string }> },
+>(thread: TThread) {
   return {
     ...thread,
     messages: orderedMessagesForDisplay(thread.messages),
   };
 }
 
-function orderedMessagesForDisplay<TMessage extends { createdAt: Date; id?: string }>(
+function orderedMessagesForDisplay<
+  TMessage extends { createdAt: Date; id?: string; role?: string },
+>(
   messages: TMessage[],
 ) {
   return [...messages].sort((left, right) => {
     const createdAtDiff = left.createdAt.getTime() - right.createdAt.getTime();
     if (createdAtDiff !== 0) return createdAtDiff;
+
+    const roleDiff = messageRoleOrder(left) - messageRoleOrder(right);
+    if (roleDiff !== 0) return roleDiff;
 
     return (left.id ?? "").localeCompare(right.id ?? "");
   });
@@ -607,10 +631,26 @@ function buildConversationQuestion(
 
   return [
     "Recent conversation:",
-    ...recentMessages.map((message) => `${message.role}: ${message.content}`),
+    ...recentMessages.map(
+      (message) => `${message.role}: ${stripCitationMarkers(message.content)}`,
+    ),
     "",
     `Current user message: ${currentMessage}`,
   ].join("\n");
+}
+
+function messageRoleOrder(message: { role?: string }) {
+  if (message.role === "USER") return 0;
+  if (message.role === "ASSISTANT") return 1;
+  return 2;
+}
+
+function stripCitationMarkers(content: string) {
+  return content
+    .replace(/\s*\[\d+\]/g, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
 function isUniqueConstraintError(error: unknown) {

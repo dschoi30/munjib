@@ -100,6 +100,45 @@ describe("workspace chat service", () => {
     ).resolves.toBe(1);
   });
 
+  it("keeps user messages before assistant messages when persisted timestamps tie", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const tiedCreatedAt = new Date("2026-06-15T00:00:00.000Z");
+    const idSuffix = randomUUID();
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        messages: {
+          create: [
+            {
+              id: `zz-user-message-${idSuffix}`,
+              role: "USER",
+              content: "Question with tied timestamp",
+              createdAt: tiedCreatedAt,
+            },
+            {
+              id: `aa-assistant-message-${idSuffix}`,
+              role: "ASSISTANT",
+              content: "Answer with tied timestamp",
+              createdAt: tiedCreatedAt,
+            },
+          ],
+        },
+      },
+    });
+
+    const result = await getOrCreateWorkspaceChatThread({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+    });
+
+    expect(result.messages.map((message) => message.role)).toEqual(["USER", "ASSISTANT"]);
+    expect(result.thread.messages.map((message) => message.role)).toEqual([
+      "USER",
+      "ASSISTANT",
+    ]);
+  });
+
   it("saves the turn, searches readable chunks, invokes the answer chain, and persists answer metadata", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const handbook = await createSavedDocument({
@@ -347,6 +386,40 @@ describe("workspace chat service", () => {
       title: "Security",
       contentMarkdown: "# Security\n\nRotate credentials every quarter.",
     });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Summarize this document.",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        documentId: selected.id,
+        embeddingModel: "bge-m3",
+      }),
+    );
+  });
+
+  it("backfills the readable selected document even when lexical candidates fill the cap", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Selected",
+      contentMarkdown: "# Selected\n\nSelected document evidence.",
+    });
+    await Promise.all(
+      Array.from({ length: 9 }, (_, index) =>
+        createSavedDocument({
+          workspaceId: fixture.workspace.id,
+          userId: fixture.user.id,
+          title: `Summarize Candidate ${index + 1}`,
+          contentMarkdown: "# Candidate\n\nSummarize candidate evidence.",
+        }),
+      ),
+    );
 
     await sendWorkspaceChatMessage({
       workspaceSlug: fixture.workspace.slug,
@@ -611,6 +684,52 @@ describe("workspace chat service", () => {
     expect(invokeAnswerChain).not.toHaveBeenCalledWith(
       expect.objectContaining({
         userPrompt: expect.stringContaining("Historical message 1"),
+      }),
+    );
+  });
+
+  it("strips old citation markers from conversation history before retrieval and prompting", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        messages: {
+          create: [
+            { role: "USER", content: "Earlier question?" },
+            {
+              role: "ASSISTANT",
+              content: "Earlier answer [1] and another citation [12].",
+            },
+          ],
+        },
+      },
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What changed?",
+    });
+
+    const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
+    expect(retrievalQuery).toContain("Earlier answer and another citation.");
+    expect(retrievalQuery).not.toContain("Earlier answer [1]");
+    expect(retrievalQuery).not.toContain("[12]");
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Earlier answer and another citation."),
+      }),
+    );
+    expect(invokeAnswerChain).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Earlier answer [1]"),
       }),
     );
   });
