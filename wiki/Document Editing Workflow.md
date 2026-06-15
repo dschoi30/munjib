@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-06-15
-source_count: 79
+updated: 2026-06-16
+source_count: 80
 tags:
   - munjib
   - workflow
@@ -108,6 +108,8 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk refresh를 예약한다.
 
+Attachment read는 DB row 권한 확인 뒤 `storage/attachments/<storageKey>` file을 읽는다. DB의 `Attachment` row는 남아 있지만 local/Docker storage file이 없어진 경우 `ENOENT`/`ENOTDIR`를 raw 500으로 노출하지 않고 `ATTACHMENT_NOT_FOUND`로 매핑하며, `/api/attachments/<id>` route는 이 오류와 read-forbidden 오류를 404 JSON response로 정규화한다. 따라서 stale markdown image URL이나 volume mismatch가 페이지 전체 server error로 번지지 않고, browser image request는 missing resource로 실패한다.
+
 Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachment()`로 분리된다. 이 helper는 clipboard image paste에서 attachment row와 `attachment.uploaded` audit log만 생성하며 `Document.contentMarkdown`, `DocumentVersion`, link/metadata reconciliation은 바로 건드리지 않는다. Clipboard image paste는 service layer에서 saved markdown을 바꾸지 않으므로 RAG indexing도 실행하지 않고, markdown insertion은 editor draft와 이후 Save 흐름에 맡긴다. Clipboard image file paste, HTML `<img>` paste, remote image URL server fetch, pending draft, Save guard 세부 흐름은 [[Markdown Import And Clipboard Paste Workflow]]에서 본다.
 
 `createCommentAction()`은 문서에 comment를 추가하고 `comment.created` audit log를 남긴다. 빈 comment는 거부된다. Comment 저장도 현재 문서 query로 redirect하지 않고 workspace path revalidation만 수행해 DocumentEditor remount와 화면 깜빡임을 피한다.
@@ -206,6 +208,8 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `lib/rag/langfuse.ts`
 - `lib/rag/errors.ts`
 - `lib/attachments/service.ts`
+- `app/api/attachments/[attachmentId]/route.ts`
+- `tests/attachments/route.test.ts`
 - `tests/rag/index-document.test.ts`
 - `tests/rag/model-config.test.ts`
 - `tests/rag/model-factory.test.ts`

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { getReadableAttachment } from "@/lib/attachments/service";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 export async function GET(
   _request: Request,
@@ -8,7 +9,25 @@ export async function GET(
 ) {
   const user = await requireCurrentUser();
   const { attachmentId } = await params;
-  const { attachment, bytes } = await getReadableAttachment(attachmentId, user.id);
+  let readableAttachment: Awaited<ReturnType<typeof getReadableAttachment>>;
+  try {
+    readableAttachment = await getReadableAttachment(attachmentId, user.id);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (
+      message === SERVICE_ERROR_CODES.ATTACHMENT_NOT_FOUND ||
+      message === "WORKSPACE_READ_FORBIDDEN" ||
+      message === "DOCUMENT_READ_FORBIDDEN"
+    ) {
+      return NextResponse.json(
+        { error: SERVICE_ERROR_CODES.ATTACHMENT_NOT_FOUND },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ error: "ATTACHMENT_REQUEST_FAILED" }, { status: 500 });
+  }
+  const { attachment, bytes } = readableAttachment;
 
   return new NextResponse(bytes, {
     headers: {

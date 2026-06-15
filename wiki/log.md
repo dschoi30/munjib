@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-15
-source_count: 193
+updated: 2026-06-16
+source_count: 194
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-16T00:00:48+0900 - attachment missing file response
+
+- Result: Attachment image requests no longer return raw 500 errors when the DB row exists but the file is missing from `storage/attachments`.
+- Coverage: `getReadableAttachment()` maps missing local storage files (`ENOENT`/`ENOTDIR`) to `ATTACHMENT_NOT_FOUND`, and `/api/attachments/<id>` maps missing/read-forbidden attachment reads to 404 JSON responses. This covers local/Docker storage volume mismatch and stale attachment markdown URLs without leaking filesystem paths in the response.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: user-reported `/api/attachments/*` ENOENT stack trace, `lib/attachments/service.ts`, `app/api/attachments/[attachmentId]/route.ts`, `lib/service-errors.ts`, `tests/attachments/service.test.ts`, `tests/attachments/route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/attachments/service.test.ts tests/attachments/route.test.ts`.
 
 ## 2026-06-15T11:04:01+0900 - rag process visual map
 
