@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-15T11:04:01+0900 - rag process visual map
+
+- Result: [[RAG Process Workflow]]에 Ask AI RAG 전체 흐름을 한눈에 볼 수 있는 Mermaid process map, 단계 요약 표, provider/model boundary map을 추가했다.
+- Coverage: 시각화는 UI request, route validation, permission gate, server env provider config, optional chat model override, current embedding index guard, saved document chunking, chunk embedding/store, retrieval scope, question embedding, pgvector retrieval, reranking, prompt/citation build, LangChain answer generation, Langfuse metadata/full capture boundary를 함께 보여준다.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: 사용자 요청, `wiki/RAG Process Workflow.md`, `lib/rag/ask.ts`, `lib/rag/index-document.ts`, `lib/rag/chunk-markdown.ts`, `lib/rag/vector-store.ts`, `lib/rag/retriever.ts`.
+- Verification: `pnpm wiki:manifest`; `pnpm wiki:lint`.
+
 ## 2026-06-15T01:22:05+0900 - issue-102 PR review follow-up
 
 - Result: PR #103 review feedback removed `flushSync` from the assistant model setting subscription and made `chatModel: null` equivalent to an absent override in the Ask route.
