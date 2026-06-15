@@ -29,7 +29,7 @@ vi.mock("@/lib/rag/model-factory", () => ({
 }));
 
 vi.mock("@/lib/rag/answer-chain", () => ({
-  invokeAnswerChain: vi.fn().mockResolvedValue("Saved answer"),
+  invokeAnswerChain: vi.fn().mockResolvedValue("Saved answer [1]."),
 }));
 
 vi.mock("@/lib/rag/langfuse", () => ({
@@ -112,7 +112,7 @@ describe("RAG ask service", () => {
       contentMarkdown: "# Caller content",
     } as unknown as Parameters<typeof askDocumentQuestion>[0]);
 
-    expect(result.answer).toBe("Saved answer");
+    expect(result.answer).toBe("Saved answer [1].");
     expect(result.citations).toEqual([
       {
         index: 1,
@@ -279,7 +279,7 @@ describe("RAG ask service", () => {
       question: "What happened?",
     });
 
-    expect(result.answer).toBe("Saved answer");
+    expect(result.answer).toBe("Saved answer [1].");
     expect(assertCurrentEmbeddingIndex).not.toHaveBeenCalled();
     expect(safeIndexSavedDocument).not.toHaveBeenCalled();
     expect(embedText).not.toHaveBeenCalled();
@@ -305,7 +305,7 @@ describe("RAG ask service", () => {
       question: "What happened?",
     });
 
-    expect(result.answer).toBe("Saved answer");
+    expect(result.answer).toBe("Saved answer [1].");
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
       expect.not.objectContaining({
         embeddingProvider: expect.anything(),
@@ -315,6 +315,56 @@ describe("RAG ask service", () => {
     );
     expect(createChatModel).toHaveBeenCalled();
     expect(invokeAnswerChain).toHaveBeenCalled();
+  });
+
+  it("returns only current-document citations referenced by the answer", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Saved Title",
+      contentMarkdown: "# Welcome\n\nGeneral intro.\n\n# Policy\n\nApprovals require manager signoff.",
+    });
+    vi.mocked(invokeAnswerChain).mockResolvedValueOnce("Approvals require manager signoff [2].");
+
+    const result = await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "How are approvals handled?",
+    });
+
+    expect(result.citations).toEqual([
+      {
+        index: 2,
+        documentId: selected.id,
+        documentTitle: "Saved Title",
+        documentPath: "/saved-title",
+        headingPath: "Policy",
+      },
+    ]);
+  });
+
+  it("returns no current-document citations when the answer cites no evidence", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Welcome",
+      contentMarkdown: "# Welcome\n\nGeneral onboarding intro.",
+    });
+    vi.mocked(invokeAnswerChain).mockResolvedValueOnce(
+      "The current saved document does not contain enough evidence to answer.",
+    );
+
+    const result = await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What is the travel reimbursement policy?",
+    });
+
+    expect(result.citations).toEqual([]);
   });
 
   it("returns no citations and no citation ids for an empty current document", async () => {

@@ -4,9 +4,10 @@ import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
 import { getRagModelConfig } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
-import { buildRagPrompt } from "@/lib/rag/prompt";
+import { buildRagPrompt, filterCitationsToAnswer } from "@/lib/rag/prompt";
 import { searchSimilarChunks, type RetrievedChunk } from "@/lib/rag/vector-store";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { filterReadableDocuments } from "@/lib/workspace-tree";
@@ -32,6 +33,54 @@ const THREAD_MESSAGE_LIMIT = 50;
 const RETRIEVAL_LIMIT = 60;
 const PROMPT_CHUNK_LIMIT = 12;
 const MAX_CHUNKS_PER_DOCUMENT = 3;
+const INDEX_BACKFILL_DOCUMENT_LIMIT = 8;
+const SELECTED_DOCUMENT_PRIORITY_DISTANCE_MARGIN = 0.15;
+const WORKSPACE_CHAT_STOP_WORDS = new Set([
+  "a",
+  "an",
+  "and",
+  "are",
+  "as",
+  "at",
+  "be",
+  "by",
+  "can",
+  "could",
+  "current",
+  "document",
+  "explain",
+  "for",
+  "from",
+  "how",
+  "if",
+  "in",
+  "is",
+  "it",
+  "me",
+  "of",
+  "on",
+  "or",
+  "please",
+  "should",
+  "tell",
+  "that",
+  "the",
+  "then",
+  "this",
+  "to",
+  "was",
+  "we",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "with",
+  "would",
+  "you",
+  "your",
+]);
 
 export async function getOrCreateWorkspaceChatThread(input: WorkspaceChatInput) {
   const workspace = await loadWorkspaceForChat(input);
@@ -79,11 +128,17 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     orderedMessagesForDisplay(thread.messages),
     message,
   );
-  const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? input.selectedDocumentId
     : undefined;
+  await ensureWorkspaceChatRetrievalIndex({
+    workspaceId: workspace.id,
+    readableDocuments: workspace.readableDocuments,
+    query: conversationQuestion,
+    embeddingModel: effectiveModelConfig.embedding.indexId,
+  });
+  const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
   const chunks = await searchSimilarChunks({
     workspaceId: workspace.id,
     embeddingModel: effectiveModelConfig.embedding.indexId,
@@ -124,6 +179,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     callbacks: trace.callbacks,
     metadata: trace.metadata,
   });
+  const answerCitations = filterCitationsToAnswer(answer, prompt.citations);
   const contextMeta = {
     retrievedChunkCount: promptChunks.length,
     citationChunkIds,
@@ -142,7 +198,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
         threadId: thread.id,
         role: "ASSISTANT",
         content: answer,
-        citations: prompt.citations as Prisma.InputJsonValue,
+        citations: answerCitations as Prisma.InputJsonValue,
         contextMeta,
         model: effectiveModelConfig.chat.model,
       },
@@ -168,7 +224,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     thread: withDisplayOrderedMessages(updatedThread),
     userMessage,
     assistantMessage,
-    citations: prompt.citations,
+    citations: answerCitations,
   };
 }
 
@@ -309,6 +365,108 @@ async function findActiveThread(input: { workspaceId: string; actorId: string })
   });
 }
 
+async function ensureWorkspaceChatRetrievalIndex(input: {
+  workspaceId: string;
+  readableDocuments: Array<{
+    id: string;
+    title: string;
+    path: string;
+    contentMarkdown: string;
+    contentText: string;
+    updatedAt: Date;
+  }>;
+  query: string;
+  embeddingModel: string;
+}) {
+  const candidates = selectIndexBackfillDocuments({
+    documents: input.readableDocuments,
+    query: input.query,
+  });
+  if (candidates.length === 0) return;
+
+  const documentIds = candidates.map((document) => document.id);
+  const freshChunkRows = await prisma.documentChunk.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      embeddingModel: input.embeddingModel,
+      documentId: { in: documentIds },
+    },
+    select: {
+      documentId: true,
+      sourceUpdatedAt: true,
+    },
+  });
+  const freshDocumentIds = new Set(
+    freshChunkRows
+      .filter((chunk) => {
+        const candidate = candidates.find((document) => document.id === chunk.documentId);
+        return candidate && chunk.sourceUpdatedAt.getTime() === candidate.updatedAt.getTime();
+      })
+      .map((chunk) => chunk.documentId),
+  );
+
+  for (const document of candidates) {
+    if (freshDocumentIds.has(document.id)) continue;
+
+    await safeIndexSavedDocument({
+      documentId: document.id,
+      embeddingModel: input.embeddingModel,
+    });
+  }
+}
+
+function selectIndexBackfillDocuments(input: {
+  documents: Array<{
+    id: string;
+    title: string;
+    path: string;
+    contentMarkdown: string;
+    contentText: string;
+    updatedAt: Date;
+  }>;
+  query: string;
+}) {
+  const queryTerms = normalizedKeywordTerms(input.query);
+  if (queryTerms.size === 0) return [];
+
+  return input.documents
+    .map((document, order) => ({
+      document,
+      order,
+      score: scoreDocumentForBackfill(document, queryTerms),
+    }))
+    .filter((candidate) => candidate.score > 0)
+    .sort((left, right) => {
+      if (right.score !== left.score) return right.score - left.score;
+      return left.order - right.order;
+    })
+    .slice(0, INDEX_BACKFILL_DOCUMENT_LIMIT)
+    .map((candidate) => candidate.document);
+}
+
+function scoreDocumentForBackfill(
+  document: {
+    title: string;
+    path: string;
+    contentMarkdown: string;
+    contentText: string;
+  },
+  queryTerms: Set<string>,
+) {
+  const titleTerms = normalizedKeywordTerms(document.title);
+  const pathTerms = normalizedKeywordTerms(document.path);
+  const contentTerms = normalizedKeywordTerms(document.contentText || document.contentMarkdown);
+  let score = 0;
+
+  for (const term of queryTerms) {
+    if (titleTerms.has(term)) score += 5;
+    if (pathTerms.has(term)) score += 4;
+    if (contentTerms.has(term)) score += 1;
+  }
+
+  return score;
+}
+
 function capPromptChunks(chunks: RetrievedChunk[]) {
   const countsByDocumentId = new Map<string, number>();
   const capped: RetrievedChunk[] = [];
@@ -331,21 +489,40 @@ function prioritizeSelectedDocumentChunks(
   selectedDocumentId: string | null | undefined,
 ) {
   if (!selectedDocumentId) return chunks;
+  const bestDistance = Math.min(...chunks.map((chunk) => chunk.distance));
+  const selectedPriorityMaxDistance = bestDistance + SELECTED_DOCUMENT_PRIORITY_DISTANCE_MARGIN;
 
   return chunks
     .map((chunk, index) => ({
       chunk,
       index,
-      isSelectedDocument: chunk.documentId === selectedDocumentId,
+      isPrioritySelectedDocument:
+        chunk.documentId === selectedDocumentId &&
+        Number.isFinite(chunk.distance) &&
+        chunk.distance <= selectedPriorityMaxDistance,
     }))
     .sort((left, right) => {
-      if (left.isSelectedDocument !== right.isSelectedDocument) {
-        return left.isSelectedDocument ? -1 : 1;
+      if (left.isPrioritySelectedDocument !== right.isPrioritySelectedDocument) {
+        return left.isPrioritySelectedDocument ? -1 : 1;
       }
 
       return left.index - right.index;
     })
     .map((entry) => entry.chunk);
+}
+
+function normalizedKeywordTerms(text: string) {
+  const tokens = text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+  return new Set(tokens.filter(isKeywordCandidate));
+}
+
+function isKeywordCandidate(term: string) {
+  if (WORKSPACE_CHAT_STOP_WORDS.has(term)) return false;
+  if (/[\p{Script=Han}\p{Script=Hangul}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(term)) {
+    return term.length >= 2;
+  }
+
+  return term.length >= 3;
 }
 
 function withDisplayOrderedMessages<TThread extends { messages: Array<{ createdAt: Date }> }>(
