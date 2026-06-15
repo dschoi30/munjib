@@ -186,7 +186,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 81,
+      "source_count": 82,
       "searchPriority": 5
     },
     {
@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 195,
+      "source_count": 196,
       "searchPriority": 1
     },
     {
@@ -278,7 +278,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Next.js Prisma Monolith]]"
       ],
-      "source_count": 42,
+      "source_count": 43,
       "searchPriority": 50
     },
     {
@@ -348,7 +348,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 82,
+      "source_count": 83,
       "searchPriority": 30
     },
     {
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 36,
+      "source_count": 37,
       "searchPriority": 50
     },
     {

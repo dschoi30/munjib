@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 195
+source_count: 196
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T11:55:00+0900 - issue-104 ai assistant chatbot plan
+
+- Result: Issue #104 구현 계획을 추가했다.
+- Coverage: 계획은 Ask AI current-document context packer, direct-context prompt/service 전환, 공통 Thinking indicator, `AiChatThread`/`AiChatMessage` schema, workspace chatbot service/API/UI, verification/wiki cleanup 순서로 TDD task를 나눈다. Chatbot response streaming은 Issue #105 follow-up으로 유지한다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`, GitHub issue #104.
+- Verification: plan self-review for spec coverage, placeholders, and type consistency; `git diff --check`.
 
 ## 2026-06-15T11:40:00+0900 - issue-105 chatbot streaming split
 
