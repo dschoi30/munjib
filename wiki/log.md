@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-15T23:16:06+0900 - issue-104 pr review prompt persistence follow-up
+
+- Result: PR #106의 추가 review feedback으로 selected-document referential backfill, failed turn persistence, direct-context citation labeling을 보강했다.
+- Coverage: `buildCurrentDocumentContext()` now returns labeled context blocks and `buildDirectDocumentPrompt()` uses them so each current-document section content is adjacent to its `[n]` citation label. `sendWorkspaceChatMessage()` includes a readable selected document in backfill candidates for document-referential prompts such as "Summarize this document", and user/assistant chat messages are persisted together only after answer generation succeeds to avoid orphan failed USER turns.
+- Pages: [[RAG Process Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #106 review threads, `lib/rag/document-context.ts`, `lib/rag/prompt.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/prompt.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/prompt.test.ts tests/rag/workspace-chat.test.ts`; follow-up GREEN with `pnpm exec vitest run tests/rag/document-context.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx`; `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-06-15T23:10:42+0900 - issue-104 pr review retrieval context follow-up
 
 - Result: PR #106의 남은 actionable review feedback 중 workspace chatbot error handling, selected-document retrieval cap, oversized headed context packing 항목을 보강했다.

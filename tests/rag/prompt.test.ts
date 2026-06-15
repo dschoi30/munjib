@@ -131,6 +131,7 @@ describe("direct current document prompt builder", () => {
       question: "What is saved?",
       currentDocumentContext: {
         context: "# Facts\n\nSaved database content",
+        labeledContext: "[1] Saved Title > Facts\n# Facts\n\nSaved database content",
         partial: false,
         sections: [
           {
@@ -145,8 +146,39 @@ describe("direct current document prompt builder", () => {
 
     expect(prompt.user).toContain("Question:\nWhat is saved?");
     expect(prompt.user).toContain(
-      "Current saved document context:\n# Facts\n\nSaved database content",
+      "Current saved document context:\n[1] Saved Title > Facts\n# Facts\n\nSaved database content",
     );
+  });
+
+  it("labels each current document context section inline with its content", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "Which sections matter?",
+      currentDocumentContext: {
+        context: "# First\n\nAlpha\n\n# Second\n\nBeta",
+        labeledContext: [
+          "[1] Saved Title > First\n# First\n\nAlpha",
+          "[2] Saved Title > Second\n# Second\n\nBeta",
+        ].join("\n\n"),
+        partial: false,
+        sections: [
+          {
+            index: 1,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "First",
+          },
+          {
+            index: 2,
+            documentTitle: "Saved Title",
+            documentPath: "/saved-title",
+            headingPath: "Second",
+          },
+        ],
+      },
+    });
+
+    expect(prompt.user).toContain("[1] Saved Title > First\n# First\n\nAlpha");
+    expect(prompt.user).toContain("[2] Saved Title > Second\n# Second\n\nBeta");
   });
 
   it("maps current document sections to current-document citations", () => {

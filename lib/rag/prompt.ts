@@ -74,7 +74,9 @@ export function buildDirectDocumentPrompt(input: BuildDirectDocumentPromptInput)
           .join("\n")
       : "No current document sections were available.";
   const context =
-    input.currentDocumentContext.context.trim() || "The current saved document is empty.";
+    input.currentDocumentContext.labeledContext?.trim() ||
+    input.currentDocumentContext.context.trim() ||
+    "The current saved document is empty.";
   const partialNote = input.currentDocumentContext.partial
     ? "Only selected sections of this long document were included."
     : null;
