@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI RAG의 saved-content-only request, indexing, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-15
-source_count: 34
+source_count: 35
 tags:
   - munjib
   - workflow
@@ -26,7 +26,9 @@ links:
 
 # RAG Process Workflow
 
-이 page는 document editor의 `AI에게 묻기`에서 시작해 saved DB content만 사용하는 Ask AI RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
+이 page는 document editor의 `AI에게 묻기`에서 시작해 saved DB content만 사용하는 현재 Ask AI RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
+
+Issue #104 설계는 아직 구현 전 계획이며 현재 process map을 대체한 상태가 아니다. 계획된 방향은 Ask AI 기본 path를 현재 문서 direct-context answer로 바꾸고, 기존 `DocumentChunk` pgvector store는 새 workspace chatbot의 전역 readable document retrieval에 주로 재사용하는 것이다.
 
 ## Process Map
 
@@ -149,6 +151,14 @@ Reranking score는 다음 공식이다.
 
 Current document boost는 `0.5`, linked document `0.3`, backlink `0.25`, same-tag `0.15`다. Keyword boost는 unique term당 `0.05`, maximum `0.2`다. Token overlap은 punctuation-normalized Unicode terms를 사용하고, English stop words와 too-short Latin terms는 제외하지만 Korean/CJK 2글자 terms는 후보로 유지한다.
 
+## Planned Issue #104 Split
+
+Issue #104 설계는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request profile을 분리한다. Ask AI는 editor-local 현재 문서 assistant로 유지하고, 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer로 관련 섹션을 선택한다. Ask AI citation은 MVP에서 현재 문서 section만 가리킨다.
+
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, answer turn마다 기존 `DocumentChunk` rows에서 readable active document chunks를 검색한다. Retrieval은 document별 chunk cap, relevance threshold calibration, optional selected-document boost, answer context에 포함된 chunk만 citation으로 반환하는 방향이다.
+
+Ask AI와 chatbot은 model config, chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이다.
+
 ## Observability And Privacy
 
 Sentry는 app/runtime error와 low-sample tracing 용도이며, RAG prompt/context body를 보내는 관측 계층이 아니다. Sentry privacy scrubber와 production 설정은 [[Production Observability Workflow]]에서 관리한다.
@@ -188,9 +198,11 @@ pnpm wiki:sync-check --staged
 - GitHub issue #73
 - GitHub issue #100
 - GitHub issue #102
+- GitHub issue #104
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
+- `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
 - `components/document-editor/ai-assistant-panel.tsx`
 - `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`
 - `lib/rag/ask.ts`

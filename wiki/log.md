@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 193
+source_count: 194
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-15T11:25:00+0900 - issue-104 ai assistant chatbot design
+
+- Result: Issue #104 설계를 추가해 Ask AI 정확도/속도 개선과 우측 하단 workspace chatbot의 역할을 분리했다.
+- Coverage: Ask AI는 current saved document direct-context 기본 path로 전환하는 계획이며, 기존 `DocumentChunk` pgvector store는 제거하지 않고 workspace chatbot RAG retrieval에 재사용한다. Chatbot은 사용자+workspace별 active thread/message history를 저장하고, Thinking indicator는 영어 elapsed-time 메시지 schedule을 공통 UI로 사용한다.
+- Pages: [[Munjib]], [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #104, `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`.
+- Verification: spec self-review; `git diff --check`.
 
 ## 2026-06-15T11:04:01+0900 - rag process visual map
 
