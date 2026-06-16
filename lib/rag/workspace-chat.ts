@@ -40,6 +40,8 @@ const PROMPT_CHUNK_LIMIT = 12;
 const MAX_CHUNKS_PER_DOCUMENT = 3;
 const INDEX_BACKFILL_DOCUMENT_LIMIT = 8;
 const SELECTED_DOCUMENT_PRIORITY_DISTANCE_MARGIN = 0.15;
+const CONVERSATION_QUERY_MAX_CHARS = 6_000;
+const TRUNCATION_MARKER = "\n[truncated]";
 const WORKSPACE_CHAT_STOP_WORDS = new Set([
   "a",
   "an",
@@ -640,16 +642,48 @@ function buildConversationQuestion(
   currentMessage: string,
 ) {
   const recentMessages = messages.slice(-RECENT_MESSAGE_LIMIT);
-  if (recentMessages.length === 0) return currentMessage;
+  if (recentMessages.length === 0) {
+    return truncateText(currentMessage, CONVERSATION_QUERY_MAX_CHARS);
+  }
 
+  const currentLine = buildCurrentUserMessageLine(currentMessage);
+  const historyBudget =
+    CONVERSATION_QUERY_MAX_CHARS -
+    "Recent conversation:".length -
+    currentLine.length -
+    3;
+  if (historyBudget <= 0) return currentLine;
+
+  const selectedHistoryLines: string[] = [];
+  let usedHistoryChars = 0;
+  for (const message of [...recentMessages].reverse()) {
+    const line = `${message.role}: ${stripCitationMarkers(message.content)}`;
+    const separatorLength = selectedHistoryLines.length === 0 ? 0 : 1;
+    if (usedHistoryChars + separatorLength + line.length <= historyBudget) {
+      selectedHistoryLines.push(line);
+      usedHistoryChars += separatorLength + line.length;
+      continue;
+    }
+
+    const remaining = historyBudget - usedHistoryChars - separatorLength;
+    if (remaining > TRUNCATION_MARKER.length + 16) {
+      selectedHistoryLines.push(truncateText(line, remaining));
+    }
+    break;
+  }
+
+  if (selectedHistoryLines.length === 0) return currentLine;
   return [
     "Recent conversation:",
-    ...recentMessages.map(
-      (message) => `${message.role}: ${stripCitationMarkers(message.content)}`,
-    ),
+    ...selectedHistoryLines.reverse(),
     "",
-    `Current user message: ${currentMessage}`,
+    currentLine,
   ].join("\n");
+}
+
+function buildCurrentUserMessageLine(currentMessage: string) {
+  const prefix = "Current user message: ";
+  return `${prefix}${truncateText(currentMessage, CONVERSATION_QUERY_MAX_CHARS - prefix.length)}`;
 }
 
 function messageRoleOrder(message: { role?: string }) {
@@ -664,6 +698,13 @@ function stripCitationMarkers(content: string) {
     .replace(/\s+([.,;:!?])/g, "$1")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
+}
+
+function truncateText(text: string, maxChars: number) {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= TRUNCATION_MARKER.length) return text.slice(0, maxChars);
+
+  return `${text.slice(0, maxChars - TRUNCATION_MARKER.length).trimEnd()}${TRUNCATION_MARKER}`;
 }
 
 function isUniqueConstraintError(error: unknown) {

@@ -691,6 +691,38 @@ describe("workspace chat service", () => {
     );
   });
 
+  it("bounds conversation history before embedding the retrieval query", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        messages: {
+          create: Array.from({ length: 12 }, (_, index) => ({
+            role: index % 2 === 0 ? "USER" : "ASSISTANT",
+            content: `Long historical message ${index + 1}: ${"very long context ".repeat(600)}`,
+          })),
+        },
+      },
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What is the policy now?",
+    });
+
+    const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
+    expect(retrievalQuery.length).toBeLessThanOrEqual(6_000);
+    expect(retrievalQuery).toContain("Current user message: What is the policy now?");
+  });
+
   it("strips old citation markers from conversation history before retrieval and prompting", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
