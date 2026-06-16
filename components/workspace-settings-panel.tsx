@@ -13,6 +13,7 @@ import {
 import { Bot, FileText, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  type ClientRagChatProvider,
   RAG_CHAT_MODEL_PRESETS,
   readStoredChatModel,
   resetStoredChatModel,
@@ -56,6 +57,7 @@ type SettingsSection = "import" | "ai";
 export function WorkspaceSettingsPanel({
   canWrite,
   defaultChatModel,
+  defaultChatProvider,
   folders,
   importMarkdownAction,
   onClose,
@@ -63,6 +65,7 @@ export function WorkspaceSettingsPanel({
 }: {
   canWrite: boolean;
   defaultChatModel: string;
+  defaultChatProvider: ClientRagChatProvider;
   folders: WorkspaceSettingsFolder[];
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   onClose: () => void;
@@ -75,11 +78,15 @@ export function WorkspaceSettingsPanel({
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
   const [modelStatus, setModelStatus] = useState<string | null>(null);
+  const [saveVersion, setSaveVersion] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
-  const storedChatModel = readStoredChatModel(workspaceSlug);
+  const storedChatModel = useMemo(
+    () => readStoredChatModel(workspaceSlug, defaultChatProvider),
+    [defaultChatProvider, saveVersion, workspaceSlug],
+  );
   const effectiveChatModel = storedChatModel ?? defaultChatModel;
   const importLocked = isImportPending || isImporting;
   const isImportActive = isImporting || importRun?.status === "importing";
@@ -116,29 +123,35 @@ export function WorkspaceSettingsPanel({
 
   const handleSavePresetModel = useCallback(
     (modelId: string) => {
-      const result = writeStoredChatModel(workspaceSlug, modelId);
+      const result = writeStoredChatModel(workspaceSlug, modelId, defaultChatProvider);
       if (!result.ok) {
         setModelStatus("Enter a valid model id.");
         return;
       }
 
+      if (result.stored) {
+        setSaveVersion((version) => version + 1);
+      }
       setModelStatus(
         result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
       );
     },
-    [workspaceSlug],
+    [defaultChatProvider, workspaceSlug],
   );
 
   const handleSaveCustomModel = useCallback(() => {
-    const validation = validateChatModelId(customModel);
+    const validation = validateChatModelId(customModel, defaultChatProvider);
     if (!validation.ok) {
       setModelStatus("Enter a valid model id.");
       return;
     }
 
-    const result = writeStoredChatModel(workspaceSlug, validation.value);
+    const result = writeStoredChatModel(workspaceSlug, validation.value, defaultChatProvider);
     if (result.ok) {
       setCustomModel(result.value);
+      if (result.stored) {
+        setSaveVersion((version) => version + 1);
+      }
       setModelStatus(
         result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
       );
@@ -146,10 +159,13 @@ export function WorkspaceSettingsPanel({
     }
 
     setModelStatus("Enter a valid model id.");
-  }, [customModel, workspaceSlug]);
+  }, [customModel, defaultChatProvider, workspaceSlug]);
 
   const handleResetModel = useCallback(() => {
     const reset = resetStoredChatModel(workspaceSlug);
+    if (reset) {
+      setSaveVersion((version) => version + 1);
+    }
     setModelStatus(
       reset
         ? `Using server default: ${defaultChatModel}`

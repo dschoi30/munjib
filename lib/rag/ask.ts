@@ -3,6 +3,10 @@ import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
 import { getRagGenerationConfig } from "@/lib/rag/config";
 import { buildCurrentDocumentContext } from "@/lib/rag/document-context";
+import {
+  INVALID_CHAT_MODEL_ERROR,
+  isChatModelCompatibleWithProvider,
+} from "@/lib/rag/client-model-settings";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
 import {
@@ -102,6 +106,15 @@ export async function askDocumentQuestion(
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
   const modelConfig = getRagGenerationConfig();
+  if (
+    input.chatModelOverride &&
+    !isChatModelCompatibleWithProvider({
+      chatProvider: modelConfig.chat.provider,
+      chatModel: input.chatModelOverride,
+    })
+  ) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
   const effectiveModelConfig = input.chatModelOverride
     ? {
         ...modelConfig,

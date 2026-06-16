@@ -3,6 +3,7 @@ import { WorkspaceRole } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { LangfuseCallbackConfigInput } from "@/lib/rag/langfuse";
 import { prisma } from "@/lib/db/client";
+import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { askDocumentQuestion } from "@/lib/rag/ask";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
@@ -219,7 +220,9 @@ describe("RAG ask service", () => {
     ).rejects.toThrow("QUESTION_REQUIRED");
   });
 
-  it("overrides only the chat model for answer generation", async () => {
+  it("overrides only the chat model for OpenAI-compatible answer generation", async () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "openai-compatible");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1");
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -242,14 +245,14 @@ describe("RAG ask service", () => {
     expect(searchSimilarChunks).not.toHaveBeenCalled();
     expect(createChatModel).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: "ollama",
+        provider: "openai-compatible",
         model: "moonshotai/kimi-k2.7-code",
-        baseUrl: "http://localhost:11434",
+        baseUrl: "https://openrouter.ai/api/v1",
       }),
     );
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
       expect.objectContaining({
-        chatProvider: "ollama",
+        chatProvider: "openai-compatible",
         chatModel: "moonshotai/kimi-k2.7-code",
         citationDocumentIds: [selected.id],
         metadata: expect.objectContaining({
@@ -258,6 +261,29 @@ describe("RAG ask service", () => {
         }),
       }),
     );
+  });
+
+  it("rejects known OpenRouter-style overrides when the server chat provider is Ollama", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Saved Title",
+      contentMarkdown: "Saved database content",
+    });
+
+    await expect(
+      askDocumentQuestion({
+        workspaceSlug: fixture.workspace.slug,
+        documentId: selected.id,
+        actorId: fixture.user.id,
+        question: "What is saved?",
+        chatModelOverride: "moonshotai/kimi-k2.7-code",
+      }),
+    ).rejects.toThrow(INVALID_CHAT_MODEL_ERROR);
+
+    expect(createChatModel).not.toHaveBeenCalled();
+    expect(invokeAnswerChain).not.toHaveBeenCalled();
   });
 
   it("answers direct current-document questions even when embedding index config would fail", async () => {

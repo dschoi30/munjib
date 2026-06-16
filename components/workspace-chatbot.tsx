@@ -6,6 +6,7 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  type ClientRagChatProvider,
   readStoredChatModel,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
@@ -22,6 +23,7 @@ type ChatMessage = {
 type WorkspaceChatbotProps = {
   workspaceSlug: string;
   selectedDocumentId: string | null;
+  defaultChatProvider: ClientRagChatProvider;
 };
 
 type ThreadResponse = {
@@ -34,7 +36,11 @@ type SendMessageResponse = {
   error?: string;
 };
 
-export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: WorkspaceChatbotProps) {
+export function WorkspaceChatbot({
+  workspaceSlug,
+  selectedDocumentId,
+  defaultChatProvider,
+}: WorkspaceChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
@@ -42,7 +48,7 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
   const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
-    readStoredChatModel(workspaceSlug),
+    readStoredChatModel(workspaceSlug, defaultChatProvider),
   );
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
@@ -53,20 +59,20 @@ export function WorkspaceChatbot({ workspaceSlug, selectedDocumentId }: Workspac
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
     hasLoadedThreadRef.current = false;
-    setChatModelOverride(readStoredChatModel(workspaceSlug));
+    setChatModelOverride(readStoredChatModel(workspaceSlug, defaultChatProvider));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
     setIsResetting(false);
     setError("");
-  }, [workspaceSlug]);
+  }, [defaultChatProvider, workspaceSlug]);
 
   useEffect(() => {
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(change.chatModel);
-    });
-  }, [workspaceSlug]);
+    }, { chatProvider: defaultChatProvider });
+  }, [defaultChatProvider, workspaceSlug]);
 
   useEffect(() => {
     if (!isOpen || hasLoadedThreadRef.current) return;
