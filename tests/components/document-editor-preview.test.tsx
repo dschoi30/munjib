@@ -417,6 +417,7 @@ describe("DocumentEditor heading preview folding", () => {
       expect.objectContaining({
         body: JSON.stringify({
           question: "Which model answered?",
+          chatProvider: "openai-compatible",
           chatModel: "moonshotai/kimi-k2.7-code",
         }),
       }),
@@ -436,7 +437,11 @@ describe("DocumentEditor heading preview folding", () => {
     act(() => {
       window.dispatchEvent(
         new CustomEvent("munjib:rag-chat-model-setting-changed", {
-          detail: { workspaceSlug: "company-handbook", chatModel: "qwen/qwen3.7-plus" },
+          detail: {
+            workspaceSlug: "company-handbook",
+            chatProvider: "openai-compatible",
+            chatModel: "qwen/qwen3.7-plus",
+          },
         }),
       );
     });

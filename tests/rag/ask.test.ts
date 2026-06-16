@@ -263,6 +263,40 @@ describe("RAG ask service", () => {
     );
   });
 
+  it("overrides the chat provider and model for OpenAI-compatible answer generation", async () => {
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1");
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Saved Title",
+      contentMarkdown: "# Facts\n\nSaved database content",
+    });
+
+    await askDocumentQuestion({
+      workspaceSlug: fixture.workspace.slug,
+      documentId: selected.id,
+      actorId: fixture.user.id,
+      question: "What is saved?",
+      chatProviderOverride: "openai-compatible",
+      chatModelOverride: "google/gemma-4-31b-it:free",
+    });
+
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openai-compatible",
+        model: "google/gemma-4-31b-it:free",
+        baseUrl: "https://openrouter.ai/api/v1",
+      }),
+    );
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      }),
+    );
+  });
+
   it("rejects known OpenRouter-style overrides when the server chat provider is Ollama", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({

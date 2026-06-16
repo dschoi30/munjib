@@ -3,6 +3,7 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
 import {
   INVALID_CHAT_MODEL_ERROR,
+  validateChatProvider,
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
@@ -16,13 +17,24 @@ export async function POST(
   const { workspaceSlug, documentId } = await params;
   const body = (await request.json().catch(() => ({}))) as {
     question?: unknown;
+    chatProvider?: unknown;
     chatModel?: unknown;
   };
   const question = typeof body.question === "string" ? body.question : "";
+  const chatProviderValidation =
+    body.chatProvider === undefined || body.chatProvider === null
+      ? null
+      : validateChatProvider(body.chatProvider);
+  if (chatProviderValidation && !chatProviderValidation.ok) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
   const chatModelValidation =
     body.chatModel === undefined || body.chatModel === null
       ? null
-      : validateChatModelId(body.chatModel);
+      : validateChatModelId(
+          body.chatModel,
+          chatProviderValidation?.ok ? chatProviderValidation.value : undefined,
+        );
 
   if (chatModelValidation && !chatModelValidation.ok) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
@@ -34,6 +46,9 @@ export async function POST(
       documentId,
       actorId: user.id,
       question,
+      ...(chatProviderValidation?.ok
+        ? { chatProviderOverride: chatProviderValidation.value }
+        : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
 

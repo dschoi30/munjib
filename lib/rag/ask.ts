@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/client";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
-import { getRagGenerationConfig } from "@/lib/rag/config";
+import { getRagGenerationConfig, type RagProvider } from "@/lib/rag/config";
 import { buildCurrentDocumentContext } from "@/lib/rag/document-context";
 import {
   INVALID_CHAT_MODEL_ERROR,
@@ -26,6 +26,7 @@ export type AskDocumentQuestionInput = {
   documentId: string;
   actorId: string;
   question: string;
+  chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
 };
 
@@ -106,24 +107,23 @@ export async function askDocumentQuestion(
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
   const modelConfig = getRagGenerationConfig();
+  const chatProvider = input.chatProviderOverride ?? modelConfig.chat.provider;
   if (
     input.chatModelOverride &&
     !isChatModelCompatibleWithProvider({
-      chatProvider: modelConfig.chat.provider,
+      chatProvider,
       chatModel: input.chatModelOverride,
     })
   ) {
     throw new Error(INVALID_CHAT_MODEL_ERROR);
   }
-  const effectiveModelConfig = input.chatModelOverride
-    ? {
-        ...modelConfig,
-        chat: {
-          ...modelConfig.chat,
+  const effectiveModelConfig =
+    input.chatProviderOverride || input.chatModelOverride
+      ? getRagGenerationConfig(process.env, {
+          provider: input.chatProviderOverride,
           model: input.chatModelOverride,
-        },
-      }
-    : modelConfig;
+        })
+      : modelConfig;
 
   const currentDocumentContext = buildCurrentDocumentContext({
     documentTitle: selectedDocument.title,
