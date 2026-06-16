@@ -25,6 +25,7 @@ type WorkspaceChatbotProps = {
   workspaceSlug: string;
   selectedDocumentId: string | null;
   defaultChatProvider: ClientRagChatProvider;
+  defaultChatModel: string;
 };
 
 type ThreadResponse = {
@@ -41,6 +42,7 @@ export function WorkspaceChatbot({
   workspaceSlug,
   selectedDocumentId,
   defaultChatProvider,
+  defaultChatModel,
 }: WorkspaceChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -55,6 +57,7 @@ export function WorkspaceChatbot({
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
   const trimmedMessage = messageInput.trim();
+  const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
     requestGenerationRef.current += 1;
@@ -246,6 +249,16 @@ export function WorkspaceChatbot({
           </button>
         </div>
       </header>
+
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border px-3 text-xs text-slate-500">
+        <span>Model</span>
+        <span
+          className="min-w-0 truncate font-medium text-slate-700"
+          title={effectiveChatModel}
+        >
+          {effectiveChatModel}
+        </span>
+      </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
         {messages.length === 0 && !isLoading ? (
