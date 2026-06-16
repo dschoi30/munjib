@@ -2,12 +2,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   CHAT_MODEL_SETTING_EVENT,
+  INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
   INVALID_CHAT_MODEL_ERROR,
   RAG_CHAT_MODEL_PRESETS,
+  addStoredCustomChatModel,
+  readStoredChatModelSetting,
+  readStoredCustomChatModels,
   readStoredChatModel,
   resetStoredChatModel,
   subscribeToStoredChatModelChanges,
   validateChatModelId,
+  validateChatModelSetting,
+  writeStoredChatModelSetting,
   writeStoredChatModel,
 } from "@/lib/rag/client-model-settings";
 
@@ -23,13 +29,23 @@ describe("client RAG chat model settings", () => {
   it("defines static presets that are valid model ids", () => {
     expect(RAG_CHAT_MODEL_PRESETS).toEqual(
       [
-        { id: "openrouter/fusion", label: "OpenRouter Fusion" },
-        { id: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code" },
-        { id: "qwen/qwen3.7-plus", label: "Qwen3.7 Plus" },
+        { id: "openrouter/fusion", label: "OpenRouter Fusion", chatProvider: "openai-compatible" },
+        { id: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code", chatProvider: "openai-compatible" },
+        { id: "qwen/qwen3.7-plus", label: "Qwen3.7 Plus", chatProvider: "openai-compatible" },
+        { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B IT Free", chatProvider: "openai-compatible" },
+        { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B A4B IT Free", chatProvider: "openai-compatible" },
+        { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B Free", chatProvider: "openai-compatible" },
+        { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B Free", chatProvider: "openai-compatible" },
       ],
     );
     for (const preset of RAG_CHAT_MODEL_PRESETS) {
-      expect(validateChatModelId(preset.id)).toEqual({ ok: true, value: preset.id });
+      expect(validateChatModelSetting({
+        chatProvider: preset.chatProvider,
+        chatModel: preset.id,
+      })).toEqual({
+        ok: true,
+        value: { chatProvider: preset.chatProvider, chatModel: preset.id },
+      });
       expect(preset.label.length).toBeGreaterThan(0);
     }
   });
@@ -51,9 +67,21 @@ describe("client RAG chat model settings", () => {
       ok: true,
       value: "provider/model.name_tag:version-1",
     });
+    expect(validateChatModelId("google/gemma-4-31b-it:free", "openai-compatible")).toEqual({
+      ok: true,
+      value: "google/gemma-4-31b-it:free",
+    });
     expect(validateChatModelId("openrouter/fusion", "ollama")).toEqual({
       ok: false,
-      error: INVALID_CHAT_MODEL_ERROR,
+      error: INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
+    });
+    expect(validateChatModelId("google/gemma-4-31b-it:free", "ollama")).toEqual({
+      ok: false,
+      error: INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
+    });
+    expect(validateChatModelId("openai/gpt-oss-20b:free", "ollama")).toEqual({
+      ok: false,
+      error: INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
     });
     expect(validateChatModelId("myuser/mymodel", "ollama")).toEqual({
       ok: true,
@@ -96,6 +124,65 @@ describe("client RAG chat model settings", () => {
 
     expect(readStoredChatModel("company-handbook")).toBe("openrouter/fusion");
     expect(readStoredChatModel("research")).toBe("qwen/qwen3.7-plus");
+  });
+
+  it("stores provider-aware model settings per workspace", () => {
+    expect(writeStoredChatModelSetting("company-handbook", {
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    })).toEqual({
+      ok: true,
+      value: {
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      },
+      stored: true,
+    });
+
+    expect(readStoredChatModelSetting("company-handbook")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+    expect(readStoredChatModel("company-handbook")).toBe("google/gemma-4-31b-it:free");
+  });
+
+  it("reads legacy string model storage with the supplied provider", () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "moonshotai/kimi-k2.7-code",
+    );
+
+    expect(readStoredChatModelSetting("company-handbook", "openai-compatible")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "moonshotai/kimi-k2.7-code",
+    });
+  });
+
+  it("stores custom model registrations per workspace", () => {
+    expect(addStoredCustomChatModel("company-handbook", {
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    })).toBe(true);
+    expect(addStoredCustomChatModel("company-handbook", {
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    })).toBe(true);
+    expect(addStoredCustomChatModel("company-handbook", {
+      chatProvider: "ollama",
+      chatModel: "myuser/mymodel",
+    })).toBe(true);
+
+    expect(readStoredCustomChatModels("company-handbook")).toEqual([
+      {
+        chatProvider: "ollama",
+        chatModel: "myuser/mymodel",
+      },
+      {
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      },
+    ]);
+    expect(readStoredCustomChatModels("research")).toEqual([]);
   });
 
   it("ignores provider-incompatible stored values", () => {
@@ -218,7 +305,7 @@ describe("client RAG chat model settings", () => {
     expect(readStoredChatModel("company-handbook")).toBeNull();
   });
 
-  it("ignores provider-incompatible setting events", () => {
+  it("accepts provider-aware setting events when the selected provider differs from the default", () => {
     const handler = vi.fn();
     const unsubscribe = subscribeToStoredChatModelChanges(handler, { chatProvider: "ollama" });
 
@@ -230,7 +317,12 @@ describe("client RAG chat model settings", () => {
       }),
     );
 
-    expect(handler).not.toHaveBeenCalled();
+    expect(handler).toHaveBeenNthCalledWith(1, {
+      workspaceSlug: "company-handbook",
+      chatProvider: "openai-compatible",
+      chatModel: "qwen/qwen3.7-plus",
+    });
+    expect(handler).toHaveBeenCalledTimes(1);
 
     unsubscribe();
   });
@@ -260,6 +352,7 @@ describe("client RAG chat model settings", () => {
 
     expect(handler).toHaveBeenNthCalledWith(1, {
       workspaceSlug: "company-handbook",
+      chatProvider: "openai-compatible",
       chatModel: "qwen/qwen3.7-plus",
     });
     expect(handler).toHaveBeenNthCalledWith(2, {

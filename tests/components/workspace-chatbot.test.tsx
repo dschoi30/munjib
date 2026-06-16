@@ -150,6 +150,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
       }),
@@ -177,6 +178,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
       }),

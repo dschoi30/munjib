@@ -8,6 +8,7 @@ export {
   getRagModelConfig,
   getRagGenerationConfig,
   type RagChatModelConfig,
+  type RagChatOverride,
   type RagEmbeddingModelConfig,
   type RagEnv,
   type RagGenerationConfig,

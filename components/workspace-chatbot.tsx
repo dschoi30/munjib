@@ -6,8 +6,9 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  type ChatModelSetting,
   type ClientRagChatProvider,
-  readStoredChatModel,
+  readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
 
@@ -47,8 +48,8 @@ export function WorkspaceChatbot({
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
-  const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
-    readStoredChatModel(workspaceSlug, defaultChatProvider),
+  const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
+    readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
   );
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
@@ -59,7 +60,7 @@ export function WorkspaceChatbot({
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
     hasLoadedThreadRef.current = false;
-    setChatModelOverride(readStoredChatModel(workspaceSlug, defaultChatProvider));
+    setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
@@ -70,7 +71,11 @@ export function WorkspaceChatbot({
   useEffect(() => {
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
-      setChatModelOverride(change.chatModel);
+      setChatModelOverride(
+        change.chatModel && change.chatProvider
+          ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
+          : null,
+      );
     }, { chatProvider: defaultChatProvider });
   }, [defaultChatProvider, workspaceSlug]);
 
@@ -129,7 +134,12 @@ export function WorkspaceChatbot({
         body: JSON.stringify({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
-          ...(chatModelOverride ? { chatModel: chatModelOverride } : {}),
+          ...(chatModelOverride
+            ? {
+                chatProvider: chatModelOverride.chatProvider,
+                chatModel: chatModelOverride.chatModel,
+              }
+            : {}),
         }),
       });
       const body = (await response.json()) as SendMessageResponse;

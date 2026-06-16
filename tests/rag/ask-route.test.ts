@@ -63,6 +63,7 @@ describe("RAG ask route", () => {
   it("passes the question and valid chat model override to the ask service", async () => {
     await POST(jsonRequest({
       question: "What is saved?",
+      chatProvider: "openai-compatible",
       chatModel: "moonshotai/kimi-k2.7-code",
       draftTitle: "Unsaved",
       draftContentMarkdown: "Do not send me",
@@ -76,6 +77,7 @@ describe("RAG ask route", () => {
       documentId: "doc-1",
       actorId: "user-1",
       question: "What is saved?",
+      chatProviderOverride: "openai-compatible",
       chatModelOverride: "moonshotai/kimi-k2.7-code",
     });
   });

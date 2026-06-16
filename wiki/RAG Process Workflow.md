@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-16
-source_count: 83
+source_count: 85
 tags:
   - munjib
   - workflow
@@ -145,7 +145,7 @@ Workspace chatbot UI/API/service request:
 ```mermaid
 flowchart LR
     ServerEnv["Server env<br/>provider, base URL, API key, default models"] --> Config["getRagModelConfig()"]
-    Settings["Workspace settings panel<br/>browser/workspace chat model id"] --> Request["Ask request<br/>optional chatModel"]
+    Settings["Workspace settings panel<br/>browser/workspace provider + model"] --> Request["Ask request<br/>optional chatProvider + chatModel"]
     Request --> Override["askDocumentQuestion()<br/>replace chat.model only"]
     Config --> Override
     Override --> Chat["Answer chat model<br/>OpenRouter or other chat provider"]
@@ -169,7 +169,7 @@ MUNJIB_RAG_EMBED_DIMENSIONS=1024
 
 Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가 맡는다. Official OpenAI는 `OPENAI_API_KEY` 또는 `MUNJIB_OPENAI_API_KEY`를 요구하고 optional `MUNJIB_OPENAI_BASE_URL`을 LangChain/OpenAI SDK configuration으로 전달한다. OpenAI-compatible provider는 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값이며, runtime factory는 non-secret placeholder key로 SDK credential preflight를 통과시킨다.
 
-Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 한다. 이 override는 Ask AI request와 workspace chatbot message request의 `chatModel` field로 전달되고, server는 validated string으로 `chat.model`만 대체한다. Provider, base URL, API key, embedding provider/model/dimension은 request에서 받지 않는다. OpenRouter-known model ids are accepted only when the effective server chat provider is `openai-compatible`; when production is still configured as `ollama`, stale browser overrides such as `moonshotai/kimi-k2.7-code` or `google/gemma-4-31b-it:free` are removed client-side and rejected server-side as `INVALID_CHAT_MODEL` instead of being sent to Ollama and surfacing as `AI_UNAVAILABLE`.
+Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 시작했다. Issue #109는 이 surface를 provider+model override로 확장해 settings panel이 `ollama`, `openai`, `openai-compatible` 중 chat provider와 model id를 함께 저장하고, Ask AI request와 workspace chatbot message request의 optional `chatProvider`/`chatModel` fields로 전달하게 한다. Server는 validated provider+model으로 answer-generation `chat` config만 다시 만들고, API key/base URL은 provider별 server env에서 읽으며, embedding provider/model/dimension과 vector index identity는 request에서 받지 않는다. OpenRouter presets include `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`, `openai/gpt-oss-20b:free`, and `openai/gpt-oss-120b:free`, all stored with `openai-compatible`. The settings panel distinguishes malformed model ids from provider-incompatible ids and `Save custom model` also registers the custom provider+model pair in a browser/workspace custom list. Legacy string-only browser storage remains readable through the current default or inferred provider.
 
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 

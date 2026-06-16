@@ -6,7 +6,7 @@ import {
 } from "@/lib/rag/client-model-settings";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
-import { getRagModelConfig } from "@/lib/rag/config";
+import { getRagModelConfig, type RagProvider } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
@@ -29,6 +29,7 @@ export type WorkspaceChatInput = {
 export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   message: string;
   selectedDocumentId?: string | null;
+  chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
 };
 
@@ -110,24 +111,23 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   });
 
   const modelConfig = getRagModelConfig();
+  const chatProvider = input.chatProviderOverride ?? modelConfig.chat.provider;
   if (
     input.chatModelOverride &&
     !isChatModelCompatibleWithProvider({
-      chatProvider: modelConfig.chat.provider,
+      chatProvider,
       chatModel: input.chatModelOverride,
     })
   ) {
     throw new Error(INVALID_CHAT_MODEL_ERROR);
   }
-  const effectiveModelConfig = input.chatModelOverride
-    ? {
-        ...modelConfig,
-        chat: {
-          ...modelConfig.chat,
+  const effectiveModelConfig =
+    input.chatProviderOverride || input.chatModelOverride
+      ? getRagModelConfig(process.env, {
+          provider: input.chatProviderOverride,
           model: input.chatModelOverride,
-        },
-      }
-    : modelConfig;
+        })
+      : modelConfig;
   assertCurrentEmbeddingIndex(effectiveModelConfig);
 
   const conversationQuestion = buildConversationQuestion(

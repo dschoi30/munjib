@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-16
-source_count: 217
+source_count: 219
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-16T23:23:36+0900 - AI settings provider and custom model presets
+
+- Result: Workspace settings AI tab now stores provider+model overrides instead of only model ids, and `Save custom model` registers the current provider+model pair in a workspace-local custom list.
+- Coverage: Provider selector supports Ollama, OpenAI, and OpenRouter/OpenAI-compatible; static presets now include the requested OpenRouter free model ids; Ask AI and workspace chatbot send optional `chatProvider` plus `chatModel`; services rebuild answer-generation chat config from server-side provider env while keeping embedding/index config fixed.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #109, user request, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/model-config.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
+
+## 2026-06-16T23:03:19+0900 - OpenRouter free model id validation message
+
+- Result: Workspace settings AI tab no longer presents provider-incompatible OpenRouter model ids such as `google/gemma-4-31b-it:free` as a generic malformed id.
+- Coverage: Client chat model validation now separates malformed model ids from `INCOMPATIBLE_CHAT_MODEL_PROVIDER`; the settings panel maps provider mismatch to an explicit OpenAI-compatible provider requirement while keeping invalid id format errors unchanged.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported settings panel error, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `tests/rag/client-model-settings.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
 
 ## 2026-06-16T01:22:00+0900 - AI provider override and Langfuse 503 diagnosis
 

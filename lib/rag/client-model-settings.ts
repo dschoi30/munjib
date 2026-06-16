@@ -1,31 +1,96 @@
 export const INVALID_CHAT_MODEL_ERROR = "INVALID_CHAT_MODEL";
+export const INVALID_CHAT_PROVIDER_ERROR = "INVALID_CHAT_PROVIDER";
+export const INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR = "INCOMPATIBLE_CHAT_MODEL_PROVIDER";
 export const CHAT_MODEL_SETTING_EVENT = "munjib:rag-chat-model-setting-changed";
+
+export type ClientRagChatProvider = "ollama" | "openai" | "openai-compatible";
+
+export type ChatModelSetting = {
+  chatProvider: ClientRagChatProvider;
+  chatModel: string;
+};
+
+export type ChatModelValidationError =
+  | typeof INVALID_CHAT_MODEL_ERROR
+  | typeof INVALID_CHAT_PROVIDER_ERROR
+  | typeof INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR;
+
+export type ChatProviderValidationResult =
+  | { ok: true; value: ClientRagChatProvider }
+  | { ok: false; error: typeof INVALID_CHAT_PROVIDER_ERROR };
 
 export type ChatModelValidationResult =
   | { ok: true; value: string }
-  | { ok: false; error: typeof INVALID_CHAT_MODEL_ERROR };
+  | { ok: false; error: ChatModelValidationError };
+
+export type ChatModelSettingValidationResult =
+  | { ok: true; value: ChatModelSetting }
+  | { ok: false; error: ChatModelValidationError };
 
 export type ChatModelWriteResult =
   | { ok: true; value: string; stored: boolean }
-  | { ok: false; error: typeof INVALID_CHAT_MODEL_ERROR };
+  | { ok: false; error: ChatModelValidationError };
+
+export type ChatModelSettingWriteResult =
+  | { ok: true; value: ChatModelSetting; stored: boolean }
+  | { ok: false; error: ChatModelValidationError };
 
 export type StoredChatModelChange = {
   workspaceSlug: string;
   chatModel: string | null;
+  chatProvider?: ClientRagChatProvider | null;
 };
 
-export type ClientRagChatProvider = "ollama" | "openai" | "openai-compatible";
-
 export const RAG_CHAT_MODEL_PRESETS = [
-  { id: "openrouter/fusion", label: "OpenRouter Fusion" },
-  { id: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code" },
-  { id: "qwen/qwen3.7-plus", label: "Qwen3.7 Plus" },
-] as const satisfies ReadonlyArray<{ id: string; label: string }>;
+  { id: "openrouter/fusion", label: "OpenRouter Fusion", chatProvider: "openai-compatible" },
+  { id: "moonshotai/kimi-k2.7-code", label: "Kimi K2.7 Code", chatProvider: "openai-compatible" },
+  { id: "qwen/qwen3.7-plus", label: "Qwen3.7 Plus", chatProvider: "openai-compatible" },
+  { id: "google/gemma-4-31b-it:free", label: "Gemma 4 31B IT Free", chatProvider: "openai-compatible" },
+  { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B A4B IT Free", chatProvider: "openai-compatible" },
+  { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B Free", chatProvider: "openai-compatible" },
+  { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B Free", chatProvider: "openai-compatible" },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  chatProvider: ClientRagChatProvider;
+}>;
+
+export const RAG_CHAT_PROVIDER_OPTIONS = [
+  { id: "ollama", label: "Ollama" },
+  { id: "openai", label: "OpenAI" },
+  { id: "openai-compatible", label: "OpenRouter / OpenAI-compatible" },
+] as const satisfies ReadonlyArray<{ id: ClientRagChatProvider; label: string }>;
 
 const CHAT_MODEL_STORAGE_PREFIX = "munjib:rag-chat-model:";
+const CUSTOM_CHAT_MODELS_STORAGE_PREFIX = "munjib:rag-custom-chat-models:";
 const CHAT_MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9/._:-]*$/;
 const MAX_CHAT_MODEL_ID_LENGTH = 160;
-const OPENROUTER_MODEL_PREFIXES = new Set(["google", "moonshotai", "openrouter", "qwen"]);
+const MAX_CUSTOM_CHAT_MODELS = 20;
+const CHAT_PROVIDERS = new Set<ClientRagChatProvider>([
+  "ollama",
+  "openai",
+  "openai-compatible",
+]);
+const OPENROUTER_MODEL_PREFIXES = new Set([
+  "google",
+  "moonshotai",
+  "openai",
+  "openrouter",
+  "qwen",
+]);
+
+export function validateChatProvider(value: unknown): ChatProviderValidationResult {
+  if (typeof value !== "string") {
+    return { ok: false, error: INVALID_CHAT_PROVIDER_ERROR };
+  }
+
+  const normalized = value.trim().toLowerCase();
+  if (CHAT_PROVIDERS.has(normalized as ClientRagChatProvider)) {
+    return { ok: true, value: normalized as ClientRagChatProvider };
+  }
+
+  return { ok: false, error: INVALID_CHAT_PROVIDER_ERROR };
+}
 
 export function validateChatModelId(
   value: unknown,
@@ -48,16 +113,39 @@ export function validateChatModelId(
     chatProvider &&
     !isChatModelCompatibleWithProvider({ chatProvider, chatModel: normalized })
   ) {
-    return invalidChatModel();
+    return invalidChatModel(INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR);
   }
 
   return { ok: true, value: normalized };
 }
 
-export function readStoredChatModel(
+export function validateChatModelSetting(input: {
+  chatProvider: unknown;
+  chatModel: unknown;
+}): ChatModelSettingValidationResult {
+  const provider = validateChatProvider(input.chatProvider);
+  if (!provider.ok) {
+    return { ok: false, error: provider.error };
+  }
+
+  const model = validateChatModelId(input.chatModel, provider.value);
+  if (!model.ok) {
+    return model;
+  }
+
+  return {
+    ok: true,
+    value: {
+      chatProvider: provider.value,
+      chatModel: model.value,
+    },
+  };
+}
+
+export function readStoredChatModelSetting(
   workspaceSlug: string,
-  chatProvider?: ClientRagChatProvider,
-): string | null {
+  fallbackChatProvider?: ClientRagChatProvider,
+): ChatModelSetting | null {
   const storage = getBrowserStorage();
   if (!storage) {
     return null;
@@ -69,19 +157,59 @@ export function readStoredChatModel(
     return null;
   }
 
-  const result = validateChatModelId(value);
-  if (!result.ok) {
-    safeRemoveItem(storage, storageKey);
-    return null;
+  const result = parseStoredChatModelSetting(value, fallbackChatProvider);
+  if (result.ok) {
+    return result.value;
   }
   if (
-    chatProvider &&
-    !isChatModelCompatibleWithProvider({ chatProvider, chatModel: result.value })
+    result.error === INVALID_CHAT_MODEL_ERROR ||
+    result.error === INVALID_CHAT_PROVIDER_ERROR
   ) {
-    return null;
+    safeRemoveItem(storage, storageKey);
+  }
+  return null;
+}
+
+export function readStoredChatModel(
+  workspaceSlug: string,
+  chatProvider?: ClientRagChatProvider,
+): string | null {
+  return readStoredChatModelSetting(workspaceSlug, chatProvider)?.chatModel ?? null;
+}
+
+export function writeStoredChatModelSetting(
+  workspaceSlug: string,
+  value: unknown,
+): ChatModelSettingWriteResult {
+  const result: ChatModelSettingValidationResult = isRecord(value)
+    ? validateChatModelSetting({
+        chatProvider: value.chatProvider,
+        chatModel: value.chatModel,
+      })
+    : { ok: false as const, error: INVALID_CHAT_MODEL_ERROR };
+  if (!result.ok) {
+    return result;
   }
 
-  return result.value;
+  const storage = getBrowserStorage();
+  if (!storage) {
+    return { ...result, stored: false };
+  }
+
+  const stored = safeSetItem(
+    storage,
+    getChatModelStorageKey(workspaceSlug),
+    JSON.stringify(result.value),
+  );
+  if (stored) {
+    emitStoredChatModelChange({
+      workspaceSlug,
+      chatProvider: result.value.chatProvider,
+      chatModel: result.value.chatModel,
+    });
+  }
+
+  return { ...result, stored };
 }
 
 export function writeStoredChatModel(
@@ -120,6 +248,69 @@ export function resetStoredChatModel(workspaceSlug: string): boolean {
   return removed;
 }
 
+export function readStoredCustomChatModels(workspaceSlug: string): ChatModelSetting[] {
+  const storage = getBrowserStorage();
+  if (!storage) {
+    return [];
+  }
+
+  const storageKey = getCustomChatModelsStorageKey(workspaceSlug);
+  const value = safeGetItem(storage, storageKey);
+  if (value === null) {
+    return [];
+  }
+
+  const parsed = parseJson(value);
+  if (!Array.isArray(parsed)) {
+    safeRemoveItem(storage, storageKey);
+    return [];
+  }
+
+  const settings = parsed
+    .map((entry) =>
+      isRecord(entry)
+        ? validateChatModelSetting({
+            chatProvider: entry.chatProvider,
+            chatModel: entry.chatModel,
+          })
+        : ({ ok: false, error: INVALID_CHAT_MODEL_ERROR } as const),
+    )
+    .filter((entry): entry is { ok: true; value: ChatModelSetting } => entry.ok)
+    .map((entry) => entry.value);
+  return dedupeChatModelSettings(settings);
+}
+
+export function addStoredCustomChatModel(
+  workspaceSlug: string,
+  value: unknown,
+): boolean {
+  const result: ChatModelSettingValidationResult = isRecord(value)
+    ? validateChatModelSetting({
+        chatProvider: value.chatProvider,
+        chatModel: value.chatModel,
+      })
+    : { ok: false as const, error: INVALID_CHAT_MODEL_ERROR };
+  if (!result.ok) {
+    return false;
+  }
+
+  const storage = getBrowserStorage();
+  if (!storage) {
+    return false;
+  }
+
+  const current = readStoredCustomChatModels(workspaceSlug);
+  const next = dedupeChatModelSettings([result.value, ...current]).slice(
+    0,
+    MAX_CUSTOM_CHAT_MODELS,
+  );
+  return safeSetItem(
+    storage,
+    getCustomChatModelsStorageKey(workspaceSlug),
+    JSON.stringify(next),
+  );
+}
+
 export function subscribeToStoredChatModelChanges(
   handler: (change: StoredChatModelChange) => void,
   options: { chatProvider?: ClientRagChatProvider } = {},
@@ -130,36 +321,17 @@ export function subscribeToStoredChatModelChanges(
 
   const listener = (event: Event) => {
     const detail = "detail" in event ? event.detail : undefined;
-    if (!isStoredChatModelChange(detail)) {
-      return;
+    const change = isStoredChatModelChange(detail) ? detail : null;
+    const normalized = normalizeStoredChatModelChange(change, options.chatProvider);
+    if (normalized) {
+      handler(normalized);
     }
-    if (
-      detail.chatModel &&
-      options.chatProvider &&
-      !isChatModelCompatibleWithProvider({
-        chatProvider: options.chatProvider,
-        chatModel: detail.chatModel,
-      })
-    ) {
-      return;
-    }
-
-    handler(detail);
   };
   const storageListener = (event: StorageEvent) => {
     const change = storedChatModelChangeFromStorageEvent(event);
-    if (
-      change?.chatModel &&
-      options.chatProvider &&
-      !isChatModelCompatibleWithProvider({
-        chatProvider: options.chatProvider,
-        chatModel: change.chatModel,
-      })
-    ) {
-      return;
-    }
-    if (change) {
-      handler(change);
+    const normalized = normalizeStoredChatModelChange(change, options.chatProvider);
+    if (normalized) {
+      handler(normalized);
     }
   };
 
@@ -171,8 +343,73 @@ export function subscribeToStoredChatModelChanges(
   };
 }
 
-function invalidChatModel(): ChatModelValidationResult {
-  return { ok: false, error: INVALID_CHAT_MODEL_ERROR };
+function parseStoredChatModelSetting(
+  value: string,
+  fallbackChatProvider?: ClientRagChatProvider,
+): ChatModelSettingValidationResult {
+  const parsed = parseJson(value);
+  if (isRecord(parsed) && "chatProvider" in parsed && "chatModel" in parsed) {
+    return validateChatModelSetting({
+      chatProvider: parsed.chatProvider,
+      chatModel: parsed.chatModel,
+    });
+  }
+
+  const inferredProvider = fallbackChatProvider ?? inferLegacyChatProvider(value);
+  const model = validateChatModelId(value, inferredProvider);
+  if (!model.ok) {
+    return model;
+  }
+
+  return {
+    ok: true,
+    value: {
+      chatProvider: inferredProvider,
+      chatModel: model.value,
+    },
+  };
+}
+
+function normalizeStoredChatModelChange(
+  change: StoredChatModelChange | null,
+  fallbackChatProvider?: ClientRagChatProvider,
+): StoredChatModelChange | null {
+  if (!change) {
+    return null;
+  }
+  if (change.chatModel === null) {
+    return { workspaceSlug: change.workspaceSlug, chatModel: null };
+  }
+
+  const chatProvider = change.chatProvider ?? fallbackChatProvider;
+  if (chatProvider) {
+    const setting = validateChatModelSetting({
+      chatProvider,
+      chatModel: change.chatModel,
+    });
+    return setting.ok
+      ? {
+          workspaceSlug: change.workspaceSlug,
+          chatProvider: setting.value.chatProvider,
+          chatModel: setting.value.chatModel,
+        }
+      : null;
+  }
+
+  const model = validateChatModelId(change.chatModel);
+  return model.ok
+    ? { workspaceSlug: change.workspaceSlug, chatModel: model.value }
+    : null;
+}
+
+function inferLegacyChatProvider(chatModel: string): ClientRagChatProvider {
+  return hasOpenRouterModelPrefix(chatModel) ? "openai-compatible" : "ollama";
+}
+
+function invalidChatModel(
+  error: ChatModelValidationError = INVALID_CHAT_MODEL_ERROR,
+): ChatModelValidationResult {
+  return { ok: false, error };
 }
 
 export function isChatModelCompatibleWithProvider({
@@ -200,6 +437,10 @@ function hasOpenRouterModelPrefix(chatModel: string): boolean {
 
 function getChatModelStorageKey(workspaceSlug: string): string {
   return `${CHAT_MODEL_STORAGE_PREFIX}${workspaceSlug}`;
+}
+
+function getCustomChatModelsStorageKey(workspaceSlug: string): string {
+  return `${CUSTOM_CHAT_MODELS_STORAGE_PREFIX}${workspaceSlug}`;
 }
 
 function getBrowserStorage(): Storage | null {
@@ -259,7 +500,18 @@ function isStoredChatModelChange(value: unknown): value is StoredChatModelChange
     return true;
   }
 
-  return validateChatModelId(value.chatModel).ok;
+  if (typeof value.chatModel !== "string") {
+    return false;
+  }
+
+  if (value.chatProvider === undefined || value.chatProvider === null) {
+    return validateChatModelId(value.chatModel).ok;
+  }
+
+  return validateChatModelSetting({
+    chatProvider: value.chatProvider,
+    chatModel: value.chatModel,
+  }).ok;
 }
 
 function storedChatModelChangeFromStorageEvent(
@@ -278,8 +530,36 @@ function storedChatModelChangeFromStorageEvent(
     return { workspaceSlug, chatModel: null };
   }
 
-  const validation = validateChatModelId(event.newValue);
-  return validation.ok ? { workspaceSlug, chatModel: validation.value } : null;
+  const parsed = parseStoredChatModelSetting(event.newValue);
+  return parsed.ok
+    ? {
+        workspaceSlug,
+        chatProvider: parsed.value.chatProvider,
+        chatModel: parsed.value.chatModel,
+      }
+    : null;
+}
+
+function dedupeChatModelSettings(settings: ChatModelSetting[]): ChatModelSetting[] {
+  const seen = new Set<string>();
+  const deduped: ChatModelSetting[] = [];
+  for (const setting of settings) {
+    const key = `${setting.chatProvider}:${setting.chatModel}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    deduped.push(setting);
+  }
+  return deduped;
+}
+
+function parseJson(value: string): unknown {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return undefined;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
