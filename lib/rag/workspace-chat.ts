@@ -122,8 +122,14 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     actorId: input.actorId,
   });
 
-  const modelConfig = getRagModelConfig();
-  const chatProvider = input.chatProviderOverride ?? modelConfig.chat.provider;
+  if (input.chatProviderOverride && !input.chatModelOverride) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  const defaultModelConfig = input.chatProviderOverride ? null : getRagModelConfig();
+  const chatProvider = input.chatProviderOverride ?? defaultModelConfig?.chat.provider;
+  if (!chatProvider) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
   if (
     input.chatModelOverride &&
     !isChatModelCompatibleWithProvider({
@@ -133,13 +139,15 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   ) {
     throw new Error(INVALID_CHAT_MODEL_ERROR);
   }
-  const effectiveModelConfig =
-    input.chatProviderOverride || input.chatModelOverride
-      ? getRagModelConfig(process.env, {
-          provider: input.chatProviderOverride,
-          model: input.chatModelOverride,
-        })
-      : modelConfig;
+  let effectiveModelConfig: RagModelConfig;
+  if (input.chatProviderOverride || input.chatModelOverride) {
+    effectiveModelConfig = getRagModelConfig(process.env, {
+      provider: input.chatProviderOverride,
+      model: input.chatModelOverride,
+    });
+  } else {
+    effectiveModelConfig = defaultModelConfig ?? getRagModelConfig();
+  }
   assertCurrentEmbeddingIndex(effectiveModelConfig);
 
   const orderedThreadMessages = orderedMessagesForDisplay(thread.messages);
