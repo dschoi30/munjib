@@ -60,6 +60,23 @@ describe("RAG ask route", () => {
     });
   });
 
+  it("treats a null JSON body as a missing question", async () => {
+    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(new Error(ASK_ERROR_CODES.QUESTION_REQUIRED));
+
+    const response = await POST(jsonRequest(null), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "QUESTION_REQUIRED" });
+    expect(response.status).toBe(400);
+    expect(askDocumentQuestion).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      documentId: "doc-1",
+      actorId: "user-1",
+      question: "",
+    });
+  });
+
   it("passes the question and valid chat model override to the ask service", async () => {
     await POST(jsonRequest({
       question: "What is saved?",
@@ -80,6 +97,19 @@ describe("RAG ask route", () => {
       chatProviderOverride: "openai-compatible",
       chatModelOverride: "moonshotai/kimi-k2.7-code",
     });
+  });
+
+  it("rejects provider-only chat overrides before calling the ask service", async () => {
+    const response = await POST(jsonRequest({
+      question: "What is saved?",
+      chatProvider: "openai-compatible",
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
+    expect(response.status).toBe(400);
+    expect(askDocumentQuestion).not.toHaveBeenCalled();
   });
 
   it("rejects invalid chat model override input", async () => {

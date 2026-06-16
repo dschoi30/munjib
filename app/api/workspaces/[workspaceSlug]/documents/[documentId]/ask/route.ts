@@ -15,21 +15,22 @@ export async function POST(
 ) {
   const user = await requireCurrentUser();
   const { workspaceSlug, documentId } = await params;
-  const body = (await request.json().catch(() => ({}))) as {
-    question?: unknown;
-    chatProvider?: unknown;
-    chatModel?: unknown;
-  };
+  const body = await parseJsonBody(request);
   const question = typeof body.question === "string" ? body.question : "";
+  const hasChatProvider = body.chatProvider !== undefined && body.chatProvider !== null;
+  const hasChatModel = body.chatModel !== undefined && body.chatModel !== null;
+  if (hasChatProvider && !hasChatModel) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
   const chatProviderValidation =
-    body.chatProvider === undefined || body.chatProvider === null
+    !hasChatProvider
       ? null
       : validateChatProvider(body.chatProvider);
   if (chatProviderValidation && !chatProviderValidation.ok) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
   const chatModelValidation =
-    body.chatModel === undefined || body.chatModel === null
+    !hasChatModel
       ? null
       : validateChatModelId(
           body.chatModel,
@@ -70,4 +71,17 @@ export async function POST(
 
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   }
+}
+
+async function parseJsonBody(request: Request) {
+  const value = await request.json().catch(() => ({}));
+  return toRecord(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

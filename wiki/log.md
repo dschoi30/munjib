@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-16T23:46:10+0900 - PR #110 route override validation review fix
+
+- Result: PR #110 review feedback was addressed by hardening Ask AI request parsing for `null`/non-object JSON and rejecting provider-only chat overrides before service invocation.
+- Coverage: Ask AI normalizes malformed or non-object JSON into the missing-question path; Ask AI and workspace chat routes now require `chatProvider` to be paired with `chatModel`, while model-only legacy overrides remain supported.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #110 review threads, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
+
 ## 2026-06-16T23:37:46+0900 - AI settings provider visibility follow-up
 
 - Result: Workspace settings keeps direct model-id input for every provider, hides OpenRouter static presets unless `openai-compatible` is selected, and scopes saved custom model shortcuts to the selected provider.
