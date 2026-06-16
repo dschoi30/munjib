@@ -204,6 +204,7 @@ function withImageExtension(fileName: string, mimeType: string) {
 export function DocumentEditor({
   workspaceSlug,
   defaultChatModel,
+  defaultChatProvider,
   document,
   canWrite,
   action,
@@ -603,6 +604,7 @@ export function DocumentEditor({
           documentId={document.id}
           hasUnsavedChanges={hasUnsavedChanges}
           defaultChatModel={defaultChatModel}
+          defaultChatProvider={defaultChatProvider}
         />
       ) : null}
       <DocumentProperties

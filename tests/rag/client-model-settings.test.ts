@@ -51,6 +51,18 @@ describe("client RAG chat model settings", () => {
       ok: true,
       value: "provider/model.name_tag:version-1",
     });
+    expect(validateChatModelId("openrouter/fusion", "ollama")).toEqual({
+      ok: false,
+      error: INVALID_CHAT_MODEL_ERROR,
+    });
+    expect(validateChatModelId("myuser/mymodel", "ollama")).toEqual({
+      ok: true,
+      value: "myuser/mymodel",
+    });
+    expect(validateChatModelId("gemma4:e4b", "ollama")).toEqual({
+      ok: true,
+      value: "gemma4:e4b",
+    });
     expect(validateChatModelId(42)).toEqual({
       ok: false,
       error: INVALID_CHAT_MODEL_ERROR,
@@ -84,6 +96,18 @@ describe("client RAG chat model settings", () => {
 
     expect(readStoredChatModel("company-handbook")).toBe("openrouter/fusion");
     expect(readStoredChatModel("research")).toBe("qwen/qwen3.7-plus");
+  });
+
+  it("ignores provider-incompatible stored values", () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "moonshotai/kimi-k2.7-code",
+    );
+
+    expect(readStoredChatModel("company-handbook", "ollama")).toBeNull();
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
+      "moonshotai/kimi-k2.7-code",
+    );
   });
 
   it("removes corrupted stored values", () => {
@@ -192,6 +216,23 @@ describe("client RAG chat model settings", () => {
     });
 
     expect(readStoredChatModel("company-handbook")).toBeNull();
+  });
+
+  it("ignores provider-incompatible setting events", () => {
+    const handler = vi.fn();
+    const unsubscribe = subscribeToStoredChatModelChanges(handler, { chatProvider: "ollama" });
+
+    writeStoredChatModel("company-handbook", "openrouter/fusion", "openai-compatible");
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "munjib:rag-chat-model:company-handbook",
+        newValue: "qwen/qwen3.7-plus",
+      }),
+    );
+
+    expect(handler).not.toHaveBeenCalled();
+
+    unsubscribe();
   });
 
   it("subscribes to cross-tab storage changes", () => {

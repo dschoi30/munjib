@@ -70,6 +70,10 @@ export function getDefaultRagChatModel(env: RagEnv = process.env): string {
   return readOptionalEnv(env, "MUNJIB_RAG_CHAT_MODEL") ?? DEFAULTS.chatModel;
 }
 
+export function getDefaultRagChatProvider(env: RagEnv = process.env): RagProvider {
+  return readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
+}
+
 const PROVIDERS = new Set<RagProvider>(["ollama", "openai", "openai-compatible"]);
 
 export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {

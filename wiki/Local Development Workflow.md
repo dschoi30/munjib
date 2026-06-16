@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-06-15
-source_count: 35
+source_count: 55
 tags:
   - munjib
   - workflow
@@ -78,7 +78,7 @@ NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운�
 
 Issue #100 이후 Ask AI RAG provider는 server-wide env로 고른다. 기본값은 기존 local Ollama 경로와 같은 chat provider `ollama`, embedding provider `ollama`, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimensions `1024`, local base URL `http://localhost:11434`다. Official OpenAI는 `MUNJIB_RAG_CHAT_PROVIDER=openai` 또는 `MUNJIB_RAG_EMBED_PROVIDER=openai`와 `OPENAI_API_KEY`를 사용하고, OpenAI-compatible endpoint는 `openai-compatible`과 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 사용한다. `MUNJIB_OPENAI_COMPATIBLE_API_KEY`는 endpoint가 인증을 요구할 때만 설정하며, LM Studio, LocalAI, vLLM 같은 local unauthenticated endpoint에서는 비워둘 수 있다. 현재 DB vector index identity는 Ollama `bge-m3` 1024라 다른 embedding identity는 live Ask AI에서 fail-fast하며, reindex workflow는 별도 follow-up이다.
 
-OpenRouter chat 테스트는 existing OpenAI-compatible provider path를 사용한다. API key와 base URL은 server env에만 두고, settings panel은 browser-local chat model id override만 저장한다.
+OpenRouter chat 테스트는 existing OpenAI-compatible provider path를 사용한다. API key와 base URL은 server env에만 두고, settings panel은 browser-local chat model id override만 저장한다. OpenRouter-known model ids require `MUNJIB_RAG_CHAT_PROVIDER=openai-compatible`; if the server is still `ollama`, the browser should fall back to the server default model and the server rejects the override as `INVALID_CHAT_MODEL`.
 
 ```text
 MUNJIB_RAG_CHAT_PROVIDER=openai-compatible

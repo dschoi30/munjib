@@ -12,7 +12,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
-import { getDefaultRagChatModel } from "@/lib/rag/model-config";
+import { getDefaultRagChatModel, getDefaultRagChatProvider } from "@/lib/rag/model-config";
 import {
   canWriteDocument,
   highestPermissionLevel,
@@ -260,6 +260,7 @@ export default async function WorkspacePage({
   const pasteImageAttachmentAction = pasteDocumentImageAttachmentAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const defaultChatModel = getDefaultRagChatModel();
+  const defaultChatProvider = getDefaultRagChatProvider();
   const selectedCenterFolder = selectedFolder
     ? {
         id: selectedFolder.id,
@@ -305,6 +306,7 @@ export default async function WorkspacePage({
             selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
             selectedDocumentId={selectedDocument?.id ?? null}
             defaultChatModel={defaultChatModel}
+            defaultChatProvider={defaultChatProvider}
             isGraphView={isGraphView}
           />
         }
@@ -382,6 +384,7 @@ export default async function WorkspacePage({
                 createFromBrokenLinkAction={createFromBrokenLinkAction}
                 createCommentAction={commentAction}
                 defaultChatModel={defaultChatModel}
+                defaultChatProvider={defaultChatProvider}
               />
             )}
           </WorkspaceCenterShell>
@@ -405,6 +408,7 @@ export default async function WorkspacePage({
         key={workspaceSlug}
         workspaceSlug={workspaceSlug}
         selectedDocumentId={selectedDocument?.id ?? null}
+        defaultChatProvider={defaultChatProvider}
       />
     </>
   );

@@ -1,5 +1,9 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import {
+  INVALID_CHAT_MODEL_ERROR,
+  isChatModelCompatibleWithProvider,
+} from "@/lib/rag/client-model-settings";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
 import { getRagModelConfig } from "@/lib/rag/config";
@@ -106,6 +110,15 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
   });
 
   const modelConfig = getRagModelConfig();
+  if (
+    input.chatModelOverride &&
+    !isChatModelCompatibleWithProvider({
+      chatProvider: modelConfig.chat.provider,
+      chatModel: input.chatModelOverride,
+    })
+  ) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
   const effectiveModelConfig = input.chatModelOverride
     ? {
         ...modelConfig,

@@ -5,6 +5,7 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  type ClientRagChatProvider,
   readStoredChatModel,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
@@ -22,6 +23,7 @@ type AiAssistantPanelProps = {
   documentId: string;
   hasUnsavedChanges: boolean;
   defaultChatModel: string;
+  defaultChatProvider: ClientRagChatProvider;
 };
 
 export function AiAssistantPanel({
@@ -29,6 +31,7 @@ export function AiAssistantPanel({
   documentId,
   hasUnsavedChanges,
   defaultChatModel,
+  defaultChatProvider,
 }: AiAssistantPanelProps) {
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
@@ -36,18 +39,18 @@ export function AiAssistantPanel({
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
-    readStoredChatModel(workspaceSlug),
+    readStoredChatModel(workspaceSlug, defaultChatProvider),
   );
   const trimmedQuestion = question.trim();
   const effectiveChatModel = chatModelOverride ?? defaultChatModel;
 
   useEffect(() => {
-    setChatModelOverride(readStoredChatModel(workspaceSlug));
+    setChatModelOverride(readStoredChatModel(workspaceSlug, defaultChatProvider));
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(change.chatModel);
-    });
-  }, [workspaceSlug]);
+    }, { chatProvider: defaultChatProvider });
+  }, [defaultChatProvider, workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

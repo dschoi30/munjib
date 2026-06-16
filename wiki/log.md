@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-16
-source_count: 216
+source_count: 217
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-16T01:22:00+0900 - AI provider override and Langfuse 503 diagnosis
+
+- Result: Production AI 503 was traced to OpenRouter-style model ids being sent while the server chat provider was still `ollama`; Langfuse was not recording because production Langfuse credentials/base URL were empty and capture remained metadata-only.
+- Coverage: Browser model storage now ignores known provider-incompatible OpenRouter model overrides for non-`openai-compatible` providers, while preserving namespaced Ollama model ids; Ask AI and workspace chatbot requests pass overrides only when compatible, and both services reject known incompatible overrides as `INVALID_CHAT_MODEL` before model invocation.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: production Docker web logs, production env shape, `lib/rag/client-model-settings.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `components/workspace-settings-panel.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`; `DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx`.
 
 ## 2026-06-16T00:31:00+0900 - issue-104 workspace chat review ordering follow-up
 

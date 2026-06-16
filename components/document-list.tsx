@@ -60,6 +60,7 @@ export function DocumentList({
   selectedFolderId,
   selectedDocumentId,
   defaultChatModel,
+  defaultChatProvider,
   isGraphView = false,
 }: {
   workspaceSlug: string;
@@ -77,6 +78,7 @@ export function DocumentList({
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
   defaultChatModel: string;
+  defaultChatProvider: "ollama" | "openai" | "openai-compatible";
   isGraphView?: boolean;
 }) {
   const router = useRouter();
@@ -274,6 +276,7 @@ export function DocumentList({
           folders={folders}
           importMarkdownAction={importMarkdownAction}
           defaultChatModel={defaultChatModel}
+          defaultChatProvider={defaultChatProvider}
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}
