@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-16
-source_count: 219
+updated: 2026-06-17
+source_count: 222
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-17T00:37:05+0900 - PR #110 provider override config review fix
+
+- Result: Ask AI and Workspace AI service-level provider overrides no longer read the default chat provider config before applying a complete override.
+- Coverage: `askDocumentQuestion()` and `sendWorkspaceChatMessage()` reject provider-only service inputs, still support model-only legacy overrides through the default provider, and build complete provider+model overrides directly from the selected provider's server-side config.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #110 review thread, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
 
 ## 2026-06-17T00:24:30+0900 - workspace chat memory summary
 

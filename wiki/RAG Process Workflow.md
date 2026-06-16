@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-17
-source_count: 88
+source_count: 90
 tags:
   - munjib
   - workflow
@@ -36,7 +36,7 @@ Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 d
 
 ```mermaid
 flowchart TD
-    User["User asks in editor"] --> Panel["AI assistant panel<br/>question + optional chatModel"]
+    User["User asks in editor"] --> Panel["AI assistant panel<br/>question + optional provider/model"]
     Panel --> AskRoute["Ask route<br/>parse JSON and validate input"]
     AskRoute --> AskService["askDocumentQuestion()"]
     AskService --> AskPermission["Load workspace membership<br/>and selected active document"]
@@ -71,7 +71,7 @@ flowchart TD
 | UI request | `components/document-editor/ai-assistant-panel.tsx` | Saved document id, trimmed question, optional browser/workspace `chatModel` | Ask route payload; unsaved draft stays out of RAG |
 | Route validation | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts` | JSON body | Normalized `question`, validated optional provider+model pair, or stable 400 error |
 | Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Workspace role, selected active document, explicit document permissions | Permission-safe selected document |
-| Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and in-memory override | Server env plus optional `chatModel` | Effective chat model; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
+| Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and provider/model override | Server env plus optional `chatProvider` + `chatModel` | Effective chat provider/model; complete provider overrides do not require the default provider config; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
 | Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown, heading-aware section subset, no-heading paragraph chunk subset, or oversized-heading paragraph chunk subset with inline citation labels |
 | Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
@@ -112,7 +112,7 @@ Ask AI direct-context request:
 1. `askDocumentQuestion()`은 question을 trim하고 빈 질문이면 `QUESTION_REQUIRED`를 던진다.
 2. Workspace membership과 selected active document만 load한 뒤, workspace role과 explicit document permissions를 `filterReadableDocuments()`로 계산한다.
 3. Selected document가 readable set에 없으면 `DOCUMENT_NOT_FOUND`로 중단한다.
-4. `getRagGenerationConfig()`가 server-wide env에서 chat provider와 Langfuse config만 읽는다. Ask route가 validated `chatModel` override를 전달한 경우 service는 `chat.model`만 in-memory로 바꾸고 provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
+4. `askDocumentQuestion()`은 service boundary에서도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL만 사용해 generation config를 만든다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Embedding provider/model/dimension은 request에서 받지 않는다.
 5. `buildCurrentDocumentContext()`가 selected saved markdown을 context budget에 맞게 pack한다. 문서가 budget 안에 들어가면 전체 saved markdown을 사용하고, 너무 길면 frontmatter/fenced-code heading을 고려한 heading-aware section subset을 만든다. Heading이 없는 긴 문서와 하나의 headed section이 budget보다 큰 문서는 paragraph/chunk fallback으로 쪼갠 뒤 질문 keyword score로 관련 chunk를 고른다.
 6. `buildDirectDocumentPrompt()`는 현재 저장 문서 context만 근거로 system/user prompt와 current-document section citation metadata를 만든다.
 7. `createLangfuseCallbackConfig()`는 `rag.ask_document` operation, effective chat model, selected document id, current context partial 여부, prompt citation document ids를 metadata에 담는다. Direct Ask path는 retrieval-only fields인 `retrievedChunkCount`, `citationChunkIds`, embedding provider/model/dimension metadata를 보내지 않는다.
@@ -129,7 +129,7 @@ Workspace chatbot UI/API/service request:
 5. Workspace membership과 active documents를 load하고, workspace role과 explicit document permissions로 readable active document ids를 계산한다.
 6. `getOrCreateActiveThread()`는 `(workspaceId, userId)`의 active thread를 재사용하거나 생성한다. Concurrent create race는 PostgreSQL partial unique index의 `P2002`를 잡고 active thread를 다시 읽어 처리한다.
 7. 기존 thread history는 display order로 정렬해 prompt와 UI에 사용한다. DB timestamp가 같은 성공 turn도 `USER`가 `ASSISTANT`보다 먼저 오도록 role order로 tie-break한다. Thread에 `memorySummary`가 있으면 retrieval query와 answer prompt의 conversation context 앞쪽에 포함한다.
-8. `getRagModelConfig()`로 server-wide provider/base URL/API key와 default model을 읽고, validated `chatModel` override가 있으면 `chat.model`만 in-memory로 대체한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
+8. `sendWorkspaceChatMessage()`도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL과 fixed embedding config를 함께 읽는다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
 9. `assertCurrentEmbeddingIndex()`로 현재 workspace retrieval이 Ollama `bge-m3` 1024 index identity와 맞는지 확인한다.
 10. `buildWorkspaceConversationContext()`는 `memorySummary`, 마지막 요약 이후 새로 쌓인 recent messages, 현재 user message를 합친 memory-aware query 후보가 6,000자를 넘는지 먼저 판단한다. 초과하면 `conversation memory summarizer` prompt로 기존 memory와 새 대화 excerpt를 병합하고, 결과를 `AiChatThread.memorySummary` / `memoryUpdatedAt`에 저장한다. Summarization 실패는 Workspace AI 전체를 죽이지 않고 server log에 남기며 bounded recent context fallback을 사용한다.
 11. `ensureWorkspaceChatRetrievalIndex()`는 memory-aware query terms와 readable active documents를 비교해 title/path/body가 맞는 missing 또는 stale documents를 최대 8개까지 `safeIndexSavedDocument()`로 먼저 refresh한다. Query가 "this document" 같은 selected-document referential prompt이고 `selectedDocumentId`가 readable이면 lexical score가 없어도 selected document를 refresh 후보에 포함하며, lexical candidates가 top-8 cap을 채워도 selected document를 cap 밖에서 강제 포함한다. 이미 current `DocumentChunk.sourceUpdatedAt`이 document `updatedAt`과 맞는 문서는 다시 색인하지 않는다.
@@ -148,7 +148,7 @@ Workspace chatbot UI/API/service request:
 flowchart LR
     ServerEnv["Server env<br/>provider, base URL, API key, default models"] --> Config["getRagModelConfig()"]
     Settings["Workspace settings panel<br/>browser/workspace provider + model"] --> Request["Ask request<br/>optional chatProvider + chatModel"]
-    Request --> Override["askDocumentQuestion()<br/>replace chat.model only"]
+    Request --> Override["askDocumentQuestion()<br/>resolve effective chat provider/model"]
     Config --> Override
     Override --> Chat["Answer chat model<br/>OpenRouter or other chat provider"]
     Config --> Embedding["Embedding config<br/>provider, model, dimensions"]
@@ -171,7 +171,7 @@ MUNJIB_RAG_EMBED_DIMENSIONS=1024
 
 Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가 맡는다. Official OpenAI는 `OPENAI_API_KEY` 또는 `MUNJIB_OPENAI_API_KEY`를 요구하고 optional `MUNJIB_OPENAI_BASE_URL`을 LangChain/OpenAI SDK configuration으로 전달한다. OpenAI-compatible provider는 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값이며, runtime factory는 non-secret placeholder key로 SDK credential preflight를 통과시킨다.
 
-Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 시작했다. Issue #109는 이 surface를 provider+model override로 확장해 settings panel이 `ollama`, `openai`, `openai-compatible` 중 chat provider와 model id를 함께 저장하고, Ask AI request와 workspace chatbot message request의 optional `chatProvider`/`chatModel` fields로 전달하게 한다. Server는 validated provider+model으로 answer-generation `chat` config만 다시 만들고, API key/base URL은 provider별 server env에서 읽으며, embedding provider/model/dimension과 vector index identity는 request에서 받지 않는다. OpenRouter presets include `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`, `openai/gpt-oss-20b:free`, and `openai/gpt-oss-120b:free`, all stored with `openai-compatible`. Static presets are shown only when the selected provider is `openai-compatible`; Ollama and OpenAI keep direct model-id input plus provider-filtered custom models. The settings panel distinguishes malformed model ids from provider-incompatible ids and `Save custom model` also registers the custom provider+model pair in a browser/workspace custom list. Legacy string-only browser storage remains readable through the current default or inferred provider.
+Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 시작했다. Issue #109는 이 surface를 provider+model override로 확장해 settings panel이 `ollama`, `openai`, `openai-compatible` 중 chat provider와 model id를 함께 저장하고, Ask AI request와 workspace chatbot message request의 optional `chatProvider`/`chatModel` fields로 전달하게 한다. Server는 validated provider+model으로 answer-generation `chat` config만 다시 만들고, API key/base URL은 provider별 server env에서 읽으며, embedding provider/model/dimension과 vector index identity는 request에서 받지 않는다. A complete provider+model override is resolved before reading the default chat provider config, so an Ollama override can still run when the default OpenAI-compatible chat provider env is incomplete; the selected override provider must still have its own required server-side config. OpenRouter presets include `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`, `openai/gpt-oss-20b:free`, and `openai/gpt-oss-120b:free`, all stored with `openai-compatible`. Static presets are shown only when the selected provider is `openai-compatible`; Ollama and OpenAI keep direct model-id input plus provider-filtered custom models. The settings panel distinguishes malformed model ids from provider-incompatible ids and `Save custom model` also registers the custom provider+model pair in a browser/workspace custom list. Legacy string-only browser storage remains readable through the current default or inferred provider.
 
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 
@@ -213,7 +213,7 @@ Full capture가 켜진 Node runtime에서는 `instrumentation.ts`가 `initialize
 
 ## Failure Modes
 
-Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. Chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
+Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. 선택된 effective chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Complete provider+model override가 있으면 default chat provider env가 불완전해도 해당 default provider를 먼저 읽지 않는다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
 
 Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다.
 

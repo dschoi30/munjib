@@ -1049,6 +1049,35 @@ describe("workspace chat service", () => {
     );
   });
 
+  it("uses a complete provider override without requiring the default provider config", async () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "openai-compatible");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "google/gemma-4-31b-it:free");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "");
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What should I know?",
+      chatProviderOverride: "ollama",
+      chatModelOverride: "gemma4:e4b",
+    });
+
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "gemma4:e4b",
+        baseUrl: "http://localhost:11434",
+      }),
+    );
+  });
+
   it("rejects known OpenRouter-style chat model overrides when the server chat provider is Ollama", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
