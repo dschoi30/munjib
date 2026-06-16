@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-06-16
-source_count: 85
+updated: 2026-06-17
+source_count: 88
 tags:
   - munjib
   - workflow
@@ -53,8 +53,9 @@ flowchart TD
     ChatRoute --> ChatService["sendWorkspaceChatMessage()"]
     ChatService --> Thread["Get/create active AiChatThread<br/>P2002 retry"]
     Thread --> ChatConfig["getRagModelConfig()<br/>embedding index guard"]
-    ChatConfig --> ChatBackfill["ensureWorkspaceChatRetrievalIndex()<br/>targeted missing/stale chunk backfill"]
-    ChatBackfill --> ChatEmbed["embedText(conversation-aware query)"]
+    ChatConfig --> ChatMemory["Refresh thread memory summary<br/>when recent history exceeds budget"]
+    ChatMemory --> ChatBackfill["ensureWorkspaceChatRetrievalIndex()<br/>targeted missing/stale chunk backfill"]
+    ChatBackfill --> ChatEmbed["embedText(memory-aware query)"]
     ChatEmbed --> ChatSearch["searchSimilarChunks()<br/>readable active document ids"]
     ChatSearch --> ChatCap["Cap prompt chunks<br/>12 total, 3 per document"]
     ChatCap --> ChatPrompt["buildRagPrompt()<br/>recent conversation + chunks"]
@@ -76,11 +77,11 @@ flowchart TD
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
 | Chatbot UI | `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx` | Workspace slug, selected document id, active thread state, optional browser/workspace `chatModel` | Fixed bottom-right launcher, compact panel, thread history, send/reset controls |
 | Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional provider+model pair, message send, reset/archive responses with stable error mapping |
-| Chat thread persistence | `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()` | Workspace/user and successful answer turn | Active thread, display-ordered history, persisted user+assistant messages |
+| Chat thread persistence | `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()` | Workspace/user and successful answer turn | Active thread, display-ordered history, rolling memory summary, persisted user+assistant messages |
 | Chat index guard | `assertCurrentEmbeddingIndex()` | Server model config | Fail-fast unless workspace retrieval index identity is Ollama `bge-m3` 1024 |
-| Chat targeted index backfill | `ensureWorkspaceChatRetrievalIndex()`, `safeIndexSavedDocument()` | Conversation-aware query, readable active documents, current embedding model | Missing/stale chunks for lexically relevant readable documents are refreshed before vector search |
-| Chat retrieval | `embedText()`, `searchSimilarChunks()` | Conversation-aware query embedding, readable document ids | Candidate saved chunks from current `DocumentChunk` rows |
-| Chat prompt and citations | `buildRagPrompt()`, `normalizeAnswerCitations()` | Recent conversation, capped chunks, and answer text | Saved-context prompt plus answer-referenced chunk citations renumbered by answer appearance |
+| Chat targeted index backfill | `ensureWorkspaceChatRetrievalIndex()`, `safeIndexSavedDocument()` | Memory-aware conversation query, readable active documents, current embedding model | Missing/stale chunks for lexically relevant readable documents are refreshed before vector search |
+| Chat retrieval | `embedText()`, `searchSimilarChunks()` | Memory-aware conversation query embedding, readable document ids | Candidate saved chunks from current `DocumentChunk` rows |
+| Chat prompt and citations | `buildRagPrompt()`, `normalizeAnswerCitations()` | Thread memory summary, recent conversation, capped chunks, and answer text | Saved-context prompt plus answer-referenced chunk citations renumbered by answer appearance |
 | Chat stale response guard | Prisma transaction in `sendWorkspaceChatMessage()` | Thread id and delayed answer | Assistant response is saved only if the thread is still `ACTIVE` |
 | Langfuse metadata | `createLangfuseCallbackConfig()` | operation/provider/model/citation metadata | Metadata-only by default; callbacks only in explicit full mode |
 | UI result | Assistant panel or chatbot panel | Answer and filtered citations | Markdown-rendered answer plus clickable `[n]` citations used by the answer |
@@ -127,18 +128,19 @@ Workspace chatbot UI/API/service request:
 4. `sendWorkspaceChatMessage()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
 5. Workspace membership과 active documents를 load하고, workspace role과 explicit document permissions로 readable active document ids를 계산한다.
 6. `getOrCreateActiveThread()`는 `(workspaceId, userId)`의 active thread를 재사용하거나 생성한다. Concurrent create race는 PostgreSQL partial unique index의 `P2002`를 잡고 active thread를 다시 읽어 처리한다.
-7. 기존 thread history는 display order로 정렬해 prompt와 UI에 사용한다. DB timestamp가 같은 성공 turn도 `USER`가 `ASSISTANT`보다 먼저 오도록 role order로 tie-break한다.
+7. 기존 thread history는 display order로 정렬해 prompt와 UI에 사용한다. DB timestamp가 같은 성공 turn도 `USER`가 `ASSISTANT`보다 먼저 오도록 role order로 tie-break한다. Thread에 `memorySummary`가 있으면 retrieval query와 answer prompt의 conversation context 앞쪽에 포함한다.
 8. `getRagModelConfig()`로 server-wide provider/base URL/API key와 default model을 읽고, validated `chatModel` override가 있으면 `chat.model`만 in-memory로 대체한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
 9. `assertCurrentEmbeddingIndex()`로 현재 workspace retrieval이 Ollama `bge-m3` 1024 index identity와 맞는지 확인한다.
-10. `ensureWorkspaceChatRetrievalIndex()`는 conversation-aware query terms와 readable active documents를 비교해 title/path/body가 맞는 missing 또는 stale documents를 최대 8개까지 `safeIndexSavedDocument()`로 먼저 refresh한다. Query가 "this document" 같은 selected-document referential prompt이고 `selectedDocumentId`가 readable이면 lexical score가 없어도 selected document를 refresh 후보에 포함하며, lexical candidates가 top-8 cap을 채워도 selected document를 cap 밖에서 강제 포함한다. 이미 current `DocumentChunk.sourceUpdatedAt`이 document `updatedAt`과 맞는 문서는 다시 색인하지 않는다.
-11. `embedText()`는 최근 thread messages와 현재 user message를 합친 conversation-aware query를 embedding한다. 이 query는 embedding model context를 넘지 않도록 최대 6,000자로 제한하며, newest history를 우선 보존하고 current user message는 항상 남긴다. 이전 assistant answer의 `[n]` citation marker는 새 retrieval/prompt citation 번호와 섞이지 않도록 history text에서 제거한다. `searchSimilarChunks()`는 먼저 readable active document ids 전체에서 current `DocumentChunk` rows를 검색하고, readable `selectedDocumentId`가 있으면 selected document id만 대상으로 한 번 더 검색해 global top-60 밖의 open-document chunks도 후보에 병합한다.
-12. Service는 readable `selectedDocumentId`에 해당하는 chunks가 top vector result와 충분히 가까울 때만 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다. 선택 문서가 검색상 너무 멀면 기존 vector order를 유지해 무관 문서가 context를 차지하지 않게 한다.
-13. `buildRagPrompt()`는 최근 thread message와 현재 user message를 합친 conversation question, 그리고 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
-14. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
-15. `invokeAnswerChain()`이 answer를 생성하면 `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
-16. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
-17. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation이나 retrieval이 실패하면 orphan `USER` message를 남기지 않는다.
-18. Client는 request generation/version guard로 delayed thread load나 delayed send response가 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
+10. `buildWorkspaceConversationContext()`는 `memorySummary`, 마지막 요약 이후 새로 쌓인 recent messages, 현재 user message를 합친 memory-aware query 후보가 6,000자를 넘는지 먼저 판단한다. 초과하면 `conversation memory summarizer` prompt로 기존 memory와 새 대화 excerpt를 병합하고, 결과를 `AiChatThread.memorySummary` / `memoryUpdatedAt`에 저장한다. Summarization 실패는 Workspace AI 전체를 죽이지 않고 server log에 남기며 bounded recent context fallback을 사용한다.
+11. `ensureWorkspaceChatRetrievalIndex()`는 memory-aware query terms와 readable active documents를 비교해 title/path/body가 맞는 missing 또는 stale documents를 최대 8개까지 `safeIndexSavedDocument()`로 먼저 refresh한다. Query가 "this document" 같은 selected-document referential prompt이고 `selectedDocumentId`가 readable이면 lexical score가 없어도 selected document를 refresh 후보에 포함하며, lexical candidates가 top-8 cap을 채워도 selected document를 cap 밖에서 강제 포함한다. 이미 current `DocumentChunk.sourceUpdatedAt`이 document `updatedAt`과 맞는 문서는 다시 색인하지 않는다.
+12. `embedText()`는 thread memory summary, 최근 thread messages, 현재 user message를 합친 memory-aware query를 embedding한다. 이 query는 embedding model context를 넘지 않도록 최대 6,000자로 제한하되, 초과분은 raw history 일부를 버리는 대신 먼저 thread memory summary로 병합한다. 이전 assistant answer의 `[n]` citation marker는 새 retrieval/prompt citation 번호와 섞이지 않도록 history text에서 제거한다. `searchSimilarChunks()`는 먼저 readable active document ids 전체에서 current `DocumentChunk` rows를 검색하고, readable `selectedDocumentId`가 있으면 selected document id만 대상으로 한 번 더 검색해 global top-60 밖의 open-document chunks도 후보에 병합한다.
+13. Service는 readable `selectedDocumentId`에 해당하는 chunks가 top vector result와 충분히 가까울 때만 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다. 선택 문서가 검색상 너무 멀면 기존 vector order를 유지해 무관 문서가 context를 차지하지 않게 한다.
+14. `buildRagPrompt()`는 memory-aware conversation question과 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
+15. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
+16. `invokeAnswerChain()`이 answer를 생성하면 `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
+17. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
+18. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation이나 retrieval이 실패하면 orphan `USER` message를 남기지 않는다.
+19. Client는 request generation/version guard로 delayed thread load나 delayed send response가 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
 
 ## Provider And Index Contract
 
@@ -177,7 +179,7 @@ Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector d
 
 Issue #104 direct Ask path는 retrieval scope expansion을 기본으로 사용하지 않는다. 현재 문서 질문은 selected saved markdown을 직접 pack하고, citation도 현재 문서 section만 가리킨다. Heading이 없는 긴 문서와 budget보다 큰 headed section은 전체 body를 앞에서부터 자르지 않고 paragraph/chunk sections로 나눠 관련 evidence가 뒤쪽에 있어도 context 후보가 될 수 있게 한다. Direct prompt는 각 selected section content 앞에 `[n] Document > Heading` label을 inline으로 붙여 model이 context text와 citation number를 같은 block에서 볼 수 있게 한다.
 
-Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 vector search 전에 conversation-aware query와 readable documents의 title/path/body keyword overlap을 사용해 lexically relevant missing/stale documents만 최대 8개 refresh한다. Query가 selected-document referential prompt이면 readable selected document도 refresh 후보에 포함하고, lexical candidates가 cap을 채워도 selected document를 별도로 보존한다. 이 targeted backfill은 기존 workspace에 `DocumentChunk` rows가 거의 없어서 Welcome 같은 단일 chunk만 검색되는 상태를 완화하되, 모든 workspace document를 매 질문마다 색인하지 않는다. 이후 최근 thread messages와 현재 user message를 합친 conversation-aware query embedding으로 current `DocumentChunk` rows를 검색한다. 이 query는 long assistant answers나 pasted content가 Ollama embedding context를 초과하지 않도록 6,000자 cap을 적용하고, newest history와 current user message를 우선 남긴다. Readable selected document id가 있으면 selected-document-only search 결과를 병합한다. 이전 assistant answer에 있던 `[n]` marker는 새 prompt의 citation namespace와 충돌하지 않도록 conversation history에서 제거한다. 이렇게 global retrieval limit 밖의 open-document chunks도 후보로 보존하되, selected chunks가 top result와 충분히 가까울 때만 prompt cap 전에 stable하게 우선 배치한다. 그 뒤 prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval priority에 반영하지 않는다. Persisted history display는 timestamp tie에서 `USER` before `ASSISTANT`를 적용해 같은 transaction으로 저장된 successful turn이 assistant-before-user 순서로 뒤집히지 않게 한다.
+Workspace chatbot retrieval은 permission-safe readable active document ids만 사용한다. 현재 implementation은 vector search 전에 memory-aware conversation query와 readable documents의 title/path/body keyword overlap을 사용해 lexically relevant missing/stale documents만 최대 8개 refresh한다. Query가 selected-document referential prompt이면 readable selected document도 refresh 후보에 포함하고, lexical candidates가 cap을 채워도 selected document를 별도로 보존한다. 이 targeted backfill은 기존 workspace에 `DocumentChunk` rows가 거의 없어서 Welcome 같은 단일 chunk만 검색되는 상태를 완화하되, 모든 workspace document를 매 질문마다 색인하지 않는다. 이후 thread memory summary, recent thread messages, 현재 user message를 합친 memory-aware query embedding으로 current `DocumentChunk` rows를 검색한다. Query 후보가 6,000자를 넘으면 long assistant answers나 pasted content를 raw history에서 잘라 버리지 않고 `conversation memory summarizer` answer chain으로 `AiChatThread.memorySummary`에 병합한다. 다음 turn에서는 `memoryUpdatedAt` 이후 새로 쌓인 messages만 memory refresh 후보가 되므로 이미 요약된 긴 history를 반복 요약하지 않는다. Readable selected document id가 있으면 selected-document-only search 결과를 병합한다. 이전 assistant answer에 있던 `[n]` marker는 새 prompt의 citation namespace와 충돌하지 않도록 conversation history에서 제거한다. 이렇게 global retrieval limit 밖의 open-document chunks도 후보로 보존하되, selected chunks가 top result와 충분히 가까울 때만 prompt cap 전에 stable하게 우선 배치한다. 그 뒤 prompt 후보를 최대 12개, 문서당 최대 3개로 제한해 한 문서가 sources를 과점하지 않게 한다. Readable하지 않은 selected document id는 Langfuse metadata와 retrieval priority에 반영하지 않는다. Persisted history display는 timestamp tie에서 `USER` before `ASSISTANT`를 적용해 같은 transaction으로 저장된 successful turn이 assistant-before-user 순서로 뒤집히지 않게 한다.
 
 Legacy graph-aware scope expansion helper는 selected current document를 우선하고, saved markdown wiki links와 persisted outgoing links를 합친 linked documents, persisted backlinks, shared normalized tags, workspace fallback 순서로 중복 없이 채운다. 이 helper는 Issue #104 direct Ask default path에서는 호출하지 않고, future explicit expanded-scope Ask AI나 retrieval tuning의 근거로 남아 있다.
 
