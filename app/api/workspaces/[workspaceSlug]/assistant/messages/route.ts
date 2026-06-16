@@ -40,8 +40,15 @@ export async function POST(
     return NextResponse.json({ error: "INVALID_SELECTED_DOCUMENT_ID" }, { status: 400 });
   }
 
+  const hasChatProvider =
+    body.value.chatProvider !== undefined && body.value.chatProvider !== null;
+  const hasChatModel = body.value.chatModel !== undefined && body.value.chatModel !== null;
+  if (hasChatProvider && !hasChatModel) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+
   const chatProviderValidation =
-    body.value.chatProvider === undefined || body.value.chatProvider === null
+    !hasChatProvider
       ? null
       : validateChatProvider(body.value.chatProvider);
   if (chatProviderValidation && !chatProviderValidation.ok) {
@@ -49,7 +56,7 @@ export async function POST(
   }
 
   const chatModelValidation =
-    body.value.chatModel === undefined || body.value.chatModel === null
+    !hasChatModel
       ? null
       : validateChatModelId(
           body.value.chatModel,
