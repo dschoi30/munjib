@@ -409,6 +409,7 @@ export default async function WorkspacePage({
         workspaceSlug={workspaceSlug}
         selectedDocumentId={selectedDocument?.id ?? null}
         defaultChatProvider={defaultChatProvider}
+        defaultChatModel={defaultChatModel}
       />
     </>
   );

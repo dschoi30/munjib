@@ -105,6 +105,12 @@ export function WorkspaceSettingsPanel({
     () => readStoredCustomChatModels(workspaceSlug),
     [saveVersion, workspaceSlug],
   );
+  const showPresetModels = selectedChatProvider === "openai-compatible";
+  const visibleCustomChatModels = useMemo(
+    () =>
+      customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
+    [customChatModels, selectedChatProvider],
+  );
   const effectiveChatProvider = storedChatModel?.chatProvider ?? defaultChatProvider;
   const effectiveChatModel = storedChatModel?.chatModel ?? defaultChatModel;
   const importLocked = isImportPending || isImporting;
@@ -517,32 +523,34 @@ export function WorkspaceSettingsPanel({
                 </select>
               </div>
 
-              <div>
-                <p className="text-sm font-semibold text-ink">Presets</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {RAG_CHAT_MODEL_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.id}
-                      type="button"
-                      aria-label={`Use ${preset.label}`}
-                      onClick={() =>
-                        handleSavePresetModel({
-                          chatProvider: preset.chatProvider,
-                          chatModel: preset.id,
-                        })
-                      }
-                      className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold">{preset.label}</span>
-                        <span className="mt-1 block break-all text-xs font-normal text-slate-500">
-                          {preset.id}
+              {showPresetModels ? (
+                <div>
+                  <p className="text-sm font-semibold text-ink">Presets</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {RAG_CHAT_MODEL_PRESETS.map((preset) => (
+                      <Button
+                        key={preset.id}
+                        type="button"
+                        aria-label={`Use ${preset.label}`}
+                        onClick={() =>
+                          handleSavePresetModel({
+                            chatProvider: preset.chatProvider,
+                            chatModel: preset.id,
+                          })
+                        }
+                        className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">{preset.label}</span>
+                          <span className="mt-1 block break-all text-xs font-normal text-slate-500">
+                            {preset.id}
+                          </span>
                         </span>
-                      </span>
-                    </Button>
-                  ))}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               <div>
                 <label
@@ -564,11 +572,11 @@ export function WorkspaceSettingsPanel({
                 </div>
               </div>
 
-              {customChatModels.length > 0 ? (
+              {visibleCustomChatModels.length > 0 ? (
                 <div>
                   <p className="text-sm font-semibold text-ink">Custom models</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {customChatModels.map((setting) => (
+                    {visibleCustomChatModels.map((setting) => (
                       <Button
                         key={`${setting.chatProvider}:${setting.chatModel}`}
                         type="button"

@@ -239,6 +239,18 @@ describe("DocumentList", () => {
     expect(screen.queryByLabelText(/base url/i)).toBeNull();
   });
 
+  it("hides OpenRouter presets for non OpenRouter providers while keeping custom input", () => {
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.queryByText("Presets")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use Kimi K2.7 Code" })).toBeNull();
+    expect(screen.getByLabelText("Custom model id")).toBeTruthy();
+  });
+
   it("saves a preset chat model override in workspace-scoped storage", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
 
@@ -303,6 +315,33 @@ describe("DocumentList", () => {
       chatModel: "google/gemma-4-31b-it:free",
     });
     expect(screen.getByRole("button", { name: "Use custom google/gemma-4-31b-it:free" })).toBeTruthy();
+  });
+
+  it("shows only custom models for the selected provider", () => {
+    window.localStorage.setItem(
+      "munjib:rag-custom-chat-models:company-handbook",
+      JSON.stringify([
+        { chatProvider: "openai-compatible", chatModel: "google/gemma-4-31b-it:free" },
+        { chatProvider: "ollama", chatModel: "myuser/mymodel" },
+      ]),
+    );
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.getByRole("button", { name: "Use custom myuser/mymodel" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Use custom google/gemma-4-31b-it:free" }),
+    ).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("AI provider"), {
+      target: { value: "openai-compatible" },
+    });
+
+    expect(screen.getByRole("button", { name: "Use custom google/gemma-4-31b-it:free" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use custom myuser/mymodel" })).toBeNull();
   });
 
   it("rejects invalid custom chat model ids in settings", () => {

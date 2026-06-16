@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-16T23:37:46+0900 - AI settings provider visibility follow-up
+
+- Result: Workspace settings keeps direct model-id input for every provider, hides OpenRouter static presets unless `openai-compatible` is selected, and scopes saved custom model shortcuts to the selected provider.
+- Coverage: Workspace AI now shows the effective model id in the chat panel, matching the Ask AI model visibility while continuing to send the same optional provider+model override fields.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: user clarification, `components/workspace-settings-panel.tsx`, `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
+
 ## 2026-06-16T23:23:36+0900 - AI settings provider and custom model presets
 
 - Result: Workspace settings AI tab now stores provider+model overrides instead of only model ids, and `Save custom model` registers the current provider+model pair in a workspace-local custom list.
