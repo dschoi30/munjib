@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-16T23:56:46+0900 - workspace chat embedding query cap
+
+- Result: Workspace AI no longer sends unbounded conversation history to the embedding model, preventing Ollama `the input length exceeds the context length` failures during retrieval.
+- Coverage: `buildConversationQuestion()` now caps the conversation-aware retrieval query at 6,000 characters, keeps the newest history first, strips old citation markers, and always preserves the current user message before `embedText()`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: user-reported local Workspace AI error, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
 ## 2026-06-16T23:46:10+0900 - PR #110 route override validation review fix
 
 - Result: PR #110 review feedback was addressed by hardening Ask AI request parsing for `null`/non-object JSON and rejecting provider-only chat overrides before service invocation.
