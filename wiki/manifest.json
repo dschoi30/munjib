@@ -131,7 +131,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 21,
+      "source_count": 23,
       "searchPriority": 50
     },
     {
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 85,
+      "source_count": 88,
       "searchPriority": 50
     },
     {

@@ -35,6 +35,8 @@ const thread = {
   title: null,
   status: "ACTIVE" as const,
   lastMessageAt: null,
+  memorySummary: null,
+  memoryUpdatedAt: null,
   messages: [],
 };
 

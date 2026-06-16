@@ -691,7 +691,61 @@ describe("workspace chat service", () => {
     );
   });
 
-  it("bounds conversation history before embedding the retrieval query", async () => {
+  it("summarizes oversized conversation history into persistent thread memory before retrieval", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    vi.mocked(invokeAnswerChain).mockImplementation(async (input) =>
+      input.systemPrompt.includes("conversation memory summarizer")
+        ? "Memory summary: the user asked about PTO approvals and the assistant explained manager approval requirements."
+        : "Workspace answer [1].",
+    );
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        messages: {
+          create: Array.from({ length: 12 }, (_, index) => ({
+            role: index % 2 === 0 ? "USER" : "ASSISTANT",
+            content: `Long historical message ${index + 1}: ${"very long context ".repeat(80)}`,
+          })),
+        },
+      },
+    });
+
+    const result = await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What is the policy now?",
+    });
+
+    const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
+    expect(retrievalQuery.length).toBeLessThanOrEqual(6_000);
+    expect(retrievalQuery).toContain("Conversation memory summary:");
+    expect(retrievalQuery).toContain("PTO approvals");
+    expect(retrievalQuery).toContain("Current user message: What is the policy now?");
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("conversation memory summarizer"),
+        userPrompt: expect.stringContaining("Long historical message"),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Conversation memory summary:"),
+      }),
+    );
+    const memoryRows = await prisma.$queryRaw<Array<{ memorySummary: string | null }>>`
+      SELECT "memorySummary" FROM "AiChatThread" WHERE "id" = ${result.thread.id}
+    `;
+    expect(memoryRows[0]?.memorySummary).toContain("PTO approvals");
+  });
+
+  it("uses existing thread memory without resummarizing already summarized history", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
       workspaceId: fixture.workspace.id,
@@ -703,13 +757,22 @@ describe("workspace chat service", () => {
       data: {
         workspaceId: fixture.workspace.id,
         userId: fixture.user.id,
+        memorySummary: "Memory summary: PTO approvals require manager review.",
+        memoryUpdatedAt: new Date("2026-06-17T00:00:00.000Z"),
         messages: {
           create: Array.from({ length: 12 }, (_, index) => ({
             role: index % 2 === 0 ? "USER" : "ASSISTANT",
-            content: `Long historical message ${index + 1}: ${"very long context ".repeat(600)}`,
+            content: `Already summarized historical message ${index + 1}: ${"very long context ".repeat(80)}`,
+            createdAt: new Date("2026-06-16T23:00:00.000Z"),
           })),
         },
       },
+    });
+    vi.mocked(invokeAnswerChain).mockImplementation(async (input) => {
+      if (input.systemPrompt.includes("conversation memory summarizer")) {
+        throw new Error("summary should not refresh");
+      }
+      return "Workspace answer [1].";
     });
 
     await sendWorkspaceChatMessage({
@@ -720,7 +783,13 @@ describe("workspace chat service", () => {
 
     const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
     expect(retrievalQuery.length).toBeLessThanOrEqual(6_000);
-    expect(retrievalQuery).toContain("Current user message: What is the policy now?");
+    expect(retrievalQuery).toContain("Conversation memory summary:");
+    expect(retrievalQuery).toContain("PTO approvals require manager review");
+    expect(invokeAnswerChain).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("conversation memory summarizer"),
+      }),
+    );
   });
 
   it("strips old citation markers from conversation history before retrieval and prompting", async () => {

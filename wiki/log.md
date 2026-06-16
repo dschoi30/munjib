@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-17T00:24:30+0900 - workspace chat memory summary
+
+- Result: Workspace AI now persists a rolling thread memory summary instead of dropping long conversation history when the retrieval query would exceed the embedding budget.
+- Coverage: `AiChatThread.memorySummary` and `memoryUpdatedAt` store summarized conversation memory. `sendWorkspaceChatMessage()` refreshes memory only when the unsummarized recent history plus current message exceeds 6,000 characters, merges old memory with new excerpts through a `conversation memory summarizer` prompt, reuses existing memory in retrieval/prompt context, and avoids re-summarizing messages older than `memoryUpdatedAt`.
+- Pages: [[Document Knowledge Model]], [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #111, user request, `prisma/schema.prisma`, `prisma/migrations/20260617002000_add_ai_chat_thread_memory/migration.sql`, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
 ## 2026-06-16T23:56:46+0900 - workspace chat embedding query cap
 
 - Result: Workspace AI no longer sends unbounded conversation history to the embedding model, preventing Ollama `the input length exceeds the context length` failures during retrieval.
