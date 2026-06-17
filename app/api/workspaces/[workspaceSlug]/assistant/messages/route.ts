@@ -103,8 +103,13 @@ function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
           },
         });
         writeEvent({ type: "done", ...result });
-      } catch {
-        writeEvent({ type: "error", error: "AI_UNAVAILABLE" });
+      } catch (error) {
+        const streamError =
+          error instanceof Error &&
+          error.message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
+            ? WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
+            : "AI_UNAVAILABLE";
+        writeEvent({ type: "error", error: streamError });
       } finally {
         controller.close();
       }
@@ -114,7 +119,7 @@ function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
   return new Response(stream, {
     headers: {
       "content-type": "application/x-ndjson; charset=utf-8",
-      "cache-control": "no-cache",
+      "cache-control": "no-cache, no-transform",
     },
   });
 }

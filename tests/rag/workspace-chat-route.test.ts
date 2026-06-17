@@ -186,6 +186,39 @@ describe("workspace chat routes", () => {
     expect(response.headers.get("content-type")).toContain("application/x-ndjson");
   });
 
+  it("streams an archived thread error when sending fails after a token", async () => {
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await onToken("Partial answer");
+        throw new Error(WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED);
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(readNdjson(response)).resolves.toEqual([
+      { type: "start" },
+      { type: "token", content: "Partial answer" },
+      { type: "error", error: WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED },
+    ]);
+    expect(response.status).toBe(200);
+  });
+
+  it("disables response transformation for streaming messages", async () => {
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-transform");
+  });
+
   it("rejects invalid chat model overrides before calling the streaming service", async () => {
     const response = await POST_MESSAGE(
       jsonRequest({
