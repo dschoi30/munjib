@@ -150,14 +150,17 @@ describe("workspace chat routes", () => {
     ]);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/x-ndjson");
-    expect(prepareWorkspaceChatMessageStream).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      actorId: "user-1",
-      message: "What changed?",
-      selectedDocumentId: "doc-1",
-      chatProviderOverride: "openai-compatible",
-      chatModelOverride: "google/gemma-4-31b-it:free",
-    });
+    expect(prepareWorkspaceChatMessageStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceSlug: "company-handbook",
+        actorId: "user-1",
+        message: "What changed?",
+        selectedDocumentId: "doc-1",
+        chatProviderOverride: "openai-compatible",
+        chatModelOverride: "google/gemma-4-31b-it:free",
+        signal: expect.any(AbortSignal),
+      }),
+    );
     expect(sendPreparedWorkspaceChatMessageStream).toHaveBeenCalledWith(
       preparedWorkspaceChatMessage,
       expect.objectContaining({ onToken: expect.any(Function) }),
@@ -184,6 +187,27 @@ describe("workspace chat routes", () => {
     expect(callbacks?.signal?.aborted).toBe(false);
     abortController.abort();
     expect(callbacks?.signal?.aborted).toBe(true);
+  });
+
+  it("passes the request abort signal into message preparation", async () => {
+    const abortController = new AbortController();
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    const preparationInput = vi.mocked(prepareWorkspaceChatMessageStream).mock.calls[0]?.[0];
+    expect(preparationInput).toEqual(
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(preparationInput?.signal?.aborted).toBe(false);
+    abortController.abort();
+    expect(preparationInput?.signal?.aborted).toBe(true);
   });
 
   it("streams an error event when sending fails after a token", async () => {
