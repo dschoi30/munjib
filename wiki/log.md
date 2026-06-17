@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-17
-source_count: 226
+updated: 2026-06-18
+source_count: 227
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-18T00:06:19+0900 - issue-105 workspace chat client stream rendering
+
+- Result: Workspace AI client sends now consume `/assistant/messages` as `application/x-ndjson` instead of JSON.
+- Coverage: `readWorkspaceChatStream()` validates `start`, `token`, `done`, and `error` events across chunk boundaries. `WorkspaceChatbot` posts with `AbortController.signal`, aborts active sends on reset/workspace cleanup, streams tokens into an assistant placeholder, hides `Thinking...` after the first token, replaces the placeholder with authoritative `done` content/citations, and removes optimistic/partial messages on stream or fetch errors.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `components/workspace-chatbot-stream.ts`, `components/workspace-chatbot.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-17T23:58:40+0900 - issue-105 workspace chat route stream review fix
 
