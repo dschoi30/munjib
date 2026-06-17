@@ -3,6 +3,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
+import { readWorkspaceChatStream } from "@/components/workspace-chatbot-stream";
 import { writeStoredChatModel } from "@/lib/rag/client-model-settings";
 
 const fetchMock = vi.fn();
@@ -20,23 +21,27 @@ beforeEach(() => {
       });
     }
     if (url.endsWith("/assistant/messages")) {
-      return jsonResponse({
-        thread: { id: "thread-1" },
-        userMessage: { id: "message-2", role: "USER", content: "What is the policy?" },
-        assistantMessage: {
-          id: "message-3",
-          role: "ASSISTANT",
-          content: "Workspace answer.",
-        },
-        citations: [
-          {
-            index: 1,
-            documentTitle: "Handbook",
-            documentPath: "/handbook",
-            headingPath: "Policy",
+      return ndjsonResponse([
+        { type: "start" },
+        {
+          type: "done",
+          thread: { id: "thread-1" },
+          userMessage: { id: "message-2", role: "USER", content: "What is the policy?" },
+          assistantMessage: {
+            id: "message-3",
+            role: "ASSISTANT",
+            content: "Workspace answer.",
           },
-        ],
-      });
+          citations: [
+            {
+              index: 1,
+              documentTitle: "Handbook",
+              documentPath: "/handbook",
+              headingPath: "Policy",
+            },
+          ],
+        },
+      ]);
     }
     if (url.endsWith("/assistant/thread/reset")) {
       return jsonResponse({ thread: null });
@@ -92,22 +97,26 @@ describe("WorkspaceChatbot", () => {
         return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
       }
       if (url.endsWith("/assistant/messages")) {
-        return jsonResponse({
-          assistantMessage: {
-            id: "message-3",
-            role: "ASSISTANT",
-            content: "*   **CAPEX:** Investment continues [1].",
-          },
-          citations: [
-            {
-              index: 1,
-              documentId: "doc-capex",
-              documentTitle: "Hyperscaler CAPEX",
-              documentPath: "/hyperscaler-capex",
-              headingPath: "Investment",
+        return ndjsonResponse([
+          { type: "start" },
+          {
+            type: "done",
+            assistantMessage: {
+              id: "message-3",
+              role: "ASSISTANT",
+              content: "*   **CAPEX:** Investment continues [1].",
             },
-          ],
-        });
+            citations: [
+              {
+                index: 1,
+                documentId: "doc-capex",
+                documentTitle: "Hyperscaler CAPEX",
+                documentPath: "/hyperscaler-capex",
+                headingPath: "Investment",
+              },
+            ],
+          },
+        ]);
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
@@ -254,14 +263,18 @@ describe("WorkspaceChatbot", () => {
         return threadLoad.promise;
       }
       if (url.endsWith("/assistant/messages")) {
-        return jsonResponse({
-          assistantMessage: {
-            id: "assistant-after-send",
-            role: "ASSISTANT",
-            content: "Fresh answer.",
+        return ndjsonResponse([
+          { type: "start" },
+          {
+            type: "done",
+            assistantMessage: {
+              id: "assistant-after-send",
+              role: "ASSISTANT",
+              content: "Fresh answer.",
+            },
+            citations: [],
           },
-          citations: [],
-        });
+        ]);
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
@@ -289,14 +302,16 @@ describe("WorkspaceChatbot", () => {
     expect(screen.queryByText("Stale thread answer.")).toBeNull();
   });
 
-  it("ignores a delayed send response after reset clears the conversation", async () => {
-    const sendResponse = createDeferred<Response>();
-    fetchMock.mockImplementation(async (url: string) => {
+  it("ignores a delayed send stream after reset clears the conversation", async () => {
+    const sendStream = deferredNdjsonResponse();
+    let sendSignal: AbortSignal | undefined;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/assistant/thread")) {
         return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
       }
       if (url.endsWith("/assistant/messages")) {
-        return sendResponse.promise;
+        sendSignal = init?.signal as AbortSignal | undefined;
+        return sendStream.response;
       }
       if (url.endsWith("/assistant/thread/reset")) {
         return jsonResponse({ thread: null });
@@ -316,23 +331,110 @@ describe("WorkspaceChatbot", () => {
     await waitFor(() => {
       expect(screen.queryByText("Answer slowly")).toBeNull();
     });
+    expect(sendSignal?.aborted).toBe(true);
 
     await act(async () => {
-      sendResponse.resolve(
-        jsonResponse({
-          assistantMessage: {
-            id: "late-assistant",
-            role: "ASSISTANT",
-            content: "Late answer.",
-          },
-          citations: [],
-        }),
-      );
-      await sendResponse.promise;
+      sendStream.enqueue({ type: "start" });
+      sendStream.enqueue({ type: "token", content: "Late draft." });
+      sendStream.enqueue({
+        type: "done",
+        assistantMessage: {
+          id: "late-assistant",
+          role: "ASSISTANT",
+          content: "Late answer.",
+        },
+        citations: [],
+      });
+      sendStream.close();
     });
 
+    expect(screen.queryByText("Late draft.")).toBeNull();
     expect(screen.queryByText("Late answer.")).toBeNull();
     expect(screen.getByText("Ask across this workspace.")).toBeTruthy();
+  });
+
+  it("renders streamed assistant tokens before done and hides thinking after the first token", async () => {
+    const sendStream = deferredNdjsonResponse();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return sendStream.response;
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "Stream an answer" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(screen.getByText("Thinking...")).toBeTruthy();
+
+    await act(async () => {
+      sendStream.enqueue({ type: "start" });
+      sendStream.enqueue({ type: "token", content: "Draft " });
+      sendStream.enqueue({ type: "token", content: "answer" });
+    });
+
+    expect(await screen.findByText("Draft answer")).toBeTruthy();
+    expect(screen.queryByText("Thinking...")).toBeNull();
+
+    await act(async () => {
+      sendStream.enqueue({
+        type: "done",
+        assistantMessage: {
+          id: "final-assistant",
+          role: "ASSISTANT",
+          content: "Final answer.",
+        },
+        citations: [],
+      });
+      sendStream.close();
+    });
+
+    expect(await screen.findByText("Final answer.")).toBeTruthy();
+    expect(screen.queryByText("Draft answer")).toBeNull();
+  });
+
+  it("removes optimistic and partial messages when the stream sends an error event", async () => {
+    const sendStream = deferredNdjsonResponse();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return sendStream.response;
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "Will this fail?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await act(async () => {
+      sendStream.enqueue({ type: "start" });
+      sendStream.enqueue({ type: "token", content: "Partial answer" });
+    });
+    expect(await screen.findByText("Partial answer")).toBeTruthy();
+
+    await act(async () => {
+      sendStream.enqueue({ type: "error", error: "AI_UNAVAILABLE" });
+      sendStream.close();
+    });
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(screen.queryByText("Will this fail?")).toBeNull();
+    expect(screen.queryByText("Partial answer")).toBeNull();
   });
 
   it("disables message input while reset is pending", async () => {
@@ -367,6 +469,47 @@ describe("WorkspaceChatbot", () => {
     });
 
     expect(screen.getByLabelText("Workspace chat message")).toHaveProperty("disabled", false);
+  });
+
+  it("reads valid workspace chat NDJSON streams", async () => {
+    const response = ndjsonChunkedResponse([
+      `${JSON.stringify({ type: "start" })}\n${JSON.stringify({ type: "token", content: "Hel" })}`,
+      `\n${JSON.stringify({ type: "token", content: "lo" })}\n`,
+      `${JSON.stringify({
+        type: "done",
+        thread: { id: "thread-1" },
+        userMessage: { id: "message-1", role: "USER", content: "Question" },
+        assistantMessage: { id: "message-2", role: "ASSISTANT", content: "Hello" },
+        citations: [],
+      })}\n`,
+    ]);
+    const events: unknown[] = [];
+
+    await readWorkspaceChatStream(response, (event) => {
+      events.push(event);
+    });
+
+    expect(events).toEqual([
+      { type: "start" },
+      { type: "token", content: "Hel" },
+      { type: "token", content: "lo" },
+      {
+        type: "done",
+        thread: { id: "thread-1" },
+        userMessage: { id: "message-1", role: "USER", content: "Question" },
+        assistantMessage: { id: "message-2", role: "ASSISTANT", content: "Hello" },
+        citations: [],
+      },
+    ]);
+  });
+
+  it("rejects missing or invalid workspace chat stream events", async () => {
+    await expect(readWorkspaceChatStream(new Response(null), vi.fn())).rejects.toThrow(
+      "WORKSPACE_CHAT_STREAM_UNAVAILABLE",
+    );
+    await expect(
+      readWorkspaceChatStream(ndjsonResponse([{ type: "token" }]), vi.fn()),
+    ).rejects.toThrow("WORKSPACE_CHAT_STREAM_EVENT_INVALID");
   });
 
   it("shows a recoverable error when initial thread loading returns an error", async () => {
@@ -422,8 +565,56 @@ describe("WorkspaceChatbot", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(screen.queryByText("What changed?")).toBeNull();
   });
 });
+
+function ndjsonResponse(events: unknown[], init?: ResponseInit) {
+  return new Response(events.map((event) => `${JSON.stringify(event)}\n`).join(""), {
+    status: init?.status ?? 200,
+    headers: { "content-type": "application/x-ndjson" },
+  });
+}
+
+function ndjsonChunkedResponse(chunks: string[]) {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream<Uint8Array>({
+      start(controller) {
+        chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)));
+        controller.close();
+      },
+    }),
+    { headers: { "content-type": "application/x-ndjson" } },
+  );
+}
+
+function deferredNdjsonResponse() {
+  const encoder = new TextEncoder();
+  let controller!: ReadableStreamDefaultController<Uint8Array>;
+  let closed = false;
+  const response = new Response(
+    new ReadableStream<Uint8Array>({
+      start(streamController) {
+        controller = streamController;
+      },
+    }),
+    { headers: { "content-type": "application/x-ndjson" } },
+  );
+
+  return {
+    response,
+    enqueue(event: unknown) {
+      controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+    },
+    close() {
+      if (!closed) {
+        closed = true;
+        controller.close();
+      }
+    },
+  };
+}
 
 function jsonResponse(body: unknown, init?: ResponseInit) {
   return new Response(JSON.stringify(body), {
