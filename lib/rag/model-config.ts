@@ -40,6 +40,10 @@ export type RagModelConfig = {
 };
 
 export type RagGenerationConfig = Pick<RagModelConfig, "chat" | "langfuse">;
+export type RagChatOverride = {
+  provider?: RagProvider;
+  model?: string;
+};
 
 export const RAG_CONFIG_ERROR_CODES = {
   INVALID_CONFIG: RAG_ERROR_CODES.INVALID_CONFIG,
@@ -76,8 +80,11 @@ export function getDefaultRagChatProvider(env: RagEnv = process.env): RagProvide
 
 const PROVIDERS = new Set<RagProvider>(["ollama", "openai", "openai-compatible"]);
 
-export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {
-  const generation = getRagGenerationConfig(env);
+export function getRagModelConfig(
+  env: RagEnv = process.env,
+  chatOverride: RagChatOverride = {},
+): RagModelConfig {
+  const generation = getRagGenerationConfig(env, chatOverride);
   const embedProvider = readProvider(env, "MUNJIB_RAG_EMBED_PROVIDER", DEFAULTS.embedProvider);
   const embedDimensions = readEmbedDimensions(env);
   const embeddingProviderConfig = buildProviderConfig({
@@ -105,13 +112,19 @@ export function getRagModelConfig(env: RagEnv = process.env): RagModelConfig {
   };
 }
 
-export function getRagGenerationConfig(env: RagEnv = process.env): RagGenerationConfig {
-  const chatProvider = readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
+export function getRagGenerationConfig(
+  env: RagEnv = process.env,
+  chatOverride: RagChatOverride = {},
+): RagGenerationConfig {
+  const chatProvider =
+    chatOverride.provider ?? readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
   return {
     chat: buildProviderConfig({
       env,
       provider: chatProvider,
-      model: readModel(env, "MUNJIB_RAG_CHAT_MODEL", chatProvider, DEFAULTS.chatModel),
+      model:
+        chatOverride.model ??
+        readModel(env, "MUNJIB_RAG_CHAT_MODEL", chatProvider, DEFAULTS.chatModel),
     }),
     langfuse: readLangfuseConfig(env),
   };

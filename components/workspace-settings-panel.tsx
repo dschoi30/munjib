@@ -13,12 +13,18 @@ import {
 import { Bot, FileText, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  type ChatModelSetting,
   type ClientRagChatProvider,
+  type ChatModelValidationError,
+  INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
+  RAG_CHAT_PROVIDER_OPTIONS,
   RAG_CHAT_MODEL_PRESETS,
-  readStoredChatModel,
+  addStoredCustomChatModel,
+  readStoredChatModelSetting,
+  readStoredCustomChatModels,
   resetStoredChatModel,
-  validateChatModelId,
-  writeStoredChatModel,
+  validateChatModelSetting,
+  writeStoredChatModelSetting,
 } from "@/lib/rag/client-model-settings";
 
 type WorkspaceSettingsFolder = {
@@ -54,6 +60,10 @@ type ImportRun = {
 
 type SettingsSection = "import" | "ai";
 
+const INVALID_MODEL_ID_MESSAGE = "Enter a valid model id.";
+const INCOMPATIBLE_MODEL_PROVIDER_MESSAGE =
+  "OpenRouter model ids require the server chat provider to be OpenAI-compatible.";
+
 export function WorkspaceSettingsPanel({
   canWrite,
   defaultChatModel,
@@ -75,6 +85,10 @@ export function WorkspaceSettingsPanel({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>("import");
   const [customModel, setCustomModel] = useState("");
+  const [selectedChatProvider, setSelectedChatProvider] = useState<ClientRagChatProvider>(() =>
+    readStoredChatModelSetting(workspaceSlug, defaultChatProvider)?.chatProvider ??
+    defaultChatProvider,
+  );
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
   const [modelStatus, setModelStatus] = useState<string | null>(null);
@@ -84,10 +98,21 @@ export function WorkspaceSettingsPanel({
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
   const storedChatModel = useMemo(
-    () => readStoredChatModel(workspaceSlug, defaultChatProvider),
+    () => readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
     [defaultChatProvider, saveVersion, workspaceSlug],
   );
-  const effectiveChatModel = storedChatModel ?? defaultChatModel;
+  const customChatModels = useMemo(
+    () => readStoredCustomChatModels(workspaceSlug),
+    [saveVersion, workspaceSlug],
+  );
+  const showPresetModels = selectedChatProvider === "openai-compatible";
+  const visibleCustomChatModels = useMemo(
+    () =>
+      customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
+    [customChatModels, selectedChatProvider],
+  );
+  const effectiveChatProvider = storedChatModel?.chatProvider ?? defaultChatProvider;
+  const effectiveChatModel = storedChatModel?.chatModel ?? defaultChatModel;
   const importLocked = isImportPending || isImporting;
   const isImportActive = isImporting || importRun?.status === "importing";
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
@@ -122,48 +147,59 @@ export function WorkspaceSettingsPanel({
   }, []);
 
   const handleSavePresetModel = useCallback(
-    (modelId: string) => {
-      const result = writeStoredChatModel(workspaceSlug, modelId, defaultChatProvider);
+    (setting: ChatModelSetting) => {
+      const result = writeStoredChatModelSetting(workspaceSlug, setting);
       if (!result.ok) {
-        setModelStatus("Enter a valid model id.");
+        setModelStatus(chatModelErrorMessage(result.error));
         return;
       }
 
       if (result.stored) {
+        setSelectedChatProvider(result.value.chatProvider);
         setSaveVersion((version) => version + 1);
       }
       setModelStatus(
-        result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
+        result.stored
+          ? `Saved model: ${result.value.chatModel}`
+          : "Model setting could not be saved.",
       );
     },
-    [defaultChatProvider, workspaceSlug],
+    [workspaceSlug],
   );
 
   const handleSaveCustomModel = useCallback(() => {
-    const validation = validateChatModelId(customModel, defaultChatProvider);
+    const validation = validateChatModelSetting({
+      chatProvider: selectedChatProvider,
+      chatModel: customModel,
+    });
     if (!validation.ok) {
-      setModelStatus("Enter a valid model id.");
+      setModelStatus(chatModelErrorMessage(validation.error));
       return;
     }
 
-    const result = writeStoredChatModel(workspaceSlug, validation.value, defaultChatProvider);
+    const result = writeStoredChatModelSetting(workspaceSlug, validation.value);
     if (result.ok) {
-      setCustomModel(result.value);
+      setCustomModel(result.value.chatModel);
+      setSelectedChatProvider(result.value.chatProvider);
       if (result.stored) {
+        addStoredCustomChatModel(workspaceSlug, result.value);
         setSaveVersion((version) => version + 1);
       }
       setModelStatus(
-        result.stored ? `Saved model: ${result.value}` : "Model setting could not be saved.",
+        result.stored
+          ? `Saved model: ${result.value.chatModel}`
+          : "Model setting could not be saved.",
       );
       return;
     }
 
-    setModelStatus("Enter a valid model id.");
-  }, [customModel, defaultChatProvider, workspaceSlug]);
+    setModelStatus(chatModelErrorMessage(result.error));
+  }, [customModel, selectedChatProvider, workspaceSlug]);
 
   const handleResetModel = useCallback(() => {
     const reset = resetStoredChatModel(workspaceSlug);
     if (reset) {
+      setSelectedChatProvider(defaultChatProvider);
       setSaveVersion((version) => version + 1);
     }
     setModelStatus(
@@ -455,29 +491,66 @@ export function WorkspaceSettingsPanel({
                 <p className="text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
                   {storedChatModel ? "Browser override" : "Server default"}
                 </p>
+                <p className="mt-2 text-xs font-medium text-slate-500">
+                  {providerLabel(effectiveChatProvider)}
+                </p>
                 <p className="mt-2 break-all text-sm font-semibold text-ink">
                   {effectiveChatModel}
                 </p>
               </div>
 
               <div>
-                <p className="text-sm font-semibold text-ink">Presets</p>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {RAG_CHAT_MODEL_PRESETS.map((preset) => (
-                    <Button
-                      key={preset.id}
-                      type="button"
-                      aria-label={`Use ${preset.label}`}
-                      onClick={() => handleSavePresetModel(preset.id)}
-                      className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-sm font-semibold">{preset.label}</span>
-                      </span>
-                    </Button>
+                <label
+                  htmlFor="chatProvider"
+                  className="text-sm font-semibold text-ink"
+                >
+                  Provider
+                </label>
+                <select
+                  id="chatProvider"
+                  aria-label="AI provider"
+                  value={selectedChatProvider}
+                  onChange={(event) =>
+                    setSelectedChatProvider(event.target.value as ClientRagChatProvider)
+                  }
+                  className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                >
+                  {RAG_CHAT_PROVIDER_OPTIONS.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.label}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
+
+              {showPresetModels ? (
+                <div>
+                  <p className="text-sm font-semibold text-ink">Presets</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {RAG_CHAT_MODEL_PRESETS.map((preset) => (
+                      <Button
+                        key={preset.id}
+                        type="button"
+                        aria-label={`Use ${preset.label}`}
+                        onClick={() =>
+                          handleSavePresetModel({
+                            chatProvider: preset.chatProvider,
+                            chatModel: preset.id,
+                          })
+                        }
+                        className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold">{preset.label}</span>
+                          <span className="mt-1 block break-all text-xs font-normal text-slate-500">
+                            {preset.id}
+                          </span>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div>
                 <label
@@ -498,6 +571,32 @@ export function WorkspaceSettingsPanel({
                   </Button>
                 </div>
               </div>
+
+              {visibleCustomChatModels.length > 0 ? (
+                <div>
+                  <p className="text-sm font-semibold text-ink">Custom models</p>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {visibleCustomChatModels.map((setting) => (
+                      <Button
+                        key={`${setting.chatProvider}:${setting.chatModel}`}
+                        type="button"
+                        aria-label={`Use custom ${setting.chatModel}`}
+                        onClick={() => handleSavePresetModel(setting)}
+                        className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                      >
+                        <span className="min-w-0">
+                          <span className="block break-all text-sm font-semibold">
+                            {setting.chatModel}
+                          </span>
+                          <span className="mt-1 block text-xs font-normal text-slate-500">
+                            {providerLabel(setting.chatProvider)}
+                          </span>
+                        </span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button
@@ -528,6 +627,21 @@ function settingsNavButtonClassName(isActive: boolean) {
       ? "bg-slate-200 text-ink"
       : "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-ink",
   ].join(" ");
+}
+
+function chatModelErrorMessage(error: ChatModelValidationError): string {
+  if (error === INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR) {
+    return INCOMPATIBLE_MODEL_PROVIDER_MESSAGE;
+  }
+
+  return INVALID_MODEL_ID_MESSAGE;
+}
+
+function providerLabel(providerId: ClientRagChatProvider): string {
+  return (
+    RAG_CHAT_PROVIDER_OPTIONS.find((provider) => provider.id === providerId)?.label ??
+    providerId
+  );
 }
 
 function MarkdownImportProgressPanel({

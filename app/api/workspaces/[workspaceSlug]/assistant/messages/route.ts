@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import {
   INVALID_CHAT_MODEL_ERROR,
+  validateChatProvider,
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
 import {
@@ -39,10 +40,28 @@ export async function POST(
     return NextResponse.json({ error: "INVALID_SELECTED_DOCUMENT_ID" }, { status: 400 });
   }
 
-  const chatModelValidation =
-    body.value.chatModel === undefined || body.value.chatModel === null
+  const hasChatProvider =
+    body.value.chatProvider !== undefined && body.value.chatProvider !== null;
+  const hasChatModel = body.value.chatModel !== undefined && body.value.chatModel !== null;
+  if (hasChatProvider && !hasChatModel) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+
+  const chatProviderValidation =
+    !hasChatProvider
       ? null
-      : validateChatModelId(body.value.chatModel);
+      : validateChatProvider(body.value.chatProvider);
+  if (chatProviderValidation && !chatProviderValidation.ok) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+
+  const chatModelValidation =
+    !hasChatModel
+      ? null
+      : validateChatModelId(
+          body.value.chatModel,
+          chatProviderValidation?.ok ? chatProviderValidation.value : undefined,
+        );
   if (chatModelValidation && !chatModelValidation.ok) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
@@ -53,6 +72,9 @@ export async function POST(
       actorId: user.id,
       message,
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
+      ...(chatProviderValidation?.ok
+        ? { chatProviderOverride: chatProviderValidation.value }
+        : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
 

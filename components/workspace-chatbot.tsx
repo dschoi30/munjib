@@ -6,8 +6,9 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  type ChatModelSetting,
   type ClientRagChatProvider,
-  readStoredChatModel,
+  readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
 
@@ -24,6 +25,7 @@ type WorkspaceChatbotProps = {
   workspaceSlug: string;
   selectedDocumentId: string | null;
   defaultChatProvider: ClientRagChatProvider;
+  defaultChatModel: string;
 };
 
 type ThreadResponse = {
@@ -40,6 +42,7 @@ export function WorkspaceChatbot({
   workspaceSlug,
   selectedDocumentId,
   defaultChatProvider,
+  defaultChatModel,
 }: WorkspaceChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -47,19 +50,20 @@ export function WorkspaceChatbot({
   const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
-  const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
-    readStoredChatModel(workspaceSlug, defaultChatProvider),
+  const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
+    readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
   );
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
   const trimmedMessage = messageInput.trim();
+  const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
     hasLoadedThreadRef.current = false;
-    setChatModelOverride(readStoredChatModel(workspaceSlug, defaultChatProvider));
+    setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
@@ -70,7 +74,11 @@ export function WorkspaceChatbot({
   useEffect(() => {
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
-      setChatModelOverride(change.chatModel);
+      setChatModelOverride(
+        change.chatModel && change.chatProvider
+          ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
+          : null,
+      );
     }, { chatProvider: defaultChatProvider });
   }, [defaultChatProvider, workspaceSlug]);
 
@@ -129,7 +137,12 @@ export function WorkspaceChatbot({
         body: JSON.stringify({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
-          ...(chatModelOverride ? { chatModel: chatModelOverride } : {}),
+          ...(chatModelOverride
+            ? {
+                chatProvider: chatModelOverride.chatProvider,
+                chatModel: chatModelOverride.chatModel,
+              }
+            : {}),
         }),
       });
       const body = (await response.json()) as SendMessageResponse;
@@ -236,6 +249,16 @@ export function WorkspaceChatbot({
           </button>
         </div>
       </header>
+
+      <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border px-3 text-xs text-slate-500">
+        <span>Model</span>
+        <span
+          className="min-w-0 truncate font-medium text-slate-700"
+          title={effectiveChatModel}
+        >
+          {effectiveChatModel}
+        </span>
+      </div>
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
         {messages.length === 0 && !isLoading ? (
