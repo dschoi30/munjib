@@ -5,13 +5,16 @@ import {
   isChatModelCompatibleWithProvider,
 } from "@/lib/rag/client-model-settings";
 import { highestPermissionLevel } from "@/lib/permissions/document";
-import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
+import { invokeAnswerChain, streamAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
 import { getRagModelConfig, type RagModelConfig, type RagProvider } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
-import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
+import {
+  createLangfuseCallbackConfig,
+  type LangfuseCallbackConfig,
+} from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
-import { buildRagPrompt, normalizeAnswerCitations } from "@/lib/rag/prompt";
+import { buildRagPrompt, normalizeAnswerCitations, type RagPrompt } from "@/lib/rag/prompt";
 import { searchSimilarChunks, type RetrievedChunk } from "@/lib/rag/vector-store";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { filterReadableDocuments } from "@/lib/workspace-tree";
@@ -31,6 +34,21 @@ export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   selectedDocumentId?: string | null;
   chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
+};
+
+export type WorkspaceChatPreparedMessage = {
+  threadId: string;
+  message: string;
+  prompt: RagPrompt;
+  promptChunkCount: number;
+  citationChunkIds: string[];
+  trace: LangfuseCallbackConfig;
+  chatModel: ChatModelLike;
+  chatModelName: string;
+};
+
+export type WorkspaceChatStreamCallbacks = {
+  onToken: (token: string) => Promise<void> | void;
 };
 
 const RECENT_MESSAGE_LIMIT = 12;
@@ -113,6 +131,21 @@ export async function getOrCreateWorkspaceChatThread(input: WorkspaceChatInput) 
 }
 
 export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageInput) {
+  const prepared = await prepareWorkspaceChatMessageStream(input);
+  const answer = await invokeAnswerChain({
+    systemPrompt: prepared.prompt.system,
+    userPrompt: prepared.prompt.user,
+    chatModel: prepared.chatModel,
+    callbacks: prepared.trace.callbacks,
+    metadata: prepared.trace.metadata,
+  });
+
+  return persistWorkspaceChatAnswer(prepared, answer);
+}
+
+export async function prepareWorkspaceChatMessageStream(
+  input: SendWorkspaceChatMessageInput,
+): Promise<WorkspaceChatPreparedMessage> {
   const message = input.message.trim();
   if (!message) throw new Error(WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED);
 
@@ -122,32 +155,7 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     actorId: input.actorId,
   });
 
-  if (input.chatProviderOverride && !input.chatModelOverride) {
-    throw new Error(INVALID_CHAT_MODEL_ERROR);
-  }
-  const defaultModelConfig = input.chatProviderOverride ? null : getRagModelConfig();
-  const chatProvider = input.chatProviderOverride ?? defaultModelConfig?.chat.provider;
-  if (!chatProvider) {
-    throw new Error(INVALID_CHAT_MODEL_ERROR);
-  }
-  if (
-    input.chatModelOverride &&
-    !isChatModelCompatibleWithProvider({
-      chatProvider,
-      chatModel: input.chatModelOverride,
-    })
-  ) {
-    throw new Error(INVALID_CHAT_MODEL_ERROR);
-  }
-  let effectiveModelConfig: RagModelConfig;
-  if (input.chatProviderOverride || input.chatModelOverride) {
-    effectiveModelConfig = getRagModelConfig(process.env, {
-      provider: input.chatProviderOverride,
-      model: input.chatModelOverride,
-    });
-  } else {
-    effectiveModelConfig = defaultModelConfig ?? getRagModelConfig();
-  }
+  const effectiveModelConfig = resolveWorkspaceChatModelConfig(input);
   assertCurrentEmbeddingIndex(effectiveModelConfig);
 
   const orderedThreadMessages = orderedMessagesForDisplay(thread.messages);
@@ -213,22 +221,78 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
       ...(selectedDocumentId ? { selectedDocumentId } : {}),
     },
   });
-  const answer = await invokeAnswerChain({
-    systemPrompt: prompt.system,
-    userPrompt: prompt.user,
+
+  return {
+    threadId: thread.id,
+    message,
+    prompt,
+    promptChunkCount: promptChunks.length,
+    citationChunkIds,
+    trace,
     chatModel: createChatModel(effectiveModelConfig.chat) as ChatModelLike,
-    callbacks: trace.callbacks,
-    metadata: trace.metadata,
+    chatModelName: effectiveModelConfig.chat.model,
+  };
+}
+
+export async function sendPreparedWorkspaceChatMessageStream(
+  prepared: WorkspaceChatPreparedMessage,
+  callbacks: WorkspaceChatStreamCallbacks,
+) {
+  const answer = await streamAnswerChain({
+    systemPrompt: prepared.prompt.system,
+    userPrompt: prepared.prompt.user,
+    chatModel: prepared.chatModel,
+    callbacks: prepared.trace.callbacks,
+    metadata: prepared.trace.metadata,
+    onToken: callbacks.onToken,
   });
-  const normalizedAnswer = normalizeAnswerCitations(answer, prompt.citations);
+
+  return persistWorkspaceChatAnswer(prepared, answer);
+}
+
+function resolveWorkspaceChatModelConfig(
+  input: Pick<SendWorkspaceChatMessageInput, "chatProviderOverride" | "chatModelOverride">,
+) {
+  if (input.chatProviderOverride && !input.chatModelOverride) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  const defaultModelConfig = input.chatProviderOverride ? null : getRagModelConfig();
+  const chatProvider = input.chatProviderOverride ?? defaultModelConfig?.chat.provider;
+  if (!chatProvider) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  if (
+    input.chatModelOverride &&
+    !isChatModelCompatibleWithProvider({
+      chatProvider,
+      chatModel: input.chatModelOverride,
+    })
+  ) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  if (input.chatProviderOverride || input.chatModelOverride) {
+    return getRagModelConfig(process.env, {
+      provider: input.chatProviderOverride,
+      model: input.chatModelOverride,
+    });
+  }
+
+  return defaultModelConfig ?? getRagModelConfig();
+}
+
+async function persistWorkspaceChatAnswer(
+  prepared: WorkspaceChatPreparedMessage,
+  answer: string,
+) {
+  const normalizedAnswer = normalizeAnswerCitations(answer, prepared.prompt.citations);
   const answerCitations = normalizedAnswer.citations;
   const contextMeta = {
-    retrievedChunkCount: promptChunks.length,
-    citationChunkIds,
+    retrievedChunkCount: prepared.promptChunkCount,
+    citationChunkIds: prepared.citationChunkIds,
   };
   const { userMessage, assistantMessage, updatedThread } = await prisma.$transaction(async (tx) => {
     const activeThread = await tx.aiChatThread.updateMany({
-      where: { id: thread.id, status: "ACTIVE" },
+      where: { id: prepared.threadId, status: "ACTIVE" },
       data: { lastMessageAt: new Date() },
     });
     if (activeThread.count === 0) {
@@ -237,23 +301,23 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
 
     const persistedUserMessage = await tx.aiChatMessage.create({
       data: {
-        threadId: thread.id,
+        threadId: prepared.threadId,
         role: "USER",
-        content: message,
+        content: prepared.message,
       },
     });
     const persistedAssistantMessage = await tx.aiChatMessage.create({
       data: {
-        threadId: thread.id,
+        threadId: prepared.threadId,
         role: "ASSISTANT",
         content: normalizedAnswer.answer,
         citations: answerCitations as Prisma.InputJsonValue,
         contextMeta,
-        model: effectiveModelConfig.chat.model,
+        model: prepared.chatModelName,
       },
     });
     const persistedThread = await tx.aiChatThread.update({
-      where: { id: thread.id },
+      where: { id: prepared.threadId },
       data: { lastMessageAt: persistedAssistantMessage.createdAt },
       include: {
         messages: {

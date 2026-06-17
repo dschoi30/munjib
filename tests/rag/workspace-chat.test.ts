@@ -3,14 +3,16 @@ import { WorkspaceRole } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@/lib/db/client";
 import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
-import { invokeAnswerChain } from "@/lib/rag/answer-chain";
+import { invokeAnswerChain, streamAnswerChain } from "@/lib/rag/answer-chain";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import { createChatModel } from "@/lib/rag/model-factory";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import {
   getOrCreateWorkspaceChatThread,
+  prepareWorkspaceChatMessageStream,
   resetWorkspaceChatThread,
+  sendPreparedWorkspaceChatMessageStream,
   sendWorkspaceChatMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
@@ -31,6 +33,7 @@ vi.mock("@/lib/rag/model-factory", () => ({
 
 vi.mock("@/lib/rag/answer-chain", () => ({
   invokeAnswerChain: vi.fn().mockResolvedValue("Workspace answer [1]."),
+  streamAnswerChain: vi.fn().mockResolvedValue("Workspace answer [1]."),
 }));
 
 vi.mock("@/lib/rag/index-document", () => ({
@@ -60,6 +63,8 @@ describe("workspace chat service", () => {
     vi.clearAllMocks();
     vi.mocked(invokeAnswerChain).mockReset();
     vi.mocked(invokeAnswerChain).mockResolvedValue("Workspace answer [1].");
+    vi.mocked(streamAnswerChain).mockReset();
+    vi.mocked(streamAnswerChain).mockResolvedValue("Workspace answer [1].");
     vi.mocked(safeIndexSavedDocument).mockReset();
     vi.mocked(safeIndexSavedDocument).mockResolvedValue(true);
     vi.mocked(searchSimilarChunks).mockReset();
@@ -326,6 +331,139 @@ describe("workspace chat service", () => {
         }),
       ]),
     );
+  });
+
+  it("streams tokens for a prepared workspace chat turn and persists the normalized answer afterward", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const handbook = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "# Policy\n\nWorkspace policy evidence.",
+    });
+    const returnedChunks = makeChunks(handbook, 1, 2);
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce(returnedChunks);
+    vi.mocked(streamAnswerChain).mockImplementationOnce(async (input) => {
+      await input.onToken("Streaming");
+      await input.onToken(" answer");
+      await input.onToken(" [2].");
+      return "Streaming answer [2].";
+    });
+
+    const prepared = await prepareWorkspaceChatMessageStream({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "  What is the workspace policy?  ",
+    });
+    await expect(
+      prisma.aiChatMessage.count({
+        where: {
+          thread: {
+            workspaceId: fixture.workspace.id,
+            userId: fixture.user.id,
+          },
+        },
+      }),
+    ).resolves.toBe(0);
+    const tokens: string[] = [];
+
+    const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
+      onToken: (token) => {
+        tokens.push(token);
+      },
+    });
+
+    expect(tokens).toEqual(["Streaming", " answer", " [2]."]);
+    expect(streamAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("Use only the saved document context"),
+        userPrompt: expect.stringContaining("What is the workspace policy?"),
+        chatModel,
+        callbacks: [],
+        metadata: expect.objectContaining({
+          operation: "rag.workspace_chat",
+          chatProvider: "ollama",
+        }),
+        onToken: expect.any(Function),
+      }),
+    );
+    expect(result.assistantMessage.content).toBe("Streaming answer [1].");
+    expect(result.citations).toEqual([
+      {
+        index: 1,
+        documentId: handbook.id,
+        documentTitle: "Handbook",
+        documentPath: handbook.path,
+        headingPath: "Evidence",
+      },
+    ]);
+    expect(result.assistantMessage.model).toBe("gemma4:e4b");
+    expect(result.assistantMessage.contextMeta).toEqual({
+      retrievedChunkCount: 2,
+      citationChunkIds: ["chunk-1", "chunk-2"],
+    });
+
+    const messages = await prisma.aiChatMessage.findMany({
+      where: { threadId: result.thread.id },
+      orderBy: { createdAt: "asc" },
+    });
+    expect(messages.map((message) => message.role)).toEqual(["USER", "ASSISTANT"]);
+    expect(messages[0]).toMatchObject({
+      content: "What is the workspace policy?",
+      citations: null,
+      contextMeta: null,
+      model: null,
+    });
+    expect(messages[1]).toMatchObject({
+      content: "Streaming answer [1].",
+      citations: result.citations,
+      contextMeta: {
+        retrievedChunkCount: 2,
+        citationChunkIds: ["chunk-1", "chunk-2"],
+      },
+      model: "gemma4:e4b",
+    });
+  });
+
+  it("does not persist user or assistant messages when streaming fails after a partial token", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const handbook = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "# Policy\n\nWorkspace policy evidence.",
+    });
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce(makeChunks(handbook, 1, 1));
+    vi.mocked(streamAnswerChain).mockImplementationOnce(async (input) => {
+      await input.onToken("Partial");
+      throw new Error("stream failed");
+    });
+    const prepared = await prepareWorkspaceChatMessageStream({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Will this fail?",
+    });
+    const tokens: string[] = [];
+
+    await expect(
+      sendPreparedWorkspaceChatMessageStream(prepared, {
+        onToken: (token) => {
+          tokens.push(token);
+        },
+      }),
+    ).rejects.toThrow("stream failed");
+
+    expect(tokens).toEqual(["Partial"]);
+    await expect(
+      prisma.aiChatMessage.count({
+        where: {
+          thread: {
+            workspaceId: fixture.workspace.id,
+            userId: fixture.user.id,
+          },
+        },
+      }),
+    ).resolves.toBe(0);
   });
 
   it("backfills lexically relevant readable documents before workspace retrieval", async () => {
