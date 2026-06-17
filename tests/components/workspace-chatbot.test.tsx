@@ -655,6 +655,41 @@ describe("WorkspaceChatbot", () => {
     expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
   });
 
+  it("removes an aborted pending send when reset fails", async () => {
+    const sendStream = deferredNdjsonResponse();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return sendStream.response;
+      }
+      if (url.endsWith("/assistant/thread/reset")) {
+        return jsonResponse({ error: "AI_UNAVAILABLE" }, { status: 503 });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "Abort this pending turn" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await act(async () => {
+      sendStream.enqueue({ type: "start" });
+      sendStream.enqueue({ type: "token", content: "Partial reset draft" });
+    });
+    expect(await screen.findByText("Partial reset draft")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset conversation" }));
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(screen.queryByText("Abort this pending turn")).toBeNull();
+    expect(screen.queryByText("Partial reset draft")).toBeNull();
+  });
+
   it("shows a recoverable error when sending fails", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url.endsWith("/assistant/thread")) {

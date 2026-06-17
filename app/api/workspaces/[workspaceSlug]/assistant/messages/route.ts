@@ -84,15 +84,26 @@ export async function POST(
     return workspaceChatErrorResponse(error);
   }
 
-  return workspaceChatStreamResponse(prepared);
+  return workspaceChatStreamResponse(prepared, request.signal);
 }
 
-function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
+function workspaceChatStreamResponse(
+  prepared: WorkspaceChatPreparedMessage,
+  signal: AbortSignal,
+) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let streamClosed = false;
       const writeEvent = (event: unknown) => {
-        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+        if (streamClosed || controller.desiredSize === null) return false;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+          return true;
+        } catch {
+          streamClosed = true;
+          return false;
+        }
       };
 
       writeEvent({ type: "start" });
@@ -101,9 +112,13 @@ function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
           onToken(token) {
             writeEvent({ type: "token", content: token });
           },
+          signal,
         });
-        writeEvent({ type: "done", ...result });
+        if (!signal.aborted) {
+          writeEvent({ type: "done", ...result });
+        }
       } catch (error) {
+        if (signal.aborted) return;
         const streamError =
           error instanceof Error &&
           error.message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
@@ -111,7 +126,13 @@ function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
             : "AI_UNAVAILABLE";
         writeEvent({ type: "error", error: streamError });
       } finally {
-        controller.close();
+        if (!streamClosed) {
+          try {
+            controller.close();
+          } catch {
+            streamClosed = true;
+          }
+        }
       }
     },
   });

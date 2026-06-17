@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-18T00:27:00+0900 - issue-105 PR review streaming abort follow-up
+
+- Result: PR #112 review follow-up reduced Workspace AI stream overhead and hardened abort/cancel behavior across server and client.
+- Coverage: `streamAnswerChain()` now extracts string content directly from stream chunks instead of invoking the LangChain output parser per token. `/assistant/messages` passes `request.signal` into the streaming service, treats writes after response cancellation as no-op, and `sendPreparedWorkspaceChatMessageStream()` skips persistence when the signal is aborted before finalization. `WorkspaceChatbot` removes the pending optimistic turn when reset aborts an active stream even if the reset request fails.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #112 review threads, `lib/rag/answer-chain.ts`, `lib/rag/workspace-chat.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `components/workspace-chatbot.tsx`, streaming regression tests.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`.
+
 ## 2026-06-18T00:13:09+0900 - issue-105 workspace chat stream hardening
 
 - Result: Workspace AI client stream handling now blocks submit-time duplicate sends while an answer is active and treats NDJSON EOF without `done` or `error` as an incomplete stream.

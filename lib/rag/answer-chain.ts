@@ -68,13 +68,10 @@ export async function streamAnswerChain(input: StreamAnswerChainInput): Promise<
 
     const promptValue = buildPromptValue(input);
     const stream = await input.chatModel.stream(promptValue, buildInvocationConfig(input));
-    const parser = new StringOutputParser();
     const chunks: string[] = [];
 
     for await (const chunk of stream) {
-      const token = await parser.invoke(
-        chunk as Parameters<StringOutputParser["invoke"]>[0],
-      );
+      const token = extractStreamToken(chunk);
       if (!token) continue;
       chunks.push(token);
       await input.onToken(token);
@@ -98,6 +95,23 @@ function buildPromptValue(input: Pick<InvokeAnswerChainInput, "systemPrompt" | "
   ]);
 }
 
+function extractStreamToken(chunk: unknown): string {
+  if (typeof chunk === "string") return chunk;
+  if (!isRecord(chunk) || !("content" in chunk)) return "";
+
+  const content = chunk.content;
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+
+  return content
+    .map((part) => {
+      if (typeof part === "string") return part;
+      if (!isRecord(part)) return "";
+      return typeof part.text === "string" ? part.text : "";
+    })
+    .join("");
+}
+
 function buildInvocationConfig(input: InvokeAnswerChainInput): AnswerChainInvocationConfig {
   const config = { ...(input.config ?? {}) };
   if (input.callbacks) {
@@ -107,4 +121,8 @@ function buildInvocationConfig(input: InvokeAnswerChainInput): AnswerChainInvoca
     config.metadata = input.metadata;
   }
   return config;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

@@ -51,6 +51,10 @@ export function WorkspaceChatbot({
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
   const activeSendAbortRef = useRef<AbortController | null>(null);
+  const pendingSendMessageIdsRef = useRef<{
+    userId: string;
+    assistantPlaceholderId: string;
+  } | null>(null);
   const optimisticMessageCounterRef = useRef(0);
   const trimmedMessage = messageInput.trim();
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
@@ -89,6 +93,19 @@ export function WorkspaceChatbot({
   function abortActiveSend() {
     activeSendAbortRef.current?.abort();
     activeSendAbortRef.current = null;
+  }
+
+  function clearPendingSendMessages() {
+    const pendingIds = pendingSendMessageIdsRef.current;
+    if (!pendingIds) return;
+    pendingSendMessageIdsRef.current = null;
+    setMessages((current) =>
+      current.filter(
+        (message) =>
+          message.id !== pendingIds.userId &&
+          message.id !== pendingIds.assistantPlaceholderId,
+      ),
+    );
   }
 
   useEffect(() => {
@@ -137,12 +154,17 @@ export function WorkspaceChatbot({
     const abortController = new AbortController();
     activeSendAbortRef.current = abortController;
     const optimisticId = `workspace-chat-pending-${++optimisticMessageCounterRef.current}`;
+    const userMessageId = `${optimisticId}-user`;
     const userMessage: ChatMessage = {
-      id: `${optimisticId}-user`,
+      id: userMessageId,
       role: "USER",
       content: trimmedMessage,
     };
     const assistantPlaceholderId = `${optimisticId}-assistant`;
+    pendingSendMessageIdsRef.current = {
+      userId: userMessageId,
+      assistantPlaceholderId,
+    };
     let hasAssistantPlaceholder = false;
     messageVersionRef.current += 1;
     setMessages((current) => [...current, userMessage]);
@@ -229,16 +251,12 @@ export function WorkspaceChatbot({
       });
     } catch (sendError) {
       if (!isAbortError(sendError, abortController) && isCurrentSend()) {
-        setMessages((current) =>
-          current.filter(
-            (message) =>
-              message.id !== userMessage.id && message.id !== assistantPlaceholderId,
-          ),
-        );
+        clearPendingSendMessages();
         setError("Workspace AI is unavailable.");
       }
     } finally {
       if (isCurrentSend()) {
+        pendingSendMessageIdsRef.current = null;
         activeSendAbortRef.current = null;
         setIsLoading(false);
         setIsThinking(false);
@@ -249,7 +267,11 @@ export function WorkspaceChatbot({
   async function handleReset() {
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
+    const hadActiveSend = Boolean(activeSendAbortRef.current);
     abortActiveSend();
+    if (hadActiveSend) {
+      clearPendingSendMessages();
+    }
     const resetGeneration = requestGenerationRef.current;
     setError("");
     setIsLoading(false);
