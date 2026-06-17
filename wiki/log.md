@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-17
-source_count: 224
+source_count: 225
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-17T23:52:40+0900 - issue-105 workspace chat route NDJSON stream
+
+- Result: `/api/workspaces/[workspaceSlug]/assistant/messages` now returns `application/x-ndjson` for successful Workspace AI sends after validation and preparation.
+- Coverage: The route calls `prepareWorkspaceChatMessageStream()` before constructing the stream, keeps validation and preparation failures as JSON responses with existing status codes, emits `start`, raw `token`, and authoritative persisted `done` events, and maps post-start send failures to an `AI_UNAVAILABLE` error event with HTTP 200.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-17T23:43:19+0900 - issue-105 workspace chat streaming service
 

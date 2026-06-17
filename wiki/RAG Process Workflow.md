@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-17
-source_count: 92
+source_count: 93
 tags:
   - munjib
   - workflow
@@ -28,7 +28,7 @@ links:
 
 이 page는 document editor의 `AI에게 묻기` direct-context request와 workspace chatbot의 saved DB content RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
-Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()`, `resetWorkspaceChatThread()`를 감싼다. Issue #105는 answer-chain token streaming과 workspace-chat service preparation/finalization seam을 추가했으며, route NDJSON events와 client rendering은 별도 follow-up이다.
+Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()`, `resetWorkspaceChatThread()`를 감싼다. Issue #105는 answer-chain token streaming, workspace-chat service preparation/finalization seam, and `/assistant/messages` NDJSON route events를 추가했으며, React client stream reader는 별도 follow-up이다.
 
 ## Process Map
 
@@ -76,7 +76,7 @@ flowchart TD
 | Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
 | Chatbot UI | `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx` | Workspace slug, selected document id, active thread state, optional browser/workspace `chatModel` | Fixed bottom-right launcher, compact panel, thread history, send/reset controls |
-| Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional provider+model pair, message send, reset/archive responses with stable error mapping |
+| Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional provider+model pair, JSON validation errors, NDJSON message send stream, reset/archive responses with stable error mapping |
 | Chat thread persistence | `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()` | Workspace/user and successful answer turn | Active thread, display-ordered history, rolling memory summary, persisted user+assistant messages |
 | Chat index guard | `assertCurrentEmbeddingIndex()` | Server model config | Fail-fast unless workspace retrieval index identity is Ollama `bge-m3` 1024 |
 | Chat targeted index backfill | `ensureWorkspaceChatRetrievalIndex()`, `safeIndexSavedDocument()` | Memory-aware conversation query, readable active documents, current embedding model | Missing/stale chunks for lexically relevant readable documents are refreshed before vector search |
@@ -137,7 +137,7 @@ Workspace chatbot UI/API/service request:
 13. Service는 readable `selectedDocumentId`에 해당하는 chunks가 top vector result와 충분히 가까울 때만 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다. 선택 문서가 검색상 너무 멀면 기존 vector order를 유지해 무관 문서가 context를 차지하지 않게 한다.
 14. `buildRagPrompt()`는 memory-aware conversation question과 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
 15. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다. `prepareWorkspaceChatMessageStream()`은 이 prompt, prompt chunk count, citation chunk ids, trace, chat model, and effective chat model name을 prepared object로 반환한다.
-16. Non-streaming sends use `invokeAnswerChain()` with the prepared prompt/model, while service-layer streaming sends use `streamAnswerChain()` and pass each parsed token to `onToken`. Both paths wait for final answer generation before persistence.
+16. Non-streaming sends use `invokeAnswerChain()` with the prepared prompt/model, while service-layer streaming sends use `streamAnswerChain()` and pass each parsed token to `onToken`. `/assistant/messages` calls `prepareWorkspaceChatMessageStream()` before constructing the response stream, so validation and preparation failures remain JSON responses through `workspaceChatErrorResponse()`. Once the `application/x-ndjson` stream starts, it emits `{ type: "start" }`, raw model `{ type: "token", content }` events, and a final `{ type: "done", thread, userMessage, assistantMessage, citations }` event after persistence. If `sendPreparedWorkspaceChatMessageStream()` fails after stream start, the route emits `{ type: "error", error: "AI_UNAVAILABLE" }` with HTTP 200 and closes the stream. Clients should treat the final `done` payload as authoritative because it contains normalized persisted content and citations.
 17. `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
 18. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
 19. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation, streaming failure after partial tokens, retrieval failure는 orphan `USER` message를 남기지 않는다.
@@ -202,7 +202,7 @@ Ask AI service는 기본 path에서 selected document re-indexing, question embe
 
 Ask AI panel과 workspace chatbot은 `components/ai/answer.tsx`의 공통 renderer로 assistant answer Markdown을 표시한다. 따라서 model output의 bullet, bold, inline code 같은 Markdown marker는 raw text로 노출하지 않고 읽을 수 있는 HTML로 렌더링한다. Citation list는 citation에 `documentId`가 있을 때 `workspaceDocumentHref()` 기반 source link로 표시하며, 클릭하면 해당 workspace document URL로 이동한다.
 
-Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 Workspace AI answer body만 newline-delimited JSON stream으로 보내는 follow-up이다. Validation failure는 기존 JSON error response를 유지하고, retrieval/indexing/memory phase는 stream하지 않으며, model answer token과 final persisted assistant message/citations만 stream contract에 포함한다. Issue #105 implementation starts with `lib/rag/answer-chain.ts`의 `streamAnswerChain()` seam and `lib/rag/workspace-chat.ts`의 prepared streaming service seam. Route/client streaming contract는 같은 Issue 안에서 이어서 구현한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`와 `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`이고, Issue #104 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
+Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 Workspace AI answer body만 newline-delimited JSON stream으로 보내는 follow-up이다. Validation failure는 기존 JSON error response를 유지하고, retrieval/indexing/memory phase는 stream하지 않으며, model answer token과 final persisted assistant message/citations만 stream contract에 포함한다. Issue #105 implementation starts with `lib/rag/answer-chain.ts`의 `streamAnswerChain()` seam and `lib/rag/workspace-chat.ts`의 prepared streaming service seam. `/assistant/messages` route는 이 prepared stream service를 `application/x-ndjson`으로 노출하며, React client stream reader는 별도 task로 남아 있다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`와 `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`이고, Issue #104 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
 ## Observability And Privacy
 
@@ -226,6 +226,7 @@ RAG process 변경은 최소한 관련 unit/integration tests를 함께 확인�
 
 ```bash
 pnpm exec tsc --noEmit --pretty false
+pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts --reporter=dot
 pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/model-factory.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts tests/rag/langfuse.test.ts tests/rag/langfuse-otel.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/vector-store.test.ts tests/docker/compose.test.ts tests/observability/sentry-files.test.ts
 DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test
 ```
@@ -258,6 +259,7 @@ pnpm wiki:sync-check --staged
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`
+- `tests/rag/workspace-chat-route.test.ts`
 - `components/workspace-chatbot.tsx`
 - `components/ai/answer.tsx`
 - `lib/rag/client-model-settings.ts`
