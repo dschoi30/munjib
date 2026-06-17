@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-06-17
-source_count: 90
+updated: 2026-06-18
+source_count: 96
 tags:
   - munjib
   - workflow
@@ -28,7 +28,7 @@ links:
 
 이 page는 document editor의 `AI에게 묻기` direct-context request와 workspace chatbot의 saved DB content RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
-Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()`, `resetWorkspaceChatThread()`를 감싼다. Response streaming은 Issue #105 follow-up으로 분리한다.
+Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, streaming `/assistant/messages`, `resetWorkspaceChatThread()`를 감싼다. Issue #105는 answer-chain token streaming, workspace-chat service preparation/finalization seam, `/assistant/messages` NDJSON route events, and React client stream rendering을 추가했다.
 
 ## Process Map
 
@@ -59,7 +59,7 @@ flowchart TD
     ChatEmbed --> ChatSearch["searchSimilarChunks()<br/>readable active document ids"]
     ChatSearch --> ChatCap["Cap prompt chunks<br/>12 total, 3 per document"]
     ChatCap --> ChatPrompt["buildRagPrompt()<br/>recent conversation + chunks"]
-    ChatPrompt --> ChatAnswer["invokeAnswerChain()"]
+    ChatPrompt --> ChatAnswer["invokeAnswerChain()<br/>or streamAnswerChain()"]
     ChatAnswer --> UsedCitations["normalizeAnswerCitations()<br/>keep and renumber answer-referenced sources"]
     UsedCitations --> ActiveCheck{"Thread still ACTIVE?"}
     ActiveCheck -- "No" --> Stale["THREAD_ARCHIVED<br/>drop stale assistant response"]
@@ -76,7 +76,7 @@ flowchart TD
 | Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
 | Ask answer generation | `invokeAnswerChain()` | Direct-context messages, effective chat model, optional callbacks | Answer text grounded in current saved document |
 | Chatbot UI | `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx` | Workspace slug, selected document id, active thread state, optional browser/workspace `chatModel` | Fixed bottom-right launcher, compact panel, thread history, send/reset controls |
-| Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional provider+model pair, message send, reset/archive responses with stable error mapping |
+| Chat route validation | `app/api/workspaces/[workspaceSlug]/assistant/*/route.ts` | Authenticated request and JSON body | Thread load, validated optional provider+model pair, JSON validation errors, NDJSON message send stream, reset/archive responses with stable error mapping |
 | Chat thread persistence | `getOrCreateWorkspaceChatThread()`, `sendWorkspaceChatMessage()` | Workspace/user and successful answer turn | Active thread, display-ordered history, rolling memory summary, persisted user+assistant messages |
 | Chat index guard | `assertCurrentEmbeddingIndex()` | Server model config | Fail-fast unless workspace retrieval index identity is Ollama `bge-m3` 1024 |
 | Chat targeted index backfill | `ensureWorkspaceChatRetrievalIndex()`, `safeIndexSavedDocument()` | Memory-aware conversation query, readable active documents, current embedding model | Missing/stale chunks for lexically relevant readable documents are refreshed before vector search |
@@ -103,7 +103,7 @@ Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]
 
 Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다.
 
-Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+workspace의 active thread를 만들거나 재사용하고, `sendWorkspaceChatMessage()`는 user message persistence, existing `DocumentChunk` retrieval, recent conversation prompt, answer generation, assistant message persistence를 담당한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`, `/messages`, `/thread/reset` route는 이 service를 인증된 JSON API로 노출하고, `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 호출한다.
+Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
 ## Steps
 
@@ -123,24 +123,26 @@ Ask AI direct-context request:
 Workspace chatbot UI/API/service request:
 
 1. `WorkspaceChatbot`은 workspace page에 fixed bottom-right launcher로 mount된다. Icon을 클릭하면 compact panel을 열고 `/assistant/thread`를 GET해 active thread와 message history를 불러오며, 현재 browser override 또는 server default 기준 effective model id를 header 아래에 표시한다.
-2. Panel submit은 trimmed message, 현재 selected document id, browser/workspace-scoped optional `chatModel` override를 `/assistant/messages`에 POST한다. Blank message, pending answer, pending reset 중에는 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다.
+2. Panel submit은 trimmed message, 현재 selected document id, browser/workspace-scoped optional `chatModel` override를 `/assistant/messages`에 POST한다. Message fetch는 `AbortController.signal`을 사용하며, reset과 workspace change cleanup은 active send를 abort한다. Blank message, active send, pending answer, pending reset 중에는 submit handler가 새 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다.
 3. Message route는 malformed JSON을 `INVALID_JSON`, blank message를 `MESSAGE_REQUIRED`, invalid `selectedDocumentId`를 `INVALID_SELECTED_DOCUMENT_ID`, invalid provider/model override를 `INVALID_CHAT_MODEL`로 service 호출 전에 정규화한다. `chatProvider`가 있으면 matching `chatModel`도 필요하므로 provider-only payload는 service에 전달하지 않는다.
-4. `sendWorkspaceChatMessage()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
+4. `prepareWorkspaceChatMessageStream()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
 5. Workspace membership과 active documents를 load하고, workspace role과 explicit document permissions로 readable active document ids를 계산한다.
 6. `getOrCreateActiveThread()`는 `(workspaceId, userId)`의 active thread를 재사용하거나 생성한다. Concurrent create race는 PostgreSQL partial unique index의 `P2002`를 잡고 active thread를 다시 읽어 처리한다.
 7. 기존 thread history는 display order로 정렬해 prompt와 UI에 사용한다. DB timestamp가 같은 성공 turn도 `USER`가 `ASSISTANT`보다 먼저 오도록 role order로 tie-break한다. Thread에 `memorySummary`가 있으면 retrieval query와 answer prompt의 conversation context 앞쪽에 포함한다.
-8. `sendWorkspaceChatMessage()`도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL과 fixed embedding config를 함께 읽는다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
+8. Workspace chat preparation도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL과 fixed embedding config를 함께 읽는다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.
 9. `assertCurrentEmbeddingIndex()`로 현재 workspace retrieval이 Ollama `bge-m3` 1024 index identity와 맞는지 확인한다.
 10. `buildWorkspaceConversationContext()`는 `memorySummary`, 마지막 요약 이후 새로 쌓인 recent messages, 현재 user message를 합친 memory-aware query 후보가 6,000자를 넘는지 먼저 판단한다. 초과하면 `conversation memory summarizer` prompt로 기존 memory와 새 대화 excerpt를 병합하고, 결과를 `AiChatThread.memorySummary` / `memoryUpdatedAt`에 저장한다. Summarization 실패는 Workspace AI 전체를 죽이지 않고 server log에 남기며 bounded recent context fallback을 사용한다.
 11. `ensureWorkspaceChatRetrievalIndex()`는 memory-aware query terms와 readable active documents를 비교해 title/path/body가 맞는 missing 또는 stale documents를 최대 8개까지 `safeIndexSavedDocument()`로 먼저 refresh한다. Query가 "this document" 같은 selected-document referential prompt이고 `selectedDocumentId`가 readable이면 lexical score가 없어도 selected document를 refresh 후보에 포함하며, lexical candidates가 top-8 cap을 채워도 selected document를 cap 밖에서 강제 포함한다. 이미 current `DocumentChunk.sourceUpdatedAt`이 document `updatedAt`과 맞는 문서는 다시 색인하지 않는다.
 12. `embedText()`는 thread memory summary, 최근 thread messages, 현재 user message를 합친 memory-aware query를 embedding한다. 이 query는 embedding model context를 넘지 않도록 최대 6,000자로 제한하되, 초과분은 raw history 일부를 버리는 대신 먼저 thread memory summary로 병합한다. 이전 assistant answer의 `[n]` citation marker는 새 retrieval/prompt citation 번호와 섞이지 않도록 history text에서 제거한다. `searchSimilarChunks()`는 먼저 readable active document ids 전체에서 current `DocumentChunk` rows를 검색하고, readable `selectedDocumentId`가 있으면 selected document id만 대상으로 한 번 더 검색해 global top-60 밖의 open-document chunks도 후보에 병합한다.
 13. Service는 readable `selectedDocumentId`에 해당하는 chunks가 top vector result와 충분히 가까울 때만 prompt candidate 앞쪽으로 stable하게 우선 배치한 뒤, prompt chunk를 최대 12개, 문서당 최대 3개로 제한한다. 선택 문서가 검색상 너무 멀면 기존 vector order를 유지해 무관 문서가 context를 차지하지 않게 한다.
 14. `buildRagPrompt()`는 memory-aware conversation question과 capped saved chunks를 근거로 prompt/citation metadata를 만든다.
-15. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다.
-16. `invokeAnswerChain()`이 answer를 생성하면 `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
-17. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
-18. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation이나 retrieval이 실패하면 orphan `USER` message를 남기지 않는다.
-19. Client는 request generation/version guard로 delayed thread load나 delayed send response가 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
+15. `createLangfuseCallbackConfig()`는 `rag.workspace_chat` operation, effective provider/model, retrieved chunk count, prompt citation document ids, citation chunk ids, thread/workspace/actor metadata를 만든다. `prepareWorkspaceChatMessageStream()`은 이 prompt, prompt chunk count, citation chunk ids, trace, chat model, and effective chat model name을 prepared object로 반환한다.
+16. Non-streaming sends use `invokeAnswerChain()` with the prepared prompt/model, while service-layer streaming sends use `streamAnswerChain()` and pass each parsed token to `onToken`. `/assistant/messages` calls `prepareWorkspaceChatMessageStream()` before constructing the response stream, so validation and preparation failures remain JSON responses through `workspaceChatErrorResponse()`. Once the `application/x-ndjson` stream starts, it emits `{ type: "start" }`, raw model `{ type: "token", content }` events, and a final `{ type: "done", thread, userMessage, assistantMessage, citations }` event after persistence. The route passes `request.signal` into preparation and streaming so client aborts can stop indexing/embedding/search/model work and prevent aborted turns from being persisted. The streaming response uses `cache-control: no-cache, no-transform` and treats writes to a cancelled response body as no-op. If `sendPreparedWorkspaceChatMessageStream()` fails after stream start, the route emits `{ type: "error", error: "THREAD_ARCHIVED" }` for a post-start archived-thread race, otherwise `{ type: "error", error: "AI_UNAVAILABLE" }`, keeps HTTP 200, and closes the stream. Clients should treat the final `done` payload as authoritative because it contains normalized persisted content and citations.
+17. `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
+18. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
+19. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation, streaming failure after partial tokens, retrieval failure는 orphan `USER` message를 남기지 않는다.
+20. `readWorkspaceChatStream()` reads the NDJSON response body with `ReadableStreamDefaultReader` and `TextDecoder`, supports multiple event lines per chunk and partial lines across chunks, rejects malformed non-empty event lines, and rejects EOF without terminal `done` or `error` as `WORKSPACE_CHAT_STREAM_INCOMPLETE`. `WorkspaceChatbot` appends an optimistic user message immediately, shows `Thinking...` until the first token, streams tokens into an assistant placeholder, then replaces that placeholder with the authoritative `done.assistantMessage` and `done.citations`. If a stream error event, incomplete stream, invalid stream, missing body, or fetch failure happens for the current generation, the client removes the optimistic user message and partial assistant placeholder and shows `Workspace AI is unavailable.` Aborted or stale generations are ignored.
+21. Client는 request generation/version guard로 delayed thread load나 delayed send stream이 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
 
 ## Provider And Index Contract
 
@@ -197,11 +199,11 @@ Issue #104는 기존 RAG/vector DB를 제거하지 않고 AI surface별 request 
 
 Ask AI service는 기본 path에서 selected document re-indexing, question embedding, vector search, workspace fallback retrieval을 호출하지 않는다. 대신 현재 저장 markdown이 context budget 안에 들어가면 전체 문서를 prompt에 직접 넣고, 너무 긴 문서는 heading-aware section packer 또는 no-heading paragraph chunk fallback으로 관련 섹션을 선택한다. Ask AI citation은 현재 문서 section만 후보로 만들되, answer text가 실제로 참조한 `[n]` section만 UI에 반환하고, display number는 answer 등장 순서대로 다시 `1..n`으로 붙인다.
 
-새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send response, pending reset race를 generation/version guard와 disabled controls로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 질문과 readable documents의 lexical overlap으로 missing/stale chunks를 targeted refresh한 뒤 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, follow-up 질문의 지시어가 이전 대화 주제를 잃지 않도록 bounded conversation-aware query를 embedding한다. Readable selected document chunks는 vector distance가 top result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, returned citations는 answer가 실제로 참조한 citation marker로 필터링한 뒤 display number를 answer 등장 순서대로 정규화한다.
+새 workspace chatbot은 우측 하단 sticky AI launcher와 compact chat panel을 제공하는 별도 surface다. UI는 active thread history를 load하고, streamed message send와 conversation reset을 지원하며, selected document id를 message request metadata로 넘긴다. Client는 workspace change, delayed thread load, delayed send stream, pending reset race를 generation/version guard와 active-send abort로 방어한다. Backend service는 사용자+workspace별 active `AiChatThread`와 `AiChatMessage` history를 저장하고, PostgreSQL partial unique index가 `(workspaceId, userId)`별 `ACTIVE` thread를 하나로 제한한다. Service layer는 concurrent create race를 이 DB invariant에 맞춰 처리하고, answer generation 중 reset이 thread를 archive한 경우 stale assistant response를 저장하지 않는다. Chatbot answer turn retrieval은 질문과 readable documents의 lexical overlap으로 missing/stale chunks를 targeted refresh한 뒤 기존 `DocumentChunk` rows에서 readable active document chunks를 검색하고, follow-up 질문의 지시어가 이전 대화 주제를 잃지 않도록 bounded conversation-aware query를 embedding한다. Readable selected document chunks는 vector distance가 top result와 충분히 가까울 때만 prompt cap 전에 우선 배치하고, returned citations는 answer가 실제로 참조한 citation marker로 필터링한 뒤 display number를 answer 등장 순서대로 정규화한다.
 
 Ask AI panel과 workspace chatbot은 `components/ai/answer.tsx`의 공통 renderer로 assistant answer Markdown을 표시한다. 따라서 model output의 bullet, bold, inline code 같은 Markdown marker는 raw text로 노출하지 않고 읽을 수 있는 HTML로 렌더링한다. Citation list는 citation에 `documentId`가 있을 때 `workspaceDocumentHref()` 기반 source link로 표시하며, 클릭하면 해당 workspace document URL로 이동한다.
 
-Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시하고, streaming이 없는 Issue #104 MVP에서는 full response가 도착할 때까지 유지한다. Issue #105는 non-streaming chatbot contract가 안정화된 뒤 streaming answer chain, streaming route, client stream reader, partial failure policy를 다루는 별도 follow-up이다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
+Ask AI와 chatbot은 model config, browser/workspace chat model override validation, answer-chain invocation, Langfuse metadata, permission-safe document loading, thinking indicator UI를 공유할 수 있지만, 하나의 overloaded service function으로 합치지 않는다. 공통 Thinking indicator는 영어 elapsed-time 메시지 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...`를 순서대로 표시한다. Issue #105는 Workspace AI answer body만 newline-delimited JSON stream으로 보내며, Ask AI는 이 slice에서 non-streaming direct-context flow를 유지한다. Validation failure는 기존 JSON error response를 유지하고, retrieval/indexing/memory phase는 stream하지 않으며, model answer token과 final persisted assistant message/citations만 stream contract에 포함한다. Issue #105 implementation includes `lib/rag/answer-chain.ts`의 `streamAnswerChain()` seam, `lib/rag/workspace-chat.ts`의 prepared streaming service seam, `/assistant/messages` `application/x-ndjson` route, and `components/workspace-chatbot-stream.ts` client reader. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`와 `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`이고, Issue #104 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
 ## Observability And Privacy
 
@@ -225,6 +227,7 @@ RAG process 변경은 최소한 관련 unit/integration tests를 함께 확인�
 
 ```bash
 pnpm exec tsc --noEmit --pretty false
+pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot
 pnpm exec vitest run tests/rag/model-config.test.ts tests/rag/model-factory.test.ts tests/rag/embedding-client.test.ts tests/rag/answer-chain.test.ts tests/rag/langfuse.test.ts tests/rag/langfuse-otel.test.ts tests/rag/ask.test.ts tests/rag/ask-route.test.ts tests/rag/retriever.test.ts tests/rag/vector-store.test.ts tests/docker/compose.test.ts tests/observability/sentry-files.test.ts
 DATABASE_URL='postgresql://obsidian:obsidian@localhost:55432/obsidian_clone?schema=public' pnpm test
 ```
@@ -257,7 +260,9 @@ pnpm wiki:sync-check --staged
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`
+- `tests/rag/workspace-chat-route.test.ts`
 - `components/workspace-chatbot.tsx`
+- `components/workspace-chatbot-stream.ts`
 - `components/ai/answer.tsx`
 - `lib/rag/client-model-settings.ts`
 - `lib/rag/model-config.ts`

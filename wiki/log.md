@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-17
-source_count: 222
+updated: 2026-06-18
+source_count: 228
 tags:
   - log
   - munjib
@@ -18,6 +18,70 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-18T00:27:00+0900 - issue-105 PR review streaming abort follow-up
+
+- Result: PR #112 review follow-up reduced Workspace AI stream overhead and hardened abort/cancel behavior across server and client.
+- Coverage: `streamAnswerChain()` now extracts string content directly from stream chunks instead of invoking the LangChain output parser per token. `/assistant/messages` passes `request.signal` into preparation and streaming, preparation checks abort state before expensive indexing/embedding/search steps, response writes after cancellation become no-op, and `sendPreparedWorkspaceChatMessageStream()` skips persistence when the signal is aborted before finalization. `WorkspaceChatbot` removes the pending optimistic turn when reset aborts an active stream even if the reset request fails.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #112 review threads, `lib/rag/answer-chain.ts`, `lib/rag/workspace-chat.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `components/workspace-chatbot.tsx`, streaming regression tests.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`.
+
+## 2026-06-18T00:13:09+0900 - issue-105 workspace chat stream hardening
+
+- Result: Workspace AI client stream handling now blocks submit-time duplicate sends while an answer is active and treats NDJSON EOF without `done` or `error` as an incomplete stream.
+- Coverage: `WorkspaceChatbot` checks loading/current active send in the submit handler so pressing Enter in the enabled input cannot start a second `/assistant/messages` request while a stream is pending. `readWorkspaceChatStream()` throws `WORKSPACE_CHAT_STREAM_INCOMPLETE` when a stream closes without terminal `done` or `error`, and the UI removes optimistic plus partial assistant content before showing `Workspace AI is unavailable.`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 4 code review, `components/workspace-chatbot-stream.ts`, `components/workspace-chatbot.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-18T00:06:19+0900 - issue-105 workspace chat client stream rendering
+
+- Result: Workspace AI client sends now consume `/assistant/messages` as `application/x-ndjson` instead of JSON.
+- Coverage: `readWorkspaceChatStream()` validates `start`, `token`, `done`, and `error` events across chunk boundaries. `WorkspaceChatbot` posts with `AbortController.signal`, aborts active sends on reset/workspace cleanup, streams tokens into an assistant placeholder, hides `Thinking...` after the first token, replaces the placeholder with authoritative `done` content/citations, and removes optimistic/partial messages on stream or fetch errors.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `components/workspace-chatbot-stream.ts`, `components/workspace-chatbot.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-17T23:58:40+0900 - issue-105 workspace chat route stream review fix
+
+- Result: Workspace AI stream route review fixes preserved post-start archived-thread failures as `THREAD_ARCHIVED` NDJSON error events and added `no-transform` to streaming cache-control.
+- Coverage: Other post-start send failures still stream `AI_UNAVAILABLE` with HTTP 200, while successful stream responses now use `cache-control: no-cache, no-transform`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 3 code review, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-17T23:52:40+0900 - issue-105 workspace chat route NDJSON stream
+
+- Result: `/api/workspaces/[workspaceSlug]/assistant/messages` now returns `application/x-ndjson` for successful Workspace AI sends after validation and preparation.
+- Coverage: The route calls `prepareWorkspaceChatMessageStream()` before constructing the stream, keeps validation and preparation failures as JSON responses with existing status codes, emits `start`, raw `token`, and authoritative persisted `done` events, and maps post-start send failures to an `AI_UNAVAILABLE` error event with HTTP 200.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-17T23:43:19+0900 - issue-105 workspace chat streaming service
+
+- Result: Workspace AI service now has a prepared streaming path that shares retrieval, prompt, provider/model validation, normalization, and persistence with the existing non-streaming send path.
+- Coverage: `prepareWorkspaceChatMessageStream()` prepares the active thread, memory-aware query, retrieval candidates, prompt, citation chunk ids, Langfuse trace metadata, chat model, and effective model name. `sendPreparedWorkspaceChatMessageStream()` calls `streamAnswerChain()` with `onToken` and persists only after final answer generation succeeds. `sendWorkspaceChatMessage()` remains compatible as the non-streaming wrapper over the same preparation and persistence helpers, and partial streaming failures leave no orphan messages.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`, `lib/rag/answer-chain.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-17T23:38:00+0900 - issue-105 answer-chain streaming seam
+
+- Result: Workspace AI streaming implementation started with an answer-chain seam for LangChain chat model token streams.
+- Coverage: `streamAnswerChain()` shares prompt construction and invocation config with `invokeAnswerChain()`, forwards callbacks/metadata/tags to `chatModel.stream()`, emits non-empty parsed tokens through `onToken`, accumulates the final answer, and maps provider failures or empty output to the stable `CHAT_REQUEST_FAILED` code. Route NDJSON events and client rendering remain in the same Issue #105 follow-up.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `lib/rag/answer-chain.ts`, `tests/rag/answer-chain.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/answer-chain.test.ts --reporter=dot`.
+
+## 2026-06-17T23:18:00+0900 - issue-105 chatbot response streaming design
+
+- Result: Issue #105 streaming scope was narrowed to Workspace AI answer-body streaming over newline-delimited JSON on the existing `/assistant/messages` POST route.
+- Coverage: The design keeps pre-stream validation errors as JSON responses, streams only answer tokens plus final persisted assistant message/citations, preserves reset/workspace-change guards, and leaves Ask AI streaming out of scope. The follow-up implementation plan breaks the work into answer-chain streaming, workspace chat service preparation/finalization, NDJSON route events, client stream rendering, wiki updates, and PR review closure.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, user-approved brainstorming, `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`, `docs/superpowers/plans/2026-06-17-chatbot-response-streaming.md`.
+- Verification: spec self-review before implementation planning.
 
 ## 2026-06-17T00:37:05+0900 - PR #110 provider override config review fix
 
