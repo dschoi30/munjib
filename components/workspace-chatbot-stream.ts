@@ -30,6 +30,7 @@ export async function readWorkspaceChatStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffered = "";
+  let hasTerminalEvent = false;
 
   while (true) {
     const { done, value } = await reader.read();
@@ -38,11 +39,14 @@ export async function readWorkspaceChatStream(
     const lines = buffered.split("\n");
     buffered = lines.pop() ?? "";
     for (const line of lines) {
-      emitWorkspaceChatStreamEvent(line, onEvent);
+      hasTerminalEvent = emitWorkspaceChatStreamEvent(line, onEvent) || hasTerminalEvent;
     }
 
     if (done) {
-      emitWorkspaceChatStreamEvent(buffered, onEvent);
+      hasTerminalEvent = emitWorkspaceChatStreamEvent(buffered, onEvent) || hasTerminalEvent;
+      if (!hasTerminalEvent) {
+        throw new Error("WORKSPACE_CHAT_STREAM_INCOMPLETE");
+      }
       return;
     }
   }
@@ -52,7 +56,7 @@ function emitWorkspaceChatStreamEvent(
   line: string,
   onEvent: (event: WorkspaceChatStreamEvent) => void,
 ) {
-  if (!line.trim()) return;
+  if (!line.trim()) return false;
 
   let parsed: unknown;
   try {
@@ -66,6 +70,7 @@ function emitWorkspaceChatStreamEvent(
     throw new Error("WORKSPACE_CHAT_STREAM_EVENT_INVALID");
   }
   onEvent(event);
+  return event.type === "done" || event.type === "error";
 }
 
 function parseWorkspaceChatStreamEvent(value: unknown): WorkspaceChatStreamEvent | null {

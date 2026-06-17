@@ -129,7 +129,7 @@ export function WorkspaceChatbot({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!trimmedMessage || isResetting) return;
+    if (!trimmedMessage || isLoading || isResetting || activeSendAbortRef.current) return;
 
     abortActiveSend();
     requestGenerationRef.current += 1;

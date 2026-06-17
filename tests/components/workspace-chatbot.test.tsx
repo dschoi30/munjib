@@ -401,6 +401,62 @@ describe("WorkspaceChatbot", () => {
     expect(screen.queryByText("Draft answer")).toBeNull();
   });
 
+  it("does not start a second send when the form submits while loading", async () => {
+    const firstStream = deferredNdjsonResponse();
+    const secondStream = deferredNdjsonResponse();
+    let messageFetchCount = 0;
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        messageFetchCount += 1;
+        return messageFetchCount === 1 ? firstStream.response : secondStream.response;
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    const input = screen.getByLabelText("Workspace chat message");
+    const form = input.closest("form") as HTMLFormElement;
+
+    fireEvent.change(input, {
+      target: { value: "First pending question" },
+    });
+    fireEvent.submit(form);
+
+    expect(await screen.findByText("Thinking...")).toBeTruthy();
+    expect(input).toHaveProperty("disabled", false);
+
+    fireEvent.change(input, {
+      target: { value: "Second question" },
+    });
+    fireEvent.submit(form);
+
+    await act(async () => {});
+    expect(messageFetchCount).toBe(1);
+    expect(screen.queryByText("Second question")).toBeNull();
+
+    await act(async () => {
+      firstStream.enqueue({ type: "start" });
+      firstStream.enqueue({
+        type: "done",
+        assistantMessage: {
+          id: "first-final",
+          role: "ASSISTANT",
+          content: "First final answer.",
+        },
+        citations: [],
+      });
+      firstStream.close();
+    });
+
+    expect(await screen.findByText("First pending question")).toBeTruthy();
+    expect(await screen.findByText("First final answer.")).toBeTruthy();
+  });
+
   it("removes optimistic and partial messages when the stream sends an error event", async () => {
     const sendStream = deferredNdjsonResponse();
     fetchMock.mockImplementation(async (url: string) => {
@@ -435,6 +491,41 @@ describe("WorkspaceChatbot", () => {
     expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
     expect(screen.queryByText("Will this fail?")).toBeNull();
     expect(screen.queryByText("Partial answer")).toBeNull();
+  });
+
+  it("removes optimistic and partial messages when the stream ends without a terminal event", async () => {
+    const sendStream = deferredNdjsonResponse();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return sendStream.response;
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "Will this end early?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await act(async () => {
+      sendStream.enqueue({ type: "start" });
+      sendStream.enqueue({ type: "token", content: "Partial before EOF" });
+    });
+    expect(await screen.findByText("Partial before EOF")).toBeTruthy();
+
+    await act(async () => {
+      sendStream.close();
+    });
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(screen.queryByText("Will this end early?")).toBeNull();
+    expect(screen.queryByText("Partial before EOF")).toBeNull();
   });
 
   it("disables message input while reset is pending", async () => {
@@ -510,6 +601,25 @@ describe("WorkspaceChatbot", () => {
     await expect(
       readWorkspaceChatStream(ndjsonResponse([{ type: "token" }]), vi.fn()),
     ).rejects.toThrow("WORKSPACE_CHAT_STREAM_EVENT_INVALID");
+  });
+
+  it("rejects incomplete workspace chat streams without done or error", async () => {
+    await expect(
+      readWorkspaceChatStream(
+        ndjsonResponse([
+          { type: "start" },
+          { type: "token", content: "Partial answer" },
+        ]),
+        vi.fn(),
+      ),
+    ).rejects.toThrow("WORKSPACE_CHAT_STREAM_INCOMPLETE");
+
+    await expect(
+      readWorkspaceChatStream(
+        new Response("\n\n", { headers: { "content-type": "application/x-ndjson" } }),
+        vi.fn(),
+      ),
+    ).rejects.toThrow("WORKSPACE_CHAT_STREAM_INCOMPLETE");
   });
 
   it("shows a recoverable error when initial thread loading returns an error", async () => {
