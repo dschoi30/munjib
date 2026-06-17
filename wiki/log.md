@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-16
-source_count: 217
+updated: 2026-06-17
+source_count: 222
 tags:
   - log
   - munjib
@@ -18,6 +18,62 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-17T00:37:05+0900 - PR #110 provider override config review fix
+
+- Result: Ask AI and Workspace AI service-level provider overrides no longer read the default chat provider config before applying a complete override.
+- Coverage: `askDocumentQuestion()` and `sendWorkspaceChatMessage()` reject provider-only service inputs, still support model-only legacy overrides through the default provider, and build complete provider+model overrides directly from the selected provider's server-side config.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #110 review thread, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-17T00:24:30+0900 - workspace chat memory summary
+
+- Result: Workspace AI now persists a rolling thread memory summary instead of dropping long conversation history when the retrieval query would exceed the embedding budget.
+- Coverage: `AiChatThread.memorySummary` and `memoryUpdatedAt` store summarized conversation memory. `sendWorkspaceChatMessage()` refreshes memory only when the unsummarized recent history plus current message exceeds 6,000 characters, merges old memory with new excerpts through a `conversation memory summarizer` prompt, reuses existing memory in retrieval/prompt context, and avoids re-summarizing messages older than `memoryUpdatedAt`.
+- Pages: [[Document Knowledge Model]], [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #111, user request, `prisma/schema.prisma`, `prisma/migrations/20260617002000_add_ai_chat_thread_memory/migration.sql`, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-16T23:56:46+0900 - workspace chat embedding query cap
+
+- Result: Workspace AI no longer sends unbounded conversation history to the embedding model, preventing Ollama `the input length exceeds the context length` failures during retrieval.
+- Coverage: `buildConversationQuestion()` now caps the conversation-aware retrieval query at 6,000 characters, keeps the newest history first, strips old citation markers, and always preserves the current user message before `embedText()`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: user-reported local Workspace AI error, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-16T23:46:10+0900 - PR #110 route override validation review fix
+
+- Result: PR #110 review feedback was addressed by hardening Ask AI request parsing for `null`/non-object JSON and rejecting provider-only chat overrides before service invocation.
+- Coverage: Ask AI normalizes malformed or non-object JSON into the missing-question path; Ask AI and workspace chat routes now require `chatProvider` to be paired with `chatModel`, while model-only legacy overrides remain supported.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #110 review threads, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
+
+## 2026-06-16T23:37:46+0900 - AI settings provider visibility follow-up
+
+- Result: Workspace settings keeps direct model-id input for every provider, hides OpenRouter static presets unless `openai-compatible` is selected, and scopes saved custom model shortcuts to the selected provider.
+- Coverage: Workspace AI now shows the effective model id in the chat panel, matching the Ask AI model visibility while continuing to send the same optional provider+model override fields.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: user clarification, `components/workspace-settings-panel.tsx`, `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
+
+## 2026-06-16T23:23:36+0900 - AI settings provider and custom model presets
+
+- Result: Workspace settings AI tab now stores provider+model overrides instead of only model ids, and `Save custom model` registers the current provider+model pair in a workspace-local custom list.
+- Coverage: Provider selector supports Ollama, OpenAI, and OpenRouter/OpenAI-compatible; static presets now include the requested OpenRouter free model ids; Ask AI and workspace chatbot send optional `chatProvider` plus `chatModel`; services rebuild answer-generation chat config from server-side provider env while keeping embedding/index config fixed.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #109, user request, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/model-config.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
+
+## 2026-06-16T23:03:19+0900 - OpenRouter free model id validation message
+
+- Result: Workspace settings AI tab no longer presents provider-incompatible OpenRouter model ids such as `google/gemma-4-31b-it:free` as a generic malformed id.
+- Coverage: Client chat model validation now separates malformed model ids from `INCOMPATIBLE_CHAT_MODEL_PROVIDER`; the settings panel maps provider mismatch to an explicit OpenAI-compatible provider requirement while keeping invalid id format errors unchanged.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported settings panel error, `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `tests/rag/client-model-settings.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `git diff --check`.
 
 ## 2026-06-16T01:22:00+0900 - AI provider override and Langfuse 503 diagnosis
 

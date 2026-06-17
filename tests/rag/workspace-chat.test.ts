@@ -691,6 +691,107 @@ describe("workspace chat service", () => {
     );
   });
 
+  it("summarizes oversized conversation history into persistent thread memory before retrieval", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    vi.mocked(invokeAnswerChain).mockImplementation(async (input) =>
+      input.systemPrompt.includes("conversation memory summarizer")
+        ? "Memory summary: the user asked about PTO approvals and the assistant explained manager approval requirements."
+        : "Workspace answer [1].",
+    );
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        messages: {
+          create: Array.from({ length: 12 }, (_, index) => ({
+            role: index % 2 === 0 ? "USER" : "ASSISTANT",
+            content: `Long historical message ${index + 1}: ${"very long context ".repeat(80)}`,
+          })),
+        },
+      },
+    });
+
+    const result = await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What is the policy now?",
+    });
+
+    const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
+    expect(retrievalQuery.length).toBeLessThanOrEqual(6_000);
+    expect(retrievalQuery).toContain("Conversation memory summary:");
+    expect(retrievalQuery).toContain("PTO approvals");
+    expect(retrievalQuery).toContain("Current user message: What is the policy now?");
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("conversation memory summarizer"),
+        userPrompt: expect.stringContaining("Long historical message"),
+      }),
+    );
+    expect(invokeAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: expect.stringContaining("Conversation memory summary:"),
+      }),
+    );
+    const memoryRows = await prisma.$queryRaw<Array<{ memorySummary: string | null }>>`
+      SELECT "memorySummary" FROM "AiChatThread" WHERE "id" = ${result.thread.id}
+    `;
+    expect(memoryRows[0]?.memorySummary).toContain("PTO approvals");
+  });
+
+  it("uses existing thread memory without resummarizing already summarized history", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+    await prisma.aiChatThread.create({
+      data: {
+        workspaceId: fixture.workspace.id,
+        userId: fixture.user.id,
+        memorySummary: "Memory summary: PTO approvals require manager review.",
+        memoryUpdatedAt: new Date("2026-06-17T00:00:00.000Z"),
+        messages: {
+          create: Array.from({ length: 12 }, (_, index) => ({
+            role: index % 2 === 0 ? "USER" : "ASSISTANT",
+            content: `Already summarized historical message ${index + 1}: ${"very long context ".repeat(80)}`,
+            createdAt: new Date("2026-06-16T23:00:00.000Z"),
+          })),
+        },
+      },
+    });
+    vi.mocked(invokeAnswerChain).mockImplementation(async (input) => {
+      if (input.systemPrompt.includes("conversation memory summarizer")) {
+        throw new Error("summary should not refresh");
+      }
+      return "Workspace answer [1].";
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What is the policy now?",
+    });
+
+    const retrievalQuery = vi.mocked(embedText).mock.calls[0][0];
+    expect(retrievalQuery.length).toBeLessThanOrEqual(6_000);
+    expect(retrievalQuery).toContain("Conversation memory summary:");
+    expect(retrievalQuery).toContain("PTO approvals require manager review");
+    expect(invokeAnswerChain).not.toHaveBeenCalledWith(
+      expect.objectContaining({
+        systemPrompt: expect.stringContaining("conversation memory summarizer"),
+      }),
+    );
+  });
+
   it("strips old citation markers from conversation history before retrieval and prompting", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     await createSavedDocument({
@@ -913,6 +1014,68 @@ describe("workspace chat service", () => {
         },
       }),
     ).resolves.toBe(0);
+  });
+
+  it("overrides the chat provider and model for OpenAI-compatible workspace answers", async () => {
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1");
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What should I know?",
+      chatProviderOverride: "openai-compatible",
+      chatModelOverride: "openai/gpt-oss-20b:free",
+    });
+
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "openai-compatible",
+        model: "openai/gpt-oss-20b:free",
+        baseUrl: "https://openrouter.ai/api/v1",
+      }),
+    );
+    expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatProvider: "openai-compatible",
+        chatModel: "openai/gpt-oss-20b:free",
+      }),
+    );
+  });
+
+  it("uses a complete provider override without requiring the default provider config", async () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "openai-compatible");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "google/gemma-4-31b-it:free");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "");
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "Workspace evidence.",
+    });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "What should I know?",
+      chatProviderOverride: "ollama",
+      chatModelOverride: "gemma4:e4b",
+    });
+
+    expect(createChatModel).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: "ollama",
+        model: "gemma4:e4b",
+        baseUrl: "http://localhost:11434",
+      }),
+    );
   });
 
   it("rejects known OpenRouter-style chat model overrides when the server chat provider is Ollama", async () => {

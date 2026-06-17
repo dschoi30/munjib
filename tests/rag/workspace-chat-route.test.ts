@@ -35,6 +35,8 @@ const thread = {
   title: null,
   status: "ACTIVE" as const,
   lastMessageAt: null,
+  memorySummary: null,
+  memoryUpdatedAt: null,
   messages: [],
 };
 
@@ -112,6 +114,7 @@ describe("workspace chat routes", () => {
       jsonRequest({
         message: "  What changed?  ",
         selectedDocumentId: "doc-1",
+        chatProvider: "openai-compatible",
         chatModel: "google/gemma-4-31b-it:free",
       }),
       routeContext(),
@@ -129,6 +132,7 @@ describe("workspace chat routes", () => {
       actorId: "user-1",
       message: "What changed?",
       selectedDocumentId: "doc-1",
+      chatProviderOverride: "openai-compatible",
       chatModelOverride: "google/gemma-4-31b-it:free",
     });
   });
@@ -138,6 +142,20 @@ describe("workspace chat routes", () => {
       jsonRequest({
         message: "What changed?",
         chatModel: "bad model",
+      }),
+      routeContext(),
+    );
+
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
+    expect(response.status).toBe(400);
+    expect(sendWorkspaceChatMessage).not.toHaveBeenCalled();
+  });
+
+  it("rejects provider-only chat overrides before calling the service", async () => {
+    const response = await POST_MESSAGE(
+      jsonRequest({
+        message: "What changed?",
+        chatProvider: "openai-compatible",
       }),
       routeContext(),
     );

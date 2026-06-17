@@ -3,6 +3,7 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
 import {
   INVALID_CHAT_MODEL_ERROR,
+  validateChatProvider,
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
@@ -14,15 +15,27 @@ export async function POST(
 ) {
   const user = await requireCurrentUser();
   const { workspaceSlug, documentId } = await params;
-  const body = (await request.json().catch(() => ({}))) as {
-    question?: unknown;
-    chatModel?: unknown;
-  };
+  const body = await parseJsonBody(request);
   const question = typeof body.question === "string" ? body.question : "";
-  const chatModelValidation =
-    body.chatModel === undefined || body.chatModel === null
+  const hasChatProvider = body.chatProvider !== undefined && body.chatProvider !== null;
+  const hasChatModel = body.chatModel !== undefined && body.chatModel !== null;
+  if (hasChatProvider && !hasChatModel) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+  const chatProviderValidation =
+    !hasChatProvider
       ? null
-      : validateChatModelId(body.chatModel);
+      : validateChatProvider(body.chatProvider);
+  if (chatProviderValidation && !chatProviderValidation.ok) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
+  const chatModelValidation =
+    !hasChatModel
+      ? null
+      : validateChatModelId(
+          body.chatModel,
+          chatProviderValidation?.ok ? chatProviderValidation.value : undefined,
+        );
 
   if (chatModelValidation && !chatModelValidation.ok) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
@@ -34,6 +47,9 @@ export async function POST(
       documentId,
       actorId: user.id,
       question,
+      ...(chatProviderValidation?.ok
+        ? { chatProviderOverride: chatProviderValidation.value }
+        : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
 
@@ -55,4 +71,17 @@ export async function POST(
 
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   }
+}
+
+async function parseJsonBody(request: Request) {
+  const value = await request.json().catch(() => ({}));
+  return toRecord(value);
+}
+
+function toRecord(value: unknown): Record<string, unknown> {
+  return isRecord(value) ? value : {};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }

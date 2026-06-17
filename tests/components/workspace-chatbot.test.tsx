@@ -53,7 +53,7 @@ afterEach(() => {
 
 describe("WorkspaceChatbot", () => {
   it("opens, loads the thread, sends a message, and renders the assistant answer", async () => {
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
 
     const launcher = screen.getByRole("button", { name: "Open workspace AI chat" });
     expect(launcher.className).toContain("fixed");
@@ -62,6 +62,8 @@ describe("WorkspaceChatbot", () => {
     const panel = await screen.findByRole("region", { name: "Workspace AI chat" });
     expect(panel.className).toContain("max-h-[calc(100dvh-2rem)]");
     expect(await screen.findByText("Workspace AI")).toBeTruthy();
+    expect(screen.getByText("Model")).toBeTruthy();
+    expect(screen.getByText("openrouter/fusion")).toBeTruthy();
     expect(await screen.findByText("Earlier workspace answer.")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("Workspace chat message"), {
@@ -109,7 +111,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Ask across this workspace.");
@@ -133,10 +135,11 @@ describe("WorkspaceChatbot", () => {
       "munjib:rag-chat-model:company-handbook",
       "google/gemma-4-31b-it:free",
     );
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Earlier workspace answer.");
+    expect(screen.getByText("google/gemma-4-31b-it:free")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Workspace chat message"), {
       target: { value: "What is the policy?" },
     });
@@ -150,6 +153,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
       }),
@@ -157,13 +161,14 @@ describe("WorkspaceChatbot", () => {
   });
 
   it("uses updated workspace chat model settings without remounting", async () => {
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Earlier workspace answer.");
     await act(async () => {
       writeStoredChatModel("company-handbook", "google/gemma-4-31b-it:free");
     });
+    expect(screen.getByText("google/gemma-4-31b-it:free")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Workspace chat message"), {
       target: { value: "What is the policy?" },
     });
@@ -177,6 +182,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
       }),
@@ -184,7 +190,7 @@ describe("WorkspaceChatbot", () => {
   });
 
   it("resets the visible conversation", async () => {
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     expect(await screen.findByText("Earlier workspace answer.")).toBeTruthy();
@@ -200,7 +206,7 @@ describe("WorkspaceChatbot", () => {
   });
 
   it("closes the panel back to the launcher", async () => {
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     expect(await screen.findByRole("region", { name: "Workspace AI chat" })).toBeTruthy();
@@ -228,13 +234,13 @@ describe("WorkspaceChatbot", () => {
       throw new Error(`Unexpected fetch ${url}`);
     });
     const { rerender } = render(
-      <WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="alpha" selectedDocumentId={null} />,
+      <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="alpha" selectedDocumentId={null} />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     expect(await screen.findByText("Alpha answer.")).toBeTruthy();
 
-    rerender(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="beta" selectedDocumentId={null} />);
+    rerender(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="beta" selectedDocumentId={null} />);
 
     expect(await screen.findByText("Beta answer.")).toBeTruthy();
     expect(screen.queryByText("Alpha answer.")).toBeNull();
@@ -259,7 +265,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     fireEvent.change(screen.getByLabelText("Workspace chat message"), {
@@ -297,7 +303,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Ask across this workspace.");
@@ -340,7 +346,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Ask across this workspace.");
@@ -370,7 +376,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
 
@@ -387,7 +393,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Ask across this workspace.");
@@ -406,7 +412,7 @@ describe("WorkspaceChatbot", () => {
       }
       throw new Error(`Unexpected fetch ${url}`);
     });
-    render(<WorkspaceChatbot defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     await screen.findByText("Workspace AI");

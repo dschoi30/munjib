@@ -5,8 +5,9 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  type ChatModelSetting,
   type ClientRagChatProvider,
-  readStoredChatModel,
+  readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
 
@@ -38,17 +39,21 @@ export function AiAssistantPanel({
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [chatModelOverride, setChatModelOverride] = useState<string | null>(() =>
-    readStoredChatModel(workspaceSlug, defaultChatProvider),
+  const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
+    readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
   );
   const trimmedQuestion = question.trim();
-  const effectiveChatModel = chatModelOverride ?? defaultChatModel;
+  const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
-    setChatModelOverride(readStoredChatModel(workspaceSlug, defaultChatProvider));
+    setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
-      setChatModelOverride(change.chatModel);
+      setChatModelOverride(
+        change.chatModel && change.chatProvider
+          ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
+          : null,
+      );
     }, { chatProvider: defaultChatProvider });
   }, [defaultChatProvider, workspaceSlug]);
 
@@ -63,7 +68,11 @@ export function AiAssistantPanel({
 
     try {
       const requestBody = chatModelOverride
-        ? { question: trimmedQuestion, chatModel: chatModelOverride }
+        ? {
+            question: trimmedQuestion,
+            chatProvider: chatModelOverride.chatProvider,
+            chatModel: chatModelOverride.chatModel,
+          }
         : { question: trimmedQuestion };
       const response = await fetch(
         `/api/workspaces/${workspaceSlug}/documents/${documentId}/ask`,

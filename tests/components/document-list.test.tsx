@@ -233,9 +233,22 @@ describe("DocumentList", () => {
     );
     expect(screen.getByRole("heading", { name: "AI model" })).toBeTruthy();
     expect(screen.getByText("Server default")).toBeTruthy();
-    expect(screen.getByText("openrouter/fusion")).toBeTruthy();
+    expect(screen.getAllByText("openrouter/fusion").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("AI provider")).toBeTruthy();
     expect(screen.queryByLabelText(/api key/i)).toBeNull();
     expect(screen.queryByLabelText(/base url/i)).toBeNull();
+  });
+
+  it("hides OpenRouter presets for non OpenRouter providers while keeping custom input", () => {
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.queryByText("Presets")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use Kimi K2.7 Code" })).toBeNull();
+    expect(screen.getByLabelText("Custom model id")).toBeTruthy();
   });
 
   it("saves a preset chat model override in workspace-scoped storage", () => {
@@ -246,9 +259,10 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
 
-    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
-      "moonshotai/kimi-k2.7-code",
-    );
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "moonshotai/kimi-k2.7-code",
+    });
     expect(screen.getByText("Saved model: moonshotai/kimi-k2.7-code")).toBeTruthy();
   });
 
@@ -264,14 +278,70 @@ describe("DocumentList", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
 
-    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
-      "qwen/qwen3.7-plus",
-    );
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "qwen/qwen3.7-plus",
+    });
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-custom-chat-models:company-handbook") ?? "")).toEqual([
+      {
+        chatProvider: "openai-compatible",
+        chatModel: "qwen/qwen3.7-plus",
+      },
+    ]);
+    expect(screen.getByRole("button", { name: "Use custom qwen/qwen3.7-plus" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
     expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
     expect(screen.getByText("Using server default: openrouter/fusion")).toBeTruthy();
+  });
+
+  it("saves custom OpenRouter models after changing the AI provider", () => {
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByLabelText("AI provider"), {
+      target: { value: "openai-compatible" },
+    });
+    fireEvent.change(screen.getByLabelText("Custom model id"), {
+      target: { value: "google/gemma-4-31b-it:free" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
+
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+    expect(screen.getByRole("button", { name: "Use custom google/gemma-4-31b-it:free" })).toBeTruthy();
+  });
+
+  it("shows only custom models for the selected provider", () => {
+    window.localStorage.setItem(
+      "munjib:rag-custom-chat-models:company-handbook",
+      JSON.stringify([
+        { chatProvider: "openai-compatible", chatModel: "google/gemma-4-31b-it:free" },
+        { chatProvider: "ollama", chatModel: "myuser/mymodel" },
+      ]),
+    );
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    expect(screen.getByRole("button", { name: "Use custom myuser/mymodel" })).toBeTruthy();
+    expect(
+      screen.queryByRole("button", { name: "Use custom google/gemma-4-31b-it:free" }),
+    ).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("AI provider"), {
+      target: { value: "openai-compatible" },
+    });
+
+    expect(screen.getByRole("button", { name: "Use custom google/gemma-4-31b-it:free" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use custom myuser/mymodel" })).toBeNull();
   });
 
   it("rejects invalid custom chat model ids in settings", () => {
@@ -287,6 +357,23 @@ describe("DocumentList", () => {
 
     expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
     expect(screen.getByText("Enter a valid model id.")).toBeTruthy();
+  });
+
+  it("explains provider-incompatible custom chat model ids in settings", () => {
+    renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    fireEvent.change(screen.getByLabelText("Custom model id"), {
+      target: { value: "google/gemma-4-31b-it:free" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
+
+    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
+    expect(
+      screen.getByText("OpenRouter model ids require the server chat provider to be OpenAI-compatible."),
+    ).toBeTruthy();
   });
 
   it("reports when a model override cannot be saved to browser storage", () => {

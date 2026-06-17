@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/db/client";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
-import { getRagGenerationConfig } from "@/lib/rag/config";
+import {
+  getRagGenerationConfig,
+  type RagGenerationConfig,
+  type RagProvider,
+} from "@/lib/rag/config";
 import { buildCurrentDocumentContext } from "@/lib/rag/document-context";
 import {
   INVALID_CHAT_MODEL_ERROR,
@@ -26,6 +30,7 @@ export type AskDocumentQuestionInput = {
   documentId: string;
   actorId: string;
   question: string;
+  chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
 };
 
@@ -105,25 +110,32 @@ export async function askDocumentQuestion(
   if (!selectedDocument) {
     throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   }
-  const modelConfig = getRagGenerationConfig();
+  if (input.chatProviderOverride && !input.chatModelOverride) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  const defaultModelConfig = input.chatProviderOverride ? null : getRagGenerationConfig();
+  const chatProvider = input.chatProviderOverride ?? defaultModelConfig?.chat.provider;
+  if (!chatProvider) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
   if (
     input.chatModelOverride &&
     !isChatModelCompatibleWithProvider({
-      chatProvider: modelConfig.chat.provider,
+      chatProvider,
       chatModel: input.chatModelOverride,
     })
   ) {
     throw new Error(INVALID_CHAT_MODEL_ERROR);
   }
-  const effectiveModelConfig = input.chatModelOverride
-    ? {
-        ...modelConfig,
-        chat: {
-          ...modelConfig.chat,
-          model: input.chatModelOverride,
-        },
-      }
-    : modelConfig;
+  let effectiveModelConfig: RagGenerationConfig;
+  if (input.chatProviderOverride || input.chatModelOverride) {
+    effectiveModelConfig = getRagGenerationConfig(process.env, {
+      provider: input.chatProviderOverride,
+      model: input.chatModelOverride,
+    });
+  } else {
+    effectiveModelConfig = defaultModelConfig ?? getRagGenerationConfig();
+  }
 
   const currentDocumentContext = buildCurrentDocumentContext({
     documentTitle: selectedDocument.title,

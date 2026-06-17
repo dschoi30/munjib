@@ -6,7 +6,7 @@ import {
 } from "@/lib/rag/client-model-settings";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
-import { getRagModelConfig } from "@/lib/rag/config";
+import { getRagModelConfig, type RagModelConfig, type RagProvider } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
@@ -29,6 +29,7 @@ export type WorkspaceChatInput = {
 export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   message: string;
   selectedDocumentId?: string | null;
+  chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
 };
 
@@ -39,6 +40,18 @@ const PROMPT_CHUNK_LIMIT = 12;
 const MAX_CHUNKS_PER_DOCUMENT = 3;
 const INDEX_BACKFILL_DOCUMENT_LIMIT = 8;
 const SELECTED_DOCUMENT_PRIORITY_DISTANCE_MARGIN = 0.15;
+const CONVERSATION_QUERY_MAX_CHARS = 6_000;
+const CONVERSATION_MEMORY_SUMMARY_MAX_CHARS = 2_000;
+const CONVERSATION_MEMORY_SOURCE_CHUNK_CHARS = 4_000;
+const TRUNCATION_MARKER = "\n[truncated]";
+const CONVERSATION_MEMORY_SUMMARY_SYSTEM_PROMPT = [
+  "You are Munjib's workspace conversation memory summarizer.",
+  "Maintain a concise memory of durable user intent, decisions, constraints, entities, and unresolved questions.",
+  "Merge the existing memory with the new conversation excerpt.",
+  "Prefer facts and user preferences over wording.",
+  "Do not include citations, markdown tables, or implementation commentary.",
+  "Keep the memory under 1,500 characters.",
+].join(" ");
 const WORKSPACE_CHAT_STOP_WORDS = new Set([
   "a",
   "an",
@@ -109,31 +122,42 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
     actorId: input.actorId,
   });
 
-  const modelConfig = getRagModelConfig();
+  if (input.chatProviderOverride && !input.chatModelOverride) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
+  const defaultModelConfig = input.chatProviderOverride ? null : getRagModelConfig();
+  const chatProvider = input.chatProviderOverride ?? defaultModelConfig?.chat.provider;
+  if (!chatProvider) {
+    throw new Error(INVALID_CHAT_MODEL_ERROR);
+  }
   if (
     input.chatModelOverride &&
     !isChatModelCompatibleWithProvider({
-      chatProvider: modelConfig.chat.provider,
+      chatProvider,
       chatModel: input.chatModelOverride,
     })
   ) {
     throw new Error(INVALID_CHAT_MODEL_ERROR);
   }
-  const effectiveModelConfig = input.chatModelOverride
-    ? {
-        ...modelConfig,
-        chat: {
-          ...modelConfig.chat,
-          model: input.chatModelOverride,
-        },
-      }
-    : modelConfig;
+  let effectiveModelConfig: RagModelConfig;
+  if (input.chatProviderOverride || input.chatModelOverride) {
+    effectiveModelConfig = getRagModelConfig(process.env, {
+      provider: input.chatProviderOverride,
+      model: input.chatModelOverride,
+    });
+  } else {
+    effectiveModelConfig = defaultModelConfig ?? getRagModelConfig();
+  }
   assertCurrentEmbeddingIndex(effectiveModelConfig);
 
-  const conversationQuestion = buildConversationQuestion(
-    orderedMessagesForDisplay(thread.messages),
-    message,
-  );
+  const orderedThreadMessages = orderedMessagesForDisplay(thread.messages);
+  const conversationContext = await buildWorkspaceConversationContext({
+    thread,
+    messages: orderedThreadMessages,
+    currentMessage: message,
+    modelConfig: effectiveModelConfig,
+  });
+  const conversationQuestion = conversationContext.question;
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? (input.selectedDocumentId ?? undefined)
@@ -635,21 +659,207 @@ function orderedMessagesForDisplay<
   });
 }
 
-function buildConversationQuestion(
-  messages: Array<{ role: string; content: string }>,
-  currentMessage: string,
-) {
-  const recentMessages = messages.slice(-RECENT_MESSAGE_LIMIT);
-  if (recentMessages.length === 0) return currentMessage;
+async function buildWorkspaceConversationContext(input: {
+  thread: { id: string; memorySummary?: string | null; memoryUpdatedAt?: Date | null };
+  messages: Array<{ role: string; content: string; createdAt: Date }>;
+  currentMessage: string;
+  modelConfig: RagModelConfig;
+}) {
+  const existingMemorySummary = normalizeMemorySummary(input.thread.memorySummary);
+  const summarizableMessages = messagesForMemoryRefresh({
+    messages: input.messages,
+    memoryUpdatedAt: input.thread.memoryUpdatedAt,
+  });
+  const needsMemoryRefresh = conversationQuestionWouldExceedBudget({
+    memorySummary: existingMemorySummary,
+    messages: summarizableMessages,
+    currentMessage: input.currentMessage,
+  });
+  const initialQuestion = buildConversationQuestion({
+    memorySummary: existingMemorySummary,
+    messages: input.messages,
+    currentMessage: input.currentMessage,
+  });
+  if (!needsMemoryRefresh) {
+    return { question: initialQuestion, memorySummary: existingMemorySummary };
+  }
 
+  try {
+    const memorySummary = await summarizeConversationMemory({
+      existingMemorySummary,
+      messages: summarizableMessages,
+      modelConfig: input.modelConfig,
+    });
+
+    if (memorySummary) {
+      await prisma.aiChatThread.update({
+        where: { id: input.thread.id },
+        data: {
+          memorySummary,
+          memoryUpdatedAt: new Date(),
+        },
+      });
+
+      return {
+        question: buildConversationQuestion({
+          memorySummary,
+          messages: input.messages,
+          currentMessage: input.currentMessage,
+        }),
+        memorySummary,
+      };
+    }
+  } catch (error) {
+    console.error("Workspace chat memory summarization failed:", error);
+  }
+
+  return {
+    question: buildConversationQuestion({
+      memorySummary: existingMemorySummary,
+      messages: input.messages,
+      currentMessage: input.currentMessage,
+    }),
+    memorySummary: existingMemorySummary,
+  };
+}
+
+function conversationQuestionWouldExceedBudget(input: {
+  memorySummary: string | null;
+  messages: Array<{ role: string; content: string }>;
+  currentMessage: string;
+}) {
+  const recentMessages = input.messages.slice(-RECENT_MESSAGE_LIMIT);
+  const parts = [
+    input.memorySummary ? `Conversation memory summary:\n${input.memorySummary.trim()}` : "",
+    recentMessages.length > 0
+      ? [
+          "Recent conversation:",
+          ...recentMessages.map(
+            (message) => `${message.role}: ${stripCitationMarkers(message.content)}`,
+          ),
+        ].join("\n")
+      : "",
+    buildCurrentUserMessageLine(input.currentMessage),
+  ].filter(Boolean);
+
+  return parts.join("\n\n").length > CONVERSATION_QUERY_MAX_CHARS;
+}
+
+function messagesForMemoryRefresh(input: {
+  messages: Array<{ role: string; content: string; createdAt: Date }>;
+  memoryUpdatedAt?: Date | null;
+}) {
+  const messagesAfterMemory = input.memoryUpdatedAt
+    ? input.messages.filter((message) => message.createdAt > input.memoryUpdatedAt!)
+    : input.messages;
+
+  return messagesAfterMemory.slice(-RECENT_MESSAGE_LIMIT);
+}
+
+async function summarizeConversationMemory(input: {
+  existingMemorySummary: string | null;
+  messages: Array<{ role: string; content: string }>;
+  modelConfig: RagModelConfig;
+}) {
+  const source = formatConversationMessagesForMemory(input.messages);
+  if (!source.trim()) return input.existingMemorySummary;
+
+  let memorySummary = input.existingMemorySummary ?? "";
+  const chatModel = createChatModel(input.modelConfig.chat) as ChatModelLike;
+
+  for (const chunk of chunkText(source, CONVERSATION_MEMORY_SOURCE_CHUNK_CHARS)) {
+    const summary = await invokeAnswerChain({
+      systemPrompt: CONVERSATION_MEMORY_SUMMARY_SYSTEM_PROMPT,
+      userPrompt: buildConversationMemorySummaryPrompt({
+        existingMemorySummary: memorySummary,
+        conversationExcerpt: chunk,
+      }),
+      chatModel,
+    });
+    memorySummary = normalizeMemorySummary(summary) ?? memorySummary;
+  }
+
+  return normalizeMemorySummary(memorySummary);
+}
+
+function buildConversationMemorySummaryPrompt(input: {
+  existingMemorySummary: string;
+  conversationExcerpt: string;
+}) {
   return [
-    "Recent conversation:",
-    ...recentMessages.map(
-      (message) => `${message.role}: ${stripCitationMarkers(message.content)}`,
-    ),
+    "Existing memory summary:",
+    input.existingMemorySummary.trim() || "No existing memory summary.",
     "",
-    `Current user message: ${currentMessage}`,
+    "New conversation excerpt:",
+    input.conversationExcerpt.trim(),
+    "",
+    "Return the updated memory summary only.",
   ].join("\n");
+}
+
+function formatConversationMessagesForMemory(
+  messages: Array<{ role: string; content: string }>,
+) {
+  return messages
+    .map((message) => `${message.role}: ${stripCitationMarkers(message.content)}`)
+    .join("\n");
+}
+
+function buildConversationQuestion(input: {
+  memorySummary: string | null;
+  messages: Array<{ role: string; content: string }>;
+  currentMessage: string;
+}) {
+  const recentMessages = input.messages.slice(-RECENT_MESSAGE_LIMIT);
+  const prefixParts = input.memorySummary
+    ? ["Conversation memory summary:", input.memorySummary.trim(), ""]
+    : [];
+  const fixedPrefix = prefixParts.length > 0 ? `${prefixParts.join("\n")}\n` : "";
+  const currentLine = buildCurrentUserMessageLine(
+    input.currentMessage,
+    Math.max(0, CONVERSATION_QUERY_MAX_CHARS - fixedPrefix.length - 2),
+  );
+  const recentHeader = recentMessages.length > 0 ? "Recent conversation:" : "";
+  const historyBudget =
+    CONVERSATION_QUERY_MAX_CHARS -
+    fixedPrefix.length -
+    recentHeader.length -
+    currentLine.length -
+    3;
+  if (historyBudget <= 0) {
+    return [fixedPrefix.trim(), currentLine].filter(Boolean).join("\n\n");
+  }
+
+  const selectedHistoryLines: string[] = [];
+  let usedHistoryChars = 0;
+  for (const message of [...recentMessages].reverse()) {
+    const line = `${message.role}: ${stripCitationMarkers(message.content)}`;
+    const separatorLength = selectedHistoryLines.length === 0 ? 0 : 1;
+    if (usedHistoryChars + separatorLength + line.length <= historyBudget) {
+      selectedHistoryLines.push(line);
+      usedHistoryChars += separatorLength + line.length;
+      continue;
+    }
+
+    continue;
+  }
+
+  const parts = [...prefixParts];
+  if (selectedHistoryLines.length > 0) {
+    parts.push("Recent conversation:", ...selectedHistoryLines.reverse(), "");
+  }
+  parts.push(currentLine);
+  return parts.join("\n");
+}
+
+function buildCurrentUserMessageLine(
+  currentMessage: string,
+  maxChars = CONVERSATION_QUERY_MAX_CHARS,
+) {
+  const prefix = "Current user message: ";
+  if (maxChars <= prefix.length) return truncateText(prefix.trim(), maxChars);
+
+  return `${prefix}${truncateText(currentMessage, maxChars - prefix.length)}`;
 }
 
 function messageRoleOrder(message: { role?: string }) {
@@ -664,6 +874,44 @@ function stripCitationMarkers(content: string) {
     .replace(/\s+([.,;:!?])/g, "$1")
     .replace(/[ \t]{2,}/g, " ")
     .trim();
+}
+
+function truncateText(text: string, maxChars: number) {
+  if (text.length <= maxChars) return text;
+  if (maxChars <= TRUNCATION_MARKER.length) return text.slice(0, maxChars);
+
+  return `${text.slice(0, maxChars - TRUNCATION_MARKER.length).trimEnd()}${TRUNCATION_MARKER}`;
+}
+
+function normalizeMemorySummary(summary: string | null | undefined) {
+  const normalized = summary?.trim();
+  if (!normalized) return null;
+
+  return truncateText(normalized, CONVERSATION_MEMORY_SUMMARY_MAX_CHARS);
+}
+
+function chunkText(text: string, maxChars: number) {
+  const chunks: string[] = [];
+  let remaining = text.trim();
+
+  while (remaining.length > maxChars) {
+    const breakAt = findChunkBreak(remaining, maxChars);
+    chunks.push(remaining.slice(0, breakAt).trim());
+    remaining = remaining.slice(breakAt).trim();
+  }
+
+  if (remaining) chunks.push(remaining);
+  return chunks;
+}
+
+function findChunkBreak(text: string, maxChars: number) {
+  const newlineBreak = text.lastIndexOf("\n", maxChars);
+  if (newlineBreak > Math.floor(maxChars * 0.6)) return newlineBreak;
+
+  const spaceBreak = text.lastIndexOf(" ", maxChars);
+  if (spaceBreak > Math.floor(maxChars * 0.6)) return spaceBreak;
+
+  return maxChars;
 }
 
 function isUniqueConstraintError(error: unknown) {
