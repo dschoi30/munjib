@@ -510,6 +510,24 @@ describe("workspace chat service", () => {
     ).resolves.toBe(0);
   });
 
+  it("stops workspace chat preparation before expensive work when already aborted", async () => {
+    const abortController = new AbortController();
+    abortController.abort();
+
+    await expect(
+      prepareWorkspaceChatMessageStream({
+        workspaceSlug: "company-handbook",
+        actorId: "user-1",
+        message: "Do not prepare this.",
+        signal: abortController.signal,
+      }),
+    ).rejects.toThrow("WORKSPACE_CHAT_STREAM_ABORTED");
+
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
+    expect(safeIndexSavedDocument).not.toHaveBeenCalled();
+  });
+
   it("backfills lexically relevant readable documents before workspace retrieval", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const welcome = await createSavedDocument({

@@ -74,6 +74,7 @@ export async function POST(
       workspaceSlug,
       actorId: user.id,
       message,
+      signal: request.signal,
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
       ...(chatProviderValidation?.ok
         ? { chatProviderOverride: chatProviderValidation.value }

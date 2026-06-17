@@ -34,6 +34,7 @@ export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   selectedDocumentId?: string | null;
   chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
+  signal?: AbortSignal;
 };
 
 export type WorkspaceChatPreparedMessage = {
@@ -147,14 +148,17 @@ export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageIn
 export async function prepareWorkspaceChatMessageStream(
   input: SendWorkspaceChatMessageInput,
 ): Promise<WorkspaceChatPreparedMessage> {
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const message = input.message.trim();
   if (!message) throw new Error(WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED);
 
   const workspace = await loadWorkspaceForChat(input);
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const thread = await getOrCreateActiveThread({
     workspaceId: workspace.id,
     actorId: input.actorId,
   });
+  throwIfWorkspaceChatStreamAborted(input.signal);
 
   const effectiveModelConfig = resolveWorkspaceChatModelConfig(input);
   assertCurrentEmbeddingIndex(effectiveModelConfig);
@@ -166,6 +170,7 @@ export async function prepareWorkspaceChatMessageStream(
     currentMessage: message,
     modelConfig: effectiveModelConfig,
   });
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const conversationQuestion = conversationContext.question;
   const readableDocumentIds = workspace.readableDocuments.map((document) => document.id);
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
@@ -178,7 +183,9 @@ export async function prepareWorkspaceChatMessageStream(
     embeddingModel: effectiveModelConfig.embedding.indexId,
     selectedDocumentId,
   });
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const globalChunks = await searchSimilarChunks({
     workspaceId: workspace.id,
     embeddingModel: effectiveModelConfig.embedding.indexId,
@@ -186,6 +193,7 @@ export async function prepareWorkspaceChatMessageStream(
     readableDocumentIds,
     limit: RETRIEVAL_LIMIT,
   });
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const selectedDocumentChunks = selectedDocumentId
     ? await searchSimilarChunks({
         workspaceId: workspace.id,
@@ -195,6 +203,7 @@ export async function prepareWorkspaceChatMessageStream(
         limit: PROMPT_CHUNK_LIMIT,
       })
     : [];
+  throwIfWorkspaceChatStreamAborted(input.signal);
   const chunks = mergeRetrievedChunks(globalChunks, selectedDocumentChunks);
   const promptChunks = capPromptChunks(prioritizeSelectedDocumentChunks(chunks, selectedDocumentId));
   const prompt = buildRagPrompt({
