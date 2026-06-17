@@ -6,7 +6,9 @@ import {
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
 import {
-  sendWorkspaceChatMessage,
+  prepareWorkspaceChatMessageStream,
+  sendPreparedWorkspaceChatMessageStream,
+  type WorkspaceChatPreparedMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
 import { workspaceChatErrorResponse } from "../error-response";
@@ -66,22 +68,82 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
 
+  let prepared: WorkspaceChatPreparedMessage;
   try {
-    const result = await sendWorkspaceChatMessage({
+    prepared = await prepareWorkspaceChatMessageStream({
       workspaceSlug,
       actorId: user.id,
       message,
+      signal: request.signal,
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
       ...(chatProviderValidation?.ok
         ? { chatProviderOverride: chatProviderValidation.value }
         : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
-
-    return NextResponse.json(result);
   } catch (error) {
     return workspaceChatErrorResponse(error);
   }
+
+  return workspaceChatStreamResponse(prepared, request.signal);
+}
+
+function workspaceChatStreamResponse(
+  prepared: WorkspaceChatPreparedMessage,
+  signal: AbortSignal,
+) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let streamClosed = false;
+      const writeEvent = (event: unknown) => {
+        if (streamClosed || controller.desiredSize === null) return false;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+          return true;
+        } catch {
+          streamClosed = true;
+          return false;
+        }
+      };
+
+      writeEvent({ type: "start" });
+      try {
+        const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
+          onToken(token) {
+            writeEvent({ type: "token", content: token });
+          },
+          signal,
+        });
+        if (!signal.aborted) {
+          writeEvent({ type: "done", ...result });
+        }
+      } catch (error) {
+        if (signal.aborted) return;
+        const streamError =
+          error instanceof Error &&
+          error.message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
+            ? WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
+            : "AI_UNAVAILABLE";
+        writeEvent({ type: "error", error: streamError });
+      } finally {
+        if (!streamClosed) {
+          try {
+            controller.close();
+          } catch {
+            streamClosed = true;
+          }
+        }
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-cache, no-transform",
+    },
+  });
 }
 
 async function parseJsonBody(request: Request) {

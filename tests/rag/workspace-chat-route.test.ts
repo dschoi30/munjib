@@ -6,8 +6,9 @@ import { requireCurrentUser } from "@/lib/auth/session";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   getOrCreateWorkspaceChatThread,
+  prepareWorkspaceChatMessageStream,
   resetWorkspaceChatThread,
-  sendWorkspaceChatMessage,
+  sendPreparedWorkspaceChatMessageStream,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -22,8 +23,9 @@ vi.mock("@/lib/rag/workspace-chat", () => ({
     THREAD_ARCHIVED: "THREAD_ARCHIVED",
   },
   getOrCreateWorkspaceChatThread: vi.fn(),
+  prepareWorkspaceChatMessageStream: vi.fn(),
   resetWorkspaceChatThread: vi.fn(),
-  sendWorkspaceChatMessage: vi.fn(),
+  sendPreparedWorkspaceChatMessageStream: vi.fn(),
 }));
 
 const thread = {
@@ -74,6 +76,11 @@ const citations = [
   },
 ];
 
+const preparedWorkspaceChatMessage = {
+  threadId: "thread-1",
+  message: "What changed?",
+} as unknown as Awaited<ReturnType<typeof prepareWorkspaceChatMessageStream>>;
+
 describe("workspace chat routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -86,12 +93,21 @@ describe("workspace chat routes", () => {
       thread,
       messages: [userMessage],
     });
-    vi.mocked(sendWorkspaceChatMessage).mockResolvedValue({
-      thread,
-      userMessage,
-      assistantMessage,
-      citations,
-    });
+    vi.mocked(prepareWorkspaceChatMessageStream).mockResolvedValue(
+      preparedWorkspaceChatMessage,
+    );
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementation(
+      async (_prepared, { onToken }) => {
+        await onToken("The workspace ");
+        await onToken("changed [1].");
+        return {
+          thread,
+          userMessage,
+          assistantMessage,
+          citations,
+        };
+      },
+    );
     vi.mocked(resetWorkspaceChatThread).mockResolvedValue({ thread: null });
   });
 
@@ -109,7 +125,7 @@ describe("workspace chat routes", () => {
     });
   });
 
-  it("sends a workspace chat message with selected document pass-through", async () => {
+  it("streams workspace chat message events with selected document pass-through", async () => {
     const response = await POST_MESSAGE(
       jsonRequest({
         message: "  What changed?  ",
@@ -120,24 +136,167 @@ describe("workspace chat routes", () => {
       routeContext(),
     );
 
-    await expect(response.json()).resolves.toEqual({
-      thread: jsonThread(),
-      userMessage: jsonMessage(userMessage),
-      assistantMessage: jsonMessage(assistantMessage),
-      citations,
-    });
+    await expect(readNdjson(response)).resolves.toEqual([
+      { type: "start" },
+      { type: "token", content: "The workspace " },
+      { type: "token", content: "changed [1]." },
+      {
+        type: "done",
+        thread: jsonThread(),
+        userMessage: jsonMessage(userMessage),
+        assistantMessage: jsonMessage(assistantMessage),
+        citations,
+      },
+    ]);
     expect(response.status).toBe(200);
-    expect(sendWorkspaceChatMessage).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      actorId: "user-1",
-      message: "What changed?",
-      selectedDocumentId: "doc-1",
-      chatProviderOverride: "openai-compatible",
-      chatModelOverride: "google/gemma-4-31b-it:free",
+    expect(response.headers.get("content-type")).toContain("application/x-ndjson");
+    expect(prepareWorkspaceChatMessageStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        workspaceSlug: "company-handbook",
+        actorId: "user-1",
+        message: "What changed?",
+        selectedDocumentId: "doc-1",
+        chatProviderOverride: "openai-compatible",
+        chatModelOverride: "google/gemma-4-31b-it:free",
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(sendPreparedWorkspaceChatMessageStream).toHaveBeenCalledWith(
+      preparedWorkspaceChatMessage,
+      expect.objectContaining({ onToken: expect.any(Function) }),
+    );
+  });
+
+  it("passes the request abort signal into the streaming service", async () => {
+    const abortController = new AbortController();
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    const callbacks = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.calls[0]?.[1];
+    expect(callbacks).toEqual(
+      expect.objectContaining({
+        onToken: expect.any(Function),
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(callbacks?.signal?.aborted).toBe(false);
+    abortController.abort();
+    expect(callbacks?.signal?.aborted).toBe(true);
+  });
+
+  it("passes the request abort signal into message preparation", async () => {
+    const abortController = new AbortController();
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    const preparationInput = vi.mocked(prepareWorkspaceChatMessageStream).mock.calls[0]?.[0];
+    expect(preparationInput).toEqual(
+      expect.objectContaining({
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(preparationInput?.signal?.aborted).toBe(false);
+    abortController.abort();
+    expect(preparationInput?.signal?.aborted).toBe(true);
+  });
+
+  it("streams an error event when sending fails after a token", async () => {
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await onToken("Partial answer");
+        throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(readNdjson(response)).resolves.toEqual([
+      { type: "start" },
+      { type: "token", content: "Partial answer" },
+      { type: "error", error: "AI_UNAVAILABLE" },
+    ]);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/x-ndjson");
+  });
+
+  it("streams an archived thread error when sending fails after a token", async () => {
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await onToken("Partial answer");
+        throw new Error(WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED);
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(readNdjson(response)).resolves.toEqual([
+      { type: "start" },
+      { type: "token", content: "Partial answer" },
+      { type: "error", error: WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED },
+    ]);
+    expect(response.status).toBe(200);
+  });
+
+  it("disables response transformation for streaming messages", async () => {
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("cache-control")).toContain("no-transform");
+  });
+
+  it("ignores late stream writes after the response body is cancelled", async () => {
+    const releaseToken = createDeferred<void>();
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await releaseToken.promise;
+        await onToken("Late token");
+        return {
+          thread,
+          userMessage,
+          assistantMessage,
+          citations,
+        };
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    expect(sendPreparedWorkspaceChatMessageStream).toHaveBeenCalled();
+    const sendPromise = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.results[0]
+      ?.value as Promise<unknown>;
+
+    await response.body?.cancel();
+    releaseToken.resolve();
+
+    await expect(sendPromise).resolves.toMatchObject({
+      assistantMessage,
     });
   });
 
-  it("rejects invalid chat model overrides before calling the service", async () => {
+  it("rejects invalid chat model overrides before calling the streaming service", async () => {
     const response = await POST_MESSAGE(
       jsonRequest({
         message: "What changed?",
@@ -148,10 +307,11 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
     expect(response.status).toBe(400);
-    expect(sendWorkspaceChatMessage).not.toHaveBeenCalled();
+    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
-  it("rejects provider-only chat overrides before calling the service", async () => {
+  it("rejects provider-only chat overrides before calling the streaming service", async () => {
     const response = await POST_MESSAGE(
       jsonRequest({
         message: "What changed?",
@@ -162,20 +322,22 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
     expect(response.status).toBe(400);
-    expect(sendWorkspaceChatMessage).not.toHaveBeenCalled();
+    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
-  it("rejects a blank message before calling the service", async () => {
+  it("rejects a blank message before calling the streaming service", async () => {
     const response = await POST_MESSAGE(jsonRequest({ message: "   " }), routeContext());
 
     await expect(response.json()).resolves.toEqual({
       error: WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED,
     });
     expect(response.status).toBe(400);
-    expect(sendWorkspaceChatMessage).not.toHaveBeenCalled();
+    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
-  it("rejects malformed JSON before calling the service", async () => {
+  it("rejects malformed JSON before calling the streaming service", async () => {
     const response = await POST_MESSAGE(
       new Request("http://test.local", {
         method: "POST",
@@ -186,7 +348,22 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_JSON" });
     expect(response.status).toBe(400);
-    expect(sendWorkspaceChatMessage).not.toHaveBeenCalled();
+    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid selected documents before calling the streaming service", async () => {
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?", selectedDocumentId: 123 }),
+      routeContext(),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "INVALID_SELECTED_DOCUMENT_ID",
+    });
+    expect(response.status).toBe(400);
+    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
   it("resets the current workspace chat thread", async () => {
@@ -228,8 +405,8 @@ describe("workspace chat routes", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns a generic unavailable response for RAG runtime failures", async () => {
-    vi.mocked(sendWorkspaceChatMessage).mockRejectedValueOnce(
+  it("returns a generic unavailable response when preparation fails before streaming", async () => {
+    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(
       new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
     );
 
@@ -240,6 +417,7 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
   it("uses the shared unavailable response for reset RAG runtime failures", async () => {
@@ -255,8 +433,8 @@ describe("workspace chat routes", () => {
     expect(response.status).toBe(503);
   });
 
-  it("maps archived thread races to a stable conflict response", async () => {
-    vi.mocked(sendWorkspaceChatMessage).mockRejectedValueOnce(
+  it("maps archived thread races before streaming to a stable conflict response", async () => {
+    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(
       new Error(WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED),
     );
 
@@ -269,6 +447,7 @@ describe("workspace chat routes", () => {
       error: WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED,
     });
     expect(response.status).toBe(409);
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 });
 
@@ -278,12 +457,21 @@ function routeContext(workspaceSlug = "company-handbook") {
   };
 }
 
-function jsonRequest(body: unknown) {
+function jsonRequest(body: unknown, init?: Pick<RequestInit, "signal">) {
   return new Request("http://test.local", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal: init?.signal,
   });
+}
+
+async function readNdjson(response: Response) {
+  const text = await response.text();
+  return text
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line));
 }
 
 function jsonThread() {
@@ -300,4 +488,15 @@ function jsonMessage(message: typeof userMessage | typeof assistantMessage) {
     createdAt: message.createdAt.toISOString(),
     updatedAt: message.updatedAt.toISOString(),
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
 }

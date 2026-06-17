@@ -6,6 +6,10 @@ import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { Button } from "@/components/ui/button";
 import {
+  readWorkspaceChatStream,
+  type WorkspaceChatStreamMessage,
+} from "@/components/workspace-chatbot-stream";
+import {
   type ChatModelSetting,
   type ClientRagChatProvider,
   readStoredChatModelSetting,
@@ -14,12 +18,7 @@ import {
 
 type ChatCitation = AiCitation;
 
-type ChatMessage = {
-  id?: string;
-  role: "USER" | "ASSISTANT";
-  content: string;
-  citations?: ChatCitation[] | null;
-};
+type ChatMessage = WorkspaceChatStreamMessage;
 
 type WorkspaceChatbotProps = {
   workspaceSlug: string;
@@ -32,12 +31,6 @@ type ThreadResponse = {
   messages?: ChatMessage[];
 };
 
-type SendMessageResponse = {
-  assistantMessage?: ChatMessage;
-  citations?: ChatCitation[];
-  error?: string;
-};
-
 export function WorkspaceChatbot({
   workspaceSlug,
   selectedDocumentId,
@@ -48,6 +41,7 @@ export function WorkspaceChatbot({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
@@ -56,19 +50,33 @@ export function WorkspaceChatbot({
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
+  const activeSendAbortRef = useRef<AbortController | null>(null);
+  const pendingSendMessageIdsRef = useRef<{
+    userId: string;
+    assistantPlaceholderId: string;
+  } | null>(null);
+  const optimisticMessageCounterRef = useRef(0);
   const trimmedMessage = messageInput.trim();
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
+    abortActiveSend();
     hasLoadedThreadRef.current = false;
     setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
+    setIsThinking(false);
     setIsResetting(false);
     setError("");
+
+    return () => {
+      requestGenerationRef.current += 1;
+      messageVersionRef.current += 1;
+      abortActiveSend();
+    };
   }, [defaultChatProvider, workspaceSlug]);
 
   useEffect(() => {
@@ -81,6 +89,24 @@ export function WorkspaceChatbot({
       );
     }, { chatProvider: defaultChatProvider });
   }, [defaultChatProvider, workspaceSlug]);
+
+  function abortActiveSend() {
+    activeSendAbortRef.current?.abort();
+    activeSendAbortRef.current = null;
+  }
+
+  function clearPendingSendMessages() {
+    const pendingIds = pendingSendMessageIdsRef.current;
+    if (!pendingIds) return;
+    pendingSendMessageIdsRef.current = null;
+    setMessages((current) =>
+      current.filter(
+        (message) =>
+          message.id !== pendingIds.userId &&
+          message.id !== pendingIds.assistantPlaceholderId,
+      ),
+    );
+  }
 
   useEffect(() => {
     if (!isOpen || hasLoadedThreadRef.current) return;
@@ -120,20 +146,42 @@ export function WorkspaceChatbot({
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!trimmedMessage || isLoading || isResetting) return;
+    if (!trimmedMessage || isLoading || isResetting || activeSendAbortRef.current) return;
 
-    const userMessage: ChatMessage = { role: "USER", content: trimmedMessage };
+    abortActiveSend();
+    requestGenerationRef.current += 1;
     const sendGeneration = requestGenerationRef.current;
+    const abortController = new AbortController();
+    activeSendAbortRef.current = abortController;
+    const optimisticId = `workspace-chat-pending-${++optimisticMessageCounterRef.current}`;
+    const userMessageId = `${optimisticId}-user`;
+    const userMessage: ChatMessage = {
+      id: userMessageId,
+      role: "USER",
+      content: trimmedMessage,
+    };
+    const assistantPlaceholderId = `${optimisticId}-assistant`;
+    pendingSendMessageIdsRef.current = {
+      userId: userMessageId,
+      assistantPlaceholderId,
+    };
+    let hasAssistantPlaceholder = false;
     messageVersionRef.current += 1;
     setMessages((current) => [...current, userMessage]);
     setMessageInput("");
     setIsLoading(true);
+    setIsThinking(true);
     setError("");
+
+    const isCurrentSend = () =>
+      sendGeneration === requestGenerationRef.current &&
+      activeSendAbortRef.current === abortController;
 
     try {
       const response = await fetch(`/api/workspaces/${workspaceSlug}/assistant/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: abortController.signal,
         body: JSON.stringify({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
@@ -145,32 +193,73 @@ export function WorkspaceChatbot({
             : {}),
         }),
       });
-      const body = (await response.json()) as SendMessageResponse;
       if (!response.ok) {
-        throw new Error(body.error || "WORKSPACE_CHAT_FAILED");
-      }
-      if (sendGeneration !== requestGenerationRef.current) {
-        return;
+        throw new Error("WORKSPACE_CHAT_FAILED");
       }
 
-      const assistantMessage = body.assistantMessage;
-      messageVersionRef.current += 1;
-      setMessages((current) => [
-        ...current,
-        {
-          id: assistantMessage?.id,
-          role: "ASSISTANT",
-          content: assistantMessage?.content ?? "",
-          citations: body.citations ?? assistantMessage?.citations ?? [],
-        },
-      ]);
-    } catch {
-      if (sendGeneration === requestGenerationRef.current) {
+      await readWorkspaceChatStream(response, (streamEvent) => {
+        if (!isCurrentSend()) return;
+
+        if (streamEvent.type === "token") {
+          setIsThinking(false);
+          if (!hasAssistantPlaceholder) {
+            hasAssistantPlaceholder = true;
+            messageVersionRef.current += 1;
+            setMessages((current) => [
+              ...current,
+              {
+                id: assistantPlaceholderId,
+                role: "ASSISTANT",
+                content: streamEvent.content,
+                citations: [],
+              },
+            ]);
+            return;
+          }
+
+          setMessages((current) =>
+            current.map((message) =>
+              message.id === assistantPlaceholderId
+                ? { ...message, content: `${message.content}${streamEvent.content}` }
+                : message,
+            ),
+          );
+          return;
+        }
+
+        if (streamEvent.type === "done") {
+          const finalAssistantMessage = toAssistantChatMessage(
+            streamEvent.assistantMessage,
+            streamEvent.citations,
+          );
+          messageVersionRef.current += 1;
+          setIsThinking(false);
+          setMessages((current) => {
+            if (!hasAssistantPlaceholder) {
+              return [...current, finalAssistantMessage];
+            }
+            return current.map((message) =>
+              message.id === assistantPlaceholderId ? finalAssistantMessage : message,
+            );
+          });
+          return;
+        }
+
+        if (streamEvent.type === "error") {
+          throw new Error(streamEvent.error);
+        }
+      });
+    } catch (sendError) {
+      if (!isAbortError(sendError, abortController) && isCurrentSend()) {
+        clearPendingSendMessages();
         setError("Workspace AI is unavailable.");
       }
     } finally {
-      if (sendGeneration === requestGenerationRef.current) {
+      if (isCurrentSend()) {
+        pendingSendMessageIdsRef.current = null;
+        activeSendAbortRef.current = null;
         setIsLoading(false);
+        setIsThinking(false);
       }
     }
   }
@@ -178,9 +267,15 @@ export function WorkspaceChatbot({
   async function handleReset() {
     requestGenerationRef.current += 1;
     messageVersionRef.current += 1;
+    const hadActiveSend = Boolean(activeSendAbortRef.current);
+    abortActiveSend();
+    if (hadActiveSend) {
+      clearPendingSendMessages();
+    }
     const resetGeneration = requestGenerationRef.current;
     setError("");
     setIsLoading(false);
+    setIsThinking(false);
     setIsResetting(true);
 
     try {
@@ -271,7 +366,7 @@ export function WorkspaceChatbot({
             workspaceSlug={workspaceSlug}
           />
         ))}
-        <ThinkingIndicator active={isLoading} className="text-sm text-slate-500" />
+        <ThinkingIndicator active={isThinking} className="text-sm text-slate-500" />
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
       </div>
 
@@ -332,4 +427,20 @@ function normalizeMessages(messages: ChatMessage[]) {
       (message.role === "USER" || message.role === "ASSISTANT") &&
       typeof message.content === "string",
   );
+}
+
+function toAssistantChatMessage(
+  assistantMessage: ChatMessage,
+  citations: ChatCitation[] | undefined,
+): ChatMessage {
+  return {
+    id: assistantMessage.id,
+    role: "ASSISTANT",
+    content: assistantMessage.content,
+    citations: citations ?? assistantMessage.citations ?? [],
+  };
+}
+
+function isAbortError(error: unknown, abortController: AbortController) {
+  return abortController.signal.aborted || (error instanceof Error && error.name === "AbortError");
 }

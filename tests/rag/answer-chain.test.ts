@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AIMessage } from "@langchain/core/messages";
-import { invokeAnswerChain, RAG_ERROR_CODES, type ChatModelLike } from "@/lib/rag/answer-chain";
+import { AIMessage, AIMessageChunk } from "@langchain/core/messages";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import {
+  invokeAnswerChain,
+  RAG_ERROR_CODES,
+  streamAnswerChain,
+  type ChatModelLike,
+} from "@/lib/rag/answer-chain";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -89,6 +95,100 @@ describe("RAG answer chain", () => {
       }),
     ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
   });
+
+  it("streams chat model chunks and returns the accumulated answer", async () => {
+    const callbacks = [{ name: "langfuse-callback" }];
+    const metadata = { operation: "rag.workspace_chat", chatModel: "gemma4:e4b" };
+    const chatModel = fakeStreamingChatModel([
+      new AIMessageChunk("Hello"),
+      new AIMessageChunk(" workspace"),
+      new AIMessageChunk(" [1]."),
+    ]);
+    const tokens: string[] = [];
+
+    const answer = await streamAnswerChain({
+      systemPrompt: "Use workspace context.",
+      userPrompt: "Question: What changed?",
+      chatModel,
+      callbacks,
+      metadata,
+      config: { tags: ["workspace-chat"] },
+      onToken: (token) => {
+        tokens.push(token);
+      },
+    });
+
+    expect(tokens).toEqual(["Hello", " workspace", " [1]."]);
+    expect(answer).toBe("Hello workspace [1].");
+    expect(chatModel.stream).toHaveBeenCalledWith(expect.anything(), {
+      tags: ["workspace-chat"],
+      callbacks,
+      metadata,
+    });
+  });
+
+  it("extracts streamed token text without invoking the output parser for each chunk", async () => {
+    const parserInvoke = vi.spyOn(
+      StringOutputParser.prototype,
+      "invoke",
+    );
+    const chatModel = fakeStreamingChatModel([
+      "Plain ",
+      { content: "object " },
+      new AIMessageChunk("chunk."),
+    ]);
+    const tokens: string[] = [];
+
+    const answer = await streamAnswerChain({
+      systemPrompt: "system",
+      userPrompt: "user",
+      chatModel,
+      onToken: (token) => {
+        tokens.push(token);
+      },
+    });
+
+    expect(tokens).toEqual(["Plain ", "object ", "chunk."]);
+    expect(answer).toBe("Plain object chunk.");
+    expect(parserInvoke).not.toHaveBeenCalled();
+  });
+
+  it("maps streaming provider failures to a recoverable RAG error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const providerError = new Error("provider unavailable");
+    const chatModel = fakeStreamingChatModel(providerError);
+
+    await expect(
+      streamAnswerChain({
+        systemPrompt: "system",
+        userPrompt: "user",
+        chatModel,
+        onToken: vi.fn(),
+      }),
+    ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledWith(
+      "RAG answer chain streaming failed:",
+      providerError,
+    );
+  });
+
+  it("maps empty streamed output to a recoverable RAG error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const chatModel = fakeStreamingChatModel([
+      new AIMessageChunk(" "),
+      new AIMessageChunk("\n"),
+    ]);
+
+    await expect(
+      streamAnswerChain({
+        systemPrompt: "system",
+        userPrompt: "user",
+        chatModel,
+        onToken: vi.fn(),
+      }),
+    ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+  });
 });
 
 function fakeChatModel(output: unknown): ChatModelLike {
@@ -96,6 +196,18 @@ function fakeChatModel(output: unknown): ChatModelLike {
     invoke: vi.fn().mockImplementation(async () => {
       if (output instanceof Error) throw output;
       return output;
+    }),
+  };
+}
+
+function fakeStreamingChatModel(output: unknown[] | Error): ChatModelLike {
+  return {
+    invoke: vi.fn(),
+    stream: vi.fn().mockImplementation(async function* () {
+      if (output instanceof Error) throw output;
+      for (const chunk of output) {
+        yield chunk;
+      }
     }),
   };
 }
