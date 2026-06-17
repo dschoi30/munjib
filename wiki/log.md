@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-17
-source_count: 223
+source_count: 224
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-17T23:43:19+0900 - issue-105 workspace chat streaming service
+
+- Result: Workspace AI service now has a prepared streaming path that shares retrieval, prompt, provider/model validation, normalization, and persistence with the existing non-streaming send path.
+- Coverage: `prepareWorkspaceChatMessageStream()` prepares the active thread, memory-aware query, retrieval candidates, prompt, citation chunk ids, Langfuse trace metadata, chat model, and effective model name. `sendPreparedWorkspaceChatMessageStream()` calls `streamAnswerChain()` with `onToken` and persists only after final answer generation succeeds. `sendWorkspaceChatMessage()` remains compatible as the non-streaming wrapper over the same preparation and persistence helpers, and partial streaming failures leave no orphan messages.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat.test.ts`, `lib/rag/answer-chain.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat.test.ts --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/answer-chain.test.ts tests/rag/workspace-chat.test.ts --reporter=dot`.
 
 ## 2026-06-17T23:38:00+0900 - issue-105 answer-chain streaming seam
 
