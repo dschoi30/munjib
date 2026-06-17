@@ -6,7 +6,9 @@ import {
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
 import {
-  sendWorkspaceChatMessage,
+  prepareWorkspaceChatMessageStream,
+  sendPreparedWorkspaceChatMessageStream,
+  type WorkspaceChatPreparedMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
 import { workspaceChatErrorResponse } from "../error-response";
@@ -66,8 +68,9 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
 
+  let prepared: WorkspaceChatPreparedMessage;
   try {
-    const result = await sendWorkspaceChatMessage({
+    prepared = await prepareWorkspaceChatMessageStream({
       workspaceSlug,
       actorId: user.id,
       message,
@@ -77,11 +80,43 @@ export async function POST(
         : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
-
-    return NextResponse.json(result);
   } catch (error) {
     return workspaceChatErrorResponse(error);
   }
+
+  return workspaceChatStreamResponse(prepared);
+}
+
+function workspaceChatStreamResponse(prepared: WorkspaceChatPreparedMessage) {
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const writeEvent = (event: unknown) => {
+        controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      };
+
+      writeEvent({ type: "start" });
+      try {
+        const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
+          onToken(token) {
+            writeEvent({ type: "token", content: token });
+          },
+        });
+        writeEvent({ type: "done", ...result });
+      } catch {
+        writeEvent({ type: "error", error: "AI_UNAVAILABLE" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "content-type": "application/x-ndjson; charset=utf-8",
+      "cache-control": "no-cache",
+    },
+  });
 }
 
 async function parseJsonBody(request: Request) {
