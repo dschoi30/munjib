@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-17T23:38:00+0900 - issue-105 answer-chain streaming seam
+
+- Result: Workspace AI streaming implementation started with an answer-chain seam for LangChain chat model token streams.
+- Coverage: `streamAnswerChain()` shares prompt construction and invocation config with `invokeAnswerChain()`, forwards callbacks/metadata/tags to `chatModel.stream()`, emits non-empty parsed tokens through `onToken`, accumulates the final answer, and maps provider failures or empty output to the stable `CHAT_REQUEST_FAILED` code. Route NDJSON events and client rendering remain in the same Issue #105 follow-up.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #105, `lib/rag/answer-chain.ts`, `tests/rag/answer-chain.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/answer-chain.test.ts --reporter=dot`.
+
 ## 2026-06-17T23:18:00+0900 - issue-105 chatbot response streaming design
 
 - Result: Issue #105 streaming scope was narrowed to Workspace AI answer-body streaming over newline-delimited JSON on the existing `/assistant/messages` POST route.
