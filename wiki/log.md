@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-17
-source_count: 225
+source_count: 226
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-17T23:58:40+0900 - issue-105 workspace chat route stream review fix
+
+- Result: Workspace AI stream route review fixes preserved post-start archived-thread failures as `THREAD_ARCHIVED` NDJSON error events and added `no-transform` to streaming cache-control.
+- Coverage: Other post-start send failures still stream `AI_UNAVAILABLE` with HTTP 200, while successful stream responses now use `cache-control: no-cache, no-transform`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 3 code review, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-17T23:52:40+0900 - issue-105 workspace chat route NDJSON stream
 
