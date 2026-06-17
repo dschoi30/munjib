@@ -466,6 +466,50 @@ describe("workspace chat service", () => {
     ).resolves.toBe(0);
   });
 
+  it("passes abort signals to streaming generation and skips persistence after abort", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const handbook = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Handbook",
+      contentMarkdown: "# Policy\n\nWorkspace policy evidence.",
+    });
+    vi.mocked(searchSimilarChunks).mockResolvedValueOnce(makeChunks(handbook, 1, 1));
+    const abortController = new AbortController();
+    vi.mocked(streamAnswerChain).mockImplementationOnce(async () => {
+      abortController.abort();
+      return "Workspace answer [1].";
+    });
+    const prepared = await prepareWorkspaceChatMessageStream({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Will this abort?",
+    });
+
+    await expect(
+      sendPreparedWorkspaceChatMessageStream(prepared, {
+        onToken: vi.fn(),
+        signal: abortController.signal,
+      }),
+    ).rejects.toThrow("WORKSPACE_CHAT_STREAM_ABORTED");
+
+    expect(streamAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: { signal: abortController.signal },
+      }),
+    );
+    await expect(
+      prisma.aiChatMessage.count({
+        where: {
+          thread: {
+            workspaceId: fixture.workspace.id,
+            userId: fixture.user.id,
+          },
+        },
+      }),
+    ).resolves.toBe(0);
+  });
+
   it("backfills lexically relevant readable documents before workspace retrieval", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const welcome = await createSavedDocument({

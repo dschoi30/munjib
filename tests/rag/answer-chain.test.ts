@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AIMessage, AIMessageChunk } from "@langchain/core/messages";
+import { StringOutputParser } from "@langchain/core/output_parsers";
 import {
   invokeAnswerChain,
   RAG_ERROR_CODES,
@@ -124,6 +125,32 @@ describe("RAG answer chain", () => {
       callbacks,
       metadata,
     });
+  });
+
+  it("extracts streamed token text without invoking the output parser for each chunk", async () => {
+    const parserInvoke = vi.spyOn(
+      StringOutputParser.prototype,
+      "invoke",
+    );
+    const chatModel = fakeStreamingChatModel([
+      "Plain ",
+      { content: "object " },
+      new AIMessageChunk("chunk."),
+    ]);
+    const tokens: string[] = [];
+
+    const answer = await streamAnswerChain({
+      systemPrompt: "system",
+      userPrompt: "user",
+      chatModel,
+      onToken: (token) => {
+        tokens.push(token);
+      },
+    });
+
+    expect(tokens).toEqual(["Plain ", "object ", "chunk."]);
+    expect(answer).toBe("Plain object chunk.");
+    expect(parserInvoke).not.toHaveBeenCalled();
   });
 
   it("maps streaming provider failures to a recoverable RAG error", async () => {

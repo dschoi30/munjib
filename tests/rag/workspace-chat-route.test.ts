@@ -160,8 +160,30 @@ describe("workspace chat routes", () => {
     });
     expect(sendPreparedWorkspaceChatMessageStream).toHaveBeenCalledWith(
       preparedWorkspaceChatMessage,
-      { onToken: expect.any(Function) },
+      expect.objectContaining({ onToken: expect.any(Function) }),
     );
+  });
+
+  it("passes the request abort signal into the streaming service", async () => {
+    const abortController = new AbortController();
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    const callbacks = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.calls[0]?.[1];
+    expect(callbacks).toEqual(
+      expect.objectContaining({
+        onToken: expect.any(Function),
+        signal: expect.any(AbortSignal),
+      }),
+    );
+    expect(callbacks?.signal?.aborted).toBe(false);
+    abortController.abort();
+    expect(callbacks?.signal?.aborted).toBe(true);
   });
 
   it("streams an error event when sending fails after a token", async () => {
@@ -217,6 +239,37 @@ describe("workspace chat routes", () => {
 
     expect(response.status).toBe(200);
     expect(response.headers.get("cache-control")).toContain("no-transform");
+  });
+
+  it("ignores late stream writes after the response body is cancelled", async () => {
+    const releaseToken = createDeferred<void>();
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await releaseToken.promise;
+        await onToken("Late token");
+        return {
+          thread,
+          userMessage,
+          assistantMessage,
+          citations,
+        };
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    expect(sendPreparedWorkspaceChatMessageStream).toHaveBeenCalled();
+    const sendPromise = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.results[0]
+      ?.value as Promise<unknown>;
+
+    await response.body?.cancel();
+    releaseToken.resolve();
+
+    await expect(sendPromise).resolves.toMatchObject({
+      assistantMessage,
+    });
   });
 
   it("rejects invalid chat model overrides before calling the streaming service", async () => {
@@ -380,11 +433,12 @@ function routeContext(workspaceSlug = "company-handbook") {
   };
 }
 
-function jsonRequest(body: unknown) {
+function jsonRequest(body: unknown, init?: Pick<RequestInit, "signal">) {
   return new Request("http://test.local", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal: init?.signal,
   });
 }
 
@@ -410,4 +464,15 @@ function jsonMessage(message: typeof userMessage | typeof assistantMessage) {
     createdAt: message.createdAt.toISOString(),
     updatedAt: message.updatedAt.toISOString(),
   };
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (error: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, resolve, reject };
 }

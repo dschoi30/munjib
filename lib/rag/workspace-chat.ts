@@ -49,6 +49,7 @@ export type WorkspaceChatPreparedMessage = {
 
 export type WorkspaceChatStreamCallbacks = {
   onToken: (token: string) => Promise<void> | void;
+  signal?: AbortSignal;
 };
 
 const RECENT_MESSAGE_LIMIT = 12;
@@ -238,16 +239,25 @@ export async function sendPreparedWorkspaceChatMessageStream(
   prepared: WorkspaceChatPreparedMessage,
   callbacks: WorkspaceChatStreamCallbacks,
 ) {
+  throwIfWorkspaceChatStreamAborted(callbacks.signal);
   const answer = await streamAnswerChain({
     systemPrompt: prepared.prompt.system,
     userPrompt: prepared.prompt.user,
     chatModel: prepared.chatModel,
+    config: callbacks.signal ? { signal: callbacks.signal } : undefined,
     callbacks: prepared.trace.callbacks,
     metadata: prepared.trace.metadata,
     onToken: callbacks.onToken,
   });
+  throwIfWorkspaceChatStreamAborted(callbacks.signal);
 
   return persistWorkspaceChatAnswer(prepared, answer);
+}
+
+function throwIfWorkspaceChatStreamAborted(signal: AbortSignal | undefined) {
+  if (signal?.aborted) {
+    throw new Error("WORKSPACE_CHAT_STREAM_ABORTED");
+  }
 }
 
 function resolveWorkspaceChatModelConfig(
