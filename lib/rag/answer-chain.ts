@@ -22,6 +22,10 @@ export type ChatModelLike = {
     promptValue: unknown,
     config?: AnswerChainInvocationConfig,
   ) => Promise<unknown> | unknown;
+  stream?: (
+    promptValue: unknown,
+    config?: AnswerChainInvocationConfig,
+  ) => Promise<AsyncIterable<unknown>> | AsyncIterable<unknown>;
 };
 
 export type InvokeAnswerChainInput = {
@@ -33,12 +37,13 @@ export type InvokeAnswerChainInput = {
   metadata?: Record<string, unknown>;
 };
 
+export type StreamAnswerChainInput = InvokeAnswerChainInput & {
+  onToken: (token: string) => Promise<void> | void;
+};
+
 export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<string> {
   try {
-    const promptValue = new ChatPromptValue([
-      new SystemMessage(input.systemPrompt),
-      new HumanMessage(input.userPrompt),
-    ]);
+    const promptValue = buildPromptValue(input);
     const result = await input.chatModel.invoke(promptValue, buildInvocationConfig(input));
     const answer = (
       await new StringOutputParser().invoke(
@@ -53,6 +58,44 @@ export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<
     console.error("RAG answer chain invocation failed:", error);
     throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
   }
+}
+
+export async function streamAnswerChain(input: StreamAnswerChainInput): Promise<string> {
+  try {
+    if (!input.chatModel.stream) {
+      throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    }
+
+    const promptValue = buildPromptValue(input);
+    const stream = await input.chatModel.stream(promptValue, buildInvocationConfig(input));
+    const parser = new StringOutputParser();
+    const chunks: string[] = [];
+
+    for await (const chunk of stream) {
+      const token = await parser.invoke(
+        chunk as Parameters<StringOutputParser["invoke"]>[0],
+      );
+      if (!token) continue;
+      chunks.push(token);
+      await input.onToken(token);
+    }
+
+    const answer = chunks.join("").trim();
+    if (!answer) {
+      throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    }
+    return answer;
+  } catch (error) {
+    console.error("RAG answer chain streaming failed:", error);
+    throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+  }
+}
+
+function buildPromptValue(input: Pick<InvokeAnswerChainInput, "systemPrompt" | "userPrompt">) {
+  return new ChatPromptValue([
+    new SystemMessage(input.systemPrompt),
+    new HumanMessage(input.userPrompt),
+  ]);
 }
 
 function buildInvocationConfig(input: InvokeAnswerChainInput): AnswerChainInvocationConfig {
