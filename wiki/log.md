@@ -22,9 +22,9 @@ links:
 ## 2026-06-17T23:18:00+0900 - issue-105 chatbot response streaming design
 
 - Result: Issue #105 streaming scope was narrowed to Workspace AI answer-body streaming over newline-delimited JSON on the existing `/assistant/messages` POST route.
-- Coverage: The design keeps pre-stream validation errors as JSON responses, streams only answer tokens plus final persisted assistant message/citations, preserves reset/workspace-change guards, and leaves Ask AI streaming out of scope.
+- Coverage: The design keeps pre-stream validation errors as JSON responses, streams only answer tokens plus final persisted assistant message/citations, preserves reset/workspace-change guards, and leaves Ask AI streaming out of scope. The follow-up implementation plan breaks the work into answer-chain streaming, workspace chat service preparation/finalization, NDJSON route events, client stream rendering, wiki updates, and PR review closure.
 - Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #105, user-approved brainstorming, `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`.
+- Source evidence: GitHub issue #105, user-approved brainstorming, `docs/superpowers/specs/2026-06-17-chatbot-response-streaming-design.md`, `docs/superpowers/plans/2026-06-17-chatbot-response-streaming.md`.
 - Verification: spec self-review before implementation planning.
 
 ## 2026-06-17T00:37:05+0900 - PR #110 provider override config review fix
