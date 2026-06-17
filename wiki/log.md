@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-18
-source_count: 227
+source_count: 228
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-18T00:13:09+0900 - issue-105 workspace chat stream hardening
+
+- Result: Workspace AI client stream handling now blocks submit-time duplicate sends while an answer is active and treats NDJSON EOF without `done` or `error` as an incomplete stream.
+- Coverage: `WorkspaceChatbot` checks loading/current active send in the submit handler so pressing Enter in the enabled input cannot start a second `/assistant/messages` request while a stream is pending. `readWorkspaceChatStream()` throws `WORKSPACE_CHAT_STREAM_INCOMPLETE` when a stream closes without terminal `done` or `error`, and the UI removes optimistic plus partial assistant content before showing `Workspace AI is unavailable.`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 4 code review, `components/workspace-chatbot-stream.ts`, `components/workspace-chatbot.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: RED then GREEN with `pnpm exec vitest run tests/components/workspace-chatbot.test.tsx --reporter=dot`; broader GREEN with `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts tests/components/workspace-chatbot.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
 
 ## 2026-06-18T00:06:19+0900 - issue-105 workspace chat client stream rendering
 

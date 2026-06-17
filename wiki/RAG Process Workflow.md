@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-18
-source_count: 95
+source_count: 96
 tags:
   - munjib
   - workflow
@@ -123,7 +123,7 @@ Ask AI direct-context request:
 Workspace chatbot UI/API/service request:
 
 1. `WorkspaceChatbot`은 workspace page에 fixed bottom-right launcher로 mount된다. Icon을 클릭하면 compact panel을 열고 `/assistant/thread`를 GET해 active thread와 message history를 불러오며, 현재 browser override 또는 server default 기준 effective model id를 header 아래에 표시한다.
-2. Panel submit은 trimmed message, 현재 selected document id, browser/workspace-scoped optional `chatModel` override를 `/assistant/messages`에 POST한다. Message fetch는 `AbortController.signal`을 사용하며, 새 submit, reset, workspace change cleanup은 active send를 abort한다. Blank message와 pending reset 중에는 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다.
+2. Panel submit은 trimmed message, 현재 selected document id, browser/workspace-scoped optional `chatModel` override를 `/assistant/messages`에 POST한다. Message fetch는 `AbortController.signal`을 사용하며, reset과 workspace change cleanup은 active send를 abort한다. Blank message, active send, pending answer, pending reset 중에는 submit handler가 새 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다.
 3. Message route는 malformed JSON을 `INVALID_JSON`, blank message를 `MESSAGE_REQUIRED`, invalid `selectedDocumentId`를 `INVALID_SELECTED_DOCUMENT_ID`, invalid provider/model override를 `INVALID_CHAT_MODEL`로 service 호출 전에 정규화한다. `chatProvider`가 있으면 matching `chatModel`도 필요하므로 provider-only payload는 service에 전달하지 않는다.
 4. `sendWorkspaceChatMessage()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
 5. Workspace membership과 active documents를 load하고, workspace role과 explicit document permissions로 readable active document ids를 계산한다.
@@ -141,7 +141,7 @@ Workspace chatbot UI/API/service request:
 17. `normalizeAnswerCitations()`가 answer text에 실제로 등장한 `[n]` citation만 assistant message와 route response에 남기고, display 번호를 answer 등장 순서의 `1..n`으로 정규화한다.
 18. Prisma transaction 안에서 thread가 아직 `ACTIVE`인지 `updateMany({ id, status: "ACTIVE" })`로 다시 확인한다. Reset이 먼저 archive했다면 `THREAD_ARCHIVED`를 던지고 stale assistant response를 저장하지 않는다.
 19. Thread가 active이면 user message와 정규화된 assistant answer를 같은 successful transaction에서 저장하고, normalized `citations`, prompt `contextMeta`, effective `model`, `lastMessageAt`을 갱신한다. Answer generation, streaming failure after partial tokens, retrieval failure는 orphan `USER` message를 남기지 않는다.
-20. `readWorkspaceChatStream()` reads the NDJSON response body with `ReadableStreamDefaultReader` and `TextDecoder`, supports multiple event lines per chunk and partial lines across chunks, and rejects malformed non-empty event lines. `WorkspaceChatbot` appends an optimistic user message immediately, shows `Thinking...` until the first token, streams tokens into an assistant placeholder, then replaces that placeholder with the authoritative `done.assistantMessage` and `done.citations`. If a stream error event, invalid stream, missing body, or fetch failure happens for the current generation, the client removes the optimistic user message and partial assistant placeholder and shows `Workspace AI is unavailable.` Aborted or stale generations are ignored.
+20. `readWorkspaceChatStream()` reads the NDJSON response body with `ReadableStreamDefaultReader` and `TextDecoder`, supports multiple event lines per chunk and partial lines across chunks, rejects malformed non-empty event lines, and rejects EOF without terminal `done` or `error` as `WORKSPACE_CHAT_STREAM_INCOMPLETE`. `WorkspaceChatbot` appends an optimistic user message immediately, shows `Thinking...` until the first token, streams tokens into an assistant placeholder, then replaces that placeholder with the authoritative `done.assistantMessage` and `done.citations`. If a stream error event, incomplete stream, invalid stream, missing body, or fetch failure happens for the current generation, the client removes the optimistic user message and partial assistant placeholder and shows `Workspace AI is unavailable.` Aborted or stale generations are ignored.
 21. Client는 request generation/version guard로 delayed thread load나 delayed send stream이 workspace change 또는 reset 이후의 visible conversation을 덮어쓰지 못하게 한다.
 
 ## Provider And Index Contract
