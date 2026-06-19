@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T01:01:48+0900 - frontmatter plain-title link reconciliation
+
+- Result: YAML frontmatter `links:` 배열의 plain title string이 existing document title과 matching되어도 link row가 생성되지 않던 문제를 고쳤다.
+- Coverage: `parseFrontmatterWikiLinks()`는 `[[Target]]`/`[[Target|Alias]]` syntax를 계속 지원하면서, wiki syntax가 없는 string value를 alias 없는 internal target title로 정규화한다. Embed-style `![[...]]`, heading-only/empty target, and external URL-like frontmatter values remain excluded. Reconciliation, outgoing links, and backlinks now resolve `links: ["Runbook"]` through the same title/path/underscore matching rules as `links: ["[[Runbook]]"]`.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: user-reported frontmatter links issue, `lib/wiki-links/parser.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`.
+
 ## 2026-06-19T23:45:45+0900 - issue-113 markdown import filename title design
 
 - Result: Issue #113 설계에서 Markdown import title priority를 file-name-first로 정했다.
