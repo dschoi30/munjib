@@ -57,6 +57,52 @@ Read [[Ignored Content Link]].`,
     ]);
   });
 
+  it("resolves plain title strings in frontmatter links", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "Runbook"
+---
+
+Read [[Ignored Content Link]].`,
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    const targetPanels = await getDocumentLinkPanels(target.id, fixture.user.id);
+
+    expect(sourcePanels.outgoing).toEqual([
+      {
+        id: expect.any(String),
+        targetTitleRaw: "Runbook",
+        alias: null,
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: { id: target.id, title: "Runbook", slug: "runbook", path: "/runbook" },
+      },
+    ]);
+    expect(targetPanels.backlinks).toEqual([
+      {
+        id: expect.any(String),
+        sourceDocument: {
+          id: source.id,
+          title: "Incident Guide",
+          slug: "incident-guide",
+          path: "/incident-guide",
+        },
+      },
+    ]);
+  });
+
   it("marks links as broken when the target document does not exist", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const source = await createDocument({

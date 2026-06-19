@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-25
-source_count: 28
+updated: 2026-06-20
+source_count: 29
 tags:
   - munjib
   - wiki-links
@@ -29,11 +29,14 @@ Munjib의 link model은 Markdown 안의 `[[문서명]]` 구문을 `DocumentLink`
 - `[[Target Title]]`
 - `[[Target Title|Alias]]`
 
+YAML frontmatter `links:` 배열은 위 wiki-link syntax와 plain title string을 모두 internal document link 후보로 취급한다. 예를 들어 `links: ["Runbook"]`은 alias 없는 `Runbook` target으로 저장되고, `links: ["[[Runbook|the runbook]]"]`은 alias를 보존한다. Plain title string은 기존 target resolution 규칙을 그대로 타므로 title-only, path-qualified, underscore-compatible matching이 동일하게 적용된다.
+
 현재 파서는 다음 항목을 제외한다.
 
 - embed link: `![[...]]`
 - 빈 target
 - `[[#Heading]]`처럼 heading-only link
+- frontmatter `links:`의 외부 URL-like value
 - 같은 source 문서 안에서 대소문자만 다른 중복 target
 
 Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
@@ -45,7 +48,7 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 `reconcileDocumentLinks()`는 문서 생성/수정 후 실행된다.
 
 1. source 문서의 기존 `DocumentLink` row를 삭제한다.
-2. 최신 markdown의 YAML frontmatter `links:` 배열에서 wiki links를 다시 파싱한다.
+2. 최신 markdown의 YAML frontmatter `links:` 배열에서 `[[...]]` wiki links와 plain title strings를 다시 파싱한다.
 3. target이 path-qualified인지 title-only인지 판단한다.
 4. path-qualified target은 각 path segment를 slug로 정규화한 뒤 workspace 안의 active document `path`로 먼저 찾는다. 예를 들어 `[[Operations/Incident Runbook]]`은 `/operations/incident-runbook`으로 resolve한다.
 5. path match가 없으면 slash가 포함된 target도 title fallback을 시도한다. `[[Q1/Q2 Plan]]`처럼 title 자체에 `/`가 들어간 문서는 root title link로 계속 resolve할 수 있다.

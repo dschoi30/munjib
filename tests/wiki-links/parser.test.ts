@@ -42,6 +42,32 @@ Content [[Ignored Link]].`),
     ]);
   });
 
+  it("extracts plain title strings from YAML frontmatter links", () => {
+    expect(
+      parseFrontmatterWikiLinks(`---
+links:
+  - Runbook
+  - "[[Engineering Guide|guide]]"
+---
+
+Content [[Ignored Link]].`),
+    ).toEqual([
+      { targetTitleRaw: "Runbook", alias: null },
+      { targetTitleRaw: "Engineering Guide", alias: "guide" },
+    ]);
+  });
+
+  it("ignores frontmatter links that are embeds or external URLs", () => {
+    expect(
+      parseFrontmatterWikiLinks(`---
+links:
+  - "![[Image.png]]"
+  - "https://example.com/runbook"
+---
+`),
+    ).toEqual([]);
+  });
+
   it("ignores content links when frontmatter links are missing", () => {
     expect(parseFrontmatterWikiLinks("# Plan\n\nSee [[Runbook]].")).toEqual([]);
   });

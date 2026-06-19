@@ -25,14 +25,11 @@ export function parseFrontmatterWikiLinks(markdown: string): ParsedWikiLink[] {
   const links = document.toJSON()?.links;
   if (!Array.isArray(links)) return [];
 
-  return parseWikiLinksFromText(
-    links.filter((link): link is string => typeof link === "string").join("\n"),
-  );
+  return parseFrontmatterLinkValues(links.filter((link): link is string => typeof link === "string"));
 }
 
-function parseWikiLinksFromText(text: string): ParsedWikiLink[] {
+function parseWikiLinksFromText(text: string, seen = new Set<string>()): ParsedWikiLink[] {
   const links: ParsedWikiLink[] = [];
-  const seen = new Set<string>();
   const withoutEmbeds = text.replace(/!\[\[[^\]]+\]\]/g, "");
 
   for (const match of withoutEmbeds.matchAll(/\[\[([^\]]+)\]\]/g)) {
@@ -51,4 +48,36 @@ function parseWikiLinksFromText(text: string): ParsedWikiLink[] {
   }
 
   return links;
+}
+
+function parseFrontmatterLinkValues(values: string[]): ParsedWikiLink[] {
+  const links: ParsedWikiLink[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const parsed = parseWikiLinksFromText(value, seen);
+    if (parsed.length > 0) {
+      links.push(...parsed);
+      continue;
+    }
+
+    const targetTitleRaw = value.trim();
+    if (!isPlainFrontmatterLinkTarget(targetTitleRaw)) continue;
+
+    const key = targetTitleRaw.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push({ targetTitleRaw, alias: null });
+  }
+
+  return links;
+}
+
+function isPlainFrontmatterLinkTarget(targetTitleRaw: string) {
+  if (!targetTitleRaw || targetTitleRaw.startsWith("#")) return false;
+  if (targetTitleRaw.includes("[[") || targetTitleRaw.includes("]]")) return false;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(targetTitleRaw)) return false;
+  if (/^mailto:/i.test(targetTitleRaw)) return false;
+
+  return true;
 }
