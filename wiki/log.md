@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-19
-source_count: 229
+source_count: 230
 tags:
   - log
   - munjib
@@ -24,7 +24,7 @@ links:
 - Result: Issue #113 설계에서 Markdown import title priority를 file-name-first로 정했다.
 - Coverage: `deriveMarkdownImportTitle()`는 구현 단계에서 확장자를 제거한 file name을 1순위로 사용하고, frontmatter `title`과 첫 ATX H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 남긴다. Import action, batch flow, destination folder, body persistence, duplicate title/path behavior는 변경하지 않는다.
 - Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #113, `docs/superpowers/specs/2026-06-19-markdown-import-filename-title-design.md`, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`.
+- Source evidence: GitHub issue #113, `docs/superpowers/specs/2026-06-19-markdown-import-filename-title-design.md`, `docs/superpowers/plans/2026-06-19-markdown-import-filename-title-priority.md`, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`.
 - Verification: spec self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-18T00:27:00+0900 - issue-105 PR review streaming abort follow-up
