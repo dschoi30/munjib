@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
-updated: 2026-05-24
-source_count: 17
+updated: 2026-06-19
+source_count: 18
 tags:
   - munjib
   - workflow
@@ -50,7 +50,7 @@ UI 진입점은 workspace settings dialog의 `Import` menu다. `components/works
 9. workspace route를 한 번 revalidate하고 `{ documentIds, imported, failed }` batch result를 반환한다.
 10. Settings panel은 dialog를 닫거나 route를 바꾸지 않고 `router.refresh()`로 list를 갱신한다.
 
-Title 우선순위는 YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 확장자를 제거한 file name, 마지막으로 `Untitled`다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
+Issue #113 설계는 Markdown import title 우선순위를 확장자를 제거한 file name, YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 마지막으로 `Untitled`로 바꾼다. 일반적인 browser `File` input에서는 file name이 document title의 1순위이며, frontmatter title과 H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 사용한다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
 
 Import는 attachment upload를 별도로 하지 않는다. Markdown 안에 이미 `![alt](url)` 또는 `![alt](/api/attachments/...)`가 있으면 그 text를 그대로 문서 본문으로 저장한다. 따라서 import된 Markdown의 이미지가 보이는지는 URL이 브라우저에서 접근 가능한지, 또는 이미 Munjib attachment URL을 가리키는지에 달려 있다.
 
@@ -153,7 +153,7 @@ Image paste upload가 실패하면 placeholder를 제거하거나 alt text로 �
 
 Remote image URL fetch 실패, forbidden MIME type, private host, timeout, size limit 초과는 모두 upload 실패로 보이며 editor에는 실패 toast가 나타난다. Malformed 또는 unsupported `data:` image source는 form data 생성 단계에서 실패해도 async catch/finally 경로를 거쳐 pending count를 정리하므로 Save guard가 stuck 상태로 남지 않는다.
 
-## 관련 코드
+## 관련 코드와 근거
 
 - `components/document-list.tsx`: workspace sidebar composition과 settings panel open/close.
 - `components/workspace-settings-panel.tsx`: settings dialog Markdown import form, selected-file table, destination picker, panel status message.
@@ -164,3 +164,4 @@ Remote image URL fetch 실패, forbidden MIME type, private host, timeout, size 
 - `lib/attachments/service.ts`: manual attachment upload와 paste-only image attachment upload.
 - `tests/documents/import-markdown.test.ts`: import title/file validation.
 - `tests/components/document-editor-preview.test.tsx`, `tests/workspace-actions.test.ts`, `tests/attachments/service.test.ts`: clipboard paste, server action, attachment service 검증.
+- `docs/superpowers/specs/2026-06-19-markdown-import-filename-title-design.md`: Issue #113 file-name-first title priority 설계.
