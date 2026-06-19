@@ -5,19 +5,28 @@ import {
 } from "@/lib/documents/import-markdown";
 
 describe("deriveMarkdownImportTitle", () => {
-  it("uses string frontmatter title before headings and file names", () => {
+  it("uses file name before frontmatter title and headings", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: "fallback.md",
+        fileName: "README.md",
+        contentMarkdown: "---\ntitle: Project Overview\n---\n# Internal Handbook\nBody",
+      }),
+    ).toBe("README");
+  });
+
+  it("uses frontmatter title when the file name cannot produce a title", () => {
+    expect(
+      deriveMarkdownImportTitle({
+        fileName: ".md",
         contentMarkdown: "---\ntitle: Document Knowledge Model\n---\n# Heading Title\nBody",
       }),
     ).toBe("Document Knowledge Model");
   });
 
-  it("uses the first ATX h1 heading when frontmatter title is missing", () => {
+  it("uses the first ATX h1 heading when file name and frontmatter title are missing", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: "fallback.md",
+        fileName: ".markdown",
         contentMarkdown: "Intro\n\n# Imported Workflow\n\n## Details",
       }),
     ).toBe("Imported Workflow");
@@ -26,7 +35,7 @@ describe("deriveMarkdownImportTitle", () => {
   it("treats YAML block-scalar title markers as missing and falls back to heading", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: "fallback.md",
+        fileName: ".md",
         contentMarkdown: "---\ntitle: |-\n---\n# Imported Workflow\nBody",
       }),
     ).toBe("Imported Workflow");
@@ -35,7 +44,7 @@ describe("deriveMarkdownImportTitle", () => {
   it("skips fenced code blocks when finding the first ATX h1 heading", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: "fallback.md",
+        fileName: ".markdown",
         contentMarkdown: "```sh\n# install\n```\n\n# Real Heading\nBody",
       }),
     ).toBe("Real Heading");

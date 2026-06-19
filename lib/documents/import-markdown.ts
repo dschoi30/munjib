@@ -6,9 +6,9 @@ export function deriveMarkdownImportTitle({
   contentMarkdown: string;
 }) {
   return (
+    fileNameTitle(fileName) ??
     frontmatterTitle(contentMarkdown) ??
     firstH1Title(contentMarkdown) ??
-    fileNameTitle(fileName) ??
     "Untitled"
   );
 }
