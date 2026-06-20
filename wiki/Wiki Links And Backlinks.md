@@ -97,7 +97,7 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
-Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki link는 source document node에서 readable target document node로 향하는 `wiki` edge로 렌더링하고, broken 또는 ambiguous link는 readable target document를 임의 선택하지 않고 raw wiki value node로 연결한다.
+Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki links render from source document node to readable target document node. Broken or ambiguous links are still represented as unresolved placeholder state in the raw graph DTO for model completeness, but the default visible graph filters those placeholder nodes and edges out so non-document values do not appear as graph nodes.
 
 ## Broken link에서 문서 생성
 
