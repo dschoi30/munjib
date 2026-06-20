@@ -291,16 +291,66 @@ See [[Body Target]].`,
     expect(focus.focusedLinkIds.has("wiki:link-1")).toBe(true);
   });
 
-  it("always keeps wiki links and filters tags and orphan document nodes", () => {
+  it("keeps only resolved document-to-document wiki links in the visible graph", () => {
     const graph = buildKnowledgeGraph(fixture);
     const filtered = filterKnowledgeGraph(graph, { tag: false, orphans: false });
 
-    expect(filtered.links.map((link) => link.kind)).toEqual(["wiki", "wiki"]);
+    expect(filtered.links).toEqual([
+      {
+        id: "wiki:link-1",
+        source: "document:doc-1",
+        target: "document:doc-2",
+        kind: "wiki",
+      },
+    ]);
     expect(filtered.nodes.map((node) => node.id).sort()).toEqual([
       "document:doc-1",
       "document:doc-2",
-      "wiki:broken:missing-runbook",
     ]);
+  });
+
+  it("keeps unresolved wiki targets hidden when orphan documents are shown", () => {
+    const graph = buildKnowledgeGraph(fixture);
+    const filtered = filterKnowledgeGraph(graph, { tag: false, orphans: true });
+
+    expect(filtered.links).toEqual([
+      {
+        id: "wiki:link-1",
+        source: "document:doc-1",
+        target: "document:doc-2",
+        kind: "wiki",
+      },
+    ]);
+    expect(filtered.nodes.map((node) => node.id).sort()).toEqual([
+      "document:doc-1",
+      "document:doc-2",
+      "document:doc-3",
+    ]);
+    expect(filtered.nodes.some((node) => node.kind === "wiki")).toBe(false);
+  });
+
+  it("filters ambiguous wiki target placeholders from the visible graph", () => {
+    const graph = buildKnowledgeGraph({
+      documents: [
+        {
+          id: "doc-1",
+          title: "Source",
+          path: "/source",
+          contentMarkdown: "See [[Runbook]].",
+        },
+        { id: "doc-2", title: "Runbook", path: "/team-a/runbook", contentMarkdown: "" },
+        { id: "doc-3", title: "Runbook", path: "/team-b/runbook", contentMarkdown: "" },
+      ],
+      links: [],
+      tags: [],
+    });
+
+    const filtered = filterKnowledgeGraph(graph, { tag: false, orphans: false });
+
+    expect(graph.nodes.some((node) => node.id === "wiki:ambiguous:runbook")).toBe(true);
+    expect(graph.links.some((link) => link.target === "wiki:ambiguous:runbook")).toBe(true);
+    expect(filtered.nodes).toEqual([]);
+    expect(filtered.links).toEqual([]);
   });
 
   it("keeps orphan document nodes when the orphans filter is enabled", () => {
