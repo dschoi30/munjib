@@ -22,8 +22,8 @@ links:
 ## 2026-06-20T11:27:45+0900 - stale broken frontmatter link repair
 
 - Result: Target 문서가 source 문서보다 나중에 생성되어 기존 frontmatter `links:` row가 broken 상태로 남는 문제를 고쳤다.
-- Coverage: `createDocument()`, `updateDocument()`, `restoreDocumentVersion()`, `moveDocument()`은 저장된 문서를 target으로 삼아 workspace의 broken `DocumentLink` rows를 현재 `resolveWikiLinkTarget()` 규칙으로 다시 평가하고, source document의 현재 frontmatter `links:`에도 같은 target이 남아 있으며 특정 active target 하나로 resolve되는 row만 repair한다. Local DB dry-run에서는 broken rows 85개 중 57개가 repair 가능했고, `Munjib` target row 9개를 포함해 모두 backfill했다.
-- Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Coverage: `createDocument()`, `updateDocument()`, `restoreDocumentVersion()`, `moveDocument()`, and folder rename/move descendant path updates use saved documents as targets to re-evaluate workspace broken `DocumentLink` rows with the current `resolveWikiLinkTarget()` rules, and repair only rows whose source document still has the same target in current frontmatter `links:` and resolves to one active target. Local DB dry-run에서는 broken rows 85개 중 57개가 repair 가능했고, `Munjib` target row 9개를 포함해 모두 backfill했다.
+- Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
 - Source evidence: user-reported `Munjib` frontmatter link issue, local DB probe, `lib/wiki-links/reconcile.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`.
 - Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/reconcile.test.ts --run`; broader GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
 

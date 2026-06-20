@@ -7,7 +7,7 @@ import {
   updateDocument,
 } from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
-import { createFolder } from "@/lib/folders/service";
+import { createFolder, renameFolder } from "@/lib/folders/service";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -241,6 +241,53 @@ links:
       documentId: target.id,
       actorId: fixture.user.id,
       folderId: operations.id,
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    expect(sourcePanels.outgoing).toEqual([
+      expect.objectContaining({
+        targetTitleRaw: "Operations/Runbook",
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: expect.objectContaining({ id: target.id, title: "Runbook" }),
+      }),
+    ]);
+    expect(sourcePanels.brokenLinks).toEqual([]);
+  });
+
+  it("repairs path-qualified broken links when a folder rename updates the target document path", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const draftFolder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Drafts",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Operations/Runbook]]"
+---`,
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: draftFolder.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Runbook" },
+    });
+    expect(broken.isBroken).toBe(true);
+
+    await renameFolder({
+      folderId: draftFolder.id,
+      actorId: fixture.user.id,
+      name: "Operations",
     });
 
     const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
