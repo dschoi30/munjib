@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-06-20
-source_count: 96
+source_count: 105
 tags:
   - munjib
   - workflow
@@ -209,7 +209,7 @@ Ask AI와 chatbot은 model config, browser/workspace chat model override validat
 
 Sentry는 app/runtime error와 low-sample tracing 용도이며, RAG prompt/context body를 보내는 관측 계층이 아니다. Sentry privacy scrubber와 production 설정은 [[Production Observability Workflow]]에서 관리한다.
 
-Issue #116 adds explicit Sentry capture for handled AI unavailable failures. Document Ask AI, workspace chat preparation, and workspace chat post-start stream failures still return the public `AI_UNAVAILABLE` shape, but the server records a sanitized Sentry event with surface, workspace, RAG error code, and effective chat provider/model when known. The event does not include question text, prompt text, saved markdown, retrieved chunk text, answer text, API keys, provider base URLs, headers, cookies, or raw provider response bodies.
+Issue #116 이후 Ask AI route와 Workspace AI messages route는 recoverable provider/runtime failure를 user-facing detail 없이 `AI_UNAVAILABLE`으로 유지하면서 Sentry에는 sanitized handled-error event를 명시 capture한다. Ask AI의 pre-response 503은 `ask_document`, Workspace AI preparation 중 503은 `workspace_chat_prepare`, NDJSON stream 시작 이후 provider/runtime failure는 HTTP 200 stream 안의 `AI_UNAVAILABLE` error event와 함께 `workspace_chat_stream` surface로 기록한다. Sentry payload는 workspace slug, surface, status, stable RAG error code, validated chat provider/model, stream-started flag 같은 운영 metadata만 담고, question, prompt, saved markdown, retrieved chunk text, answer, API key, base URL, headers, cookies, raw provider response body, original provider error object/cause는 넣지 않는다.
 
 Langfuse는 optional/fail-open layer다. `LANGFUSE_PUBLIC_KEY`와 `LANGFUSE_SECRET_KEY`가 없거나 `MUNJIB_LANGFUSE_ENABLED=false`면 disabled다. Metadata mode는 기본값이고 LangChain callback이나 OpenTelemetry exporter를 붙이지 않는다. 따라서 production container에서 Langfuse keys/base URL이 비어 있거나 capture가 `metadata`이면 AI 503이 Langfuse trace로 보이지 않는 것이 expected behavior다. Full capture는 `MUNJIB_LANGFUSE_CAPTURE_MODE=full` 또는 legacy `MUNJIB_LANGFUSE_CAPTURE=full` 중 하나라도 설정된 경우에만 켜진다.
 
@@ -219,7 +219,9 @@ Full capture가 켜진 Node runtime에서는 `instrumentation.ts`가 `initialize
 
 Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. 선택된 effective chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Complete provider+model override가 있으면 default chat provider env가 불완전해도 해당 default provider를 먼저 읽지 않는다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
 
-Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks keep raw provider details in server logs, route responses stay normalized, and handled `AI_UNAVAILABLE` branches capture privacy-safe Sentry events when Sentry is configured.
+Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다.
+
+Issue #116의 handled AI unavailable capture는 이 response contract를 바꾸지 않는다. Ask AI와 Workspace AI pre-stream preparation failure는 기존 JSON body/status를 유지하고, Workspace AI post-start stream failure는 기존 NDJSON `AI_UNAVAILABLE` event와 HTTP 200 stream contract를 유지한다. Capture 대상은 `isRagRuntimeError()`로 확인된 stable RAG runtime code뿐이며, validation errors, auth redirects, archived-thread races, client aborts는 provider unavailable Sentry event로 기록하지 않는다.
 
 Indexing은 saved content refresh를 best-effort로 수행한다. Empty markdown은 chunks를 clear하고, stale replacement job은 expected `updatedAt` guard로 latest chunks를 덮지 못한다. Indexing failure는 document save 자체를 실패시키지 않지만, ask request 중 selected document indexing이나 embedding/vector search failure는 answer generation 전에 중단될 수 있다.
 
@@ -249,11 +251,14 @@ pnpm wiki:sync-check --staged
 - GitHub issue #102
 - GitHub issue #104
 - GitHub issue #105
+- GitHub issue #116
 - `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
+- `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`
 - `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`
+- `docs/superpowers/plans/2026-06-20-ai-provider-503-sentry-capture.md`
 - `components/document-editor/ai-assistant-panel.tsx`
 - `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`
 - `lib/rag/ask.ts`
@@ -261,7 +266,11 @@ pnpm wiki:sync-check --staged
 - `lib/rag/workspace-chat.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/route.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`
+- `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`
 - `app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route.ts`
+- `lib/observability/ai-unavailable.ts`
+- `tests/observability/ai-unavailable.test.ts`
+- `tests/rag/ask-route.test.ts`
 - `tests/rag/workspace-chat-route.test.ts`
 - `components/workspace-chatbot.tsx`
 - `components/workspace-chatbot-stream.ts`
