@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
+
+- Result: Issue #113의 file-name-first Markdown import title contract를 실제 구현과 테스트에 반영했다.
+- Coverage: `deriveMarkdownImportTitle()`는 이제 extension-stripped file name을 먼저 사용하고, file name에서 title 후보를 만들 수 없을 때만 frontmatter `title`, 첫 ATX H1, `Untitled` 순서로 fallback한다. Wiki 문서의 current behavior 설명도 구현 완료 상태에 맞췄다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #115 review feedback, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`, `wiki/Markdown Import And Clipboard Paste Workflow.md`.
+- Verification: `pnpm exec vitest tests/documents/import-markdown.test.ts tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-06-20T11:27:45+0900 - stale broken frontmatter link repair
 
 - Result: Target 문서가 source 문서보다 나중에 생성되어 기존 frontmatter `links:` row가 broken 상태로 남는 문제를 고쳤다.
