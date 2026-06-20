@@ -3,8 +3,14 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
+type ScopeMock = {
+  setContext: ReturnType<typeof vi.fn>;
+  setLevel: ReturnType<typeof vi.fn>;
+  setTag: ReturnType<typeof vi.fn>;
+};
+
 const sentryMock = vi.hoisted(() => {
-  const scope = {
+  const scope: ScopeMock = {
     setContext: vi.fn(),
     setLevel: vi.fn(),
     setTag: vi.fn(),
@@ -13,7 +19,7 @@ const sentryMock = vi.hoisted(() => {
   return {
     captureException: vi.fn(),
     scope,
-    withScope: vi.fn((callback: (scope: typeof scope) => void) => callback(scope)),
+    withScope: vi.fn((callback: (activeScope: ScopeMock) => void) => callback(scope)),
   };
 });
 
