@@ -45,6 +45,7 @@ export type WorkspaceChatPreparedMessage = {
   citationChunkIds: string[];
   trace: LangfuseCallbackConfig;
   chatModel: ChatModelLike;
+  chatProviderName: string;
   chatModelName: string;
 };
 
@@ -240,6 +241,7 @@ export async function prepareWorkspaceChatMessageStream(
     citationChunkIds,
     trace,
     chatModel: createChatModel(effectiveModelConfig.chat) as ChatModelLike,
+    chatProviderName: effectiveModelConfig.chat.provider,
     chatModelName: effectiveModelConfig.chat.model,
   };
 }

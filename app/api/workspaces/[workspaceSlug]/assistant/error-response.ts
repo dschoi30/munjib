@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server";
+import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import { WORKSPACE_CHAT_ERROR_CODES } from "@/lib/rag/workspace-chat";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
-export function workspaceChatErrorResponse(error: unknown) {
+export type WorkspaceChatErrorResponseContext = {
+  surface: "workspace_chat_prepare";
+  workspaceSlug: string;
+  chatProvider?: string;
+  chatModel?: string;
+};
+
+export function workspaceChatErrorResponse(
+  error: unknown,
+  context?: WorkspaceChatErrorResponseContext,
+) {
   const message = error instanceof Error ? error.message : "";
 
   if (message === SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND) {
@@ -20,6 +31,17 @@ export function workspaceChatErrorResponse(error: unknown) {
     return NextResponse.json({ error: message }, { status: 409 });
   }
   if (isRagRuntimeError(message)) {
+    if (context) {
+      captureHandledAiUnavailable({
+        error,
+        surface: context.surface,
+        workspaceSlug: context.workspaceSlug,
+        status: 503,
+        ragErrorCode: message,
+        ...(context.chatProvider ? { chatProvider: context.chatProvider } : {}),
+        ...(context.chatModel ? { chatModel: context.chatModel } : {}),
+      });
+    }
     return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
   }
 
