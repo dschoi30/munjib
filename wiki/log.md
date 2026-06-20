@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 236
+source_count: 237
 tags:
   - log
   - munjib
@@ -19,10 +19,18 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T14:18:17+0900 - issue-116 workspace AI no-capture regression coverage
+
+- Result: Issue #116 최종 review follow-up으로 Workspace AI route tests에 provider-unavailable Sentry event를 기록하지 않아야 하는 exclusion branches를 더 명시했다.
+- Coverage: invalid chat model override, provider-only override, workspace-not-found, reset/shared error-response RAG failure, pre-stream archived race, aborted post-start stream failure가 `captureHandledAiUnavailable()`을 호출하지 않는지 검증한다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/rag/workspace-chat-route.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`.
+
 ## 2026-06-20T12:55:02+0900 - issue-116 handled AI 503 Sentry capture implementation
 
 - Result: Issue #116 구현으로 handled AI provider/runtime failure가 public `AI_UNAVAILABLE` contract를 유지하면서 Sentry에 sanitized event로 남는다.
-- Coverage: `captureHandledAiUnavailable()`은 Ask AI pre-response 503, Workspace AI preparation 503, Workspace AI post-start NDJSON `AI_UNAVAILABLE` stream error를 surface별로 capture하고, validation/auth/archived-thread/client-abort는 provider unavailable event로 기록하지 않는다. Captured metadata는 workspace slug, stable RAG error code, provider/model, status, stream-started flag로 제한하고, Sentry fingerprint는 handled AI unavailable marker, surface, stable RAG error code로 설정한다. Question, prompt, saved markdown, retrieved chunk text, answer, API key, base URL, headers, cookies, raw provider response body, original provider error object/cause는 제외한다.
+- Coverage: `captureHandledAiUnavailable()`은 Ask AI pre-response 503, Workspace AI preparation 503, Workspace AI post-start NDJSON `AI_UNAVAILABLE` stream error를 surface별로 capture하고, validation/auth/archived-thread/client-abort는 provider unavailable event로 기록하지 않는다. Workspace AI route tests cover those no-capture paths, including aborted post-start streams. Captured metadata는 workspace slug, stable RAG error code, provider/model, status, stream-started flag로 제한하고, Sentry fingerprint는 handled AI unavailable marker, surface, stable RAG error code로 설정한다. Question, prompt, saved markdown, retrieved chunk text, answer, API key, base URL, headers, cookies, raw provider response body, original provider error object/cause는 제외한다.
 - Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #116, `lib/observability/ai-unavailable.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
 - Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; `git diff --cached --check`.
