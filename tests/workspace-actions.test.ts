@@ -438,6 +438,22 @@ describe("workspace document actions", () => {
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 
+  test("updateWorkspaceRetentionPolicyAction returns service errors without revalidating", async () => {
+    mocks.updateWorkspaceArchivedDocumentRetentionPolicy.mockRejectedValue(
+      new Error("WORKSPACE_WRITE_FORBIDDEN"),
+    );
+    const { updateWorkspaceRetentionPolicyAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("archivedDocumentRetentionPolicy", "DAYS_90");
+
+    const result = await updateWorkspaceRetentionPolicyAction("company-handbook", formData);
+
+    expect(result).toEqual({ error: "WORKSPACE_WRITE_FORBIDDEN" });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
     mocks.pasteDocumentImageAttachment.mockResolvedValue({
       id: "attachment-1",

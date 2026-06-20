@@ -93,7 +93,37 @@ export async function purgeExpiredArchivedDocuments(
 
     const count = dryRun
       ? await prisma.document.count({ where })
-      : (await prisma.document.deleteMany({ where })).count;
+      : await prisma.$transaction(async (tx) => {
+          const expiredDocuments = await tx.document.findMany({
+            where,
+            select: { id: true },
+          });
+          const expiredDocumentIds = expiredDocuments.map((document) => document.id);
+          if (expiredDocumentIds.length === 0) {
+            return 0;
+          }
+
+          await tx.documentLink.updateMany({
+            where: {
+              workspaceId: workspace.id,
+              targetDocumentId: { in: expiredDocumentIds },
+            },
+            data: {
+              targetDocumentId: null,
+              isBroken: true,
+              isAmbiguous: false,
+            },
+          });
+
+          return (
+            await tx.document.deleteMany({
+              where: {
+                ...where,
+                id: { in: expiredDocumentIds },
+              },
+            })
+          ).count;
+        });
 
     if (count === 0) {
       continue;
