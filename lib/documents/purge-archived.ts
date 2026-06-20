@@ -110,20 +110,11 @@ export async function purgeExpiredArchivedDocuments(
               targetDocumentId: { in: expiredDocumentIds },
               sourceDocument: { status: DocumentStatus.ACTIVE },
             },
-            select: {
-              sourceDocumentId: true,
-              sourceDocument: {
-                select: { contentMarkdown: true },
-              },
-            },
+            select: { sourceDocumentId: true },
           });
-          const affectedSources = new Map<string, string>();
-          for (const link of affectedSourceLinks) {
-            affectedSources.set(
-              link.sourceDocumentId,
-              link.sourceDocument.contentMarkdown,
-            );
-          }
+          const affectedSourceIds = [
+            ...new Set(affectedSourceLinks.map((link) => link.sourceDocumentId)),
+          ];
 
           await tx.documentLink.updateMany({
             where: {
@@ -143,11 +134,20 @@ export async function purgeExpiredArchivedDocuments(
             })
           ).count;
 
-          for (const [sourceDocumentId, contentMarkdown] of affectedSources) {
+          const currentAffectedSources = await tx.document.findMany({
+            where: {
+              id: { in: affectedSourceIds },
+              workspaceId: workspace.id,
+              status: DocumentStatus.ACTIVE,
+            },
+            select: { id: true, contentMarkdown: true },
+          });
+
+          for (const source of currentAffectedSources) {
             await reconcileDocumentLinks(tx, {
               workspaceId: workspace.id,
-              sourceDocumentId,
-              contentMarkdown,
+              sourceDocumentId: source.id,
+              contentMarkdown: source.contentMarkdown,
             });
           }
 
