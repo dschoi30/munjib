@@ -26,6 +26,8 @@ import {
   restoreDocumentVersion,
   updateDocument,
 } from "@/lib/documents/service";
+import { updateWorkspaceArchivedDocumentRetentionPolicy } from "@/lib/workspaces/retention-service";
+import { parseArchivedDocumentRetentionPolicy } from "@/lib/workspaces/retention-policy";
 
 const maxPastedImageBytes = 5 * 1024 * 1024;
 const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -114,6 +116,28 @@ export async function importMarkdownDocumentAction(workspaceSlug: string, formDa
     imported,
     failed,
   };
+}
+
+export async function updateWorkspaceRetentionPolicyAction(
+  workspaceSlug: string,
+  formData: FormData,
+) {
+  const user = await requireCurrentUser();
+  const policy = parseArchivedDocumentRetentionPolicy(
+    formData.get("archivedDocumentRetentionPolicy"),
+  );
+
+  if (!policy) {
+    return { error: SERVICE_ERROR_CODES.ARCHIVED_DOCUMENT_RETENTION_POLICY_INVALID };
+  }
+
+  const updated = await updateWorkspaceArchivedDocumentRetentionPolicy({
+    workspaceSlug,
+    actorId: user.id,
+    policy,
+  });
+  revalidatePath(`/workspaces/${workspaceSlug}`);
+  return { archivedDocumentRetentionPolicy: updated.archivedDocumentRetentionPolicy };
 }
 
 function markdownImportFilesFromFormData(formData: FormData) {

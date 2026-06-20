@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 52
+source_count: 59
 tags:
   - munjib
   - product
@@ -58,7 +58,7 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 `prd.md`에는 실시간 협업, 고급 graph 탐색, review workflow, export, 조직별 세밀한 권한 관리, search indexing 같은 제품 방향이 포함되어 있다. 현재 구현은 MVP 수준의 local graph, properties, search, template, attachment, comment, version restore까지 포함하지만, 완성형 협업 지식관리 제품으로 과장하지 않는다.
 
-Issue #119 설계는 trashed document의 workspace별 retention policy와 CLI/tools 기반 hard-delete purge를 계획한다. 기본 policy는 30 days이고, 실제 삭제 대상은 archived documents only다. Archived folder hard delete와 attachment storage file cleanup은 후속 범위로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
+Issue #119 implements workspace-level retention policy for trashed documents and a CLI/tools hard-delete purge command. The default policy is 30 days, writers can choose `Never`, `7 days`, `30 days`, or `90 days` in workspace settings, and actual hard delete targets archived documents only. Archived folder hard delete, attachment storage file cleanup, and production scheduling remain follow-up scope. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
 
 ## 편집 경험 개선
 

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-16
-source_count: 57
+updated: 2026-06-20
+source_count: 58
 tags:
   - munjib
   - workflow
@@ -43,6 +43,15 @@ pnpm run db:migrate
 pnpm run db:rag:index
 pnpm run db:seed
 ```
+
+Document retention maintenance 명령:
+
+```bash
+pnpm run documents:purge-archived -- --dry-run
+pnpm run documents:purge-archived -- --workspace company-handbook
+```
+
+Issue #119 이후 archived document purge는 `Workspace.archivedDocumentRetentionPolicy`와 `Document.archivedAt` cutoff를 읽어 expired archived document를 hard delete하는 CLI/tools command다. 삭제 실행 전에는 `--dry-run`으로 대상 count를 확인한다. Docker 환경에서는 `docker compose run --rm tools pnpm run documents:purge-archived -- --dry-run`처럼 tools container에서 실행할 수 있으며, production 주기 실행은 host cron, Docker tools, 또는 future scheduled workflow 중 하나로 묶는 후속 작업이다.
 
 Issue #73 이후 local Postgres는 pgvector extension이 설치된 image가 필요하다. `localhost:55432`에 예전 `postgres:16-alpine` container가 남아 있으면 `prisma migrate dev`의 shadow database 단계에서 `extension "vector" is not available` / `vector.control` 오류가 난다. 이 경우 기존 DB를 보존하려면 `.env`의 `POSTGRES_PORT`와 `DATABASE_URL`을 다른 port로 맞춘 뒤 현재 `docker-compose.yml`의 `pgvector/pgvector:0.8.2-pg16` Postgres를 띄운다.
 
