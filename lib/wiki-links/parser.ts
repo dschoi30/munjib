@@ -78,6 +78,9 @@ function isPlainFrontmatterLinkTarget(targetTitleRaw: string) {
   if (targetTitleRaw.includes("[[") || targetTitleRaw.includes("]]")) return false;
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(targetTitleRaw)) return false;
   if (/^mailto:/i.test(targetTitleRaw)) return false;
+  if (/\[[^\]]+]\(\s*(?:[a-z][a-z0-9+.-]*:\/\/|mailto:)[^)]+\)/i.test(targetTitleRaw)) {
+    return false;
+  }
 
   return true;
 }

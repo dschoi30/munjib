@@ -63,6 +63,7 @@ Content [[Ignored Link]].`),
 links:
   - "![[Image.png]]"
   - "https://example.com/runbook"
+  - "[External Runbook](https://example.com/runbook)"
 ---
 `),
     ).toEqual([]);
