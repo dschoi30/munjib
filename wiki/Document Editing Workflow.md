@@ -92,6 +92,8 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 
 `moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다. Move는 `Document.updatedAt`을 바꾸므로 commit 뒤 RAG chunk refresh를 예약해 `sourceUpdatedAt` freshness를 유지한다.
 
+문서 이동으로 `[[Operations/Runbook]]` 같은 path-qualified broken link가 새 path에 맞게 resolve될 수 있으면 기존 broken `DocumentLink` rows를 repair한다. 이 repair는 source document의 현재 frontmatter `links:`에 같은 target이 아직 있을 때만 실행된다.
+
 ## 수정 흐름
 
 `updateDocumentAction()`은 form data의 `documentId`, `title`, `contentMarkdown`을 받아 `updateDocument()`를 호출한다. 저장 후 workspace path만 revalidate하고 같은 문서 query로 redirect하지 않는다. 현재 문서 저장은 이미 같은 editor surface 안에서 완료 상태를 갱신하므로, redirect를 추가하면 document editor가 재마운트되어 저장 시 화면 깜빡임이 다시 발생한다.
