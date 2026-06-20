@@ -38,6 +38,7 @@ describe("captureHandledAiUnavailable", () => {
       surface: "ask_document",
       workspaceSlug: "company-handbook",
       status: 503,
+      streamStarted: true,
       ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
       chatProvider: "openai-compatible",
       chatModel: "google/gemma-4-31b-it:free",
@@ -47,6 +48,7 @@ describe("captureHandledAiUnavailable", () => {
     expect(sentryMock.scope.setLevel).toHaveBeenCalledWith("error");
     expect(sentryMock.scope.setTag).toHaveBeenCalledWith("ai.surface", "ask_document");
     expect(sentryMock.scope.setTag).toHaveBeenCalledWith("ai.status", "503");
+    expect(sentryMock.scope.setTag).toHaveBeenCalledWith("ai.stream_started", "true");
     expect(sentryMock.scope.setTag).toHaveBeenCalledWith(
       "ai.rag_error_code",
       RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
@@ -61,6 +63,7 @@ describe("captureHandledAiUnavailable", () => {
       chat_provider: "openai-compatible",
       rag_error_code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
       status: 503,
+      stream_started: true,
       surface: "ask_document",
       workspace_slug: "company-handbook",
     });
