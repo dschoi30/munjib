@@ -3,10 +3,10 @@ id: workflow-production-observability
 title: Production Observability Workflow
 type: workflow
 status: active
-summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
+summary: Munjib production Docker 로그 확인, Sentry SaaS error/tracing, handled AI 503 capture 관측성 흐름.
 created: 2026-06-03
-updated: 2026-06-13
-source_count: 25
+updated: 2026-06-20
+source_count: 34
 tags:
   - munjib
   - workflow
@@ -22,7 +22,7 @@ links:
 
 # Production Observability Workflow
 
-이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다. CI/CD deploy와 monitoring을 함께 보는 현재 운영 요약은 [[CI CD And Monitoring Workflow]]에 둔다.
+이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다. Issue #116은 route가 처리해서 public response로는 `AI_UNAVAILABLE` 503 또는 Workspace AI NDJSON error event를 내보내는 provider/runtime failure도 sanitized Sentry event로 남긴다. CI/CD deploy와 monitoring을 함께 보는 현재 운영 요약은 [[CI CD And Monitoring Workflow]]에 둔다.
 
 ## Entry points
 
@@ -49,6 +49,8 @@ Issue #89 구현은 이 로그 흐름을 대체하지 않고 `@sentry/nextjs` �
 
 Issue #100 구현은 Ask AI RAG의 LLM-specific observability에 Langfuse를 추가하되 Sentry/Docker 로그 역할을 대체하지 않는다. Langfuse full capture는 Node runtime instrumentation에서 OpenTelemetry `NodeSDK`와 `LangfuseSpanProcessor` exporter를 시작하고, answer generation에는 LangChain callback을 연결한다. 설정 누락, metadata capture, startup/exporter 실패, callback 생성 실패는 Ask AI request를 실패시키지 않는 fail-open layer다.
 
+Issue #116 구현은 handled AI unavailable failure를 Sentry issue로 명시 capture한다. `captureHandledAiUnavailable()`은 Ask AI 503, Workspace AI preparation 503, Workspace AI post-start stream `AI_UNAVAILABLE` event에서 호출되며, Sentry init이 no-op인 환경에서는 호출 자체가 application response를 바꾸지 않는다.
+
 ## Steps
 
 Sentry SaaS 첫 slice의 목표 범위:
@@ -61,12 +63,15 @@ Sentry SaaS 첫 slice의 목표 범위:
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
 - Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
 - Browser/Server/Edge SDK init은 shared scrubber를 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb`에 연결해 Sentry event의 request URL query/host, `query_string`, request body data, cookies, request headers, user IP, span URL/query/target/path/description/name fields, span request/response body/header/IP/host/user-agent attributes, breadcrumb URL/query/host fields를 제거한다. Browser navigation breadcrumb의 `from`/`to` query도 제거하고, console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 드롭한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string, browser fetch/XHR span `url`, sampled trace span URL/body/header/IP/host fields, browser `location.href`/breadcrumb 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
+- Handled AI provider/runtime failures that are intentionally mapped to public `AI_UNAVAILABLE` still call Sentry explicitly. The event name is `HandledAiUnavailableError`, with tags/context for `ai.surface`, `workspace_slug`, `status`, `rag_error_code`, `chat_provider`, `chat_model`, and `stream_started` when applicable. The event fingerprint uses `handled-ai-unavailable`, surface, and stable RAG error code so Sentry grouping separates Ask AI and Workspace AI failure classes. The capture helper creates a sanitized error without attaching the original error or `cause`, so provider response bodies, prompts, questions, retrieved document content, answer text, API keys, base URLs, headers, cookies, and raw exception payloads are not sent.
 
 `docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 
 ## Failure modes
 
 Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure, 잘못된 `NEXTAUTH_URL`, DB 접속 실패, PostgreSQL 자체 오류는 Docker 로그가 1차 근거다.
+
+Handled AI unavailable events are not expected to appear automatically in Sentry from thrown exceptions because the routes catch and normalize them. Ask AI and Workspace AI preparation failures continue to return the same JSON error response, and Workspace AI stream failures that happen after `{ "type": "start" }` continue to report an NDJSON error event rather than changing the HTTP status. The explicit Sentry capture is the production signal for these handled provider/runtime failures; Docker logs remain the source for raw provider stack traces, startup/config failures, environment shape, database errors, and container lifecycle.
 
 잘못된 trace sample rate는 app startup failure로 만들지 않고 tracing disabled 상태로 낮춘다. Source map upload token은 runtime container env에 넣지 않는다.
 
@@ -78,14 +83,20 @@ Langfuse production traces도 같은 privacy 방향을 따른다. 기본 product
 
 Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scrubber test, static Sentry integration file test, Docker contract test, TypeScript check, production build를 포함한다. 실제 Sentry event 전송 검증은 real DSN이 있는 서버 환경에서 temporary verification-only error path로 확인하고, permanent public test route는 남기지 않는다.
 
+Issue #116 검증은 `captureHandledAiUnavailable()` unit test와 Ask AI / Workspace AI route tests를 포함한다. 이 tests는 handled RAG runtime failure가 sanitized helper를 호출하고, validation error와 archived thread 같은 non-provider-unavailable cases는 capture하지 않는지 확인한다. Abort handling은 route signal propagation과 stream/service abort behavior로 별도 검증된다.
+
 ## 근거
 
 - GitHub issue #89
+- GitHub issue #116
 - `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
+- `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`
 - `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`
+- `docs/superpowers/plans/2026-06-20-ai-provider-503-sentry-capture.md`
 - `lib/observability/sentry-config.ts`
 - `lib/observability/sentry-scrub-event.ts`
+- `lib/observability/ai-unavailable.ts`
 - `instrumentation-client.ts`
 - `sentry.server.config.ts`
 - `sentry.edge.config.ts`
@@ -102,8 +113,11 @@ Issue #89 자동 검증은 Sentry config helper unit test, behavioral event scru
 - `tests/observability/sentry-config.test.ts`
 - `tests/observability/sentry-scrub-event.test.ts`
 - `tests/observability/sentry-files.test.ts`
+- `tests/observability/ai-unavailable.test.ts`
 - `tests/docker/compose.test.ts`
 - `tests/rag/langfuse.test.ts`
 - `tests/rag/langfuse-otel.test.ts`
 - `tests/rag/answer-chain.test.ts`
+- `tests/rag/ask-route.test.ts`
+- `tests/rag/workspace-chat-route.test.ts`
 - [[Local Development Workflow]]

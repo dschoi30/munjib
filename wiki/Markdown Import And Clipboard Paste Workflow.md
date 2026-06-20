@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
-updated: 2026-06-19
-source_count: 18
+updated: 2026-06-20
+source_count: 19
 tags:
   - munjib
   - workflow
@@ -50,7 +50,7 @@ UI 진입점은 workspace settings dialog의 `Import` menu다. `components/works
 9. workspace route를 한 번 revalidate하고 `{ documentIds, imported, failed }` batch result를 반환한다.
 10. Settings panel은 dialog를 닫거나 route를 바꾸지 않고 `router.refresh()`로 list를 갱신한다.
 
-`deriveMarkdownImportTitle()`의 title 우선순위는 확장자를 제거한 file name, YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 마지막으로 `Untitled`다. 일반적인 browser `File` input에서는 file name이 document title의 1순위이며, frontmatter title과 H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 사용한다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
+Issue #113 이후 Markdown import title 우선순위는 확장자를 제거한 file name, YAML frontmatter `title`, 첫 번째 ATX `# Heading`, 마지막으로 `Untitled`다. 일반적인 browser `File` input에서는 file name이 document title의 1순위이며, frontmatter title과 H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 사용한다. YAML block scalar marker인 `title: |`, `title: >`는 title 후보에서 제외한다. 첫 H1 scan은 fenced code block 안의 `# ...` line을 건너뛴다.
 
 Import는 attachment upload를 별도로 하지 않는다. Markdown 안에 이미 `![alt](url)` 또는 `![alt](/api/attachments/...)`가 있으면 그 text를 그대로 문서 본문으로 저장한다. 따라서 import된 Markdown의 이미지가 보이는지는 URL이 브라우저에서 접근 가능한지, 또는 이미 Munjib attachment URL을 가리키는지에 달려 있다.
 

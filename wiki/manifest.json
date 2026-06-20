@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-19",
+  "updated": "2026-06-20",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 79,
+      "source_count": 80,
       "searchPriority": 50
     },
     {
@@ -153,7 +153,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 48,
+      "source_count": 49,
       "searchPriority": 50
     },
     {
@@ -186,7 +186,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 93,
+      "source_count": 98,
       "searchPriority": 5
     },
     {
@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 230,
+      "source_count": 237,
       "searchPriority": 1
     },
     {
@@ -253,7 +253,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 18,
+      "source_count": 19,
       "searchPriority": 50
     },
     {
@@ -308,7 +308,7 @@
       "title": "Production Observability Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.",
+      "summary": "Munjib production Docker 로그 확인, Sentry SaaS error/tracing, handled AI 503 capture 관측성 흐름.",
       "tags": [
         "munjib",
         "workflow",
@@ -322,7 +322,7 @@
         "[[Local Development Workflow]]",
         "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 25,
+      "source_count": 34,
       "searchPriority": 50
     },
     {
@@ -348,7 +348,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 91,
+      "source_count": 92,
       "searchPriority": 30
     },
     {
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 96,
+      "source_count": 105,
       "searchPriority": 50
     },
     {
@@ -396,7 +396,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Document Editing Workflow]]"
       ],
-      "source_count": 28,
+      "source_count": 29,
       "searchPriority": 50
     },
     {
