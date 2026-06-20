@@ -47,6 +47,7 @@ export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableIn
 
       if (input.streamStarted !== undefined) {
         context.stream_started = input.streamStarted;
+        scope.setTag("ai.stream_started", String(input.streamStarted));
       }
 
       if (input.chatProvider) {
