@@ -70,36 +70,43 @@ export async function repairResolvableBrokenLinksForTarget(
     targetDocumentId: string;
   },
 ) {
-  const [target, targets, brokenLinks] = await Promise.all([
-    tx.document.findFirst({
-      where: {
-        id: input.targetDocumentId,
-        workspaceId: input.workspaceId,
-        status: "ACTIVE",
-      },
-      select: { id: true },
-    }),
-    tx.document.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        status: "ACTIVE",
-      },
-      select: { id: true, path: true, title: true },
-    }),
-    tx.documentLink.findMany({
-      where: {
-        workspaceId: input.workspaceId,
-        targetDocumentId: null,
-        isBroken: true,
-      },
-      select: { id: true, targetTitleRaw: true },
-    }),
-  ]);
+  const target = await tx.document.findFirst({
+    where: {
+      id: input.targetDocumentId,
+      workspaceId: input.workspaceId,
+      status: "ACTIVE",
+    },
+    select: { id: true },
+  });
+  if (!target) return;
 
-  if (!target || brokenLinks.length === 0) return;
+  const brokenLinks = await tx.documentLink.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      targetDocumentId: null,
+      isBroken: true,
+    },
+    select: {
+      id: true,
+      targetTitleRaw: true,
+      sourceDocument: { select: { contentMarkdown: true } },
+    },
+  });
+  if (brokenLinks.length === 0) return;
+
+  const targets = await tx.document.findMany({
+    where: {
+      workspaceId: input.workspaceId,
+      status: "ACTIVE",
+    },
+    select: { id: true, path: true, title: true },
+  });
 
   const repairableLinkIds = brokenLinks
     .filter((link) => {
+      if (!frontmatterStillReferencesTarget(link.sourceDocument.contentMarkdown, link.targetTitleRaw)) {
+        return false;
+      }
       const resolved = resolveWikiLinkTarget(targets, link.targetTitleRaw);
       return (
         !resolved.isBroken &&
@@ -119,4 +126,11 @@ export async function repairResolvableBrokenLinksForTarget(
       isAmbiguous: false,
     },
   });
+}
+
+function frontmatterStillReferencesTarget(contentMarkdown: string, targetTitleRaw: string) {
+  const targetKey = targetTitleRaw.toLowerCase();
+  return parseFrontmatterWikiLinks(contentMarkdown).some(
+    (link) => link.targetTitleRaw.toLowerCase() === targetKey,
+  );
 }

@@ -601,6 +601,11 @@ export async function moveDocument(input: MoveDocumentInput) {
       },
     });
 
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: workspace.id,
+      targetDocumentId: moved.id,
+    });
+
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
       actorId: input.actorId,

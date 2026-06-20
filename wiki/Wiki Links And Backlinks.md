@@ -63,7 +63,7 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 
 Issue #65 이후 target resolution 규칙은 `lib/wiki-links/resolve.ts`의 순수 helper `resolveWikiLinkTarget()`에 모여 있다. Reconciliation은 이 helper를 호출해 기존 `DocumentLink` 저장 의미를 유지하고, graph 전용 full-markdown link construction도 같은 path-qualified, underscore-aware, ambiguous/broken 판정 규칙을 재사용할 수 있다.
 
-Target 문서가 나중에 생성되거나 title/path가 바뀌는 경우에도 `repairResolvableBrokenLinksForTarget()`이 workspace 안의 기존 broken `DocumentLink` rows를 같은 resolver로 다시 평가한다. 현재 active target set에서 특정 target document 하나로 resolve되는 broken row는 `targetDocumentId`를 채우고 `isBroken=false`로 고쳐, source 문서를 다시 저장하지 않아도 outgoing link와 backlink가 살아난다.
+Target 문서가 나중에 생성되거나 title/path/folder 위치가 바뀌는 경우에도 `repairResolvableBrokenLinksForTarget()`이 workspace 안의 기존 broken `DocumentLink` rows를 같은 resolver로 다시 평가한다. Repair 후보는 source document의 현재 frontmatter `links:` 배열에 같은 `targetTitleRaw`가 아직 있을 때만 인정한다. 현재 active target set에서 특정 target document 하나로 resolve되는 broken row는 `targetDocumentId`를 채우고 `isBroken=false`로 고쳐, source 문서를 다시 저장하지 않아도 outgoing link와 backlink가 살아난다.
 
 Issue #59는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정했다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
 
