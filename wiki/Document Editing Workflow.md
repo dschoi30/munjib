@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-06-16
-source_count: 79
+updated: 2026-06-20
+source_count: 80
 tags:
   - munjib
   - workflow
@@ -82,14 +82,17 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 4. folder path와 document slug를 결합한 `path`와 함께 `Document`를 생성한다.
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
-7. `document.created` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다.
-9. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
-10. server action이 생성 문서 URL로 redirect한다.
+7. 이 새 문서가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows를 repair한다.
+8. `document.created` audit log를 남긴다.
+9. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다.
+10. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
+11. server action이 생성 문서 URL로 redirect한다.
 
 `importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
 
 `moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다. Move는 `Document.updatedAt`을 바꾸므로 commit 뒤 RAG chunk refresh를 예약해 `sourceUpdatedAt` freshness를 유지한다.
+
+문서 이동으로 `[[Operations/Runbook]]` 같은 path-qualified broken link가 새 path에 맞게 resolve될 수 있으면 기존 broken `DocumentLink` rows를 repair한다. 이 repair는 source document의 현재 frontmatter `links:`에 같은 target이 아직 있을 때만 실행된다.
 
 ## 수정 흐름
 
@@ -103,12 +106,13 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 4. markdown, plain text, title, slug, path, updatedBy를 갱신한다.
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
-7. `document.updated` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
+7. 변경된 title/path가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows를 repair한다.
+8. `document.updated` audit log를 남긴다.
+9. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
 
 ## Version restore, attachment, comment
 
-`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
+`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. 복원된 title/path가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows도 repair한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk refresh를 예약한다.
 
@@ -136,7 +140,7 @@ Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다. Preview paragraph는 CSS `white-space: pre-wrap`으로 렌더링하고, ReactMarkdown remark transform이 paragraph 내부 soft line break를 explicit break node로 바꿔 edit mode에서 입력한 단일 개행과 외부 텍스트 paste 개행을 preview에 안정적으로 반영한다.
 
-Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Issue #71 이후 frontmatter tag chip은 클릭 가능한 tag search trigger이지만, 표시 source는 여전히 frontmatter `tags:`로 제한한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
+Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Issue #71 이후 frontmatter tag chip은 클릭 가능한 tag search trigger이지만, 표시 source는 여전히 frontmatter `tags:`로 제한한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]` 또는 plain title string에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
 우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 

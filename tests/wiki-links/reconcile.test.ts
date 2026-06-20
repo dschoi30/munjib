@@ -1,8 +1,13 @@
 import { WorkspaceRole } from "@prisma/client";
 import { beforeEach, describe, expect, it } from "vitest";
-import { createDocument, createDocumentFromBrokenLink, updateDocument } from "@/lib/documents/service";
+import {
+  createDocument,
+  createDocumentFromBrokenLink,
+  moveDocument,
+  updateDocument,
+} from "@/lib/documents/service";
 import { prisma } from "@/lib/db/client";
-import { createFolder } from "@/lib/folders/service";
+import { createFolder, renameFolder } from "@/lib/folders/service";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
@@ -57,6 +62,52 @@ Read [[Ignored Content Link]].`,
     ]);
   });
 
+  it("resolves plain title strings in frontmatter links", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "Runbook"
+---
+
+Read [[Ignored Content Link]].`,
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    const targetPanels = await getDocumentLinkPanels(target.id, fixture.user.id);
+
+    expect(sourcePanels.outgoing).toEqual([
+      {
+        id: expect.any(String),
+        targetTitleRaw: "Runbook",
+        alias: null,
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: { id: target.id, title: "Runbook", slug: "runbook", path: "/runbook" },
+      },
+    ]);
+    expect(targetPanels.backlinks).toEqual([
+      {
+        id: expect.any(String),
+        sourceDocument: {
+          id: source.id,
+          title: "Incident Guide",
+          slug: "incident-guide",
+          path: "/incident-guide",
+        },
+      },
+    ]);
+  });
+
   it("marks links as broken when the target document does not exist", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const source = await createDocument({
@@ -80,6 +131,175 @@ Read [[Ignored Content Link]].`,
         alias: null,
       },
     ]);
+  });
+
+  it("repairs existing broken links when a matching target document is created later", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Munjib]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Munjib" },
+    });
+    expect(broken.isBroken).toBe(true);
+    expect(broken.targetDocumentId).toBeNull();
+
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Munjib",
+      contentMarkdown: "# Munjib",
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    const targetPanels = await getDocumentLinkPanels(target.id, fixture.user.id);
+
+    expect(sourcePanels.outgoing).toEqual([
+      expect.objectContaining({
+        targetTitleRaw: "Munjib",
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: expect.objectContaining({ id: target.id, title: "Munjib" }),
+      }),
+    ]);
+    expect(sourcePanels.brokenLinks).toEqual([]);
+    expect(targetPanels.backlinks).toEqual([
+      expect.objectContaining({
+        sourceDocument: expect.objectContaining({ id: source.id, title: "Incident Guide" }),
+      }),
+    ]);
+  });
+
+  it("does not repair stale broken link rows missing from current source frontmatter", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Munjib]]"
+---`,
+    });
+    await prisma.document.update({
+      where: { id: source.id },
+      data: { contentMarkdown: "No frontmatter links now." },
+    });
+
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Munjib",
+      contentMarkdown: "# Munjib",
+    });
+
+    const stale = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Munjib" },
+    });
+    const targetPanels = await getDocumentLinkPanels(target.id, fixture.user.id);
+
+    expect(stale.isBroken).toBe(true);
+    expect(stale.targetDocumentId).toBeNull();
+    expect(targetPanels.backlinks).toEqual([]);
+  });
+
+  it("repairs path-qualified broken links when the target document is moved into the matching folder", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Operations/Runbook]]"
+---`,
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Runbook" },
+    });
+    expect(broken.isBroken).toBe(true);
+
+    await moveDocument({
+      documentId: target.id,
+      actorId: fixture.user.id,
+      folderId: operations.id,
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    expect(sourcePanels.outgoing).toEqual([
+      expect.objectContaining({
+        targetTitleRaw: "Operations/Runbook",
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: expect.objectContaining({ id: target.id, title: "Runbook" }),
+      }),
+    ]);
+    expect(sourcePanels.brokenLinks).toEqual([]);
+  });
+
+  it("repairs path-qualified broken links when a folder rename updates the target document path", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const draftFolder = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Drafts",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Incident Guide",
+      contentMarkdown: `---
+links:
+  - "[[Operations/Runbook]]"
+---`,
+    });
+    const target = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      folderId: draftFolder.id,
+      title: "Runbook",
+      contentMarkdown: "# Runbook",
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: { sourceDocumentId: source.id, targetTitleRaw: "Operations/Runbook" },
+    });
+    expect(broken.isBroken).toBe(true);
+
+    await renameFolder({
+      folderId: draftFolder.id,
+      actorId: fixture.user.id,
+      name: "Operations",
+    });
+
+    const sourcePanels = await getDocumentLinkPanels(source.id, fixture.user.id);
+    expect(sourcePanels.outgoing).toEqual([
+      expect.objectContaining({
+        targetTitleRaw: "Operations/Runbook",
+        isBroken: false,
+        isAmbiguous: false,
+        targetDocument: expect.objectContaining({ id: target.id, title: "Runbook" }),
+      }),
+    ]);
+    expect(sourcePanels.brokenLinks).toEqual([]);
   });
 
   it("preserves frontmatter links order and ignores content wiki links", async () => {
