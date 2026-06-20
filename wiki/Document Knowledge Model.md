@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
 updated: 2026-06-17
-source_count: 23
+source_count: 24
 tags:
   - munjib
   - data-model
@@ -261,6 +261,8 @@ erDiagram
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
+Issue #119 설계는 `Workspace`에 archived document retention policy를 추가하는 계획이다. 값은 `NEVER`, `DAYS_7`, `DAYS_30`, `DAYS_90` enum으로 제한하고 기본값은 `DAYS_30`이다. 이 policy는 browser-local preference가 아니라 workspace-wide data lifecycle policy이며, CLI/tools purge command가 `Document.archivedAt` cutoff를 계산할 때 사용한다.
+
 ## 폴더, 문서, 버전
 
 Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLink.isAmbiguous`가 추가되었다. 자세한 결정사항은 [[Folder Hierarchy Model]]을 본다.
@@ -358,3 +360,5 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
 - GitHub issue #73
+- GitHub issue #119
+- `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`

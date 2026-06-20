@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-06-15
-source_count: 51
+updated: 2026-06-20
+source_count: 52
 tags:
   - munjib
   - product
@@ -57,6 +57,8 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 ## 아직 구현으로 과장하면 안 되는 범위
 
 `prd.md`에는 실시간 협업, 고급 graph 탐색, review workflow, export, 조직별 세밀한 권한 관리, search indexing 같은 제품 방향이 포함되어 있다. 현재 구현은 MVP 수준의 local graph, properties, search, template, attachment, comment, version restore까지 포함하지만, 완성형 협업 지식관리 제품으로 과장하지 않는다.
+
+Issue #119 설계는 trashed document의 workspace별 retention policy와 CLI/tools 기반 hard-delete purge를 계획한다. 기본 policy는 30 days이고, 실제 삭제 대상은 archived documents only다. Archived folder hard delete와 attachment storage file cleanup은 후속 범위로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
 
 ## 편집 경험 개선
 
@@ -140,6 +142,7 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
+- `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`
 - `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`
 - GitHub issue #105
 - `tests/rag/model-config.test.ts`

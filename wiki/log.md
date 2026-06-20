@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 231
+source_count: 232
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-20T13:35:00+09:00 - design
+
+- Result: Issue #119 archived document retention purge settings design was recorded before implementation.
+- Coverage: Workspace-level DB-backed retention policy presets (`Never`, `7 days`, `30 days`, `90 days`) with `30 days` default, settings-panel `Retention` section, CLI/tools purge execution, archived-document-only hard delete, and follow-up boundaries for archived folders and attachment storage files.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #119, `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`.
+- Verification: pending implementation plan.
 
 ## 2026-06-20T12:45:10+0900 - graph unresolved target visibility implementation
 
