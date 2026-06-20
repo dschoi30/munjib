@@ -131,13 +131,19 @@ export async function updateWorkspaceRetentionPolicyAction(
     return { error: SERVICE_ERROR_CODES.ARCHIVED_DOCUMENT_RETENTION_POLICY_INVALID };
   }
 
-  const updated = await updateWorkspaceArchivedDocumentRetentionPolicy({
-    workspaceSlug,
-    actorId: user.id,
-    policy,
-  });
-  revalidatePath(`/workspaces/${workspaceSlug}`);
-  return { archivedDocumentRetentionPolicy: updated.archivedDocumentRetentionPolicy };
+  try {
+    const updated = await updateWorkspaceArchivedDocumentRetentionPolicy({
+      workspaceSlug,
+      actorId: user.id,
+      policy,
+    });
+    revalidatePath(`/workspaces/${workspaceSlug}`);
+    return { archivedDocumentRetentionPolicy: updated.archivedDocumentRetentionPolicy };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "UNKNOWN_ERROR",
+    };
+  }
 }
 
 function markdownImportFilesFromFormData(formData: FormData) {

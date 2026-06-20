@@ -6,7 +6,7 @@ status: active
 summary: Munjib MVP는 Next.js App Router, server actions, Prisma, PostgreSQL을 한 repository 안에서 운영한다.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 12
+source_count: 13
 tags:
   - munjib
   - architecture
@@ -48,7 +48,7 @@ pgvector integration도 별도 vector service로 분리하지 않고 PostgreSQL 
 
 Issue #104 workspace chatbot persistence도 같은 Prisma/PostgreSQL monolith 안에서 시작한다. `AiChatThread`와 `AiChatMessage`는 workspace/user scoped conversation history를 저장하고, PostgreSQL partial unique index로 user+workspace별 active thread를 하나로 제한한다. Chatbot answer retrieval은 별도 vector service를 만들지 않고 기존 `DocumentChunk` pgvector store를 재사용하는 방향이다.
 
-Issue #119 keeps archived document purge inside the monolith as a CLI/tools maintenance command. `pnpm run documents:purge-archived` invokes a Prisma-backed service that reads workspace retention policies and hard deletes expired archived documents. The command supports `--dry-run` and `--workspace <workspaceSlug>`, and production can run it from host cron, Docker `tools`, or a future scheduled workflow.
+Issue #119 keeps archived document purge inside the monolith as a CLI/tools maintenance command. `pnpm run documents:purge-archived` invokes a Prisma-backed service that reads workspace retention policies and hard deletes expired archived documents. Before the hard delete, the service marks incoming wiki links to those documents as broken so normal broken-link repair can self-heal later. The command supports `--dry-run` and `--workspace <workspaceSlug>`, and production can run it from host cron, Docker `tools`, or a future scheduled workflow.
 
 ## 비용
 

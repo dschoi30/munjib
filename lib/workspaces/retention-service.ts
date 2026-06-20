@@ -17,7 +17,14 @@ export async function updateWorkspaceArchivedDocumentRetentionPolicy(
   input: UpdateWorkspaceArchivedDocumentRetentionPolicyInput,
 ) {
   const workspaces = await prisma.workspace.findMany({
-    where: { slug: input.workspaceSlug },
+    where: {
+      slug: input.workspaceSlug,
+      members: {
+        some: {
+          userId: input.actorId,
+        },
+      },
+    },
     include: {
       members: {
         where: { userId: input.actorId },
