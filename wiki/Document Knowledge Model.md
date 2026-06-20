@@ -295,7 +295,7 @@ Issue #20의 첫 schema 변경에서 `Folder`, `Document.folderId`, `DocumentLin
 - `isAmbiguous`: title-only link가 여러 active document와 충돌해 임의 target을 고르지 않은 상태면 `true`.
 - `sortOrder`: YAML frontmatter `links:` 배열 안에서 link가 적힌 순서.
 
-링크 파싱과 reconciliation은 [[Wiki Links And Backlinks]]에서 설명한다.
+문서 생성, title/path 변경, version restore 이후 기존 broken `DocumentLink`가 새 target으로 명확히 resolve되면 `targetDocumentId`를 채우고 `isBroken=false`로 repair될 수 있다. 링크 파싱과 reconciliation은 [[Wiki Links And Backlinks]]에서 설명한다.
 
 ## 태그와 properties
 

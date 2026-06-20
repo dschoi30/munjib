@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-18
-source_count: 228
+updated: 2026-06-19
+source_count: 230
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
+
+- Result: Issue #113의 file-name-first Markdown import title contract를 실제 구현과 테스트에 반영했다.
+- Coverage: `deriveMarkdownImportTitle()`는 이제 extension-stripped file name을 먼저 사용하고, file name에서 title 후보를 만들 수 없을 때만 frontmatter `title`, 첫 ATX H1, `Untitled` 순서로 fallback한다. Wiki 문서의 current behavior 설명도 구현 완료 상태에 맞췄다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #115 review feedback, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`, `wiki/Markdown Import And Clipboard Paste Workflow.md`.
+- Verification: `pnpm exec vitest tests/documents/import-markdown.test.ts tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-20T11:27:45+0900 - stale broken frontmatter link repair
+
+- Result: Target 문서가 source 문서보다 나중에 생성되어 기존 frontmatter `links:` row가 broken 상태로 남는 문제를 고쳤다.
+- Coverage: `createDocument()`, `updateDocument()`, `restoreDocumentVersion()`, `moveDocument()`, and folder rename/move descendant path updates use saved documents as targets to re-evaluate workspace broken `DocumentLink` rows with the current `resolveWikiLinkTarget()` rules, and repair only rows whose source document still has the same target in current frontmatter `links:` and resolves to one active target. Folder descendant path updates repair changed document ids in one batch instead of rescanning the workspace once per document. Frontmatter `links:` plain-title fallback also excludes Markdown external link values such as `[Runbook](https://example.com)`. Local DB dry-run에서는 broken rows 85개 중 57개가 repair 가능했고, `Munjib` target row 9개를 포함해 모두 backfill했다.
+- Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: user-reported `Munjib` frontmatter link issue, local DB probe, `lib/wiki-links/reconcile.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/reconcile.test.ts --run`; broader GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-20T01:01:48+0900 - frontmatter plain-title link reconciliation
+
+- Result: YAML frontmatter `links:` 배열의 plain title string이 existing document title과 matching되어도 link row가 생성되지 않던 문제를 고쳤다.
+- Coverage: `parseFrontmatterWikiLinks()`는 `[[Target]]`/`[[Target|Alias]]` syntax를 계속 지원하면서, wiki syntax가 없는 string value를 alias 없는 internal target title로 정규화한다. Embed-style `![[...]]`, heading-only/empty target, and external URL-like frontmatter values remain excluded. Reconciliation, outgoing links, and backlinks now resolve `links: ["Runbook"]` through the same title/path/underscore matching rules as `links: ["[[Runbook]]"]`.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: user-reported frontmatter links issue, `lib/wiki-links/parser.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`.
+
+## 2026-06-19T23:45:45+0900 - issue-113 markdown import filename title design
+
+- Result: Issue #113 설계에서 Markdown import title priority를 file-name-first로 정했다.
+- Coverage: `deriveMarkdownImportTitle()`는 구현 단계에서 확장자를 제거한 file name을 1순위로 사용하고, frontmatter `title`과 첫 ATX H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 남긴다. Import action, batch flow, destination folder, body persistence, duplicate title/path behavior는 변경하지 않는다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #113, `docs/superpowers/specs/2026-06-19-markdown-import-filename-title-design.md`, `docs/superpowers/plans/2026-06-19-markdown-import-filename-title-priority.md`, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`.
+- Verification: spec self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-18T00:27:00+0900 - issue-105 PR review streaming abort follow-up
 

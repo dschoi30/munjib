@@ -21,7 +21,11 @@ import type {
   RestoreDocumentVersionInput,
   UpdateDocumentInput,
 } from "@/lib/documents/types";
-import { reconcileDocumentLinks, repairBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
+import {
+  reconcileDocumentLinks,
+  repairBrokenLinksForTarget,
+  repairResolvableBrokenLinksForTarget,
+} from "@/lib/wiki-links/reconcile";
 import { pathQualifiedTargetToCreateInput } from "@/lib/wiki-links/targets";
 import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 
@@ -247,6 +251,10 @@ export async function createDocument(input: CreateDocumentInput) {
       documentId: document.id,
       contentMarkdown: document.contentMarkdown,
     });
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: workspace.id,
+      targetDocumentId: document.id,
+    });
 
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
@@ -319,6 +327,10 @@ export async function updateDocument(input: UpdateDocumentInput) {
       workspaceId: workspace.id,
       documentId: updated.id,
       contentMarkdown: updated.contentMarkdown,
+    });
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: workspace.id,
+      targetDocumentId: updated.id,
     });
 
     await writeAuditLog(tx, {
@@ -448,6 +460,10 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
       workspaceId: version.document.workspaceId,
       documentId: restored.id,
       contentMarkdown: restored.contentMarkdown,
+    });
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: version.document.workspaceId,
+      targetDocumentId: restored.id,
     });
 
     await writeAuditLog(tx, {
@@ -583,6 +599,11 @@ export async function moveDocument(input: MoveDocumentInput) {
         path: buildChildPath(parentPath, slug),
         updatedById: input.actorId,
       },
+    });
+
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: workspace.id,
+      targetDocumentId: moved.id,
     });
 
     await writeAuditLog(tx, {
