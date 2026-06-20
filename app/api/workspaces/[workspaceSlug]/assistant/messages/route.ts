@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import {
   INVALID_CHAT_MODEL_ERROR,
   validateChatProvider,
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
+import { isRagRuntimeError } from "@/lib/rag/errors";
 import {
   prepareWorkspaceChatMessageStream,
   sendPreparedWorkspaceChatMessageStream,
@@ -82,15 +84,21 @@ export async function POST(
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
   } catch (error) {
-    return workspaceChatErrorResponse(error);
+    return workspaceChatErrorResponse(error, {
+      surface: "workspace_chat_prepare",
+      workspaceSlug,
+      ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
+      ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
+    });
   }
 
-  return workspaceChatStreamResponse(prepared, request.signal);
+  return workspaceChatStreamResponse(prepared, request.signal, workspaceSlug);
 }
 
 function workspaceChatStreamResponse(
   prepared: WorkspaceChatPreparedMessage,
   signal: AbortSignal,
+  workspaceSlug: string,
 ) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -120,11 +128,22 @@ function workspaceChatStreamResponse(
         }
       } catch (error) {
         if (signal.aborted) return;
-        const streamError =
-          error instanceof Error &&
-          error.message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
-            ? WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
-            : "AI_UNAVAILABLE";
+        const message = error instanceof Error ? error.message : "";
+        const isArchivedThread = message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED;
+        const streamError = isArchivedThread
+          ? WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED
+          : "AI_UNAVAILABLE";
+        if (!isArchivedThread && isRagRuntimeError(message)) {
+          captureHandledAiUnavailable({
+            error,
+            surface: "workspace_chat_stream",
+            workspaceSlug,
+            streamStarted: true,
+            ragErrorCode: message,
+            chatProvider: prepared.chatProviderName,
+            chatModel: prepared.chatModelName,
+          });
+        }
         writeEvent({ type: "error", error: streamError });
       } finally {
         if (!streamClosed) {

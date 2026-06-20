@@ -229,7 +229,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 244,
+      "source_count": 249,
       "searchPriority": 1
     },
     {
@@ -308,7 +308,7 @@
       "title": "Production Observability Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.",
+      "summary": "Munjib production Docker 로그 확인, Sentry SaaS error/tracing, handled AI 503 capture 관측성 흐름.",
       "tags": [
         "munjib",
         "workflow",
@@ -322,7 +322,7 @@
         "[[Local Development Workflow]]",
         "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 25,
+      "source_count": 34,
       "searchPriority": 50
     },
     {
@@ -375,7 +375,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 96,
+      "source_count": 105,
       "searchPriority": 50
     },
     {
