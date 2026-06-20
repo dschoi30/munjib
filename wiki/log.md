@@ -35,6 +35,14 @@ links:
 - Source evidence: GitHub issue #116, `lib/observability/ai-unavailable.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
 - Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; `git diff --cached --check`.
 
+## 2026-06-20T12:45:10+0900 - graph unresolved target visibility implementation
+
+- Result: Default graph view now hides broken/ambiguous unresolved wiki target placeholders so non-document values are not rendered as graph nodes.
+- Coverage: `filterKnowledgeGraph()` keeps wiki links only when both endpoints are actual document nodes, keeps tag edges only when `Tags` is enabled, and keeps isolated document nodes only when `Orphans` is enabled. `buildKnowledgeGraph()` remains the raw graph DTO builder and can still represent unresolved placeholder state for tests/model completeness.
+- Pages: [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported default graph issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: `pnpm exec vitest tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx --run`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-20T12:35:38+0900 - issue-116 handled AI 503 Sentry capture design
 
 - Result: Issue #116 설계에서 OpenRouter/OpenAI provider 전환 중 발생하는 handled `AI_UNAVAILABLE` 503을 public response는 유지하고 Sentry에는 privacy-safe event로 명시 capture하는 방향을 정했다.
@@ -42,6 +50,14 @@ links:
 - Pages: [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #116, `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`, `docs/superpowers/plans/2026-06-20-ai-provider-503-sentry-capture.md`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/answer-chain.ts`.
 - Verification: spec and implementation plan self-review; `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged`.
+
+## 2026-06-20T12:28:27+0900 - graph unresolved target visibility design
+
+- Result: 기본 graph view에서 실제 문서가 아닌 broken/ambiguous wiki target placeholder를 숨기는 후속 설계를 정리했다.
+- Coverage: `buildKnowledgeGraph()` raw DTO가 unresolved wiki target placeholder를 만들 수 있는 것은 모델상 모순이 아니지만, visible graph filtering은 resolved document-to-document wiki edge만 기본 표시하고 `Orphans`는 기존처럼 isolated document node만 제어한다는 contract를 기록했다. Tags는 opt-in filter로 유지한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported graph default visibility issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: spec self-review, `git diff --check`, `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
 

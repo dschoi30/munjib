@@ -242,7 +242,24 @@ export function filterKnowledgeGraph(
   graph: KnowledgeGraphData,
   filters: KnowledgeGraphFilters,
 ): KnowledgeGraphData {
-  const links = graph.links.filter((link) => link.kind === "wiki" || filters.tag);
+  const nodesById = new Map(graph.nodes.map((node) => [node.id, node]));
+  const links = graph.links.filter((link) => {
+    const sourceNode = nodesById.get(link.source);
+    const targetNode = nodesById.get(link.target);
+    if (!sourceNode || !targetNode) {
+      return false;
+    }
+
+    if (link.kind === "tag") {
+      return filters.tag;
+    }
+
+    if (link.kind !== "wiki") {
+      return false;
+    }
+
+    return sourceNode.kind === "document" && targetNode.kind === "document";
+  });
   const connectedNodeIds = new Set<string>();
 
   for (const link of links) {
