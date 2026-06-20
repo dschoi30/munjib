@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-19
-source_count: 230
+updated: 2026-06-20
+source_count: 231
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-20T12:28:27+0900 - graph unresolved target visibility design
+
+- Result: 기본 graph view에서 실제 문서가 아닌 broken/ambiguous wiki target placeholder를 숨기는 후속 설계를 정리했다.
+- Coverage: `buildKnowledgeGraph()` raw DTO가 unresolved wiki target placeholder를 만들 수 있는 것은 모델상 모순이 아니지만, visible graph filtering은 resolved document-to-document wiki edge만 기본 표시하고 `Orphans`는 기존처럼 isolated document node만 제어한다는 contract를 기록했다. Tags는 opt-in filter로 유지한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported graph default visibility issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: spec self-review, `git diff --check`, `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
 
