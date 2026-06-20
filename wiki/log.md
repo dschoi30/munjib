@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T12:55:02+0900 - issue-116 handled AI 503 Sentry capture implementation
+
+- Result: Issue #116 구현으로 handled Ask AI/Workspace AI provider failures가 public response는 `AI_UNAVAILABLE`로 유지하면서 Sentry에는 privacy-safe event로 기록된다.
+- Coverage: Document Ask AI `503`, Workspace AI pre-stream `503`, Workspace AI post-start NDJSON `AI_UNAVAILABLE` event를 capture하고, validation failure와 archived-thread race는 provider unavailable event로 기록하지 않는다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/observability/ai-unavailable.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, route and observability tests.
+- Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-20T12:35:38+0900 - issue-116 handled AI 503 Sentry capture design
 
 - Result: Issue #116 설계에서 OpenRouter/OpenAI provider 전환 중 발생하는 handled `AI_UNAVAILABLE` 503을 public response는 유지하고 Sentry에는 privacy-safe event로 명시 capture하는 방향을 정했다.
