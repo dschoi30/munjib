@@ -107,6 +107,58 @@ function createGraph(): KnowledgeGraphData {
   };
 }
 
+function createWikiGraphWithUnresolvedTarget(): KnowledgeGraphData {
+  return {
+    nodes: [
+      {
+        id: "document:doc-1",
+        kind: "document",
+        label: "Welcome",
+        documentId: "doc-1",
+        title: "Welcome",
+        path: "/welcome",
+      },
+      {
+        id: "document:doc-2",
+        kind: "document",
+        label: "Runbook",
+        documentId: "doc-2",
+        title: "Runbook",
+        path: "/runbook",
+      },
+      {
+        id: "document:doc-3",
+        kind: "document",
+        label: "Draft",
+        documentId: "doc-3",
+        title: "Draft",
+        path: "/draft",
+      },
+      {
+        id: "wiki:broken:missing",
+        kind: "wiki",
+        label: "Missing",
+        targetTitleRaw: "Missing",
+        state: "broken",
+      },
+    ],
+    links: [
+      {
+        id: "wiki:doc-1:document:doc-2",
+        source: "document:doc-1",
+        target: "document:doc-2",
+        kind: "wiki",
+      },
+      {
+        id: "wiki:doc-3:wiki:broken:missing",
+        source: "document:doc-3",
+        target: "wiki:broken:missing",
+        kind: "wiki",
+      },
+    ],
+  };
+}
+
 function createDocumentCountGraph(documentCount: number): KnowledgeGraphData {
   const nodes = Array.from({ length: documentCount }, (_, index) => ({
     id: `document:doc-${index + 1}`,
@@ -297,6 +349,40 @@ describe("KnowledgeGraphView", () => {
         sourceId: link.source,
         targetId: link.target,
       })),
+    });
+  });
+
+  it("hides unresolved wiki target nodes from the default rendered graph", () => {
+    const graph = createWikiGraphWithUnresolvedTarget();
+    renderGraph(graph);
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [graph.nodes[0], graph.nodes[1]],
+      links: [
+        {
+          ...graph.links[0],
+          sourceId: graph.links[0].source,
+          targetId: graph.links[0].target,
+        },
+      ],
+    });
+  });
+
+  it("keeps unresolved wiki target nodes hidden when Orphans is checked", () => {
+    const graph = createWikiGraphWithUnresolvedTarget();
+    renderGraph(graph);
+
+    fireEvent.click(screen.getByLabelText("Orphans"));
+
+    expect(forceGraphMock.state.latestProps?.graphData).toEqual({
+      nodes: [graph.nodes[0], graph.nodes[1], graph.nodes[2]],
+      links: [
+        {
+          ...graph.links[0],
+          sourceId: graph.links[0].source,
+          targetId: graph.links[0].target,
+        },
+      ],
     });
   });
 
@@ -564,9 +650,9 @@ describe("KnowledgeGraphView", () => {
     expect(linkColor?.(graph.links[0])).toBe("#64748b");
     expect(
       linkColor?.({
-        id: "wiki:doc-2:wiki:broken:missing",
+        id: "wiki:doc-2:document:doc-3",
         source: "document:doc-2",
-        target: "wiki:broken:missing",
+        target: "document:doc-3",
         kind: "wiki",
       }),
     ).toBe("#94a3b844");
@@ -599,11 +685,12 @@ describe("KnowledgeGraphView", () => {
           path: "/linked",
         },
         {
-          id: "wiki:broken:missing",
-          kind: "wiki",
-          label: "Missing",
-          targetTitleRaw: "Missing",
-          state: "broken",
+          id: "document:doc-3",
+          kind: "document",
+          label: "Neighbor",
+          documentId: "doc-3",
+          title: "Neighbor",
+          path: "/neighbor",
         },
       ],
       links: [
@@ -614,9 +701,9 @@ describe("KnowledgeGraphView", () => {
           kind: "tag",
         },
         {
-          id: "wiki:doc-2:wiki:broken:missing",
+          id: "wiki:doc-2:document:doc-3",
           source: "document:doc-2",
-          target: "wiki:broken:missing",
+          target: "document:doc-3",
           kind: "wiki",
         },
       ],
@@ -642,7 +729,7 @@ describe("KnowledgeGraphView", () => {
       | undefined;
 
     expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
-    expect(nodeColor?.(graph.nodes[3])).toBe("#8b5cf6");
+    expect(nodeColor?.(graph.nodes[3])).toBe("#64748b");
     expect(linkColor?.(graph.links[1])).toBe("#94a3b8");
   });
 
@@ -722,18 +809,19 @@ describe("KnowledgeGraphView", () => {
           path: "/welcome",
         },
         {
-          id: "wiki:broken:missing",
-          kind: "wiki",
-          label: "Missing",
-          targetTitleRaw: "Missing",
-          state: "broken",
+          id: "document:doc-2",
+          kind: "document",
+          label: "Runbook",
+          documentId: "doc-2",
+          title: "Runbook",
+          path: "/runbook",
         },
       ],
       links: [
         {
-          id: "wiki:doc-1:wiki:broken:missing",
+          id: "wiki:doc-1:document:doc-2",
           source: "document:doc-1",
-          target: "wiki:broken:missing",
+          target: "document:doc-2",
           kind: "wiki",
         },
       ],
@@ -998,19 +1086,20 @@ describe("KnowledgeGraphView", () => {
           path: "/unrelated",
         },
         {
-          id: "wiki:broken:missing",
-          kind: "wiki",
-          label: "Missing",
-          targetTitleRaw: "Missing",
-          state: "broken",
+          id: "document:doc-3",
+          kind: "document",
+          label: "Neighbor",
+          documentId: "doc-3",
+          title: "Neighbor",
+          path: "/neighbor",
         },
       ],
       links: [
         ...createGraph().links,
         {
-          id: "wiki:doc-2:wiki:broken:missing",
+          id: "wiki:doc-2:document:doc-3",
           source: "document:doc-2",
-          target: "wiki:broken:missing",
+          target: "document:doc-3",
           kind: "wiki",
         },
       ],
@@ -1038,7 +1127,7 @@ describe("KnowledgeGraphView", () => {
       | undefined;
     expect(nodeColor?.(graph.nodes[0])).toBe("#64748b33");
     expect(nodeColor?.(graph.nodes[2])).toBe("#64748b");
-    expect(nodeColor?.(graph.nodes[3])).toBe("#8b5cf6");
+    expect(nodeColor?.(graph.nodes[3])).toBe("#64748b");
     expect(linkColor?.(graph.links[0])).toBe("#94a3b844");
     expect(linkColor?.(graph.links[1])).toBe("#64748b");
 
