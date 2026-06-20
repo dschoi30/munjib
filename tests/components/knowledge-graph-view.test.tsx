@@ -620,9 +620,10 @@ describe("KnowledgeGraphView", () => {
   });
 
   it("dims nodes and links outside the selected document neighborhood", () => {
+    const baseGraph = createGraph();
     const graph: KnowledgeGraphData = {
       nodes: [
-        ...createGraph().nodes,
+        ...baseGraph.nodes,
         {
           id: "document:doc-2",
           kind: "document",
@@ -631,11 +632,39 @@ describe("KnowledgeGraphView", () => {
           title: "Unrelated",
           path: "/unrelated",
         },
+        {
+          id: "document:doc-3",
+          kind: "document",
+          label: "Also unrelated",
+          documentId: "doc-3",
+          title: "Also unrelated",
+          path: "/also-unrelated",
+        },
       ],
-      links: createGraph().links,
+      links: [
+        ...baseGraph.links,
+        {
+          id: "wiki:doc-2:document:doc-3",
+          source: "document:doc-2",
+          target: "document:doc-3",
+          kind: "wiki",
+        },
+      ],
     };
     renderGraph(graph);
     fireEvent.click(screen.getByLabelText("Tags"));
+
+    const renderedGraph = forceGraphMock.state.latestProps?.graphData as {
+      nodes: Array<KnowledgeGraphData["nodes"][number]>;
+      links: Array<KnowledgeGraphData["links"][number]>;
+    };
+    const selectedDocumentNode = renderedGraph.nodes.find((node) => node.id === "document:doc-1");
+    const tagNode = renderedGraph.nodes.find((node) => node.id === "tag:design");
+    const unfocusedDocumentNode = renderedGraph.nodes.find((node) => node.id === "document:doc-2");
+    const tagLink = renderedGraph.links.find((link) => link.id === "tag:doc-1:design");
+    const unfocusedWikiLink = renderedGraph.links.find(
+      (link) => link.id === "wiki:doc-2:document:doc-3",
+    );
 
     const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
       | ((node: KnowledgeGraphData["nodes"][number]) => string)
@@ -644,18 +673,16 @@ describe("KnowledgeGraphView", () => {
       | ((link: KnowledgeGraphData["links"][number]) => string)
       | undefined;
 
-    expect(nodeColor?.(graph.nodes[0])).toBe("#a78bfa");
-    expect(nodeColor?.(graph.nodes[1])).toBe("#f59e0b");
-    expect(nodeColor?.(graph.nodes[2])).toBe("#64748b88");
-    expect(linkColor?.(graph.links[0])).toBe("#64748b");
-    expect(
-      linkColor?.({
-        id: "wiki:doc-2:document:doc-3",
-        source: "document:doc-2",
-        target: "document:doc-3",
-        kind: "wiki",
-      }),
-    ).toBe("#94a3b844");
+    expect(selectedDocumentNode).toBeDefined();
+    expect(tagNode).toBeDefined();
+    expect(unfocusedDocumentNode).toBeDefined();
+    expect(tagLink).toBeDefined();
+    expect(unfocusedWikiLink).toBeDefined();
+    expect(nodeColor?.(selectedDocumentNode!)).toBe("#a78bfa");
+    expect(nodeColor?.(tagNode!)).toBe("#f59e0b");
+    expect(nodeColor?.(unfocusedDocumentNode!)).toBe("#64748b88");
+    expect(linkColor?.(tagLink!)).toBe("#64748b");
+    expect(linkColor?.(unfocusedWikiLink!)).toBe("#94a3b844");
   });
 
   it("does not dim visible wiki-linked nodes when the selected document is filtered out", () => {
