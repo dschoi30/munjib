@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-19
-source_count: 230
+updated: 2026-06-20
+source_count: 237
 tags:
   - log
   - munjib
@@ -19,13 +19,77 @@ links:
 
 # Wiki Log
 
-## 2026-06-19T23:45:45+0900 - issue-113 markdown import filename title priority
+## 2026-06-20T14:18:17+0900 - issue-116 workspace AI no-capture regression coverage
 
-- Result: Issue #113 implemented Markdown import file-name-first title derivation.
-- Coverage: `deriveMarkdownImportTitle()` now uses the extension-stripped file name before frontmatter `title` and first ATX H1. Frontmatter and H1 parsing remain fallback behavior for file names such as `.md` or `.markdown` that cannot produce a non-empty title. Import action, batch flow, destination folder, body persistence, and duplicate title/path behavior are unchanged.
+- Result: Issue #116 최종 review follow-up으로 Workspace AI route tests에 provider-unavailable Sentry event를 기록하지 않아야 하는 exclusion branches를 더 명시했다.
+- Coverage: invalid chat model override, provider-only override, workspace-not-found, reset/shared error-response RAG failure, pre-stream archived race, aborted post-start stream failure가 `captureHandledAiUnavailable()`을 호출하지 않는지 검증한다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/rag/workspace-chat-route.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`.
+
+## 2026-06-20T12:55:02+0900 - issue-116 handled AI 503 Sentry capture implementation
+
+- Result: Issue #116 구현으로 handled AI provider/runtime failure가 public `AI_UNAVAILABLE` contract를 유지하면서 Sentry에 sanitized event로 남는다.
+- Coverage: `captureHandledAiUnavailable()`은 Ask AI pre-response 503, Workspace AI preparation 503, Workspace AI post-start NDJSON `AI_UNAVAILABLE` stream error를 surface별로 capture하고, validation/auth/archived-thread/client-abort는 provider unavailable event로 기록하지 않는다. Workspace AI route tests cover those no-capture paths, including aborted post-start streams. Captured metadata는 workspace slug, stable RAG error code, provider/model, status, stream-started flag로 제한하고, Sentry fingerprint는 handled AI unavailable marker, surface, stable RAG error code로 설정한다. Question, prompt, saved markdown, retrieved chunk text, answer, API key, base URL, headers, cookies, raw provider response body, original provider error object/cause는 제외한다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #116, `lib/observability/ai-unavailable.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; `git diff --cached --check`.
+
+## 2026-06-20T12:45:10+0900 - graph unresolved target visibility implementation
+
+- Result: Default graph view now hides broken/ambiguous unresolved wiki target placeholders so non-document values are not rendered as graph nodes.
+- Coverage: `filterKnowledgeGraph()` keeps wiki links only when both endpoints are actual document nodes, keeps tag edges only when `Tags` is enabled, and keeps isolated document nodes only when `Orphans` is enabled. `buildKnowledgeGraph()` remains the raw graph DTO builder and can still represent unresolved placeholder state for tests/model completeness.
+- Pages: [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported default graph issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: `pnpm exec vitest tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx --run`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-06-20T12:35:38+0900 - issue-116 handled AI 503 Sentry capture design
+
+- Result: Issue #116 설계에서 OpenRouter/OpenAI provider 전환 중 발생하는 handled `AI_UNAVAILABLE` 503을 public response는 유지하고 Sentry에는 privacy-safe event로 명시 capture하는 방향을 정했다.
+- Coverage: Ask AI route, workspace chat preparation 503, workspace chat post-start NDJSON `AI_UNAVAILABLE` error event를 모두 관측 대상으로 잡고, question/prompt/context/answer/document body/API key/base URL/provider response body는 Sentry event에 넣지 않는 privacy boundary를 명시했다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #116, `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`, `docs/superpowers/plans/2026-06-20-ai-provider-503-sentry-capture.md`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/answer-chain.ts`.
+- Verification: spec and implementation plan self-review; `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged`.
+
+## 2026-06-20T12:28:27+0900 - graph unresolved target visibility design
+
+- Result: 기본 graph view에서 실제 문서가 아닌 broken/ambiguous wiki target placeholder를 숨기는 후속 설계를 정리했다.
+- Coverage: `buildKnowledgeGraph()` raw DTO가 unresolved wiki target placeholder를 만들 수 있는 것은 모델상 모순이 아니지만, visible graph filtering은 resolved document-to-document wiki edge만 기본 표시하고 `Orphans`는 기존처럼 isolated document node만 제어한다는 contract를 기록했다. Tags는 opt-in filter로 유지한다.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported graph default visibility issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: spec self-review, `git diff --check`, `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
+
+- Result: Issue #113의 file-name-first Markdown import title contract를 실제 구현과 테스트에 반영했다.
+- Coverage: `deriveMarkdownImportTitle()`는 이제 extension-stripped file name을 먼저 사용하고, file name에서 title 후보를 만들 수 없을 때만 frontmatter `title`, 첫 ATX H1, `Untitled` 순서로 fallback한다. Wiki 문서의 current behavior 설명도 구현 완료 상태에 맞췄다.
+- Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #115 review feedback, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`, `wiki/Markdown Import And Clipboard Paste Workflow.md`.
+- Verification: `pnpm exec vitest tests/documents/import-markdown.test.ts tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-20T11:27:45+0900 - stale broken frontmatter link repair
+
+- Result: Target 문서가 source 문서보다 나중에 생성되어 기존 frontmatter `links:` row가 broken 상태로 남는 문제를 고쳤다.
+- Coverage: `createDocument()`, `updateDocument()`, `restoreDocumentVersion()`, `moveDocument()`, and folder rename/move descendant path updates use saved documents as targets to re-evaluate workspace broken `DocumentLink` rows with the current `resolveWikiLinkTarget()` rules, and repair only rows whose source document still has the same target in current frontmatter `links:` and resolves to one active target. Folder descendant path updates repair changed document ids in one batch instead of rescanning the workspace once per document. Frontmatter `links:` plain-title fallback also excludes Markdown external link values such as `[Runbook](https://example.com)`. Local DB dry-run에서는 broken rows 85개 중 57개가 repair 가능했고, `Munjib` target row 9개를 포함해 모두 backfill했다.
+- Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Folder Hierarchy Model]], [[log|Wiki Log]].
+- Source evidence: user-reported `Munjib` frontmatter link issue, local DB probe, `lib/wiki-links/reconcile.ts`, `lib/documents/service.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/reconcile.test.ts --run`; broader GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-06-20T01:01:48+0900 - frontmatter plain-title link reconciliation
+
+- Result: YAML frontmatter `links:` 배열의 plain title string이 existing document title과 matching되어도 link row가 생성되지 않던 문제를 고쳤다.
+- Coverage: `parseFrontmatterWikiLinks()`는 `[[Target]]`/`[[Target|Alias]]` syntax를 계속 지원하면서, wiki syntax가 없는 string value를 alias 없는 internal target title로 정규화한다. Embed-style `![[...]]`, heading-only/empty target, and external URL-like frontmatter values remain excluded. Reconciliation, outgoing links, and backlinks now resolve `links: ["Runbook"]` through the same title/path/underscore matching rules as `links: ["[[Runbook]]"]`.
+- Pages: [[Wiki Links And Backlinks]], [[log|Wiki Log]].
+- Source evidence: user-reported frontmatter links issue, `lib/wiki-links/parser.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/reconcile.test.ts`.
+- Verification: RED then GREEN with `pnpm exec vitest tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts --run`.
+
+## 2026-06-19T23:45:45+0900 - issue-113 markdown import filename title design
+
+- Result: Issue #113 설계에서 Markdown import title priority를 file-name-first로 정했다.
+- Coverage: `deriveMarkdownImportTitle()`는 구현 단계에서 확장자를 제거한 file name을 1순위로 사용하고, frontmatter `title`과 첫 ATX H1은 file name에서 비어 있지 않은 title을 만들 수 없을 때만 fallback으로 남긴다. Import action, batch flow, destination folder, body persistence, duplicate title/path behavior는 변경하지 않는다.
 - Pages: [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #113, `docs/superpowers/specs/2026-06-19-markdown-import-filename-title-design.md`, `docs/superpowers/plans/2026-06-19-markdown-import-filename-title-priority.md`, `lib/documents/import-markdown.ts`, `tests/documents/import-markdown.test.ts`.
-- Verification: RED with `pnpm exec vitest run tests/documents/import-markdown.test.ts --reporter=dot`; GREEN with `pnpm exec vitest run tests/documents/import-markdown.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`.
+- Verification: spec self-review, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-18T00:27:00+0900 - issue-105 PR review streaming abort follow-up
 

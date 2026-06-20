@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-05-25
-source_count: 28
+updated: 2026-06-20
+source_count: 29
 tags:
   - munjib
   - wiki-links
@@ -29,11 +29,14 @@ Munjib의 link model은 Markdown 안의 `[[문서명]]` 구문을 `DocumentLink`
 - `[[Target Title]]`
 - `[[Target Title|Alias]]`
 
+YAML frontmatter `links:` 배열은 위 wiki-link syntax와 plain title string을 모두 internal document link 후보로 취급한다. 예를 들어 `links: ["Runbook"]`은 alias 없는 `Runbook` target으로 저장되고, `links: ["[[Runbook|the runbook]]"]`은 alias를 보존한다. Plain title string은 기존 target resolution 규칙을 그대로 타므로 title-only, path-qualified, underscore-compatible matching이 동일하게 적용된다.
+
 현재 파서는 다음 항목을 제외한다.
 
 - embed link: `![[...]]`
 - 빈 target
 - `[[#Heading]]`처럼 heading-only link
+- frontmatter `links:`의 external URL-like value와 Markdown external link value
 - 같은 source 문서 안에서 대소문자만 다른 중복 target
 
 Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.
@@ -45,7 +48,7 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 `reconcileDocumentLinks()`는 문서 생성/수정 후 실행된다.
 
 1. source 문서의 기존 `DocumentLink` row를 삭제한다.
-2. 최신 markdown의 YAML frontmatter `links:` 배열에서 wiki links를 다시 파싱한다.
+2. 최신 markdown의 YAML frontmatter `links:` 배열에서 `[[...]]` wiki links와 plain title strings를 다시 파싱한다.
 3. target이 path-qualified인지 title-only인지 판단한다.
 4. path-qualified target은 각 path segment를 slug로 정규화한 뒤 workspace 안의 active document `path`로 먼저 찾는다. 예를 들어 `[[Operations/Incident Runbook]]`은 `/operations/incident-runbook`으로 resolve한다.
 5. path match가 없으면 slash가 포함된 target도 title fallback을 시도한다. `[[Q1/Q2 Plan]]`처럼 title 자체에 `/`가 들어간 문서는 root title link로 계속 resolve할 수 있다.
@@ -59,6 +62,8 @@ Issue #20 구현에서는 서로 다른 folder에 같은 document title을 허�
 이 방식은 create, update, version restore, attachment upload 후 link 상태가 source markdown의 frontmatter links와 항상 다시 맞춰지도록 단순하게 만든다.
 
 Issue #65 이후 target resolution 규칙은 `lib/wiki-links/resolve.ts`의 순수 helper `resolveWikiLinkTarget()`에 모여 있다. Reconciliation은 이 helper를 호출해 기존 `DocumentLink` 저장 의미를 유지하고, graph 전용 full-markdown link construction도 같은 path-qualified, underscore-aware, ambiguous/broken 판정 규칙을 재사용할 수 있다.
+
+Target 문서가 나중에 생성되거나 title/path/folder 위치가 바뀌는 경우에도 `repairResolvableBrokenLinksForTarget()`이 workspace 안의 기존 broken `DocumentLink` rows를 같은 resolver로 다시 평가한다. Repair 후보는 source document의 현재 frontmatter `links:` 배열에 같은 `targetTitleRaw`가 아직 있을 때만 인정한다. 현재 active target set에서 특정 target document 하나로 resolve되는 broken row는 `targetDocumentId`를 채우고 `isBroken=false`로 고쳐, source 문서를 다시 저장하지 않아도 outgoing link와 backlink가 살아난다.
 
 Issue #59는 wiki link target matching에서 underscore를 공백처럼 취급하도록 frontmatter reconciliation과 preview rendering을 함께 조정했다. 예를 들어 `[[수에즈_운하_위기]]`는 `수에즈 운하 위기` 문서로 resolve되지만, source markdown과 `DocumentLink.targetTitleRaw`의 raw target text는 rewrite하지 않는다. 이 규칙은 path-qualified target의 각 segment에도 적용하되 document slug/path 생성 규칙 자체는 바꾸지 않는다.
 
@@ -92,7 +97,7 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 `getDocumentLinkPanels()`는 outgoing target과 backlink source document에 대해 document-level explicit permission을 반영한다. 사용자가 읽을 수 없는 target/source 문서는 link panel에서 제외된다.
 
-Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki link는 source document node에서 readable target document node로 향하는 `wiki` edge로 렌더링하고, broken 또는 ambiguous link는 readable target document를 임의 선택하지 않고 raw wiki value node로 연결한다.
+Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki links render from source document node to readable target document node. Broken or ambiguous links are still represented as unresolved placeholder state in the raw graph DTO for model completeness, but the default visible graph filters those placeholder nodes and edges out so non-document values do not appear as graph nodes.
 
 ## Broken link에서 문서 생성
 

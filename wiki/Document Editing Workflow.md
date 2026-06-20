@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-06-16
-source_count: 79
+updated: 2026-06-20
+source_count: 80
 tags:
   - munjib
   - workflow
@@ -46,7 +46,7 @@ Issue #71은 같은 Search panel에 Obsidian-style tag query를 추가했다. �
 
 Issue #20 설계 이후 좌측 navigation은 flat document list에서 folder/document tree로 바뀐다. Folder 선택 시 markdown editor가 아니라 folder detail/empty state를 보여주고, document 선택 시 기존 editor panel을 연다.
 
-Issue #34 workspace knowledge graph view는 sidebar `Graph` icon으로 진입한다. 이 button은 URL을 `?graph=1`로 바꾸고, center 영역은 editor/folder detail 대신 workspace knowledge graph를 렌더링하며, toolbar path는 `Graph view`로 표시한다. Graph의 document node를 클릭하면 `?document=<id>` route로 이동해 graph mode를 종료하고 해당 document editor를 연다. Issue #36 이후 graph panel은 relation `Filters` 아래에 `Display`와 `Forces` 설정을 제공한다. `Display`는 arrows, text fade threshold, node size, link thickness를 조절하고, display state 변경 시 graph animation을 재개해 cooled canvas에서도 label fade redraw가 반영되게 한다. `Forces`는 center/repel/link force와 link distance를 `react-force-graph-2d` simulation에 적용한다. Center force는 `forceCenter.strength()`에 의존하지 않고 `d3Force("munjib-center", forceFn)`로 등록되는 custom gravity force를 사용하며, dynamic graph ref가 늦게 mount되어도 기본 force 값이 다시 적용된다. Graph link는 relation 종류별 색상이 아니라 neutral gray로 렌더링하며, 선택 문서 또는 hover node의 1-hop link만 더 밝게 표시한다. Hover node id가 graph refresh 이후 더 이상 존재하지 않으면 hover focus를 무시하고 selected document focus로 되돌린다. Hover focus가 활성일 때 연결되지 않은 node circle은 더 낮은 alpha로 표시하고 해당 label alpha도 낮춰, hovered node와 1-hop 이웃이 시각적으로 더 두드러지게 한다. Node label은 circle 중심과 겹치지 않도록 node center보다 아래에 그리며, graph가 일정 수준 이상 줌아웃되면 label을 숨겨 과밀 상태를 줄인다. Graph mode는 editor padding 없이 center 영역 높이를 채우고, graph canvas background는 `DocumentToolbar`와 같은 흰색 surface를 사용한다. Issue #38 이후 graph settings panel은 Obsidian reference처럼 graph canvas 우측 상단에 배치되며, panel surface는 sidebar/document list와 같은 `bg-muted` 계열을 사용한다. Panel-level `X` close는 settings panel 전체를 숨기고 같은 위치에 reopen icon button만 남긴다. `Filters`, `Display`, `Forces` section은 `DocumentNavigation` folder toggle과 같은 `ChevronDown`/`ChevronRight` icon을 section text 좌측에 배치한 button으로 접고 펼치며, `X` close는 `Filters` header row 우측에 배치한다. Issue #65 이후 graph filters는 `Tags`와 `Orphans`만 노출한다. Wiki links는 항상 적용되고 property graph rendering은 제거되었다. `Display`와 `Forces`는 기본 닫힘 상태이며, node size 기본값은 `3`과 range `1..10`, link thickness max는 `5`다. 선택/hover focus는 link width를 변경하지 않고 색상과 alpha만 바꾼다. Issue #67 이후 `Tags`와 `Orphans` filters는 기본 unchecked이며, filters/display/forces option state는 workspace slug로 scope된 `sessionStorage`에 저장되어 같은 browser session 동안 유지된다. Graph renderer는 `minZoom`/`maxZoom` bounds로 node와 label이 과도하게 작거나 커지지 않게 제한하고, 첫 graph render frame 이후 selected document 좌표가 준비되면 해당 문서를 중심으로 최초 zoom을 `2.5`로 한 번 설정한다. Label font는 zoom에서 계산한 값을 minimum/maximum으로 clamp한 bounded scaling을 사용하고, label 위치는 effective node size와 font size를 기준으로 node 아래에 배치한다. Node size slider 값은 workspace document-count tier baseline과 곱해 effective node size가 되므로 문서 수가 많은 workspace는 더 compact하게 렌더링된다.
+Issue #34 workspace knowledge graph view는 sidebar `Graph` icon으로 진입한다. 이 button은 URL을 `?graph=1`로 바꾸고, center 영역은 editor/folder detail 대신 workspace knowledge graph를 렌더링하며, toolbar path는 `Graph view`로 표시한다. Graph의 document node를 클릭하면 `?document=<id>` route로 이동해 graph mode를 종료하고 해당 document editor를 연다. Issue #36 이후 graph panel은 relation `Filters` 아래에 `Display`와 `Forces` 설정을 제공한다. `Display`는 arrows, text fade threshold, node size, link thickness를 조절하고, display state 변경 시 graph animation을 재개해 cooled canvas에서도 label fade redraw가 반영되게 한다. `Forces`는 center/repel/link force와 link distance를 `react-force-graph-2d` simulation에 적용한다. Center force는 `forceCenter.strength()`에 의존하지 않고 `d3Force("munjib-center", forceFn)`로 등록되는 custom gravity force를 사용하며, dynamic graph ref가 늦게 mount되어도 기본 force 값이 다시 적용된다. Graph link는 relation 종류별 색상이 아니라 neutral gray로 렌더링하며, 선택 문서 또는 hover node의 1-hop link만 더 밝게 표시한다. Hover node id가 graph refresh 이후 더 이상 존재하지 않으면 hover focus를 무시하고 selected document focus로 되돌린다. Hover focus가 활성일 때 연결되지 않은 node circle은 더 낮은 alpha로 표시하고 해당 label alpha도 낮춰, hovered node와 1-hop 이웃이 시각적으로 더 두드러지게 한다. Node label은 circle 중심과 겹치지 않도록 node center보다 아래에 그리며, graph가 일정 수준 이상 줌아웃되면 label을 숨겨 과밀 상태를 줄인다. Graph mode는 editor padding 없이 center 영역 높이를 채우고, graph canvas background는 `DocumentToolbar`와 같은 흰색 surface를 사용한다. Issue #38 이후 graph settings panel은 Obsidian reference처럼 graph canvas 우측 상단에 배치되며, panel surface는 sidebar/document list와 같은 `bg-muted` 계열을 사용한다. Panel-level `X` close는 settings panel 전체를 숨기고 같은 위치에 reopen icon button만 남긴다. `Filters`, `Display`, `Forces` section은 `DocumentNavigation` folder toggle과 같은 `ChevronDown`/`ChevronRight` icon을 section text 좌측에 배치한 button으로 접고 펼치며, `X` close는 `Filters` header row 우측에 배치한다. Issue #65 이후 graph filters는 `Tags`와 `Orphans`만 노출한다. Wiki links는 항상 적용되고 property graph rendering은 제거되었다. `Display`와 `Forces`는 기본 닫힘 상태이며, node size 기본값은 `3`과 range `1..10`, link thickness max는 `5`다. 선택/hover focus는 link width를 변경하지 않고 색상과 alpha만 바꾼다. Issue #67 이후 `Tags`와 `Orphans` filters는 기본 unchecked이며, filters/display/forces option state는 workspace slug로 scope된 `sessionStorage`에 저장되어 같은 browser session 동안 유지된다. Default visible graph rendering keeps only actual readable document nodes connected by resolved document-to-document wiki edges; broken or ambiguous wiki target placeholders can exist in the raw graph DTO but are hidden from the graph canvas, and `Orphans` only restores isolated document nodes. Graph renderer는 `minZoom`/`maxZoom` bounds로 node와 label이 과도하게 작거나 커지지 않게 제한하고, 첫 graph render frame 이후 selected document 좌표가 준비되면 해당 문서를 중심으로 최초 zoom을 `2.5`로 한 번 설정한다. Label font는 zoom에서 계산한 값을 minimum/maximum으로 clamp한 bounded scaling을 사용하고, label 위치는 effective node size와 font size를 기준으로 node 아래에 배치한다. Node size slider 값은 workspace document-count tier baseline과 곱해 effective node size가 되므로 문서 수가 많은 workspace는 더 compact하게 렌더링된다.
 
 Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Document row는 hover/focus 상태에서 더 진한 `bg-slate-200` highlight를 보여주고, 선택된 document row도 같은 고정 highlight를 유지한다.
 
@@ -82,14 +82,17 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 4. folder path와 document slug를 결합한 `path`와 함께 `Document`를 생성한다.
 5. `DocumentVersion` v1을 만든다.
 6. wiki links와 document metadata를 reconcile한다.
-7. `document.created` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다.
-9. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
-10. server action이 생성 문서 URL로 redirect한다.
+7. 이 새 문서가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows를 repair한다.
+8. `document.created` audit log를 남긴다.
+9. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다.
+10. indexing latency나 failure는 save 성공을 막지 않고 failure는 service logger에만 남긴다.
+11. server action이 생성 문서 URL로 redirect한다.
 
 `importMarkdownDocumentAction()`은 settings dialog의 Markdown file form을 받아 Markdown file을 workspace document로 만든다. 지원 file type, title derivation, image URL preservation, create/save 확정 시점은 [[Markdown Import And Clipboard Paste Workflow]]에 따로 정리한다.
 
 `moveDocument()`는 문서의 `folderId`를 바꾸고 target folder path 아래로 `path`를 재계산한다. 이동은 `document.moved` audit log에 previous path와 새 path를 남긴다. Move는 `Document.updatedAt`을 바꾸므로 commit 뒤 RAG chunk refresh를 예약해 `sourceUpdatedAt` freshness를 유지한다.
+
+문서 이동으로 `[[Operations/Runbook]]` 같은 path-qualified broken link가 새 path에 맞게 resolve될 수 있으면 기존 broken `DocumentLink` rows를 repair한다. 이 repair는 source document의 현재 frontmatter `links:`에 같은 target이 아직 있을 때만 실행된다.
 
 ## 수정 흐름
 
@@ -103,12 +106,13 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 4. markdown, plain text, title, slug, path, updatedBy를 갱신한다.
 5. 다음 version number로 `DocumentVersion`을 생성한다.
 6. source 문서의 wiki links와 document metadata를 reconcile한다.
-7. `document.updated` audit log를 남긴다.
-8. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
+7. 변경된 title/path가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows를 repair한다.
+8. `document.updated` audit log를 남긴다.
+9. transaction commit 뒤 `scheduleSavedDocumentIndex({ documentId })`로 saved DB content 기반 RAG chunk refresh를 Next.js `after()` hook에 예약한다. Indexing latency나 failure는 update 성공을 막지 않는다.
 
 ## Version restore, attachment, comment
 
-`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
+`restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. 복원된 title/path가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows도 repair한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk refresh를 예약한다.
 
@@ -136,7 +140,7 @@ Editor는 edit/preview mode를 제공하며 split mode는 Issue #25 구현에서
 
 Preview mode는 YAML frontmatter block을 본문에서 제외한 뒤 `[[Target Title]]` text를 그대로 노출하지 않고, 읽을 수 있는 workspace document와 matching되는 target을 `?document=<id>` link로 렌더링한다. `[[Target Title|Alias]]`는 alias를 label로 사용한다. Matching document가 없는 target은 bracket 없는 plain text로 표시된다. Preview paragraph는 CSS `white-space: pre-wrap`으로 렌더링하고, ReactMarkdown remark transform이 paragraph 내부 soft line break를 explicit break node로 바꿔 edit mode에서 입력한 단일 개행과 외부 텍스트 paste 개행을 preview에 안정적으로 반영한다.
 
-Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Issue #71 이후 frontmatter tag chip은 클릭 가능한 tag search trigger이지만, 표시 source는 여전히 frontmatter `tags:`로 제한한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]`에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
+Title 아래 Properties 영역은 tags, links, frontmatter properties, comments를 표시한다. Properties row는 YAML frontmatter key 순서대로 배치하며, `tags`와 `links` key 위치에는 raw YAML 값 대신 canonical UI row를 렌더링한다. 최신 정책은 Properties tags row의 source of truth를 YAML frontmatter `tags:`로만 제한하는 것이다. 본문 content의 `#tag`는 knowledge graph/tag extraction 용도로만 사용하고, frontmatter `tags:`가 없는 문서에서 Properties tags fallback row로 표시하지 않는다. Issue #71 이후 frontmatter tag chip은 클릭 가능한 tag search trigger이지만, 표시 source는 여전히 frontmatter `tags:`로 제한한다. Links row는 YAML frontmatter `links:` 배열 안의 `[[...]]` 또는 plain title string에서 만든 outgoing links만 보여주고, broken link는 연한 텍스트 button으로 표시해 클릭 시 blank document 생성을 실행한다. Content 영역의 `[[...]]`와 backlinks는 Properties Links row에서 제외한다. YAML frontmatter property와 frontmatter links는 각각 `sortOrder`와 현재 frontmatter `links:` 배열 순서를 기준으로 읽어 markdown 파일에 적힌 속성/링크 순서를 유지한다. Frontmatter가 없는 문서에서는 `frontmatter none` placeholder row를 렌더링하지 않는다. Comments는 위에서 아래로 쌓이며 `createdAt asc` 순서로 읽는다.
 
 우측 metadata panel은 outline, attachments, versions, audit log를 상단 tab button으로 전환해 표시한다. Section 영역이 scroll container이며 edit mode의 markdown 표시 영역은 고정 높이를 강제하지 않는다. Metadata panel close button은 오른쪽 sidebar를 제거하고, 화면 우측 상단에 남는 reopen icon 하나로 다시 열 수 있다.
 

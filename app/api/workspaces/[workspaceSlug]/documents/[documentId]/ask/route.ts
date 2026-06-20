@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
 import {
   INVALID_CHAT_MODEL_ERROR,
@@ -66,6 +67,15 @@ export async function POST(
       return NextResponse.json({ error: message }, { status: 404 });
     }
     if (isRagRuntimeError(message)) {
+      captureHandledAiUnavailable({
+        error,
+        surface: "ask_document",
+        workspaceSlug,
+        status: 503,
+        ragErrorCode: message,
+        ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
+        ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
+      });
       return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
     }
 

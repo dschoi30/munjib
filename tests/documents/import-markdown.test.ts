@@ -5,16 +5,16 @@ import {
 } from "@/lib/documents/import-markdown";
 
 describe("deriveMarkdownImportTitle", () => {
-  it("uses file name before frontmatter title and headings", () => {
+  it("uses the file name before string frontmatter titles and headings", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: "README.md",
-        contentMarkdown: "---\ntitle: Project Overview\n---\n# Internal Handbook\nBody",
+        fileName: "File System Title.md",
+        contentMarkdown: "---\ntitle: Document Knowledge Model\n---\n# Heading Title\nBody",
       }),
-    ).toBe("README");
+    ).toBe("File System Title");
   });
 
-  it("uses frontmatter title when the file name cannot produce a title", () => {
+  it("falls back to the string frontmatter title when the file name has no title candidate", () => {
     expect(
       deriveMarkdownImportTitle({
         fileName: ".md",
@@ -23,10 +23,10 @@ describe("deriveMarkdownImportTitle", () => {
     ).toBe("Document Knowledge Model");
   });
 
-  it("uses the first ATX h1 heading when file name and frontmatter title are missing", () => {
+  it("falls back to the first ATX h1 heading when file name and frontmatter title are missing", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: ".markdown",
+        fileName: ".md",
         contentMarkdown: "Intro\n\n# Imported Workflow\n\n## Details",
       }),
     ).toBe("Imported Workflow");
@@ -44,7 +44,7 @@ describe("deriveMarkdownImportTitle", () => {
   it("skips fenced code blocks when finding the first ATX h1 heading", () => {
     expect(
       deriveMarkdownImportTitle({
-        fileName: ".markdown",
+        fileName: ".md",
         contentMarkdown: "```sh\n# install\n```\n\n# Real Heading\nBody",
       }),
     ).toBe("Real Heading");
