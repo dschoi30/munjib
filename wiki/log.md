@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 237
+source_count: 254
 tags:
   - log
   - munjib
@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T16:58:00+09:00 - implementation
+
+- Result: Implemented Issue #119 archived document retention settings and purge command.
+- Coverage: Added DB-backed workspace retention policy with 30-day default, settings-panel Retention section, server action validation/error return, actor-membership-scoped retention updates, archived document purge service, incoming-link broken marking plus current affected-source markdown re-read/re-reconciliation around hard delete, CLI dry-run/delete modes, scoped workspace purge, duplicate workspace slug safety guards, and explicit follow-up boundaries for archived folders, attachment storage file cleanup, and production scheduling.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #119, `prisma/schema.prisma`, `lib/workspaces/retention-policy.ts`, `lib/workspaces/retention-service.ts`, `components/workspace-settings-panel.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/documents/purge-archived.ts`, `lib/documents/purge-archived-cli.ts`, `scripts/documents/purge-archived.ts`, `package.json`, `tests/workspaces/retention-policy.test.ts`, `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspaces/retention-policy.test.ts tests/workspaces/retention-service.test.ts tests/documents/purge-archived.test.ts tests/documents/purge-archived-cli.test.ts tests/workspace-actions.test.ts tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-20T14:18:17+0900 - issue-116 workspace AI no-capture regression coverage
 
 - Result: Issue #116 최종 review follow-up으로 Workspace AI route tests에 provider-unavailable Sentry event를 기록하지 않아야 하는 exclusion branches를 더 명시했다.
@@ -26,6 +34,14 @@ links:
 - Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[log|Wiki Log]].
 - Source evidence: `tests/rag/workspace-chat-route.test.ts`.
 - Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`.
+
+## 2026-06-20T13:35:00+09:00 - design
+
+- Result: Issue #119 archived document retention purge settings design was recorded before implementation.
+- Coverage: Workspace-level DB-backed retention policy presets (`Never`, `7 days`, `30 days`, `90 days`) with `30 days` default, settings-panel `Retention` section, CLI/tools purge execution, archived-document-only hard delete, and follow-up boundaries for archived folders and attachment storage files.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[Next.js Prisma Monolith]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #119, `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`.
+- Verification: pending implementation plan.
 
 ## 2026-06-20T12:55:02+0900 - issue-116 handled AI 503 Sentry capture implementation
 

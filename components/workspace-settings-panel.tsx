@@ -10,8 +10,13 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Bot, FileText, Upload, X } from "lucide-react";
+import { Bot, Clock3, FileText, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  ARCHIVED_DOCUMENT_RETENTION_POLICIES,
+  archivedDocumentRetentionLabel,
+  type ArchivedDocumentRetentionPolicyValue,
+} from "@/lib/workspaces/retention-policy";
 import {
   type ChatModelSetting,
   type ClientRagChatProvider,
@@ -38,6 +43,11 @@ export type MarkdownImportActionResult = {
   failed: Array<{ fileName: string; error: string }>;
 };
 
+export type RetentionPolicyActionResult = {
+  archivedDocumentRetentionPolicy?: ArchivedDocumentRetentionPolicyValue;
+  error?: string;
+};
+
 type ImportFileStatus = "Ready" | "Queued" | "Importing" | "Imported" | "Failed";
 
 type SelectedImportFile = {
@@ -58,7 +68,7 @@ type ImportRun = {
   currentFileName: string | null;
 };
 
-type SettingsSection = "import" | "ai";
+type SettingsSection = "import" | "ai" | "retention";
 
 const INVALID_MODEL_ID_MESSAGE = "Enter a valid model id.";
 const INCOMPATIBLE_MODEL_PROVIDER_MESSAGE =
@@ -70,6 +80,8 @@ export function WorkspaceSettingsPanel({
   defaultChatProvider,
   folders,
   importMarkdownAction,
+  archivedDocumentRetentionPolicy,
+  updateRetentionPolicyAction,
   onClose,
   workspaceSlug,
 }: {
@@ -78,6 +90,8 @@ export function WorkspaceSettingsPanel({
   defaultChatProvider: ClientRagChatProvider;
   folders: WorkspaceSettingsFolder[];
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
+  archivedDocumentRetentionPolicy: ArchivedDocumentRetentionPolicyValue;
+  updateRetentionPolicyAction: (formData: FormData) => Promise<RetentionPolicyActionResult>;
   onClose: () => void;
   workspaceSlug: string;
 }) {
@@ -94,9 +108,13 @@ export function WorkspaceSettingsPanel({
   const [modelStatus, setModelStatus] = useState<string | null>(null);
   const [saveVersion, setSaveVersion] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
+  const [selectedRetentionPolicy, setSelectedRetentionPolicy] =
+    useState<ArchivedDocumentRetentionPolicyValue>(archivedDocumentRetentionPolicy);
+  const [retentionStatus, setRetentionStatus] = useState<string | null>(null);
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
+  const [isRetentionPending, startRetentionTransition] = useTransition();
   const storedChatModel = useMemo(
     () => readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
     [defaultChatProvider, saveVersion, workspaceSlug],
@@ -305,6 +323,27 @@ export function WorkspaceSettingsPanel({
     selectedFiles,
   ]);
 
+  const handleSaveRetentionPolicy = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canWrite || isRetentionPending) return;
+
+    const formData = new FormData(event.currentTarget);
+    startRetentionTransition(async () => {
+      const result = await updateRetentionPolicyAction(formData);
+      if (result.error || !result.archivedDocumentRetentionPolicy) {
+        setRetentionStatus("Choose a valid retention period.");
+        return;
+      }
+
+      setSelectedRetentionPolicy(result.archivedDocumentRetentionPolicy);
+      setRetentionStatus(
+        `Saved retention: ${archivedDocumentRetentionLabel(
+          result.archivedDocumentRetentionPolicy,
+        )}`,
+      );
+    });
+  }, [canWrite, isRetentionPending, updateRetentionPolicyAction]);
+
   return (
     <div
       data-testid="workspace-settings-backdrop"
@@ -343,6 +382,16 @@ export function WorkspaceSettingsPanel({
             >
               <Bot className="h-4 w-4" aria-hidden="true" />
               AI
+            </Button>
+            <Button
+              type="button"
+              aria-label="Retention"
+              aria-pressed={activeSection === "retention"}
+              onClick={() => setActiveSection("retention")}
+              className={settingsNavButtonClassName(activeSection === "retention")}
+            >
+              <Clock3 className="h-4 w-4" aria-hidden="true" />
+              Retention
             </Button>
           </nav>
         </aside>
@@ -464,7 +513,7 @@ export function WorkspaceSettingsPanel({
                 </form>
               ) : null}
             </>
-          ) : (
+          ) : activeSection === "ai" ? (
             <section aria-label="AI model settings" className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
@@ -612,6 +661,76 @@ export function WorkspaceSettingsPanel({
                   </p>
                 ) : null}
               </div>
+            </section>
+          ) : (
+            <section aria-label="Document retention settings" className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">Workspace</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">
+                    Document retention
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Permanently delete documents after they have been in trash.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  aria-label="Close settings"
+                  onClick={() => {
+                    if (!isImportActive) onClose();
+                  }}
+                  disabled={isImportActive}
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <form onSubmit={handleSaveRetentionPolicy} className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="archivedDocumentRetentionPolicy"
+                    className="text-sm font-semibold text-ink"
+                  >
+                    Deleted document retention
+                  </label>
+                  <select
+                    id="archivedDocumentRetentionPolicy"
+                    name="archivedDocumentRetentionPolicy"
+                    aria-label="Deleted document retention"
+                    value={selectedRetentionPolicy}
+                    onChange={(event) =>
+                      setSelectedRetentionPolicy(
+                        event.target.value as ArchivedDocumentRetentionPolicyValue,
+                      )
+                    }
+                    disabled={!canWrite || isRetentionPending}
+                    className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {ARCHIVED_DOCUMENT_RETENTION_POLICIES.map((policy) => (
+                      <option key={policy.value} value={policy.value}>
+                        {policy.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    type="submit"
+                    disabled={!canWrite || isRetentionPending}
+                    className="h-10"
+                  >
+                    Save retention
+                  </Button>
+                  {retentionStatus ? (
+                    <p role="status" className="text-sm font-medium text-slate-700">
+                      {retentionStatus}
+                    </p>
+                  ) : null}
+                </div>
+              </form>
             </section>
           )}
         </div>

@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 80
+source_count: 84
 tags:
   - munjib
   - workflow
@@ -127,6 +127,8 @@ Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachme
 `archiveDocument()`는 문서 status를 `ARCHIVED`로 바꾸고 `archivedAt`을 채운다. 현재 workspace 문서 목록은 active 문서만 보여준다. `archiveDocumentAction()`은 workspace path를 revalidate하고 archived document id를 반환한다.
 
 Sidebar row-level document trash는 `archiveDocumentAction()`의 반환값을 받아 client side에서 처리한다. 현재 열려 있는 document를 삭제한 경우에만 workspace root로 이동하고, 다른 row를 삭제한 경우에는 현재 editor context를 유지한 채 refresh한다.
+
+Issue #119 adds a `Retention` section to workspace settings. Workspace writers can save `Never`, `7 days`, `30 days`, or `90 days`; the default policy is `30 days`. The settings update resolves `workspaceSlug` only across workspaces where the actor is a member, so another organization's same slug cannot block the update. Saving this setting does not delete documents during the request. Hard delete is performed only by the CLI/tools purge command against archived documents whose `archivedAt` is older than the workspace policy cutoff. Before deleting expired documents, the purge marks incoming `DocumentLink` rows as `targetDocumentId=null`, `isBroken=true`, and `isAmbiguous=false`; after delete it re-reads affected active source markdown and re-reconciles those source documents so an existing active replacement can resolve immediately, while missing replacements remain normal broken links.
 
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
@@ -256,3 +258,5 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`
 - Issue #25 final review blocker fix
+- GitHub issue #119
+- `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`

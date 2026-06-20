@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-06-17
-source_count: 23
+updated: 2026-06-20
+source_count: 33
 tags:
   - munjib
   - data-model
@@ -55,6 +55,7 @@ erDiagram
     String name
     String slug
     String visibility
+    ArchivedDocumentRetentionPolicy archivedDocumentRetentionPolicy
     DateTime createdAt
     DateTime updatedAt
   }
@@ -256,10 +257,12 @@ erDiagram
 - `User`: 로그인 사용자. 조직 membership, workspace membership, 생성/수정 문서, 버전, 감사 로그와 연결된다.
 - `Organization`: 여러 workspace를 포함하는 상위 tenant 단위다.
 - `OrganizationMember`: 사용자를 조직에 연결하고 `OWNER`, `ADMIN`, `MEMBER` role을 부여한다.
-- `Workspace`: 조직 아래 문서 집합이다. `slug`는 조직 안에서 unique하다.
+- `Workspace`: 조직 아래 문서 집합이다. `slug`는 조직 안에서 unique하고, `archivedDocumentRetentionPolicy`로 soft-deleted 문서의 hard-delete retention policy를 저장한다.
 - `WorkspaceMember`: 사용자를 workspace에 연결하고 `OWNER`, `ADMIN`, `EDITOR`, `VIEWER` role을 부여한다.
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
+
+Issue #119 adds `Workspace.archivedDocumentRetentionPolicy` as a workspace-wide archived document retention policy. Values are `NEVER`, `DAYS_7`, `DAYS_30`, and `DAYS_90`, with `DAYS_30` as the default for new and existing workspaces. The policy is DB-backed rather than browser-local and is used by the archived document purge CLI to calculate each workspace's `archivedAt` cutoff. When purge hard-deletes archived documents, incoming `DocumentLink` rows are first kept as broken unresolved edges instead of silent `targetDocumentId=null` non-broken links, then affected active source documents are reconciled so a matching active replacement can become the new target.
 
 ## 폴더, 문서, 버전
 
@@ -358,3 +361,5 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `tests/knowledge-graph/model.test.ts`
 - GitHub issue #34
 - GitHub issue #73
+- GitHub issue #119
+- `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`

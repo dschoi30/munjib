@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 92
+source_count: 103
 tags:
   - munjib
   - source
@@ -76,6 +76,8 @@ Issue #20은 `New folder`가 빈 document를 만들던 동작을 실제 `Folder`
 
 Issue #92 implements the archive side of the Issue #20 recursive archive/restore follow-up. Sidebar folder `Move to trash` includes descendant folder/document counts in the confirmation and sends `cascade=true` to the server action only after user acceptance. Document counts use all active documents in the folder subtree, including explicitly permissioned documents that are not readable to the current writer but will be archived by the service. The server service recalculates the active descendant subtree under a transaction-scoped workspace folder-tree advisory lock and performs a soft-delete archive transaction. Folder/document creation, moves, renames, and folder archive take the same workspace tree lock before parent/slug/path validation so concurrent child mutations wait for cascade archive and re-check active folder state. Recursive restore and hard delete remain outside the current implementation.
 
+Issue #119 implements the soft-deleted document hard-delete lifecycle as a workspace settings policy plus an operational CLI. Workspace-level retention policy is one of `Never`, `7 days`, `30 days`, or `90 days`, with `30 days` as the default. The settings panel `Retention` section saves the DB-backed policy, and `pnpm run documents:purge-archived` executes the hard-delete pass by `archivedAt` cutoff. The first slice deletes archived documents only; archived folder hard delete, attachment storage file cleanup, and scheduled production cadence remain follow-ups. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
+
 Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위해 구현된 편집 구조 변경이다. 구현 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장/복원, 기존 split mode 제거다. Edit mode는 CodeMirror folded ranges를 heading body line range와 matching해 preview와 같은 raw heading key를 저장한다. Preview rendering은 heading folding을 위해 문서를 chunk로 나누더라도 문서 전체의 reference link와 continuation line을 포함한 footnote/reference definition block을 각 chunk에 공유해 whole-document Markdown reference 해석을 보존한다.
 
 Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigation을 구현했다. 구현 범위는 상단 문서 탭, 탭 하단 back/forward toolbar, 현재 document/folder path 표시다. 이 구현은 DB schema나 markdown payload를 바꾸지 않고, 기존 server-selected single document editor와 URL query routing을 유지한다. 열린 탭 목록은 workspace-scoped browser `localStorage`에 저장하는 UI state이며, 일반 문서 선택은 현재 탭을 교체하고 tab strip `+` button 또는 sidebar Open in new tab menu만 새 탭을 만든다. Tab strip은 `+` button을 마지막 tab에 붙이고, tab이 row 폭을 채우면 각 tab width를 함께 줄인다. Forward navigation은 대상 document가 있고 해당 document가 readable할 때만 활성화한다. 여러 editor instance와 unsaved buffer 보존은 후속 범위로 둔다.
@@ -141,6 +143,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - `app/workspaces/[workspaceSlug]/page.tsx`: workspace document UI composition.
 - `components/document-editor.tsx`: editor modes, properties 영역, link autocomplete, attachment/comment controls.
 - `components/workspace-settings-panel.tsx`: workspace settings dialog that includes Markdown import and AI chat model override controls.
+- `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`: Issue #119 retention settings and archived document purge design.
 - `components/document-editor/ai-assistant-panel.tsx`: title-row assistant panel that posts trimmed questions plus optional browser model override and renders answer/citations/error state.
 - `components/workspace-chatbot.tsx`: fixed bottom-right workspace AI launcher and compact chat panel with thread loading, message sending, stored chat model override, reset, Thinking indicator, citations, and stale response guards.
 - `lib/markdown/folding.ts`: heading hierarchy fold tree와 stored fold key parsing.
