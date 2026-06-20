@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib production Docker 로그 확인과 Issue #89 Sentry SaaS error/tracing 관측성 흐름.
 created: 2026-06-03
-updated: 2026-06-13
+updated: 2026-06-20
 source_count: 25
 tags:
   - munjib
@@ -61,12 +61,15 @@ Sentry SaaS 첫 slice의 목표 범위:
 - Source map upload는 첫 slice에서 제외하고, future CI/deployment step에서 `SENTRY_AUTH_TOKEN`을 build-time secret으로 다룰 때 추가한다.
 - Server/Edge SDK init은 `sendDefaultPii: false`에 더해 Sentry `dataCollection`에서 user info, cookies, request/response headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 명시적으로 끈다.
 - Browser/Server/Edge SDK init은 shared scrubber를 `beforeSend`, `beforeSendTransaction`, `beforeSendSpan`, `beforeBreadcrumb`에 연결해 Sentry event의 request URL query/host, `query_string`, request body data, cookies, request headers, user IP, span URL/query/target/path/description/name fields, span request/response body/header/IP/host/user-agent attributes, breadcrumb URL/query/host fields를 제거한다. Browser navigation breadcrumb의 `from`/`to` query도 제거하고, console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 드롭한다. 이 scrubber는 Sentry SDK의 `dataCollection.queryParams: false`만으로 `event.request.url` query string, browser fetch/XHR span `url`, sampled trace span URL/body/header/IP/host fields, browser `location.href`/breadcrumb 계열 값이 보장 제거되지 않는 privacy gap을 막는다.
+- handled AI provider/runtime failures that are intentionally returned as `AI_UNAVAILABLE` 503 responses or post-start Workspace AI NDJSON error events.
 
 `docker-compose.yml`의 `web` service는 runtime environment와 build args를 모두 가진다. `tools` service는 background maintenance command observability가 필요해질 때 별도 task에서 다루며, 현재 Sentry env를 받지 않는다.
 
 ## Failure modes
 
 Sentry가 붙어도 container가 Sentry 초기화 전에 죽는 startup failure, 잘못된 `NEXTAUTH_URL`, DB 접속 실패, PostgreSQL 자체 오류는 Docker 로그가 1차 근거다.
+
+Handled AI 503 responses are no longer expected to rely on uncaught App Router error capture. Issue #116 routes those failures through an explicit sanitized Sentry event. Docker logs remain the place to inspect raw provider messages and startup/env/container failures.
 
 잘못된 trace sample rate는 app startup failure로 만들지 않고 tracing disabled 상태로 낮춘다. Source map upload token은 runtime container env에 넣지 않는다.
 
