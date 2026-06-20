@@ -5,6 +5,7 @@ import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 type ScopeMock = {
   setContext: ReturnType<typeof vi.fn>;
+  setFingerprint: ReturnType<typeof vi.fn>;
   setLevel: ReturnType<typeof vi.fn>;
   setTag: ReturnType<typeof vi.fn>;
 };
@@ -12,6 +13,7 @@ type ScopeMock = {
 const sentryMock = vi.hoisted(() => {
   const scope: ScopeMock = {
     setContext: vi.fn(),
+    setFingerprint: vi.fn(),
     setLevel: vi.fn(),
     setTag: vi.fn(),
   };
@@ -32,6 +34,7 @@ describe("captureHandledAiUnavailable", () => {
   beforeEach(() => {
     sentryMock.captureException.mockReset();
     sentryMock.scope.setContext.mockReset();
+    sentryMock.scope.setFingerprint.mockReset();
     sentryMock.scope.setLevel.mockReset();
     sentryMock.scope.setTag.mockReset();
     sentryMock.withScope.mockReset();
@@ -73,6 +76,11 @@ describe("captureHandledAiUnavailable", () => {
       surface: "ask_document",
       workspace_slug: "company-handbook",
     });
+    expect(sentryMock.scope.setFingerprint).toHaveBeenCalledWith([
+      "handled-ai-unavailable",
+      "ask_document",
+      RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+    ]);
 
     expect(sentryMock.captureException).toHaveBeenCalledTimes(1);
     const capturedError = sentryMock.captureException.mock.calls[0]?.[0];
@@ -98,6 +106,11 @@ describe("captureHandledAiUnavailable", () => {
       surface: "workspace_chat_prepare",
       workspace_slug: "company-handbook",
     });
+    expect(sentryMock.scope.setFingerprint).toHaveBeenCalledWith([
+      "handled-ai-unavailable",
+      "workspace_chat_prepare",
+      RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+    ]);
   });
 
   test("swallows Sentry SDK failures", () => {

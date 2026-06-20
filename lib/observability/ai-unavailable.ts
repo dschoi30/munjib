@@ -61,6 +61,7 @@ export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableIn
       }
 
       scope.setContext("ai_unavailable", context);
+      scope.setFingerprint(["handled-ai-unavailable", input.surface, input.ragErrorCode]);
 
       const error = new Error("Handled AI provider failure returned AI_UNAVAILABLE");
       error.name = "HandledAiUnavailableError";
