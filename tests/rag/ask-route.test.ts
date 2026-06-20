@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
@@ -11,6 +12,10 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/rag/ask", () => ({
   ASK_ERROR_CODES: { QUESTION_REQUIRED: "QUESTION_REQUIRED" },
   askDocumentQuestion: vi.fn(),
+}));
+
+vi.mock("@/lib/observability/ai-unavailable", () => ({
+  captureHandledAiUnavailable: vi.fn(),
 }));
 
 describe("RAG ask route", () => {
@@ -125,6 +130,19 @@ describe("RAG ask route", () => {
     expect(askDocumentQuestion).not.toHaveBeenCalled();
   });
 
+  it("does not capture invalid chat model input as an AI provider failure", async () => {
+    const response = await POST(jsonRequest({
+      question: "What is saved?",
+      chatModel: "bad model",
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
+    expect(response.status).toBe(400);
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+  });
+
   it("treats null chat model override as absent", async () => {
     await POST(jsonRequest({
       question: "What is saved?",
@@ -141,17 +159,29 @@ describe("RAG ask route", () => {
     });
   });
 
-  it("returns a generic unavailable response for RAG runtime failures", async () => {
-    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(
-      new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
-    );
+  it("captures and returns a generic unavailable response for RAG runtime failures", async () => {
+    const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(error);
 
-    const response = await POST(jsonRequest({ question: "What is saved?" }), {
+    const response = await POST(jsonRequest({
+      question: "What is saved?",
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    }), {
       params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
     });
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
+    expect(captureHandledAiUnavailable).toHaveBeenCalledWith({
+      error,
+      surface: "ask_document",
+      workspaceSlug: "company-handbook",
+      status: 503,
+      ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
   });
 });
 
