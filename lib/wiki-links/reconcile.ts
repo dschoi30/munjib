@@ -70,15 +70,32 @@ export async function repairResolvableBrokenLinksForTarget(
     targetDocumentId: string;
   },
 ) {
-  const target = await tx.document.findFirst({
+  await repairResolvableBrokenLinksForTargets(tx, {
+    workspaceId: input.workspaceId,
+    targetDocumentIds: [input.targetDocumentId],
+  });
+}
+
+export async function repairResolvableBrokenLinksForTargets(
+  tx: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    targetDocumentIds: string[];
+  },
+) {
+  const targetDocumentIds = [...new Set(input.targetDocumentIds)];
+  if (targetDocumentIds.length === 0) return;
+
+  const activeRepairTargets = await tx.document.findMany({
     where: {
-      id: input.targetDocumentId,
+      id: { in: targetDocumentIds },
       workspaceId: input.workspaceId,
       status: "ACTIVE",
     },
     select: { id: true },
   });
-  if (!target) return;
+  const activeRepairTargetIds = new Set(activeRepairTargets.map((target) => target.id));
+  if (activeRepairTargetIds.size === 0) return;
 
   const brokenLinks = await tx.documentLink.findMany({
     where: {
@@ -102,30 +119,39 @@ export async function repairResolvableBrokenLinksForTarget(
     select: { id: true, path: true, title: true },
   });
 
-  const repairableLinkIds = brokenLinks
-    .filter((link) => {
-      if (!frontmatterStillReferencesTarget(link.sourceDocument.contentMarkdown, link.targetTitleRaw)) {
-        return false;
-      }
-      const resolved = resolveWikiLinkTarget(targets, link.targetTitleRaw);
-      return (
-        !resolved.isBroken &&
-        !resolved.isAmbiguous &&
-        resolved.targetDocumentId === input.targetDocumentId
-      );
-    })
-    .map((link) => link.id);
+  const repairableLinkIds = new Map<string, string[]>();
+  for (const link of brokenLinks) {
+    if (!frontmatterStillReferencesTarget(link.sourceDocument.contentMarkdown, link.targetTitleRaw)) {
+      continue;
+    }
 
-  if (repairableLinkIds.length === 0) return;
+    const resolved = resolveWikiLinkTarget(targets, link.targetTitleRaw);
+    if (
+      resolved.isBroken ||
+      resolved.isAmbiguous ||
+      resolved.targetDocumentId == null ||
+      !activeRepairTargetIds.has(resolved.targetDocumentId)
+    ) {
+      continue;
+    }
 
-  await tx.documentLink.updateMany({
-    where: { id: { in: repairableLinkIds } },
-    data: {
-      targetDocumentId: input.targetDocumentId,
-      isBroken: false,
-      isAmbiguous: false,
-    },
-  });
+    const linkIds = repairableLinkIds.get(resolved.targetDocumentId) ?? [];
+    linkIds.push(link.id);
+    repairableLinkIds.set(resolved.targetDocumentId, linkIds);
+  }
+
+  if (repairableLinkIds.size === 0) return;
+
+  for (const [targetDocumentId, linkIds] of repairableLinkIds) {
+    await tx.documentLink.updateMany({
+      where: { id: { in: linkIds } },
+      data: {
+        targetDocumentId,
+        isBroken: false,
+        isAmbiguous: false,
+      },
+    });
+  }
 }
 
 function frontmatterStillReferencesTarget(contentMarkdown: string, targetTitleRaw: string) {

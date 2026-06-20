@@ -36,7 +36,7 @@ YAML frontmatter `links:` 배열은 위 wiki-link syntax와 plain title string�
 - embed link: `![[...]]`
 - 빈 target
 - `[[#Heading]]`처럼 heading-only link
-- frontmatter `links:`의 외부 URL-like value
+- frontmatter `links:`의 external URL-like value와 Markdown external link value
 - 같은 source 문서 안에서 대소문자만 다른 중복 target
 
 Alias는 `|` 뒤의 문자열이 비어 있지 않을 때만 저장된다.

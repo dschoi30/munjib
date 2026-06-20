@@ -12,7 +12,7 @@ import type {
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { slugifyTitle } from "@/lib/text/slug";
-import { repairResolvableBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
+import { repairResolvableBrokenLinksForTargets } from "@/lib/wiki-links/reconcile";
 
 async function getWorkspaceForWrite(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -131,12 +131,10 @@ async function repairBrokenLinksForDocuments(
     documentIds: string[];
   },
 ) {
-  for (const documentId of input.documentIds) {
-    await repairResolvableBrokenLinksForTarget(tx, {
-      workspaceId: input.workspaceId,
-      targetDocumentId: documentId,
-    });
-  }
+  await repairResolvableBrokenLinksForTargets(tx, {
+    workspaceId: input.workspaceId,
+    targetDocumentIds: input.documentIds,
+  });
 }
 
 async function isDescendant(
