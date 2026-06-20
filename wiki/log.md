@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-19
-source_count: 230
+updated: 2026-06-20
+source_count: 231
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-20T12:35:38+0900 - issue-116 handled AI 503 Sentry capture design
+
+- Result: Issue #116 설계에서 OpenRouter/OpenAI provider 전환 중 발생하는 handled `AI_UNAVAILABLE` 503을 public response는 유지하고 Sentry에는 privacy-safe event로 명시 capture하는 방향을 정했다.
+- Coverage: Ask AI route, workspace chat preparation 503, workspace chat post-start NDJSON `AI_UNAVAILABLE` error event를 모두 관측 대상으로 잡고, question/prompt/context/answer/document body/API key/base URL/provider response body는 Sentry event에 넣지 않는 privacy boundary를 명시했다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #116, `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/answer-chain.ts`.
+- Verification: spec self-review; `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged` planned before commit.
 
 ## 2026-06-20T12:03:34+0900 - markdown import filename title implementation
 
