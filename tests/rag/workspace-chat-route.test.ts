@@ -3,6 +3,7 @@ import { GET as GET_THREAD } from "@/app/api/workspaces/[workspaceSlug]/assistan
 import { POST as POST_MESSAGE } from "@/app/api/workspaces/[workspaceSlug]/assistant/messages/route";
 import { POST as POST_RESET } from "@/app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   getOrCreateWorkspaceChatThread,
@@ -15,6 +16,10 @@ import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 vi.mock("@/lib/auth/session", () => ({
   requireCurrentUser: vi.fn(),
+}));
+
+vi.mock("@/lib/observability/ai-unavailable", () => ({
+  captureHandledAiUnavailable: vi.fn(),
 }));
 
 vi.mock("@/lib/rag/workspace-chat", () => ({
@@ -79,6 +84,8 @@ const citations = [
 const preparedWorkspaceChatMessage = {
   threadId: "thread-1",
   message: "What changed?",
+  chatProviderName: "openai-compatible",
+  chatModelName: "google/gemma-4-31b-it:free",
 } as unknown as Awaited<ReturnType<typeof prepareWorkspaceChatMessageStream>>;
 
 describe("workspace chat routes", () => {
@@ -210,11 +217,12 @@ describe("workspace chat routes", () => {
     expect(preparationInput?.signal?.aborted).toBe(true);
   });
 
-  it("streams an error event when sending fails after a token", async () => {
+  it("captures and streams an error event when sending fails after a token", async () => {
+    const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
     vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
       async (_prepared, { onToken }) => {
         await onToken("Partial answer");
-        throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+        throw error;
       },
     );
 
@@ -230,6 +238,38 @@ describe("workspace chat routes", () => {
     ]);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/x-ndjson");
+    expect(captureHandledAiUnavailable).toHaveBeenCalledWith({
+      error,
+      surface: "workspace_chat_stream",
+      workspaceSlug: "company-handbook",
+      streamStarted: true,
+      ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+  });
+
+  it("does not capture an aborted stream failure as an AI provider failure", async () => {
+    const abortController = new AbortController();
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
+      async (_prepared, { onToken }) => {
+        await onToken("Partial answer");
+        abortController.abort();
+        throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+      },
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+
+    await expect(readNdjson(response)).resolves.toEqual([
+      { type: "start" },
+      { type: "token", content: "Partial answer" },
+    ]);
+    expect(response.status).toBe(200);
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("streams an archived thread error when sending fails after a token", async () => {
@@ -251,6 +291,7 @@ describe("workspace chat routes", () => {
       { type: "error", error: WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED },
     ]);
     expect(response.status).toBe(200);
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("disables response transformation for streaming messages", async () => {
@@ -309,6 +350,7 @@ describe("workspace chat routes", () => {
     expect(response.status).toBe(400);
     expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("rejects provider-only chat overrides before calling the streaming service", async () => {
@@ -324,6 +366,7 @@ describe("workspace chat routes", () => {
     expect(response.status).toBe(400);
     expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("rejects a blank message before calling the streaming service", async () => {
@@ -403,21 +446,34 @@ describe("workspace chat routes", () => {
       error: SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND,
     });
     expect(response.status).toBe(404);
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
-  it("returns a generic unavailable response when preparation fails before streaming", async () => {
-    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(
-      new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
-    );
+  it("captures and returns a generic unavailable response when preparation fails before streaming", async () => {
+    const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(error);
 
     const response = await POST_MESSAGE(
-      jsonRequest({ message: "What changed?" }),
+      jsonRequest({
+        message: "What changed?",
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      }),
       routeContext(),
     );
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(captureHandledAiUnavailable).toHaveBeenCalledWith({
+      error,
+      surface: "workspace_chat_prepare",
+      workspaceSlug: "company-handbook",
+      status: 503,
+      ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
   });
 
   it("uses the shared unavailable response for reset RAG runtime failures", async () => {
@@ -431,6 +487,7 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("maps archived thread races before streaming to a stable conflict response", async () => {
@@ -448,6 +505,7 @@ describe("workspace chat routes", () => {
     });
     expect(response.status).toBe(409);
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 });
 

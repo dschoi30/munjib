@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 244
+source_count: 249
 tags:
   - log
   - munjib
@@ -27,6 +27,14 @@ links:
 - Source evidence: GitHub issue #119, `prisma/schema.prisma`, `lib/workspaces/retention-policy.ts`, `lib/workspaces/retention-service.ts`, `components/workspace-settings-panel.tsx`, `components/document-list.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/documents/purge-archived.ts`, `lib/documents/purge-archived-cli.ts`, `scripts/documents/purge-archived.ts`, `package.json`, `tests/workspaces/retention-policy.test.ts`, `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts`, `tests/workspace-actions.test.ts`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/workspaces/retention-policy.test.ts tests/workspaces/retention-service.test.ts tests/documents/purge-archived.test.ts tests/documents/purge-archived-cli.test.ts tests/workspace-actions.test.ts tests/components/document-list.test.tsx`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
 
+## 2026-06-20T14:18:17+0900 - issue-116 workspace AI no-capture regression coverage
+
+- Result: Issue #116 최종 review follow-up으로 Workspace AI route tests에 provider-unavailable Sentry event를 기록하지 않아야 하는 exclusion branches를 더 명시했다.
+- Coverage: invalid chat model override, provider-only override, workspace-not-found, reset/shared error-response RAG failure, pre-stream archived race, aborted post-start stream failure가 `captureHandledAiUnavailable()`을 호출하지 않는지 검증한다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/rag/workspace-chat-route.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/workspace-chat-route.test.ts --reporter=dot`.
+
 ## 2026-06-20T13:35:00+09:00 - design
 
 - Result: Issue #119 archived document retention purge settings design was recorded before implementation.
@@ -35,6 +43,14 @@ links:
 - Source evidence: GitHub issue #119, `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`.
 - Verification: pending implementation plan.
 
+## 2026-06-20T12:55:02+0900 - issue-116 handled AI 503 Sentry capture implementation
+
+- Result: Issue #116 구현으로 handled AI provider/runtime failure가 public `AI_UNAVAILABLE` contract를 유지하면서 Sentry에 sanitized event로 남는다.
+- Coverage: `captureHandledAiUnavailable()`은 Ask AI pre-response 503, Workspace AI preparation 503, Workspace AI post-start NDJSON `AI_UNAVAILABLE` stream error를 surface별로 capture하고, validation/auth/archived-thread/client-abort는 provider unavailable event로 기록하지 않는다. Workspace AI route tests cover those no-capture paths, including aborted post-start streams. Captured metadata는 workspace slug, stable RAG error code, provider/model, status, stream-started flag로 제한하고, Sentry fingerprint는 handled AI unavailable marker, surface, stable RAG error code로 설정한다. Question, prompt, saved markdown, retrieved chunk text, answer, API key, base URL, headers, cookies, raw provider response body, original provider error object/cause는 제외한다.
+- Pages: [[RAG Process Workflow]], [[Production Observability Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #116, `lib/observability/ai-unavailable.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; `git diff --cached --check`.
+
 ## 2026-06-20T12:45:10+0900 - graph unresolved target visibility implementation
 
 - Result: Default graph view now hides broken/ambiguous unresolved wiki target placeholders so non-document values are not rendered as graph nodes.
@@ -42,6 +58,14 @@ links:
 - Pages: [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: user-reported default graph issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
 - Verification: `pnpm exec vitest tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx --run`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
+## 2026-06-20T12:35:38+0900 - issue-116 handled AI 503 Sentry capture design
+
+- Result: Issue #116 설계에서 OpenRouter/OpenAI provider 전환 중 발생하는 handled `AI_UNAVAILABLE` 503을 public response는 유지하고 Sentry에는 privacy-safe event로 명시 capture하는 방향을 정했다.
+- Coverage: Ask AI route, workspace chat preparation 503, workspace chat post-start NDJSON `AI_UNAVAILABLE` error event를 모두 관측 대상으로 잡고, question/prompt/context/answer/document body/API key/base URL/provider response body는 Sentry event에 넣지 않는 privacy boundary를 명시했다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #116, `docs/superpowers/specs/2026-06-20-ai-provider-503-sentry-capture-design.md`, `docs/superpowers/plans/2026-06-20-ai-provider-503-sentry-capture.md`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/answer-chain.ts`.
+- Verification: spec and implementation plan self-review; `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged`.
 
 ## 2026-06-20T12:28:27+0900 - graph unresolved target visibility design
 
