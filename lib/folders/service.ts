@@ -12,6 +12,7 @@ import type {
 import { assertCanReadWorkspace, assertCanWriteWorkspace } from "@/lib/permissions/workspace";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { slugifyTitle } from "@/lib/text/slug";
+import { repairResolvableBrokenLinksForTarget } from "@/lib/wiki-links/reconcile";
 
 async function getWorkspaceForWrite(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
@@ -94,6 +95,7 @@ async function getParentFolderPath(
 }
 
 async function updateDescendantPaths(tx: Prisma.TransactionClient, folderId: string) {
+  const updatedDocumentIds: string[] = [];
   const folder = await tx.folder.findUniqueOrThrow({
     where: { id: folderId },
     include: {
@@ -107,6 +109,7 @@ async function updateDescendantPaths(tx: Prisma.TransactionClient, folderId: str
       where: { id: document.id },
       data: { path: buildChildPath(folder.path, document.slug) },
     });
+    updatedDocumentIds.push(document.id);
   }
 
   for (const child of folder.childFolders) {
@@ -115,7 +118,24 @@ async function updateDescendantPaths(tx: Prisma.TransactionClient, folderId: str
       where: { id: child.id },
       data: { path: childPath },
     });
-    await updateDescendantPaths(tx, child.id);
+    updatedDocumentIds.push(...(await updateDescendantPaths(tx, child.id)));
+  }
+
+  return updatedDocumentIds;
+}
+
+async function repairBrokenLinksForDocuments(
+  tx: Prisma.TransactionClient,
+  input: {
+    workspaceId: string;
+    documentIds: string[];
+  },
+) {
+  for (const documentId of input.documentIds) {
+    await repairResolvableBrokenLinksForTarget(tx, {
+      workspaceId: input.workspaceId,
+      targetDocumentId: documentId,
+    });
   }
 }
 
@@ -222,7 +242,11 @@ export async function renameFolder(input: RenameFolderInput) {
       },
     });
 
-    await updateDescendantPaths(tx, updated.id);
+    const updatedDocumentIds = await updateDescendantPaths(tx, updated.id);
+    await repairBrokenLinksForDocuments(tx, {
+      workspaceId: folder.workspaceId,
+      documentIds: updatedDocumentIds,
+    });
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
       actorId: input.actorId,
@@ -267,7 +291,11 @@ export async function moveFolder(input: MoveFolderInput) {
       },
     });
 
-    await updateDescendantPaths(tx, updated.id);
+    const updatedDocumentIds = await updateDescendantPaths(tx, updated.id);
+    await repairBrokenLinksForDocuments(tx, {
+      workspaceId: folder.workspaceId,
+      documentIds: updatedDocumentIds,
+    });
     await writeAuditLog(tx, {
       organizationId: workspace.organizationId,
       actorId: input.actorId,
