@@ -156,6 +156,68 @@ See the archived runbook.`,
     });
   });
 
+  it("re-resolves incoming links when an active replacement exists", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const archivedTarget = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Expired Runbook",
+      contentMarkdown: "# Expired Runbook",
+    });
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Active Source",
+      contentMarkdown: `---
+links:
+  - "[[Expired Runbook]]"
+---
+
+See the runbook.`,
+    });
+    await prisma.document.update({
+      where: { id: archivedTarget.id },
+      data: {
+        status: "ARCHIVED",
+        archivedAt: new Date("2026-05-01T00:00:00.000Z"),
+      },
+    });
+    const replacement = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Expired Runbook",
+      contentMarkdown: "# Replacement Runbook",
+    });
+
+    await expect(
+      prisma.documentLink.findFirstOrThrow({
+        where: { sourceDocumentId: source.id, targetTitleRaw: "Expired Runbook" },
+        select: { targetDocumentId: true, isBroken: true, isAmbiguous: true },
+      }),
+    ).resolves.toEqual({
+      targetDocumentId: archivedTarget.id,
+      isBroken: false,
+      isAmbiguous: false,
+    });
+
+    await purgeExpiredArchivedDocuments({
+      now: NOW,
+      workspaceSlug: fixture.workspace.slug,
+    });
+
+    await expect(prisma.document.findUnique({ where: { id: archivedTarget.id } })).resolves.toBeNull();
+    await expect(
+      prisma.documentLink.findFirstOrThrow({
+        where: { sourceDocumentId: source.id, targetTitleRaw: "Expired Runbook" },
+        select: { targetDocumentId: true, isBroken: true, isAmbiguous: true },
+      }),
+    ).resolves.toEqual({
+      targetDocumentId: replacement.id,
+      isBroken: false,
+      isAmbiguous: false,
+    });
+  });
+
   it("skips workspaces whose policy is NEVER", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const expired = await createArchivedDocument(fixture, "Expired Plan", "2026-05-01T00:00:00.000Z");
