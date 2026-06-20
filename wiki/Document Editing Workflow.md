@@ -128,7 +128,7 @@ Issue #52의 paste-only attachment service는 `uploadPastedDocumentImageAttachme
 
 Sidebar row-level document trash는 `archiveDocumentAction()`의 반환값을 받아 client side에서 처리한다. 현재 열려 있는 document를 삭제한 경우에만 workspace root로 이동하고, 다른 row를 삭제한 경우에는 현재 editor context를 유지한 채 refresh한다.
 
-Issue #119 설계는 이 soft-delete 이후의 hard-delete retention을 별도 lifecycle로 추가한다. Workspace settings dialog에 `Retention` section을 두고 `Never`, `7 days`, `30 days`, `90 days` preset을 DB-backed workspace policy로 저장하며 기본값은 `30 days`다. 실제 hard delete는 web request 중 실행하지 않고 CLI/tools command가 `status=ARCHIVED`와 `archivedAt <= cutoff`인 archived documents만 대상으로 수행한다. Archived folders와 attachment storage files hard delete는 후속 설계 범위다.
+Issue #119 adds a `Retention` section to workspace settings. Workspace writers can save `Never`, `7 days`, `30 days`, or `90 days`; the default policy is `30 days`. Saving this setting does not delete documents during the request. Hard delete is performed only by the CLI/tools purge command against archived documents whose `archivedAt` is older than the workspace policy cutoff.
 
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
