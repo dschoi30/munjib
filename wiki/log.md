@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-20T12:45:10+0900 - graph unresolved target visibility implementation
+
+- Result: Default graph view now hides broken/ambiguous unresolved wiki target placeholders so non-document values are not rendered as graph nodes.
+- Coverage: `filterKnowledgeGraph()` keeps wiki links only when both endpoints are actual document nodes, keeps tag edges only when `Tags` is enabled, and keeps isolated document nodes only when `Orphans` is enabled. `buildKnowledgeGraph()` remains the raw graph DTO builder and can still represent unresolved placeholder state for tests/model completeness.
+- Pages: [[Document Editing Workflow]], [[Wiki Links And Backlinks]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user-reported default graph issue, `lib/knowledge-graph/model.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx`, `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`.
+- Verification: `pnpm exec vitest tests/knowledge-graph/model.test.ts tests/components/knowledge-graph-view.test.tsx --run`, `pnpm exec tsc --noEmit --pretty false`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`.
+
 ## 2026-06-20T12:28:27+0900 - graph unresolved target visibility design
 
 - Result: 기본 graph view에서 실제 문서가 아닌 broken/ambiguous wiki target placeholder를 숨기는 후속 설계를 정리했다.
