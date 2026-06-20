@@ -14,6 +14,7 @@ import type {
 } from "@/components/document-navigation/types";
 import {
   type MarkdownImportActionResult,
+  type RetentionPolicyActionResult,
   WorkspaceSettingsPanel,
 } from "@/components/workspace-settings-panel";
 import { Button } from "@/components/ui/button";
@@ -24,6 +25,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
+import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 export type DocumentListItem = {
   id: string;
@@ -56,6 +58,8 @@ export function DocumentList({
   renameFolderAction,
   archiveFolderAction,
   archiveDocumentAction,
+  archivedDocumentRetentionPolicy,
+  updateRetentionPolicyAction,
   folderError,
   selectedFolderId,
   selectedDocumentId,
@@ -74,6 +78,8 @@ export function DocumentList({
   renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveDocumentAction: (formData: FormData) => Promise<{ documentId: string }>;
+  archivedDocumentRetentionPolicy: ArchivedDocumentRetentionPolicyValue;
+  updateRetentionPolicyAction: (formData: FormData) => Promise<RetentionPolicyActionResult>;
   folderError: string;
   selectedFolderId: string | null;
   selectedDocumentId: string | null;
@@ -275,6 +281,8 @@ export function DocumentList({
           workspaceSlug={workspaceSlug}
           folders={folders}
           importMarkdownAction={importMarkdownAction}
+          archivedDocumentRetentionPolicy={archivedDocumentRetentionPolicy}
+          updateRetentionPolicyAction={updateRetentionPolicyAction}
           defaultChatModel={defaultChatModel}
           defaultChatProvider={defaultChatProvider}
           onClose={() => setSettingsOpen(false)}

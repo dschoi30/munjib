@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
+import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 const toastMock = vi.hoisted(() => vi.fn());
@@ -72,6 +73,12 @@ const baseProps = {
   }),
   archiveDocumentAction: async (formData: FormData) => ({
     documentId: String(formData.get("documentId")),
+  }),
+  archivedDocumentRetentionPolicy: "DAYS_30" as ArchivedDocumentRetentionPolicyValue,
+  updateRetentionPolicyAction: async (formData: FormData) => ({
+    archivedDocumentRetentionPolicy: String(
+      formData.get("archivedDocumentRetentionPolicy"),
+    ) as ArchivedDocumentRetentionPolicyValue,
   }),
   folderError: "",
   selectedFolderId: null,
@@ -237,6 +244,77 @@ describe("DocumentList", () => {
     expect(screen.getByLabelText("AI provider")).toBeTruthy();
     expect(screen.queryByLabelText(/api key/i)).toBeNull();
     expect(screen.queryByLabelText(/base url/i)).toBeNull();
+  });
+
+  it("opens the Retention settings tab with 30 days selected by default", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+
+    expect(screen.getByRole("button", { name: "Retention" }).getAttribute("aria-pressed")).toBe(
+      "true",
+    );
+    expect(screen.getByRole("heading", { name: "Document retention" })).toBeTruthy();
+    expect(screen.getByLabelText("Deleted document retention")).toHaveProperty(
+      "value",
+      "DAYS_30",
+    );
+    expect(screen.getByRole("button", { name: "Save retention" })).toBeTruthy();
+  });
+
+  it("saves the selected retention policy through the settings action", async () => {
+    const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }));
+    renderList({ updateRetentionPolicyAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+    fireEvent.change(screen.getByLabelText("Deleted document retention"), {
+      target: { value: "DAYS_90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save retention" }));
+
+    await waitFor(() => {
+      expect(updateRetentionPolicyAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submitted = (updateRetentionPolicyAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submitted.get("archivedDocumentRetentionPolicy")).toBe("DAYS_90");
+    expect(screen.getByText("Saved retention: 90 days")).toBeTruthy();
+  });
+
+  it("disables retention saving for read-only users", () => {
+    renderList({ canWrite: false });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+
+    expect(screen.getByLabelText("Deleted document retention")).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Save retention" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("shows a validation status when retention saving returns an error", async () => {
+    renderList({
+      updateRetentionPolicyAction: async () => ({
+        error: "ARCHIVED_DOCUMENT_RETENTION_POLICY_INVALID",
+      }),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save retention" }));
+
+    expect(await screen.findByText("Choose a valid retention period.")).toBeTruthy();
   });
 
   it("hides OpenRouter presets for non OpenRouter providers while keeping custom input", () => {

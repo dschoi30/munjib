@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   restoreDocumentVersion: vi.fn(),
   revalidatePath: vi.fn(),
   updateDocument: vi.fn(),
+  updateWorkspaceArchivedDocumentRetentionPolicy: vi.fn(),
   uploadDocumentAttachment: vi.fn(),
   lookup: vi.fn(),
   httpRequest: vi.fn(),
@@ -73,6 +74,11 @@ vi.mock("@/lib/documents/service", () => ({
   createDocumentFromBrokenLink: mocks.createDocumentFromBrokenLink,
   restoreDocumentVersion: mocks.restoreDocumentVersion,
   updateDocument: mocks.updateDocument,
+}));
+
+vi.mock("@/lib/workspaces/retention-service", () => ({
+  updateWorkspaceArchivedDocumentRetentionPolicy:
+    mocks.updateWorkspaceArchivedDocumentRetentionPolicy,
 }));
 
 describe("workspace document actions", () => {
@@ -392,6 +398,59 @@ describe("workspace document actions", () => {
       folderId: "folder-engineering",
       error: SERVICE_ERROR_CODES.FOLDER_NOT_EMPTY,
     });
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("updateWorkspaceRetentionPolicyAction stores a valid policy", async () => {
+    mocks.updateWorkspaceArchivedDocumentRetentionPolicy.mockResolvedValue({
+      archivedDocumentRetentionPolicy: "DAYS_90",
+    });
+    const { updateWorkspaceRetentionPolicyAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("archivedDocumentRetentionPolicy", "DAYS_90");
+
+    const result = await updateWorkspaceRetentionPolicyAction("company-handbook", formData);
+
+    expect(mocks.updateWorkspaceArchivedDocumentRetentionPolicy).toHaveBeenCalledWith({
+      actorId: "user-1",
+      workspaceSlug: "company-handbook",
+      policy: "DAYS_90",
+    });
+    expect(result).toEqual({ archivedDocumentRetentionPolicy: "DAYS_90" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("updateWorkspaceRetentionPolicyAction rejects invalid policies", async () => {
+    const { updateWorkspaceRetentionPolicyAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("archivedDocumentRetentionPolicy", "DAYS_365");
+
+    const result = await updateWorkspaceRetentionPolicyAction("company-handbook", formData);
+
+    expect(result).toEqual({
+      error: SERVICE_ERROR_CODES.ARCHIVED_DOCUMENT_RETENTION_POLICY_INVALID,
+    });
+    expect(mocks.updateWorkspaceArchivedDocumentRetentionPolicy).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("updateWorkspaceRetentionPolicyAction returns service errors without revalidating", async () => {
+    mocks.updateWorkspaceArchivedDocumentRetentionPolicy.mockRejectedValue(
+      new Error("WORKSPACE_WRITE_FORBIDDEN"),
+    );
+    const { updateWorkspaceRetentionPolicyAction } = await import(
+      "@/app/workspaces/[workspaceSlug]/actions"
+    );
+    const formData = new FormData();
+    formData.set("archivedDocumentRetentionPolicy", "DAYS_90");
+
+    const result = await updateWorkspaceRetentionPolicyAction("company-handbook", formData);
+
+    expect(result).toEqual({ error: "WORKSPACE_WRITE_FORBIDDEN" });
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
   });
 

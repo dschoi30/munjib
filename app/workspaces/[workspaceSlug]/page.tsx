@@ -32,6 +32,7 @@ import {
   renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
+  updateWorkspaceRetentionPolicyAction,
   uploadDocumentAttachmentAction,
 } from "./actions";
 
@@ -258,6 +259,7 @@ export default async function WorkspacePage({
   const restoreVersionAction = restoreDocumentVersionAction.bind(null, workspaceSlug);
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
   const pasteImageAttachmentAction = pasteDocumentImageAttachmentAction.bind(null, workspaceSlug);
+  const updateRetentionPolicy = updateWorkspaceRetentionPolicyAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const defaultChatModel = getDefaultRagChatModel();
   const defaultChatProvider = getDefaultRagChatProvider();
@@ -302,6 +304,8 @@ export default async function WorkspacePage({
             renameFolderAction={renameFolder}
             archiveFolderAction={archiveFolder}
             archiveDocumentAction={archiveDocument}
+            archivedDocumentRetentionPolicy={workspace.archivedDocumentRetentionPolicy}
+            updateRetentionPolicyAction={updateRetentionPolicy}
             folderError={folderError ?? ""}
             selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null}
             selectedDocumentId={selectedDocument?.id ?? null}
