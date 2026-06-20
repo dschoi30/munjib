@@ -5,6 +5,7 @@ import {
   archivedDocumentRetentionCutoff,
   type ArchivedDocumentRetentionPolicyValue,
 } from "@/lib/workspaces/retention-policy";
+import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
 
 export type PurgeExpiredArchivedDocumentsInput = {
   now?: Date;
@@ -103,6 +104,27 @@ export async function purgeExpiredArchivedDocuments(
             return 0;
           }
 
+          const affectedSourceLinks = await tx.documentLink.findMany({
+            where: {
+              workspaceId: workspace.id,
+              targetDocumentId: { in: expiredDocumentIds },
+              sourceDocument: { status: DocumentStatus.ACTIVE },
+            },
+            select: {
+              sourceDocumentId: true,
+              sourceDocument: {
+                select: { contentMarkdown: true },
+              },
+            },
+          });
+          const affectedSources = new Map<string, string>();
+          for (const link of affectedSourceLinks) {
+            affectedSources.set(
+              link.sourceDocumentId,
+              link.sourceDocument.contentMarkdown,
+            );
+          }
+
           await tx.documentLink.updateMany({
             where: {
               workspaceId: workspace.id,
@@ -115,14 +137,21 @@ export async function purgeExpiredArchivedDocuments(
             },
           });
 
-          return (
+          const deletedCount = (
             await tx.document.deleteMany({
-              where: {
-                ...where,
-                id: { in: expiredDocumentIds },
-              },
+              where: { id: { in: expiredDocumentIds } },
             })
           ).count;
+
+          for (const [sourceDocumentId, contentMarkdown] of affectedSources) {
+            await reconcileDocumentLinks(tx, {
+              workspaceId: workspace.id,
+              sourceDocumentId,
+              contentMarkdown,
+            });
+          }
+
+          return deletedCount;
         });
 
     if (count === 0) {

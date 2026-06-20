@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
 updated: 2026-06-20
-source_count: 32
+source_count: 33
 tags:
   - munjib
   - data-model
@@ -262,7 +262,7 @@ erDiagram
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
-Issue #119 adds `Workspace.archivedDocumentRetentionPolicy` as a workspace-wide archived document retention policy. Values are `NEVER`, `DAYS_7`, `DAYS_30`, and `DAYS_90`, with `DAYS_30` as the default for new and existing workspaces. The policy is DB-backed rather than browser-local and is used by the archived document purge CLI to calculate each workspace's `archivedAt` cutoff. When purge hard-deletes archived documents, incoming `DocumentLink` rows are kept as broken unresolved edges instead of silent `targetDocumentId=null` non-broken links.
+Issue #119 adds `Workspace.archivedDocumentRetentionPolicy` as a workspace-wide archived document retention policy. Values are `NEVER`, `DAYS_7`, `DAYS_30`, and `DAYS_90`, with `DAYS_30` as the default for new and existing workspaces. The policy is DB-backed rather than browser-local and is used by the archived document purge CLI to calculate each workspace's `archivedAt` cutoff. When purge hard-deletes archived documents, incoming `DocumentLink` rows are first kept as broken unresolved edges instead of silent `targetDocumentId=null` non-broken links, then affected active source documents are reconciled so a matching active replacement can become the new target.
 
 ## 폴더, 문서, 버전
 
