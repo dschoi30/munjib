@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
+import { I18nProvider } from "@/components/i18n-provider";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
@@ -116,7 +117,11 @@ afterEach(() => {
 });
 
 function renderList(props: Partial<Parameters<typeof DocumentList>[0]> = {}) {
-  return render(<DocumentList {...baseProps} {...props} />);
+  return render(
+    <I18nProvider>
+      <DocumentList {...baseProps} {...props} />
+    </I18nProvider>,
+  );
 }
 
 function TagSearchRequester({ tag }: { tag: string }) {
@@ -263,6 +268,85 @@ describe("DocumentList", () => {
       "DAYS_30",
     );
     expect(screen.getByRole("button", { name: "Save retention" })).toBeTruthy();
+  });
+
+  describe("Language settings", () => {
+    it("opens the Language settings tab and highlights the current language", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+
+      expect(screen.getByRole("heading", { name: "Language" })).toBeTruthy();
+      expect(screen.getByText("Current language: English")).toBeTruthy();
+      expect(within(screen.getByRole("radio", { name: /English/ })).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
+    });
+
+    it("keeps the current language highlighted until Save", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+
+      expect(screen.getByText("Korean will apply after you save.")).toBeTruthy();
+      expect(within(screen.getByRole("radio", { name: /English/ })).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", false);
+
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("heading", { name: "언어" })).toBeTruthy();
+      expect(screen.getByText("현재 언어: 한국어")).toBeTruthy();
+      expect(window.localStorage.getItem("munjib:language")).toBe("ko");
+    });
+
+    it("discards a draft language on Cancel", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByText("Current language: English")).toBeTruthy();
+      expect(screen.queryByText("Korean will apply after you save.")).toBeNull();
+      expect(window.localStorage.getItem("munjib:language")).toBe("en");
+    });
+
+    it("keeps the UI alive with a localized status when language storage fails", async () => {
+      window.localStorage.setItem("munjib:language", "en");
+      const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+      vi.spyOn(window.localStorage, "setItem").mockImplementation((key, value) => {
+        if (key === "munjib:language") {
+          throw new Error("storage unavailable");
+        }
+        originalSetItem(key, value);
+      });
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("heading", { name: "언어" })).toBeTruthy();
+      expect(
+        await screen.findByText(
+          "이 탭의 언어는 변경되었지만 이 브라우저에 저장하지 못했습니다.",
+        ),
+      ).toBeTruthy();
+      expect(window.localStorage.getItem("munjib:language")).toBe("en");
+    });
   });
 
   it("saves the selected retention policy through the settings action", async () => {
@@ -881,7 +965,7 @@ describe("DocumentList", () => {
     });
 
     expect(screen.queryByRole("table", { name: "Markdown import files" })).toBeNull();
-    expect(screen.getByText("2 files selected")).toBeTruthy();
+    expect(screen.getByText("2 file(s) selected")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
 
