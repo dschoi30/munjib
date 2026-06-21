@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 254
+updated: 2026-06-21
+source_count: 255
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T11:55:11+0900 - design
+
+- Result: Issue #123 설계에서 신규 개발자가 프로젝트 구조를 직관적으로 이해하도록 `wiki/Project Structure Onboarding.md`를 첫 1시간 진입 지도형 wiki page로 추가하는 방향을 정했다.
+- Coverage: 문서는 first-hour path, repository responsibility map, runtime request-flow map, feature-to-files guide, data/knowledge source-of-truth summary, verification/wiki maintenance checklist를 포함하고 상세 설명은 기존 wiki page로 연결한다. 실제 onboarding page 생성은 spec review 후 implementation 단계에서 진행한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #123, `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`.
+- Verification: spec self-review; `pnpm wiki:sync-plan --staged`, `git diff --check --cached`.
 
 ## 2026-06-20T16:58:00+09:00 - implementation
 
