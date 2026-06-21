@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import React from "react";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as testingRender, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
+import { I18nProvider } from "@/components/i18n-provider";
 
 const toastError = vi.hoisted(() => vi.fn());
 
@@ -114,6 +115,14 @@ function renderEditor(markdown: string, props: Partial<Parameters<typeof Documen
       />
     </DocumentViewModeProvider>,
   );
+}
+
+function render(ui: React.ReactElement) {
+  const result = testingRender(<I18nProvider>{ui}</I18nProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(<I18nProvider>{nextUi}</I18nProvider>),
+  };
 }
 
 function TagSearchReceiver() {
@@ -323,14 +332,19 @@ describe("DocumentEditor heading preview folding", () => {
       state: { selection: { main: { head: "Draft body".length } } },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
 
-    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+    const assistant = await screen.findByRole("region", { name: "AI assistant" });
+    expect(screen.getByRole("button", { name: "Close AI assistant" })).toBeTruthy();
+    expect(within(assistant).getByRole("button", { name: "Ask AI" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Ask AI" }).length).toBe(1);
+
+    expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "  What should I do?  " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
     const strong = await screen.findByText("Process:");
     expect(strong.tagName).toBe("STRONG");
@@ -344,12 +358,119 @@ describe("DocumentEditor heading preview folding", () => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: "What should I do?" }),
+        body: JSON.stringify({ question: "What should I do?", uiLanguage: "en" }),
       },
     );
     const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
     expect(requestBody).not.toContain("Unsaved title");
     expect(requestBody).not.toContain("Draft body");
+  });
+
+  it("uses the selected Korean display language for Ask AI chrome, errors, and request payloads", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("bad json");
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI 어시스턴트 열기" }));
+    expect(await screen.findByRole("region", { name: "AI 어시스턴트" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "AI 어시스턴트 닫기" })).toBeTruthy();
+    expect(screen.getByText("모델")).toBeTruthy();
+    expect(screen.getByPlaceholderText("이 문서에 대해 질문하기")).toBeTruthy();
+    const questionInput = screen.getByLabelText("AI 질문");
+
+    fireEvent.change(questionInput, {
+      target: { value: "  무엇을 해야 하나요?  " },
+    });
+    fireEvent.submit(questionInput.closest("form") as HTMLFormElement);
+
+    expect(await screen.findByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          question: "무엇을 해야 하나요?",
+          uiLanguage: "ko",
+        }),
+      }),
+    );
+  });
+
+  it("uses the selected Korean display language for the empty editor state", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    render(
+      <DocumentViewModeProvider>
+        <DocumentEditor {...baseProps} document={null} />
+      </DocumentViewModeProvider>,
+    );
+
+    expect(await screen.findByText("문서를 만들거나 선택하세요.")).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for editor chrome and properties", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderEditor("# A\nBody", {
+      properties: [{ id: "property-tags", key: "tags", valueJson: [] }],
+      linkPanels: {
+        outgoing: [
+          {
+            id: "link-1",
+            targetTitleRaw: "Missing",
+            alias: null,
+            isBroken: true,
+            isAmbiguous: false,
+            targetDocument: null,
+          },
+        ],
+        backlinks: [],
+        brokenLinks: [],
+        ambiguousLinks: [],
+      },
+    });
+
+    expect(await screen.findByLabelText("문서 제목")).toBeTruthy();
+    const properties = screen.getByRole("region", { name: "문서 속성" });
+    expect(within(properties).getByText("속성")).toBeTruthy();
+    expect(within(properties).getAllByText("없음").length).toBeGreaterThan(0);
+    expect(within(properties).getByLabelText("댓글 추가")).toBeTruthy();
+    expect(within(properties).getByPlaceholderText("댓글 추가")).toBeTruthy();
+    expect(within(properties).getByRole("button", { name: "댓글" })).toBeTruthy();
+    expect(within(properties).getByTitle("깨진 링크에서 문서 만들기")).toBeTruthy();
+    expect(screen.getByLabelText("첨부 파일 업로드")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "업로드" })).toBeTruthy();
+    expect(screen.getByText("저장을 누르면 Markdown 변경사항이 저장됩니다.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "저장" })).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for preview folding and wiki link suggestions", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderEditor("# A\nBody", {
+      linkCandidates: [{ id: "doc-2", slug: "welcome", title: "Welcome", path: "/Welcome" }],
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "A 섹션 접기" }));
+    expect(screen.getByRole("button", { name: "A 섹션 펼치기" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await screen.findByLabelText("Markdown 편집기");
+
+    act(() => {
+      codeMirrorHarness.changeHandlers[0]?.("[[Wel", {
+        state: { selection: { main: { head: 5 } } },
+      });
+    });
+
+    expect(await screen.findByText("위키 링크")).toBeTruthy();
   });
 
   it("shows the Ask AI thinking indicator while the request is pending", async () => {
@@ -358,11 +479,11 @@ describe("DocumentEditor heading preview folding", () => {
     vi.stubGlobal("fetch", vi.fn(() => deferred.promise));
 
     renderEditor("# Saved\n\nContent");
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What is saved?" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
     expect(screen.getByText("Thinking...")).toBeTruthy();
 
@@ -384,7 +505,7 @@ describe("DocumentEditor heading preview folding", () => {
   it("shows the server default AI model when no browser override is stored", () => {
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
 
     expect(screen.getByText("Model")).toBeTruthy();
     expect(screen.getByText("openrouter/fusion")).toBeTruthy();
@@ -403,12 +524,12 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     expect(screen.getByText("moonshotai/kimi-k2.7-code")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "Which model answered?" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
     await screen.findByText("Cloud model answer");
 
@@ -417,6 +538,7 @@ describe("DocumentEditor heading preview folding", () => {
       expect.objectContaining({
         body: JSON.stringify({
           question: "Which model answered?",
+          uiLanguage: "en",
           chatProvider: "openai-compatible",
           chatModel: "moonshotai/kimi-k2.7-code",
         }),
@@ -427,7 +549,7 @@ describe("DocumentEditor heading preview folding", () => {
   it("updates the displayed AI model when settings change in the same browser tab", () => {
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     expect(screen.getByText("openrouter/fusion")).toBeTruthy();
 
     window.localStorage.setItem(
@@ -460,13 +582,13 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody");
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What should I do?" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
-    expect(await screen.findByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+    expect(await screen.findByText("Could not get an AI answer.")).toBeTruthy();
   });
 
   it("omits the heading separator for empty AI citation heading paths", async () => {
@@ -484,11 +606,11 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody");
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What should I do?" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
     await screen.findByText("Use the saved handbook.");
     const citationItems = within(screen.getByRole("list")).getAllByRole("listitem");
@@ -535,9 +657,9 @@ describe("DocumentEditor heading preview folding", () => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
 
-    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+    expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
   });
 
   it("resets assistant panel state when switching documents", async () => {
@@ -556,11 +678,11 @@ describe("DocumentEditor heading preview folding", () => {
       </DocumentViewModeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "Question for first" },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.submit(screen.getByLabelText("AI question").closest("form") as HTMLFormElement);
 
     await screen.findByText("Answer for first document");
 

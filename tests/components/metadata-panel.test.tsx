@@ -4,12 +4,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useHeadingNavigation } from "@/components/app-shell";
+import { I18nProvider } from "@/components/i18n-provider";
 import { MetadataPanel } from "@/components/metadata-panel";
 
 afterEach(() => {
   window.document.querySelectorAll("[data-outline-heading-id]").forEach((target) => {
     target.remove();
   });
+  window.localStorage.clear();
   cleanup();
 });
 
@@ -58,7 +60,7 @@ const outlineDocument = {
 };
 
 function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
-  return render(
+  return renderWithI18n(
     <MetadataPanel
       document={outlineDocument}
       versions={versions}
@@ -74,7 +76,7 @@ function renderPanel(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
 }
 
 function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0]> = {}) {
-  return render(
+  return renderWithI18n(
     <AppShell
       left={<div>Left</div>}
       center={<div>Center</div>}
@@ -93,6 +95,10 @@ function renderPanelInAppShell(props: Partial<Parameters<typeof MetadataPanel>[0
       }
     />,
   );
+}
+
+function renderWithI18n(ui: React.ReactElement) {
+  return render(<I18nProvider>{ui}</I18nProvider>);
 }
 
 function UnhandledHeadingNavigator() {
@@ -148,6 +154,44 @@ describe("MetadataPanel", () => {
     expect(screen.queryByText("v2")).toBeNull();
   });
 
+  it("uses the selected Korean display language for metadata panel chrome", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderPanel();
+
+    expect(await screen.findByRole("button", { name: "개요" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "첨부 파일" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "버전" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "감사 로그" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "메타데이터 패널 닫기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Welcome 제목으로 이동" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "버전" }));
+    expect(screen.getByRole("button", { name: "복원" })).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for metadata empty states", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderPanel({
+      document: { id: "doc-1", contentMarkdown: "Body only" },
+      versions: [],
+      auditLogs: [],
+      attachments: [],
+    });
+
+    expect(await screen.findByText("개요 제목 없음")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "첨부 파일" }));
+    expect(screen.getByText("첨부 파일 없음")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "버전" }));
+    expect(screen.getByText("버전 없음")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "감사 로그" }));
+    expect(screen.getByText("감사 로그 없음")).toBeTruthy();
+  });
+
   it("navigates to outline headings", () => {
     const onNavigateToHeading = vi.fn();
 
@@ -196,7 +240,7 @@ describe("MetadataPanel", () => {
     target.scrollIntoView = scrollIntoView;
     window.document.body.appendChild(target);
 
-    render(
+    renderWithI18n(
       <AppShell
         left={<div>Left</div>}
         center={<UnhandledHeadingNavigator />}
@@ -220,7 +264,7 @@ describe("MetadataPanel", () => {
   });
 
   it("uses the live outline document from AppShell when it matches the selected document", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<div>Left</div>}
         center={

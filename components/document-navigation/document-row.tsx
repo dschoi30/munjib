@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import type { DocumentListItem } from "@/components/document-list";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -37,10 +38,11 @@ export function DocumentLinkRow({
   onOpenInNewTab: OpenDocumentInNewTabHandler;
   archiveDocumentAction: ArchiveDocumentAction;
 }) {
+  const { t } = useI18n();
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
-  const displayLabel = documentDisplayLabel(document);
-  const actionLabel = documentActionLabel(document);
+  const displayLabel = documentDisplayLabel(document, t("nav.untitledDocument"));
+  const actionLabel = documentActionLabel(document, t("nav.untitledDocument"));
   const rowClassName = selected
     ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
     : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
@@ -59,7 +61,7 @@ export function DocumentLinkRow({
       </Link>
       <button
         type="button"
-        aria-label={`Open actions for ${actionLabel}`}
+        aria-label={t("nav.openActions", { label: actionLabel })}
         aria-expanded={isMenuOpen}
         onClick={(event) => {
           event.stopPropagation();
@@ -84,7 +86,7 @@ export function DocumentLinkRow({
             onClick={() => onToggleFavorite(document.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
-            {isFavorite ? "Remove from favorites" : "Add to favorites"}
+            {isFavorite ? t("nav.removeFromFavorites") : t("nav.addToFavorites")}
           </button>
           <button
             type="button"
@@ -92,7 +94,7 @@ export function DocumentLinkRow({
             onClick={() => onOpenInNewTab(document)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
-            Open in new tab
+            {t("nav.openInNewTab")}
           </button>
           <form action={archiveDocumentAction}>
             <input type="hidden" name="documentId" value={document.id} />
@@ -102,7 +104,7 @@ export function DocumentLinkRow({
               hidden={!document.canWrite}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50"
             >
-              Move to trash
+              {t("nav.moveToTrash")}
             </button>
           </form>
         </div>

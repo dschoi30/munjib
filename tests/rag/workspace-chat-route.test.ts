@@ -139,6 +139,7 @@ describe("workspace chat routes", () => {
         selectedDocumentId: "doc-1",
         chatProvider: "openai-compatible",
         chatModel: "google/gemma-4-31b-it:free",
+        uiLanguage: "ko",
       }),
       routeContext(),
     );
@@ -165,6 +166,7 @@ describe("workspace chat routes", () => {
         selectedDocumentId: "doc-1",
         chatProviderOverride: "openai-compatible",
         chatModelOverride: "google/gemma-4-31b-it:free",
+        uiLanguage: "ko",
         signal: expect.any(AbortSignal),
       }),
     );
@@ -172,6 +174,29 @@ describe("workspace chat routes", () => {
       preparedWorkspaceChatMessage,
       expect.objectContaining({ onToken: expect.any(Function) }),
     );
+  });
+
+  it("ignores invalid UI language input without rejecting workspace messages", async () => {
+    const response = await POST_MESSAGE(
+      jsonRequest({
+        message: "What changed?",
+        uiLanguage: "jp",
+      }),
+      routeContext(),
+    );
+
+    await readNdjson(response);
+
+    expect(response.status).toBe(200);
+    const preparationInput = vi.mocked(prepareWorkspaceChatMessageStream).mock.calls[0]?.[0];
+    expect(preparationInput).toEqual(
+      expect.objectContaining({
+        workspaceSlug: "company-handbook",
+        actorId: "user-1",
+        message: "What changed?",
+      }),
+    );
+    expect(preparationInput).not.toHaveProperty("uiLanguage");
   });
 
   it("passes the request abort signal into the streaming service", async () => {

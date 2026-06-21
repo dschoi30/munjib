@@ -28,12 +28,18 @@ export function treeDepth(path: string) {
   return Math.max(0, path.split("/").filter(Boolean).length - 1);
 }
 
-export function documentDisplayLabel(document: Pick<Document, "title" | "path">) {
-  return document.title.trim() || "Untitled";
+export function documentDisplayLabel(
+  document: Pick<Document, "title" | "path">,
+  fallbackLabel = "Untitled",
+) {
+  return document.title.trim() || fallbackLabel;
 }
 
-export function documentActionLabel(document: Pick<Document, "title" | "path">) {
-  const label = documentDisplayLabel(document);
+export function documentActionLabel(
+  document: Pick<Document, "title" | "path">,
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
   const rootPath = `/${slugifyTitle(label)}`;
   return document.path === rootPath ? label : `${label} · ${document.path}`;
 }

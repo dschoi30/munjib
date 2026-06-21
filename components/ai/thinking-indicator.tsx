@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 const THINKING_MESSAGES = [
-  { delayMs: 0, message: "Thinking..." },
-  { delayMs: 10_000, message: "Reviewing the relevant document context..." },
-  { delayMs: 30_000, message: "Organizing the evidence and drafting an answer..." },
-  { delayMs: 60_000, message: "This is taking longer than usual. Thanks for your patience..." },
+  { delayMs: 0, messageKey: "ai.thinking.0" },
+  { delayMs: 10_000, messageKey: "ai.thinking.10000" },
+  { delayMs: 30_000, messageKey: "ai.thinking.30000" },
+  { delayMs: 60_000, messageKey: "ai.thinking.60000" },
 ] as const;
 
 type ThinkingIndicatorProps = {
@@ -15,18 +17,21 @@ type ThinkingIndicatorProps = {
 };
 
 export function useThinkingIndicator(active: boolean) {
-  const [message, setMessage] = useState<string | null>(active ? THINKING_MESSAGES[0].message : null);
+  const { t } = useI18n();
+  const [messageKey, setMessageKey] = useState<MessageKey | null>(
+    active ? THINKING_MESSAGES[0].messageKey : null,
+  );
 
   useEffect(() => {
     if (!active) {
-      setMessage(null);
+      setMessageKey(null);
       return;
     }
 
-    setMessage(THINKING_MESSAGES[0].message);
-    const timers = THINKING_MESSAGES.slice(1).map(({ delayMs, message }) =>
+    setMessageKey(THINKING_MESSAGES[0].messageKey);
+    const timers = THINKING_MESSAGES.slice(1).map(({ delayMs, messageKey }) =>
       window.setTimeout(() => {
-        setMessage(message);
+        setMessageKey(messageKey);
       }, delayMs),
     );
 
@@ -35,7 +40,7 @@ export function useThinkingIndicator(active: boolean) {
     };
   }, [active]);
 
-  return active ? message : null;
+  return active && messageKey ? t(messageKey) : null;
 }
 
 export function ThinkingIndicator({ active, className }: ThinkingIndicatorProps) {

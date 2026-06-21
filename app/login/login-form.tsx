@@ -2,6 +2,8 @@
 
 import { signIn, signOut } from "next-auth/react";
 import { useState } from "react";
+import { useI18n } from "@/components/i18n-provider";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
 
@@ -10,13 +12,14 @@ type LoginFormProps = {
 };
 
 export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: LoginFormProps) {
+  const { t } = useI18n();
   const [email, setEmail] = useState("owner@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    setErrorKey(null);
     setIsSubmitting(true);
     const result = await signIn("credentials", {
       email,
@@ -29,16 +32,16 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
       return;
     }
 
-    setError(
+    setErrorKey(
       result?.error === "CredentialsSignin"
-        ? "No matching development user was found. Run pnpm run db:seed and try one of the listed accounts."
-        : "Sign in failed. Clear the local session and try again.",
+        ? "login.error.credentials"
+        : "login.error.generic",
     );
     setIsSubmitting(false);
   }
 
   async function clearSession() {
-    setError(null);
+    setErrorKey(null);
     await signOut({ redirect: false });
   }
 
@@ -47,9 +50,9 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
       onSubmit={onSubmit}
       className="w-full max-w-sm rounded-lg border border-border bg-white p-6 shadow-sm"
     >
-      <h1 className="text-xl font-semibold text-ink">Development login</h1>
+      <h1 className="text-xl font-semibold text-ink">{t("login.title")}</h1>
       <p className="mt-2 text-sm text-slate-600">
-        Use owner@example.com, editor@example.com, or viewer@example.com.
+        {t("login.description")}
       </p>
       <div className="mt-4 grid grid-cols-1 gap-2">
         {developmentUsers.map((userEmail) => (
@@ -64,7 +67,7 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
         ))}
       </div>
       <label className="mt-6 block text-sm font-medium text-slate-700" htmlFor="email">
-        Email
+        {t("login.email")}
       </label>
       <input
         id="email"
@@ -79,16 +82,16 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
         disabled={isSubmitting}
         className="mt-4 w-full rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
-        {isSubmitting ? "Signing in..." : "Sign in"}
+        {isSubmitting ? t("login.signingIn") : t("login.signIn")}
       </button>
       <button
         type="button"
         onClick={clearSession}
         className="mt-3 w-full rounded-md border border-border px-3 py-2 text-sm font-medium text-slate-700 hover:bg-muted"
       >
-        Clear local session
+        {t("login.clearSession")}
       </button>
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {errorKey ? <p className="mt-3 text-sm text-red-600">{t(errorKey)}</p> : null}
     </form>
   );
 }
