@@ -329,7 +329,7 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
     expect(screen.getByText("Presets")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Use Gemma E4B" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use Gemma4 E4B" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Use Kimi K2.7 Code" })).toBeNull();
     expect(screen.getByLabelText("Custom model id")).toBeTruthy();
 
@@ -340,7 +340,7 @@ describe("DocumentList", () => {
     expect(screen.getByRole("button", { name: "Use GPT-5.4 Mini" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Use GPT-5.4" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Use GPT-4.1 Mini" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Use Gemma E4B" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use Gemma4 E4B" })).toBeNull();
   });
 
   it("saves a preset chat model override in workspace-scoped storage", () => {
@@ -351,7 +351,7 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
 
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "{}")).toEqual({
       chatProvider: "openai-compatible",
       chatModel: "moonshotai/kimi-k2.7-code",
     });
@@ -370,11 +370,11 @@ describe("DocumentList", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
 
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "{}")).toEqual({
       chatProvider: "openai-compatible",
       chatModel: "qwen/qwen3.7-plus",
     });
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-custom-chat-models:company-handbook") ?? "")).toEqual([
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-custom-chat-models:company-handbook") ?? "[]")).toEqual([
       {
         chatProvider: "openai-compatible",
         chatModel: "qwen/qwen3.7-plus",
@@ -384,7 +384,7 @@ describe("DocumentList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "{}")).toEqual({
       chatProvider: "openai-compatible",
       chatModel: "google/gemma-4-31b-it:free",
     });
@@ -405,7 +405,7 @@ describe("DocumentList", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Save custom model" }));
 
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "{}")).toEqual({
       chatProvider: "openai-compatible",
       chatModel: "google/gemma-4-31b-it:free",
     });
@@ -515,7 +515,7 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
     expect(screen.getByText("Model setting could not be reset.")).toBeTruthy();
-    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "{}")).toEqual({
       chatProvider: "openai-compatible",
       chatModel: "moonshotai/kimi-k2.7-code",
     });

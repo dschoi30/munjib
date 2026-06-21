@@ -12,13 +12,13 @@ Provider defaults:
 
 - OpenRouter / OpenAI-compatible reset saves `openai-compatible` with `google/gemma-4-31b-it:free`.
 - OpenAI reset saves `openai` with `gpt-5.4-mini`.
-- Ollama reset saves `ollama` with `gemma:e4b`.
+- Ollama reset saves `ollama` with `gemma4:e4b`.
 
 Presets:
 
 - OpenRouter keeps the existing OpenRouter model list and custom model input.
 - OpenAI adds `gpt-5.4-mini`, `gpt-5.4`, and `gpt-4.1-mini`.
-- Ollama adds `gemma:e4b`.
+- Ollama adds `gemma4:e4b`.
 
 The settings dialog height will be fixed to 80 percent of the browser viewport with internal scrolling kept inside the content pane.
 
