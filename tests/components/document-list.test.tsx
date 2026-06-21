@@ -134,6 +134,15 @@ function TagSearchRequester({ tag }: { tag: string }) {
   );
 }
 
+function languageOptionCard(name: RegExp) {
+  const radio = screen.getByRole("radio", { name }) as HTMLInputElement;
+  const card = document.querySelector(`label[for="${radio.id}"]`);
+  if (!(card instanceof HTMLElement)) {
+    throw new Error(`Could not find language option card for ${name}`);
+  }
+  return card;
+}
+
 describe("DocumentList", () => {
   it("shows the workspace title inline with icon-only create controls", () => {
     renderList();
@@ -281,7 +290,8 @@ describe("DocumentList", () => {
 
       expect(screen.getByRole("heading", { name: "Language" })).toBeTruthy();
       expect(screen.getByText("Current language: English")).toBeTruthy();
-      expect(within(screen.getByRole("radio", { name: /English/ })).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("radio", { name: /English/ })).toHaveProperty("checked", true);
+      expect(within(languageOptionCard(/English/)).getByText("Current")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
     });
@@ -296,7 +306,8 @@ describe("DocumentList", () => {
       fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
 
       expect(screen.getByText("Korean will apply after you save.")).toBeTruthy();
-      expect(within(screen.getByRole("radio", { name: /English/ })).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("radio", { name: /Korean/ })).toHaveProperty("checked", true);
+      expect(within(languageOptionCard(/English/)).getByText("Current")).toBeTruthy();
       expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
       expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", false);
 
@@ -395,6 +406,33 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "보존 설정 저장" }));
 
     expect(await screen.findByText("저장된 보존 기간: 90일")).toBeTruthy();
+  });
+
+  it("rerenders saved retention status when the display language changes", async () => {
+    window.localStorage.setItem("munjib:language", "en");
+    const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }));
+    renderList({ updateRetentionPolicyAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+    fireEvent.change(screen.getByLabelText("Deleted document retention"), {
+      target: { value: "DAYS_90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save retention" }));
+
+    expect(await screen.findByText("Saved retention: 90 days")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "보존" }));
+
+    expect(screen.getByText("저장된 보존 기간: 90일")).toBeTruthy();
   });
 
   it("disables retention saving for read-only users", () => {
