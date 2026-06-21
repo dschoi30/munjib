@@ -274,6 +274,7 @@ export default async function WorkspacePage({
   return (
     <>
       <AppShell
+        workspaceSlug={workspaceSlug}
         left={
           <DocumentList
             workspaceSlug={workspaceSlug}

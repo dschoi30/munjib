@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import React, { useEffect } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useHeadingNavigation, useLeftPanel } from "@/components/app-shell";
+import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
 });
 
 function HeadingNavigationProbe({ onNavigate }: { onNavigate: () => void }) {
@@ -38,7 +40,76 @@ function LeftPanelProbe() {
   );
 }
 
+function MountProbe({ onMount }: { onMount: () => void }) {
+  useEffect(() => {
+    onMount();
+  }, [onMount]);
+
+  return <div>Mounted panel content</div>;
+}
+
 describe("AppShell", () => {
+  it("restores and persists workspace sidebar open state", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({
+        leftSidebarOpen: false,
+        rightSidebarOpen: false,
+        activeSidebarPanel: "favorites",
+      }),
+    );
+
+    render(
+      <AppShell
+        workspaceSlug="company-handbook"
+        left={<div>Left</div>}
+        center={<div>Center</div>}
+        right={({ collapse }) => <button onClick={collapse}>Close metadata panel</button>}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Open sidebar" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open metadata panel" })).toBeTruthy();
+    expect(screen.queryByText("Left")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Close metadata panel" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Open sidebar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open metadata panel" }));
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({
+        leftSidebarOpen: true,
+        rightSidebarOpen: true,
+        activeSidebarPanel: "favorites",
+      });
+    });
+  });
+
+  it("does not mount closed workspace sidebar contents before storage hydration", async () => {
+    const onMount = vi.fn();
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ leftSidebarOpen: false }),
+    );
+
+    render(
+      <AppShell
+        workspaceSlug="company-handbook"
+        left={<MountProbe onMount={onMount} />}
+        center={<div>Center</div>}
+        right={<div>Right</div>}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Open sidebar" })).toBeTruthy();
+    expect(screen.queryByText("Mounted panel content")).toBeNull();
+    expect(onMount).not.toHaveBeenCalled();
+  });
+
   it("starts the left sidebar at the same vertical origin as the center chrome", () => {
     render(
       <AppShell left={<div>Left</div>} center={<div>Center</div>} right={<div>Right</div>} />,

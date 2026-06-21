@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { readWorkspaceChatStream } from "@/components/workspace-chatbot-stream";
 import { writeStoredChatModel } from "@/lib/rag/client-model-settings";
+import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 
 const fetchMock = vi.fn();
 
@@ -57,6 +58,101 @@ afterEach(() => {
 });
 
 describe("WorkspaceChatbot", () => {
+  it("hydrates stored open state and loads the thread automatically", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ workspaceChatOpen: true }),
+    );
+
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    expect(await screen.findByRole("region", { name: "Workspace AI chat" })).toBeTruthy();
+    expect(await screen.findByText("Earlier workspace answer.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/assistant/thread",
+    );
+  });
+
+  it("persists opening and closing while preserving unrelated workspace UI state", async () => {
+    const storageKey = workspaceUiStateStorageKey("company-handbook");
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({
+        leftSidebarOpen: true,
+        rightSidebarOpen: false,
+        activeSidebarPanel: "favorites",
+        graph: {
+          settingsOpen: true,
+          filters: { tag: true, orphans: false },
+          display: {
+            arrows: true,
+            linkThickness: 2,
+            nodeSize: 4,
+            textFadeThreshold: 1.5,
+          },
+          forces: {
+            center: 0.4,
+            link: 0.7,
+            linkDistance: 120,
+            repel: -150,
+          },
+        },
+      }),
+    );
+
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "{}")).toEqual({
+      leftSidebarOpen: true,
+      rightSidebarOpen: false,
+      activeSidebarPanel: "favorites",
+      workspaceChatOpen: true,
+      graph: {
+        settingsOpen: true,
+        filters: { tag: true, orphans: false },
+        display: {
+          arrows: true,
+          linkThickness: 2,
+          nodeSize: 4,
+          textFadeThreshold: 1.5,
+        },
+        forces: {
+          center: 0.4,
+          link: 0.7,
+          linkDistance: 120,
+          repel: -150,
+        },
+      },
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "Close workspace AI chat" }));
+
+    expect(JSON.parse(window.localStorage.getItem(storageKey) ?? "{}")).toEqual({
+      leftSidebarOpen: true,
+      rightSidebarOpen: false,
+      activeSidebarPanel: "favorites",
+      workspaceChatOpen: false,
+      graph: {
+        settingsOpen: true,
+        filters: { tag: true, orphans: false },
+        display: {
+          arrows: true,
+          linkThickness: 2,
+          nodeSize: 4,
+          textFadeThreshold: 1.5,
+        },
+        forces: {
+          center: 0.4,
+          link: 0.7,
+          linkDistance: 120,
+          repel: -150,
+        },
+      },
+    });
+  });
+
   it("opens, loads the thread, sends a message, and renders the assistant answer", async () => {
     render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
 
@@ -226,7 +322,19 @@ describe("WorkspaceChatbot", () => {
     expect(screen.getByRole("button", { name: "Open workspace AI chat" })).toBeTruthy();
   });
 
-  it("loads a new thread when the workspace changes", async () => {
+  it("follows workspace-specific stored open state and loads only when open", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("alpha"),
+      JSON.stringify({ workspaceChatOpen: true }),
+    );
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("beta"),
+      JSON.stringify({ workspaceChatOpen: false }),
+    );
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("gamma"),
+      JSON.stringify({ workspaceChatOpen: true }),
+    );
     fetchMock.mockImplementation(async (url: string) => {
       if (url.endsWith("/alpha/assistant/thread")) {
         return jsonResponse({
@@ -240,20 +348,62 @@ describe("WorkspaceChatbot", () => {
           messages: [{ id: "beta-message", role: "ASSISTANT", content: "Beta answer." }],
         });
       }
+      if (url.endsWith("/gamma/assistant/thread")) {
+        return jsonResponse({
+          thread: { id: "thread-gamma" },
+          messages: [{ id: "gamma-message", role: "ASSISTANT", content: "Gamma answer." }],
+        });
+      }
       throw new Error(`Unexpected fetch ${url}`);
     });
     const { rerender } = render(
       <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="alpha" selectedDocumentId={null} />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
     expect(await screen.findByText("Alpha answer.")).toBeTruthy();
 
     rerender(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="beta" selectedDocumentId={null} />);
 
-    expect(await screen.findByText("Beta answer.")).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Open workspace AI chat" })).toBeTruthy();
     expect(screen.queryByText("Alpha answer.")).toBeNull();
-    expect(fetchMock).toHaveBeenCalledWith("/api/workspaces/beta/assistant/thread");
+    await waitFor(() => {
+      expect(fetchMock).not.toHaveBeenCalledWith("/api/workspaces/beta/assistant/thread");
+    });
+
+    rerender(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="gamma" selectedDocumentId={null} />);
+
+    expect(await screen.findByText("Gamma answer.")).toBeTruthy();
+    expect(screen.queryByText("Beta answer.")).toBeNull();
+    expect(fetchMock).toHaveBeenCalledWith("/api/workspaces/gamma/assistant/thread");
+  });
+
+  it("keeps open and close interactions working when storage reads and writes throw", async () => {
+    const getItemSpy = vi
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("Storage read blocked");
+      });
+    const setItemSpy = vi
+      .spyOn(Storage.prototype, "setItem")
+      .mockImplementation(() => {
+        throw new Error("Storage write blocked");
+      });
+
+    try {
+      render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+      fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+      expect(await screen.findByRole("region", { name: "Workspace AI chat" })).toBeTruthy();
+      expect(await screen.findByText("Earlier workspace answer.")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Close workspace AI chat" }));
+
+      expect(screen.queryByRole("region", { name: "Workspace AI chat" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Open workspace AI chat" })).toBeTruthy();
+    } finally {
+      getItemSpy.mockRestore();
+      setItemSpy.mockRestore();
+    }
   });
 
   it("keeps sent messages when a delayed thread load resolves", async () => {

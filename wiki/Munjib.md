@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 59
+updated: 2026-06-21
+source_count: 60
 tags:
   - munjib
   - product
@@ -69,6 +69,8 @@ Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/p
 Issue #48 설계는 `components/document-editor.tsx`와 `components/document-navigation.tsx`가 각각 약 1천 줄 규모로 커진 상태를 줄이기 위한 구조 리팩토링 계획이다. 목표는 public component API와 사용자 동작을 유지하면서 editor preview/folding/properties 하위 모듈과 navigation panel/row/tree/favorites 하위 모듈로 나누는 것이다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`이다.
 
 Issue #65 설계는 workspace knowledge graph를 Obsidian-style 탐색에 더 가깝게 다듬는 계획이다. Graph view는 Properties Links/backlinks의 frontmatter 기반 계약을 유지하면서 graph 전용으로 문서 전체 markdown의 wiki link를 볼 수 있게 하고, filter는 Tags와 Orphans 중심으로 단순화한다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`이다. Issue #67 설계는 graph zoom 상한/하한, bounded label scaling, sessionStorage 기반 graph option persistence, 기본 off Tags/Orphans filter, 문서 수 기반 node size baseline을 계획한다. 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`이다.
+
+Issue #122 구현은 workspace UI chrome state를 workspace-scoped aggregate `localStorage` key로 보존한다. 대상은 좌우 sidebar open state, 좌측 Documents/Search/Favorites active menu, knowledge graph controls panel과 Filters/Display/Forces section open state, 기존 graph filter/display/force option persistence의 `localStorage` 전환, Workspace AI chat open state다. DB, URL, server API, chat draft, pending request, graph layout position은 범위에서 제외한다. 설계 근거는 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`이다.
 
 Issue #71은 tag click search를 추가해 frontmatter tag chip, preview mode body `#tag`, graph view tag node를 기존 sidebar Search panel의 `tag:#name` exact search로 연결했다. 검색 결과는 YAML frontmatter `tags:`와 body `#tag`에서 reconcile된 tag index를 모두 사용하지만, Properties tags row는 계속 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
@@ -143,6 +145,8 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
 - `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`
+- GitHub issue #122
+- `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`
 - `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`
 - GitHub issue #105
 - `tests/rag/model-config.test.ts`

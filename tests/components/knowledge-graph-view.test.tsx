@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import type { KnowledgeGraphData } from "@/lib/knowledge-graph/model";
+import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
 const forceGraphMock = vi.hoisted(() => {
@@ -234,7 +235,10 @@ function renderGraphInShell(graph = createGraph()) {
   );
 }
 
-function createSessionStorageMock() {
+const workspaceStateKey = workspaceUiStateStorageKey("company-handbook");
+const originalLocalStorageDescriptor = Object.getOwnPropertyDescriptor(window, "localStorage");
+
+function createStorageMock() {
   const values = new Map<string, string>();
 
   return {
@@ -245,6 +249,13 @@ function createSessionStorageMock() {
       values.set(key, value);
     }),
   };
+}
+
+function getStoredWorkspaceUiState() {
+  return JSON.parse(window.localStorage.getItem(workspaceStateKey) ?? "{}") as Record<
+    string,
+    unknown
+  >;
 }
 
 function getInput(label: string) {
@@ -261,6 +272,7 @@ function parseCanvasFont(font: string) {
 }
 
 beforeEach(() => {
+  window.sessionStorage.clear();
   router.push.mockReset();
   forceGraphMock.state.attachRef = true;
   forceGraphMock.state.latestProps = null;
@@ -273,9 +285,9 @@ beforeEach(() => {
   forceGraphMock.state.forceMethods.link.distance.mockClear();
   forceGraphMock.state.forceMethods.link.strength.mockClear();
 
-  Object.defineProperty(window, "sessionStorage", {
+  Object.defineProperty(window, "localStorage", {
     configurable: true,
-    value: createSessionStorageMock(),
+    value: createStorageMock(),
   });
 
   Object.defineProperties(HTMLElement.prototype, {
@@ -286,10 +298,13 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  if (originalLocalStorageDescriptor) {
+    Object.defineProperty(window, "localStorage", originalLocalStorageDescriptor);
+  }
 });
 
 describe("KnowledgeGraphView", () => {
-  it("renders force graph and closes the settings panel to a reopen icon", () => {
+  it("renders force graph and persists the settings panel open state", async () => {
     renderGraph();
 
     expect(screen.getByTestId("force-graph")).toBeTruthy();
@@ -315,6 +330,11 @@ describe("KnowledgeGraphView", () => {
     expect(screen.queryByLabelText("Tags")).toBeNull();
     expect(screen.queryByLabelText("Orphans")).toBeNull();
     expect(screen.queryByLabelText("Properties")).toBeNull();
+    await waitFor(() => {
+      expect(getStoredWorkspaceUiState()).toMatchObject({
+        graph: { settingsOpen: false },
+      });
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "Open graph settings" }));
 
@@ -329,6 +349,11 @@ describe("KnowledgeGraphView", () => {
     expect(getInput("Tags").checked).toBe(false);
     expect(getInput("Orphans").checked).toBe(false);
     expect(screen.queryByLabelText("Properties")).toBeNull();
+    await waitFor(() => {
+      expect(getStoredWorkspaceUiState()).toMatchObject({
+        graph: { settingsOpen: true },
+      });
+    });
   });
 
   it("starts tag filtering disabled and restores tag links when Tags is checked", () => {
@@ -386,7 +411,12 @@ describe("KnowledgeGraphView", () => {
     });
   });
 
-  it("persists filters, display, and forces in workspace session storage", async () => {
+  it("persists filters, display, and forces in aggregate workspace UI storage", async () => {
+    window.localStorage.setItem(
+      workspaceStateKey,
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+
     renderGraph();
 
     fireEvent.click(screen.getByLabelText("Tags"));
@@ -396,52 +426,54 @@ describe("KnowledgeGraphView", () => {
     fireEvent.change(screen.getByLabelText("Repel force"), { target: { value: "-180" } });
 
     await waitFor(() => {
-      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
-        "munjib:knowledge-graph:company-handbook:v1:filters",
-        JSON.stringify({ tag: true, orphans: false }),
-      );
-      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
-        "munjib:knowledge-graph:company-handbook:v1:display",
-        JSON.stringify({
-          arrows: false,
-          linkThickness: 1,
-          nodeSize: 8,
-          textFadeThreshold: 1,
-        }),
-      );
-      expect(window.sessionStorage.setItem).toHaveBeenCalledWith(
-        "munjib:knowledge-graph:company-handbook:v1:forces",
-        JSON.stringify({
-          center: 0.3,
-          link: 0.4,
-          linkDistance: 80,
-          repel: -180,
-        }),
-      );
+      expect(getStoredWorkspaceUiState()).toEqual({
+        activeSidebarPanel: "favorites",
+        graph: {
+          settingsOpen: true,
+          filtersOpen: true,
+          displayOpen: true,
+          forcesOpen: true,
+          filters: { tag: true, orphans: false },
+          display: {
+            arrows: false,
+            linkThickness: 1,
+            nodeSize: 8,
+            textFadeThreshold: 1,
+          },
+          forces: {
+            center: 0.3,
+            link: 0.4,
+            linkDistance: 80,
+            repel: -180,
+          },
+        },
+      });
     });
   });
 
-  it("restores valid workspace graph settings from session storage", async () => {
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:filters",
-      JSON.stringify({ tag: true, orphans: true }),
-    );
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:display",
+  it("restores valid workspace graph settings from aggregate workspace UI storage", async () => {
+    window.localStorage.setItem(
+      workspaceStateKey,
       JSON.stringify({
-        arrows: true,
-        linkThickness: 3,
-        nodeSize: 8,
-        textFadeThreshold: 2,
-      }),
-    );
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:forces",
-      JSON.stringify({
-        center: 0.6,
-        link: 0.7,
-        linkDistance: 120,
-        repel: -180,
+        graph: {
+          settingsOpen: true,
+          filtersOpen: true,
+          displayOpen: true,
+          forcesOpen: true,
+          filters: { tag: true, orphans: true },
+          display: {
+            arrows: true,
+            linkThickness: 3,
+            nodeSize: 8,
+            textFadeThreshold: 2,
+          },
+          forces: {
+            center: 0.6,
+            link: 0.7,
+            linkDistance: 120,
+            repel: -180,
+          },
+        },
       }),
     );
 
@@ -452,64 +484,75 @@ describe("KnowledgeGraphView", () => {
       expect(getInput("Orphans").checked).toBe(true);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(screen.getByRole("button", { name: "Collapse display" }).textContent).toContain(
+      "Display",
+    );
     expect(getInput("Arrows").checked).toBe(true);
     expect(getInput("Node size").value).toBe("8");
     expect(getInput("Text fade threshold").value).toBe("2");
     expect(getInput("Link thickness").value).toBe("3");
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(screen.getByRole("button", { name: "Collapse forces" }).textContent).toContain(
+      "Forces",
+    );
     expect(getInput("Center force").value).toBe("0.6");
     expect(getInput("Repel force").value).toBe("-180");
     expect(getInput("Link force").value).toBe("0.7");
     expect(getInput("Link distance").value).toBe("120");
   });
 
-  it("ignores invalid session storage settings and keeps defaults", async () => {
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:filters",
-      JSON.stringify({ tag: true, orphans: "yes" }),
-    );
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:display",
+  it("ignores invalid stored graph values and keeps defaults", async () => {
+    window.localStorage.setItem(
+      workspaceStateKey,
       JSON.stringify({
-        arrows: false,
-        linkThickness: 20,
-        nodeSize: 8,
-        textFadeThreshold: 2,
+        graph: {
+          settingsOpen: "yes",
+          filtersOpen: "yes",
+          displayOpen: true,
+          forcesOpen: true,
+          filters: { tag: true, orphans: "yes" },
+          display: {
+            arrows: false,
+            linkThickness: 20,
+            nodeSize: 8,
+            textFadeThreshold: 2,
+          },
+          forces: "not-json",
+        },
       }),
-    );
-    window.sessionStorage.setItem(
-      "munjib:knowledge-graph:company-handbook:v1:forces",
-      "not-json",
     );
 
     renderGraph();
 
     await waitFor(() => {
-      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
-        "munjib:knowledge-graph:company-handbook:v1:filters",
-      );
+      expect(window.localStorage.getItem).toHaveBeenCalledWith(workspaceStateKey);
     });
 
+    expect(screen.getByRole("button", { name: "Collapse filters" }).textContent).toContain(
+      "Filters",
+    );
     expect(getInput("Tags").checked).toBe(false);
     expect(getInput("Orphans").checked).toBe(false);
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    expect(screen.getByRole("button", { name: "Collapse display" }).textContent).toContain(
+      "Display",
+    );
     expect(getInput("Node size").value).toBe("3");
     expect(getInput("Link thickness").value).toBe("1");
 
-    fireEvent.click(screen.getByRole("button", { name: "Expand forces" }));
+    expect(screen.getByRole("button", { name: "Collapse forces" }).textContent).toContain(
+      "Forces",
+    );
     expect(getInput("Repel force").value).toBe("-120");
   });
 
-  it("keeps rendering when session storage reads throw during mount", () => {
-    Object.defineProperty(window, "sessionStorage", {
+  it("keeps rendering when workspace UI storage reads throw during mount", () => {
+    Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {
-        ...createSessionStorageMock(),
+        ...createStorageMock(),
         getItem: vi.fn(() => {
-          throw new Error("session storage blocked");
+          throw new Error("workspace UI storage blocked");
         }),
       },
     });
@@ -527,13 +570,13 @@ describe("KnowledgeGraphView", () => {
     });
   });
 
-  it("keeps interactions working when session storage writes throw during persistence", async () => {
-    Object.defineProperty(window, "sessionStorage", {
+  it("keeps interactions working when workspace UI storage writes throw during persistence", async () => {
+    Object.defineProperty(window, "localStorage", {
       configurable: true,
       value: {
-        ...createSessionStorageMock(),
+        ...createStorageMock(),
         setItem: vi.fn(() => {
-          throw new Error("session storage quota exceeded");
+          throw new Error("workspace UI storage quota exceeded");
         }),
       },
     });
@@ -541,9 +584,7 @@ describe("KnowledgeGraphView", () => {
     renderGraph();
 
     await waitFor(() => {
-      expect(window.sessionStorage.getItem).toHaveBeenCalledWith(
-        "munjib:knowledge-graph:company-handbook:v1:filters",
-      );
+      expect(window.localStorage.getItem).toHaveBeenCalledWith(workspaceStateKey);
     });
 
     fireEvent.click(screen.getByLabelText("Tags"));
