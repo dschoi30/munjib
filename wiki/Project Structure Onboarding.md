@@ -36,3 +36,39 @@ links:
 4. 문서 저장 흐름은 `app/workspaces/[workspaceSlug]/actions.ts`에서 server action을 보고 `lib/documents/service.ts`로 내려간다.
 5. AI 흐름은 두 갈래로 본다. 현재 문서 Ask AI는 `lib/rag/ask.ts`, workspace chatbot은 `lib/rag/workspace-chat.ts`에서 시작하고, 전체 흐름은 [[RAG Process Workflow]]에 있다.
 6. 변경 지식은 wiki에 되돌린다. wiki 운영 규칙은 [[Wiki Maintenance Automation]]과 [[Local Development Workflow]]의 commit-time wiki sync 절차를 따른다.
+
+## Repository Responsibility Map
+
+```mermaid
+flowchart LR
+  app["app/\nApp Router pages\nroute handlers\nserver actions"]
+  components["components/\nworkspace shell\neditor/navigation\ngraph/settings/AI UI"]
+  lib["lib/\ndomain services\npermissions/wiki links\nRAG/observability/helpers"]
+  prisma["prisma/\nschema\nmigrations\nseed data"]
+  tests["tests/\nVitest/component/e2e\nworkflow coverage"]
+  scripts["scripts/\nwiki CLI\nDB index setup\nmaintenance commands"]
+  wiki["wiki/ + docs/\ndurable knowledge\nspecs/plans/designs"]
+  raw["raw/sources/\nimmutable source evidence"]
+
+  app --> components
+  app --> lib
+  lib --> prisma
+  lib --> scripts
+  components --> lib
+  tests --> app
+  tests --> components
+  tests --> lib
+  wiki --> raw
+  docs["docs/superpowers/\napproved specs\nimplementation plans"] --> wiki
+```
+
+| Area | Read first | Responsibility |
+| --- | --- | --- |
+| `app/` | `app/workspaces/[workspaceSlug]/page.tsx` | Server-rendered workspace entry, API routes, route handlers, server actions. |
+| `components/` | `components/app-shell.tsx`, `components/document-editor.tsx`, `components/document-navigation.tsx` | Client UI for workspace chrome, editor, navigation, graph, settings, AI panels. |
+| `lib/` | `lib/documents/service.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts` | Domain behavior, permissions, wiki links, document services, RAG, observability, utilities. |
+| `prisma/` | `prisma/schema.prisma`, `prisma/seed.ts` | Runtime data model, migrations, seed workspace and users. |
+| `tests/` | `tests/rag/`, `tests/components/`, `tests/documents/`, `tests/wiki/` | Focused regression coverage for domain services, UI behavior, wiki tooling. |
+| `scripts/` | `scripts/wiki/*.ts`, `scripts/db/ensure-rag-vector-index.ts` | CLI wrappers for wiki maintenance, feature start, manifest/lint, DB vector index setup. |
+| `wiki/` | `wiki/index.md` | Durable compiled project knowledge. Read this before broad source search. |
+| `docs/superpowers/` | `docs/superpowers/specs/`, `docs/superpowers/plans/` | Approved design specs and implementation plans. |
