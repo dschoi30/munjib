@@ -136,7 +136,8 @@ flowchart TD
 | How are documents created, updated, archived, and restored? | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/service-errors.ts` | `tests/documents/service.test.ts`, `tests/workspace-actions.test.ts` |
 | How does folder navigation work? | `components/document-navigation.tsx` | `components/document-navigation/tree.ts`, `lib/folders/service.ts`, `lib/folders/path.ts` | `tests/folders/service.test.ts`, `tests/folders/path.test.ts` |
 | How do Markdown preview, properties, and folding work? | `components/document-editor.tsx` | `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `lib/markdown/folding.ts` | `tests/components/document-editor-preview.test.tsx`, `tests/markdown/folding.test.ts` |
-| How do wiki links, backlinks, and tags get reconciled? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts` | `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/preview.test.ts` |
+| How do wiki links and backlinks get reconciled? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts` | `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/preview.test.ts` |
+| How do document metadata and tags get reconciled? | `lib/document-metadata/reconcile.ts` | `lib/document-metadata/parser.ts`, `lib/documents/service.ts` | `tests/document-metadata/parser.test.ts`, `tests/documents/service.test.ts` |
 | How does graph view data and routing work? | `lib/knowledge-graph/model.ts` | `app/workspaces/[workspaceSlug]/page.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-routes.ts` | `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
 | How are auth and permissions enforced? | `lib/auth/session.ts` | `lib/permissions/workspace.ts`, `lib/permissions/document.ts`, `lib/auth/config.ts` | `tests/auth/config.test.ts`, `tests/permissions/document.test.ts`, `tests/permissions/workspace.test.ts` |
 | How does current-document Ask AI work? | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/document-context.ts` | `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/document-context.test.ts` |
@@ -160,11 +161,16 @@ Before broad source search, start with:
 pnpm wiki:find "<topic>"
 ```
 
-For documentation-only changes, stage the docs or wiki changes first, then run:
+For documentation-only changes, run the manifest before final staging because it may rewrite `wiki/manifest.json`:
+
+```bash
+pnpm wiki:manifest
+```
+
+Then stage the changed docs/wiki files and the regenerated manifest if it changed before running:
 
 ```bash
 pnpm wiki:sync-plan --staged
-pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:sync-check --staged
 git diff --check --cached
@@ -178,11 +184,16 @@ pnpm exec vitest run tests/documents/service.test.ts tests/wiki-links/reconcile.
 pnpm exec tsc --noEmit --pretty false
 ```
 
-Then stage the source and wiki maintenance files, and run the same wiki sync bundle:
+Then run the manifest before final staging because it may rewrite `wiki/manifest.json`:
+
+```bash
+pnpm wiki:manifest
+```
+
+Stage the source and wiki maintenance files plus `wiki/manifest.json` if it changed, then run the same staged wiki sync bundle:
 
 ```bash
 pnpm wiki:sync-plan --staged
-pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:sync-check --staged
 git diff --check --cached
