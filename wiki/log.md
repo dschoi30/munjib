@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T17:20:00+09:00 - design
+
+- Result: Runtime AI provider switching design was recorded for settings-driven Ask AI and Workspace AI provider changes.
+- Coverage: Settings panel provider/model overrides remain client-side values, while Docker web runtime must carry server-side env for Ollama, official OpenAI, and OpenRouter/OpenAI-compatible if those providers are selectable. Default chat provider/model env is only fallback state and must not limit valid request overrides. Missing selected-provider config should be observable as `RAG_INVALID_CONFIG`; embedding stays independent with current Ollama `bge-m3` 1024 identity.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-21-runtime-ai-provider-switching-design.md`.
+- Verification: spec self-review; pnpm wiki:manifest; pnpm wiki:lint.
+
 ## 2026-06-21T12:52:00+09:00 - implementation
 
 - Result: Issue #122 workspace UI panel state persistence를 구현했다.
