@@ -227,6 +227,18 @@ describe("AppShell", () => {
     expect(rightSidebar?.className).not.toContain("p-4");
   });
 
+  it("reserves sidebar scrollbar gutters so toolbar icons do not shift", () => {
+    renderWithI18n(
+      <AppShell left={<div>Left</div>} center={<div>Center</div>} right={<div>Right</div>} />,
+    );
+
+    const leftSidebar = screen.getByText("Left").closest("aside");
+    const rightSidebar = screen.getByText("Right").closest("aside");
+
+    expect(leftSidebar?.className).toContain("scrollbar-gutter-stable");
+    expect(rightSidebar?.className).toContain("scrollbar-gutter-stable");
+  });
+
   it("can collapse the right metadata panel to a single reopen button without a sidebar rail", () => {
     renderWithI18n(
       <AppShell

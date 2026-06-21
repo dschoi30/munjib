@@ -99,6 +99,10 @@
   background: #e5e9ef;
 }
 
+.scrollbar-gutter-stable {
+  scrollbar-gutter: stable;
+}
+
 .munjib-skeleton::after {
   content: "";
   position: absolute;

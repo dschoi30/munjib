@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 281
+source_count: 282
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T23:47:41+0900 - implementation
+
+- Result: Issue #129 follow-up stabilized sidebar icon positions when sidebar vertical overflow appears or disappears.
+- Coverage: Open left/right `AppShell` sidebar scroll containers now reserve a stable scrollbar gutter through a shared CSS utility, so sidebar header, toolbar, metadata tab, close, and row action icons do not shift horizontally when content starts or stops needing vertical scrolling.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/app-shell.tsx`, `app/globals.css`, `tests/components/app-shell.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/app-shell.test.tsx -t "reserves sidebar scrollbar gutters"` failed because sidebar `aside` elements lacked the stable gutter class; green run `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed 106 tests.
 
 ## 2026-06-21T22:53:55+0900 - implementation
 

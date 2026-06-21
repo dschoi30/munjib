@@ -181,7 +181,7 @@ export function AppShell({
         <main className={appShellGridClassName({ leftPanelOpen, rightPanelOpen })}>
           <LeftPanelContext.Provider value={leftPanelControls}>
             {leftPanelOpen ? (
-              <aside className="overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
+              <aside className="scrollbar-gutter-stable overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
                 {shellHydrated ? left : <WorkspaceSidebarLoadingSkeleton side="left" />}
               </aside>
             ) : shellHydrated ? (
@@ -205,7 +205,7 @@ export function AppShell({
             )}
             <section className="min-h-0 min-w-0 overflow-hidden bg-white">{center}</section>
             {rightPanelOpen ? (
-              <aside className="overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
+              <aside className="scrollbar-gutter-stable overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
                 <RightPanelContext.Provider value={rightPanelControls}>
                   {shellHydrated ? rightContent : <WorkspaceSidebarLoadingSkeleton side="right" />}
                 </RightPanelContext.Provider>
