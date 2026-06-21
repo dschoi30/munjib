@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 270
+source_count: 273
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T20:30:32+0900 - implementation
+
+- Result: Issue #126 Task 4 follow-up disambiguated the Ask AI opener and submit controls after code quality review.
+- Coverage: `DocumentEditor` now keeps the opener's visible Ask AI affordance while giving it localized open/close accessible names, so the panel opener and the form submit button no longer share the same button name when the assistant is open. The message catalog now has separate English/Korean `ai.assistant.open` and `ai.assistant.close` keys, and component coverage asserts the open/close labels plus a single panel-local submit button.
+- Pages: [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
 
 ## 2026-06-21T18:57:00+0900 - implementation
 
