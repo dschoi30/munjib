@@ -72,3 +72,56 @@ flowchart LR
 | `scripts/` | `scripts/wiki/*.ts`, `scripts/db/ensure-rag-vector-index.ts` | CLI wrappers for wiki maintenance, feature start, manifest/lint, DB vector index setup. |
 | `wiki/` | `wiki/index.md` | Durable compiled project knowledge. Read this before broad source search. |
 | `docs/superpowers/` | `docs/superpowers/specs/`, `docs/superpowers/plans/` | Approved design specs and implementation plans. |
+
+## Core Runtime Flow
+
+Munjib MVP는 [[Next.js Prisma Monolith]] 결정에 따라 한 repository 안에서 UI, route/server action, domain service, Prisma/PostgreSQL을 함께 운영한다.
+
+```mermaid
+flowchart TD
+  UI["UI component\ncomponents/*"]
+  Route["Route handler or server action\napp/workspaces/*"]
+  Service["Domain service\nlib/*/service.ts or lib/rag/*"]
+  DB["Prisma/PostgreSQL\nprisma/schema.prisma"]
+  Derived["Derived/indexed data\nDocumentLink\nDocumentTag\nDocumentChunk"]
+  AI["AI provider boundary\nLangChain/Ollama/OpenAI-compatible"]
+  Wiki["Wiki maintenance\nwiki/index.md\nwiki/log.md\nwiki/manifest.json"]
+
+  UI --> Route
+  Route --> Service
+  Service --> DB
+  Service --> Derived
+  Service --> AI
+  Service --> Wiki
+
+  Doc["Document edit/save"] --> Route
+  Doc --> Service
+  Graph["Graph view"] --> Route
+  Graph --> Derived
+  Ask["Ask AI"] --> Service
+  Ask --> AI
+  Chat["Workspace AI"] --> Service
+  Chat --> Derived
+  Chat --> AI
+```
+
+### Flow starting points
+
+| Flow | Start here | Then read | Deep wiki page |
+| --- | --- | --- | --- |
+| Workspace screen | `app/workspaces/[workspaceSlug]/page.tsx` | `components/app-shell.tsx`, `components/workspace-center-shell.tsx` | [[Document Editing Workflow]] |
+| Document save | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/wiki-links/reconcile.ts`, `lib/document-metadata/reconcile.ts` | [[Document Editing Workflow]] |
+| Graph view | `components/knowledge-graph-view.tsx` | `lib/knowledge-graph/model.ts`, `lib/workspace-routes.ts` | [[Document Knowledge Model]] |
+| Ask AI | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts` | [[RAG Process Workflow]] |
+| Workspace AI | `components/workspace-chatbot.tsx` | `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts` | [[RAG Process Workflow]] |
+
+## Data And Knowledge Source Of Truth
+
+| Layer | Source of truth | Notes |
+| --- | --- | --- |
+| Product/runtime data | `prisma/schema.prisma` and PostgreSQL | User, organization, workspace, folder, document, permission, version, audit, attachment, comment, AI chat, and retention data live here. |
+| Saved document content | `Document.contentMarkdown` and `Document.contentText` | Saved DB content drives preview, wiki-link parsing, metadata extraction, graph construction, and RAG indexing. Unsaved editor draft is not the source for Ask AI answers. |
+| Link/tag/index support data | `DocumentLink`, `DocumentTag`, `DocumentChunk` | These rows support backlinks, tags, graph DTOs, and workspace chatbot retrieval. They are derived from saved documents and reconciliation/indexing flows. |
+| Project knowledge | `wiki/*.md` | Wiki pages are durable compiled knowledge. Start from `wiki/index.md` or `pnpm wiki:find "<topic>"` before broad source search. |
+| Design and implementation intent | `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md` | Specs and plans explain why a change exists and how it should be implemented. |
+| Immutable evidence | `raw/sources/` | Do not edit these files during wiki maintenance. |
