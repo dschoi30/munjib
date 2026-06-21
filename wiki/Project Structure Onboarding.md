@@ -83,23 +83,25 @@ flowchart TD
   Route["Route handler or server action\napp/workspaces/* + app/api/workspaces/*"]
   Service["Domain service\nlib/*/service.ts or lib/rag/*"]
   DB["Prisma/PostgreSQL\nprisma/schema.prisma"]
-  Derived["Derived/indexed data\nDocumentLink\nDocumentTag\nDocumentChunk"]
+  LinkTagData["Link/tag graph data\nDocumentLink\nDocumentTag"]
+  RagIndex["RAG index\nDocumentChunk"]
   AI["AI provider boundary\nLangChain/Ollama/OpenAI/OpenAI-compatible"]
 
   UI --> Route
   Route --> Service
   Service --> DB
-  Service --> Derived
+  Service --> LinkTagData
+  Service --> RagIndex
   Service --> AI
 
   Doc["Document edit/save"] --> Route
   Doc --> Service
   Graph["Graph view"] --> Route
-  Graph --> Derived
+  Graph --> LinkTagData
   Ask["Ask AI"] --> Service
   Ask --> AI
   Chat["Workspace AI"] --> Service
-  Chat --> Derived
+  Chat --> RagIndex
   Chat --> AI
 ```
 
@@ -121,7 +123,7 @@ flowchart TD
 | Attachment file bytes | `storage/attachments/` | Uploaded file bytes live on disk while attachment metadata lives in PostgreSQL. |
 | Saved document content | `Document.contentMarkdown` and `Document.contentText` | Saved DB content drives preview, wiki-link parsing, metadata extraction, graph construction, and RAG indexing. Unsaved editor draft is not the source for Ask AI answers. |
 | Link/tag support data | `DocumentLink`, `DocumentTag` | These rows support backlinks, tags, and graph DTOs. They are derived from saved documents and reconciliation flows. |
-| RAG index support data | `DocumentChunk` | These rows support Ask AI and workspace chatbot retrieval. They are derived from saved documents and indexing flows. |
+| RAG index support data | `DocumentChunk` | These rows support workspace chatbot retrieval and future/legacy expanded-scope retrieval. They are refreshed from saved documents, but the current Ask AI direct-context path reads saved document content directly instead of querying `DocumentChunk`. |
 | Project knowledge | `wiki/*.md` | Wiki pages are durable compiled knowledge. Start from `wiki/index.md` or `pnpm wiki:find "<topic>"` before broad source search. |
 | Design and implementation intent | `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md` | Specs and plans explain why a change exists and how it should be implemented. |
 | Immutable evidence | `raw/sources/` | Do not edit these files during wiki maintenance. |
