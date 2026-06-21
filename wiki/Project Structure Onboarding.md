@@ -16,6 +16,8 @@ links:
   - "[[Munjib]]"
   - "[[Project PRD]]"
   - "[[Document Knowledge Model]]"
+  - "[[Folder Hierarchy Model]]"
+  - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
   - "[[RAG Process Workflow]]"
   - "[[Local Development Workflow]]"
@@ -120,7 +122,7 @@ flowchart TD
 | Layer | Source of truth | Notes |
 | --- | --- | --- |
 | Product/runtime data | `prisma/schema.prisma` and PostgreSQL | User, organization, workspace, folder, document, permission, version, audit, attachment metadata, comment, AI chat, and retention data live here. |
-| Attachment file bytes | `storage/attachments/` | Uploaded file bytes live on disk while attachment metadata lives in PostgreSQL. |
+| Attachment file bytes | `storage/attachments/` | Uploaded file bytes live on disk while attachment metadata lives in PostgreSQL. In a fresh checkout this path is created at runtime; Docker persists it through the `web_storage:/app/storage` volume. |
 | Saved document content | `Document.contentMarkdown` and `Document.contentText` | Saved DB content drives preview, wiki-link parsing, metadata extraction, graph construction, and RAG indexing. Unsaved editor draft is not the source for Ask AI answers. |
 | Link/tag support data | `DocumentLink`, `DocumentTag` | These rows support backlinks, tags, and graph DTOs. They are derived from saved documents and reconciliation flows. |
 | RAG index support data | `DocumentChunk` | These rows support workspace chatbot retrieval and future/legacy expanded-scope retrieval. They are refreshed from saved documents, but the current Ask AI direct-context path reads saved document content directly instead of querying `DocumentChunk`. |
@@ -130,22 +132,22 @@ flowchart TD
 
 ## Feature-To-Files Guide
 
-| Question | Start reading | Supporting files | Tests |
-| --- | --- | --- | --- |
-| How does the workspace screen load? | `app/workspaces/[workspaceSlug]/page.tsx` | `components/app-shell.tsx`, `components/workspace-center-shell.tsx`, `lib/workspace-tree.ts` | `tests/components/app-shell.test.tsx`, `tests/workspace-tree.test.ts` |
-| How are documents created, updated, archived, and restored? | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/service-errors.ts` | `tests/documents/service.test.ts`, `tests/workspace-actions.test.ts` |
-| How does folder navigation work? | `components/document-navigation.tsx` | `components/document-navigation/tree.ts`, `lib/folders/service.ts`, `lib/folders/path.ts` | `tests/folders/service.test.ts`, `tests/folders/path.test.ts` |
-| How do Markdown preview, properties, and folding work? | `components/document-editor.tsx` | `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `lib/markdown/folding.ts` | `tests/components/document-editor-preview.test.tsx`, `tests/markdown/folding.test.ts` |
-| How do wiki links and backlinks get reconciled? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts` | `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/preview.test.ts` |
-| How do document metadata and tags get reconciled? | `lib/document-metadata/reconcile.ts` | `lib/document-metadata/parser.ts`, `lib/documents/service.ts` | `tests/document-metadata/parser.test.ts`, `tests/documents/service.test.ts` |
-| How does graph view data and routing work? | `lib/knowledge-graph/model.ts` | `app/workspaces/[workspaceSlug]/page.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-routes.ts` | `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
-| How are auth and permissions enforced? | `lib/auth/session.ts` | `lib/permissions/workspace.ts`, `lib/permissions/document.ts`, `lib/auth/config.ts` | `tests/auth/config.test.ts`, `tests/permissions/document.test.ts`, `tests/permissions/workspace.test.ts` |
-| How does current-document Ask AI work? | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/document-context.ts` | `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/document-context.test.ts` |
-| How does Workspace AI chat work? | `components/workspace-chatbot.tsx` | `components/workspace-chatbot-stream.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts` | `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat.test.ts`, `tests/rag/workspace-chat-route.test.ts` |
-| How do outline, attachments, versions, and audit logs connect? | `components/metadata-panel.tsx` | `lib/attachments/service.ts`, `lib/documents/service.ts`, `lib/audit/log.ts` | `tests/components/metadata-panel.test.tsx`, `tests/attachments/service.test.ts`, `tests/documents/service.test.ts` |
-| How do comments and document properties work? | `components/document-editor/document-properties.tsx` | `app/workspaces/[workspaceSlug]/actions.ts`, `lib/comments/service.ts` | `tests/comments/service.test.ts`, `tests/workspace-actions.test.ts` |
-| How does archived document retention work? | `components/workspace-settings-panel.tsx` | `lib/workspaces/retention-service.ts`, `lib/documents/purge-archived.ts`, `scripts/documents/purge-archived.ts` | `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts` |
-| How does wiki maintenance work? | `wiki/index.md` | `scripts/wiki/find.ts`, `scripts/wiki/sync-plan.ts`, `scripts/wiki/sync-check.ts`, `lib/wiki/sync.ts`, `.githooks/pre-commit` | `tests/wiki/sync.test.ts`, `tests/wiki/search.test.ts`, `tests/wiki/lint.test.ts` |
+| 질문 | 먼저 읽을 wiki | 시작 파일 | 보조 파일 | 테스트 |
+| --- | --- | --- | --- | --- |
+| Workspace screen은 어디서 로드되나? | [[Document Editing Workflow]] | `app/workspaces/[workspaceSlug]/page.tsx` | `components/app-shell.tsx`, `components/workspace-center-shell.tsx`, `lib/workspace-tree.ts` | `tests/components/app-shell.test.tsx`, `tests/workspace-tree.test.ts` |
+| 문서 생성, 수정, archive, restore는 어디서 보나? | [[Document Editing Workflow]] | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/service-errors.ts` | `tests/documents/service.test.ts`, `tests/workspace-actions.test.ts` |
+| Folder navigation은 어디서 보나? | [[Folder Hierarchy Model]] | `components/document-navigation.tsx` | `components/document-navigation/tree.ts`, `lib/folders/service.ts`, `lib/folders/path.ts` | `tests/folders/service.test.ts`, `tests/folders/path.test.ts` |
+| Markdown preview, properties, folding은 어디서 보나? | [[Document Editing Workflow]] | `components/document-editor.tsx` | `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `lib/markdown/folding.ts` | `tests/components/document-editor-preview.test.tsx`, `tests/markdown/folding.test.ts` |
+| Wiki links와 backlinks는 어디서 reconcile되나? | [[Wiki Links And Backlinks]] | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts` | `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/preview.test.ts` |
+| Document metadata와 tags는 어디서 reconcile되나? | [[Document Knowledge Model]] | `lib/document-metadata/reconcile.ts` | `lib/document-metadata/parser.ts`, `lib/documents/service.ts` | `tests/document-metadata/parser.test.ts`, `tests/documents/service.test.ts` |
+| Graph view data와 routing은 어디서 보나? | [[Document Knowledge Model]] | `lib/knowledge-graph/model.ts` | `app/workspaces/[workspaceSlug]/page.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-routes.ts` | `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
+| Auth와 permissions는 어디서 강제되나? | [[Auth And Permissions Workflow]] | `lib/auth/session.ts` | `lib/permissions/workspace.ts`, `lib/permissions/document.ts`, `lib/auth/config.ts` | `tests/auth/config.test.ts`, `tests/permissions/document.test.ts`, `tests/permissions/workspace.test.ts` |
+| Current-document Ask AI는 어디서 시작하나? | [[RAG Process Workflow]] | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/document-context.ts` | `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/document-context.test.ts` |
+| Workspace AI chat은 어디서 시작하나? | [[RAG Process Workflow]] | `components/workspace-chatbot.tsx` | `components/workspace-chatbot-stream.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts` | `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat.test.ts`, `tests/rag/workspace-chat-route.test.ts` |
+| Outline, attachments, versions, audit logs는 어디서 연결되나? | [[Document Editing Workflow]] | `components/metadata-panel.tsx` | `lib/attachments/service.ts`, `lib/documents/service.ts`, `lib/audit/log.ts` | `tests/components/metadata-panel.test.tsx`, `tests/attachments/service.test.ts`, `tests/documents/service.test.ts` |
+| Comments와 document properties는 어디서 보나? | [[Document Editing Workflow]] | `components/document-editor/document-properties.tsx` | `app/workspaces/[workspaceSlug]/actions.ts`, `lib/comments/service.ts` | `tests/comments/service.test.ts`, `tests/workspace-actions.test.ts` |
+| Archived document retention은 어디서 보나? | [[Document Editing Workflow]] | `components/workspace-settings-panel.tsx` | `lib/workspaces/retention-service.ts`, `lib/documents/purge-archived.ts`, `scripts/documents/purge-archived.ts` | `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts` |
+| Wiki maintenance는 어디서 시작하나? | [[Wiki Maintenance Automation]] | `wiki/index.md` | `scripts/wiki/find.ts`, `scripts/wiki/sync-plan.ts`, `scripts/wiki/sync-check.ts`, `lib/wiki/sync.ts`, `.githooks/pre-commit` | `tests/wiki/sync.test.ts`, `tests/wiki/search.test.ts`, `tests/wiki/lint.test.ts` |
 
 ## Verification And Wiki Maintenance
 
@@ -159,6 +161,12 @@ Before broad source search, start with:
 
 ```bash
 pnpm wiki:find "<topic>"
+```
+
+Before commit-time verification, make sure the tracked hook path is installed:
+
+```bash
+pnpm wiki:install-hooks
 ```
 
 For documentation-only changes, run the manifest before final staging because it may rewrite `wiki/manifest.json`:
