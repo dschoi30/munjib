@@ -42,7 +42,7 @@ describe("client RAG chat model settings", () => {
         { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", chatProvider: "openai" },
         { id: "gpt-5.4", label: "GPT-5.4", chatProvider: "openai" },
         { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", chatProvider: "openai" },
-        { id: "gemma:e4b", label: "Gemma E4B", chatProvider: "ollama" },
+        { id: "gemma4:e4b", label: "Gemma4 E4B", chatProvider: "ollama" },
       ],
     );
     for (const preset of RAG_CHAT_MODEL_PRESETS) {
@@ -73,10 +73,10 @@ describe("client RAG chat model settings", () => {
       "gpt-4.1-mini",
     ]);
     expect(getRagChatModelPresets("ollama").map((preset) => preset.id)).toEqual([
-      "gemma:e4b",
+      "gemma4:e4b",
     ]);
     expect(RAG_CHAT_PROVIDER_RESET_DEFAULTS).toEqual({
-      ollama: { chatProvider: "ollama", chatModel: "gemma:e4b" },
+      ollama: { chatProvider: "ollama", chatModel: "gemma4:e4b" },
       openai: { chatProvider: "openai", chatModel: "gpt-5.4-mini" },
       "openai-compatible": {
         chatProvider: "openai-compatible",
@@ -129,10 +129,6 @@ describe("client RAG chat model settings", () => {
     expect(validateChatModelId("gemma4:e4b", "ollama")).toEqual({
       ok: true,
       value: "gemma4:e4b",
-    });
-    expect(validateChatModelId("gemma:e4b", "ollama")).toEqual({
-      ok: true,
-      value: "gemma:e4b",
     });
     expect(validateChatModelId("gpt-5.4-mini", "openai")).toEqual({
       ok: true,

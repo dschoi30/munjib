@@ -52,7 +52,7 @@ export const RAG_CHAT_MODEL_PRESETS = [
   { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", chatProvider: "openai" },
   { id: "gpt-5.4", label: "GPT-5.4", chatProvider: "openai" },
   { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", chatProvider: "openai" },
-  { id: "gemma:e4b", label: "Gemma E4B", chatProvider: "ollama" },
+  { id: "gemma4:e4b", label: "Gemma4 E4B", chatProvider: "ollama" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;
@@ -60,7 +60,7 @@ export const RAG_CHAT_MODEL_PRESETS = [
 }>;
 
 export const RAG_CHAT_PROVIDER_RESET_DEFAULTS = {
-  ollama: { chatProvider: "ollama", chatModel: "gemma:e4b" },
+  ollama: { chatProvider: "ollama", chatModel: "gemma4:e4b" },
   openai: { chatProvider: "openai", chatModel: "gpt-5.4-mini" },
   "openai-compatible": {
     chatProvider: "openai-compatible",
