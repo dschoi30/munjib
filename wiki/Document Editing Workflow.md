@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 89
+source_count: 90
 tags:
   - munjib
   - workflow
@@ -56,7 +56,7 @@ Issue #85 이후 `Company Handbook` workspace name text는 chevron 없는 worksp
 
 Issue #122 이후 workspace UI chrome state는 versioned aggregate `localStorage` key `munjib:workspace-ui:<workspaceSlug>:v1`에 저장된다. `AppShell`은 좌우 sidebar open state를, `DocumentList`는 마지막 명시적 `Documents`/`Search`/`Favorites` panel 선택을, `KnowledgeGraphView`는 graph controls state를, `WorkspaceChatbot`은 chat open state만 저장한다. 각 component는 server render 기본값을 유지한 뒤 mount 이후 workspace별 stored value를 hydrate하고, hydrate가 끝난 workspace에 대해서만 다시 write해 refresh와 route 이동은 보존하되 hydration mismatch와 default overwrite를 피한다. Stored closed sidebar contents are not mounted before workspace UI storage hydration, so sidebar child effects cannot overwrite their own browser storage during the initial client commit. Graph route는 visual active state를 `Graph`로 유지하며, passive graph mount만으로 stored active sidebar panel을 `Documents`로 덮지 않는다.
 
-Issue #129 설계는 위 hydration guard 때문에 refresh 직후 열린 좌우 sidebar column이 빈칸처럼 보이는 상태를 skeleton loading state로 바꾸는 계획이다. Display language가 아직 hydrate되지 않은 순간에는 한국어 설정 사용자에게 영어 chrome이 flash되지 않도록 sidebar/metadata user-facing text를 렌더하지 않고 shape-only skeleton을 보여준다. Language가 확정된 뒤에는 workspace title row, icon toolbar, metadata tab chrome처럼 안정적인 chrome은 현재 display language로 렌더할 수 있고, active sidebar panel body, recents/search/favorites rows, metadata outline/list content처럼 client state나 data 준비가 필요한 영역은 좌에서 우로 흐르는 shimmer bar skeleton으로 표시한다. Closed sidebar content는 Issue #122처럼 shell storage hydration 전 mount하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`이다.
+Issue #129 구현은 위 hydration guard 때문에 refresh 직후 열린 좌우 sidebar column이 빈칸처럼 보이는 상태를 skeleton loading state로 바꾼다. `I18nProvider`가 display language hydration signal을 제공하고, `AppShell`은 display language와 workspace UI state hydration이 모두 끝나기 전까지 좌우 sidebar content 또는 localized reopen tooltip을 렌더하지 않고 shape-only skeleton을 보여준다. `DocumentList`는 standalone language hydration 전에는 text-free left sidebar shell을, language hydration 뒤 active sidebar panel state가 hydrate되기 전에는 현재 display language의 sticky chrome과 navigation-body shimmer skeleton을 렌더한다. Closed sidebar content는 Issue #122처럼 shell storage hydration 전 mount하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-06-21-sidebar-loading-skeleton-language-hydration.md`이다.
 
 Issue #40 이후 workspace settings dialog는 document list를 교체하지 않고 modal dialog로 열린다. Dialog는 close button뿐 아니라 backdrop click으로도 닫히지만, dialog surface 내부 click은 닫힘으로 처리하지 않는다.
 

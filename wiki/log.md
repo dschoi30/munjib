@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 280
+source_count: 281
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T22:53:55+0900 - implementation
+
+- Result: Issue #129 Task 5 wired navigation-body skeletons into `DocumentList` active panel hydration.
+- Coverage: `DocumentList` now renders a text-free left sidebar skeleton when used before display-language hydration, and renders localized sticky sidebar chrome with `DocumentNavigationBodySkeleton` until the workspace active sidebar panel state hydrates. Once the active panel is hydrated, existing Documents/Search/Favorites navigation behavior, tag-search handling, graph route clearing, settings menu, create controls, and active panel persistence continue unchanged.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red focused tests failed while `document-navigation-loading` and standalone `left-sidebar-loading` were absent; green run `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx tests/components/i18n-provider.test.tsx` passed 100 tests.
 
 ## 2026-06-21T22:44:04+0900 - implementation
 
