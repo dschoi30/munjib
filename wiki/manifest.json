@@ -187,7 +187,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 118,
+      "source_count": 119,
       "searchPriority": 5
     },
     {
@@ -230,7 +230,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 269,
+      "source_count": 270,
       "searchPriority": 1
     },
     {
@@ -349,7 +349,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 105,
+      "source_count": 106,
       "searchPriority": 30
     },
     {
@@ -405,7 +405,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 105,
+      "source_count": 106,
       "searchPriority": 50
     },
     {

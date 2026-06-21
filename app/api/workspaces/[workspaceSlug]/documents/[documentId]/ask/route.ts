@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { parseLanguage } from "@/lib/i18n/language";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
 import {
@@ -18,6 +19,7 @@ export async function POST(
   const { workspaceSlug, documentId } = await params;
   const body = await parseJsonBody(request);
   const question = typeof body.question === "string" ? body.question : "";
+  const uiLanguage = parseLanguage(body.uiLanguage);
   const hasChatProvider = body.chatProvider !== undefined && body.chatProvider !== null;
   const hasChatModel = body.chatModel !== undefined && body.chatModel !== null;
   if (hasChatProvider && !hasChatModel) {
@@ -48,6 +50,7 @@ export async function POST(
       documentId,
       actorId: user.id,
       question,
+      ...(uiLanguage ? { uiLanguage } : {}),
       ...(chatProviderValidation?.ok
         ? { chatProviderOverride: chatProviderValidation.value }
         : {}),

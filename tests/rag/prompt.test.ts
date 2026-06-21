@@ -75,6 +75,21 @@ describe("RAG prompt builder", () => {
     expect(prompt.system).toContain("same language as the question");
   });
 
+  it("uses the selected Korean UI language for fallback/status phrasing without changing question-language answers", () => {
+    const prompt = buildRagPrompt({
+      question: "What did the customer say yesterday?",
+      chunks: [],
+      uiLanguage: "ko",
+    });
+
+    expect(prompt.user).toContain("저장된 문서 맥락을 찾지 못했습니다.");
+    expect(prompt.system).toContain("The selected UI language is Korean.");
+    expect(prompt.system).toContain(
+      "Use it for fallback or status phrasing, but answer in the same language as the question where possible.",
+    );
+    expect(prompt.system).toContain("Answer in the same language as the question where possible.");
+  });
+
   it("keeps only citations referenced by the answer text", () => {
     const citations = [
       {
@@ -291,5 +306,22 @@ describe("direct current document prompt builder", () => {
     });
 
     expect(prompt.user).toContain("Only selected sections of this long document were included.");
+  });
+
+  it("uses the selected Korean UI language for empty current-document fallback phrasing", () => {
+    const prompt = buildDirectDocumentPrompt({
+      question: "What is saved?",
+      uiLanguage: "ko",
+      currentDocumentContext: {
+        context: "",
+        partial: false,
+        sections: [],
+      },
+    });
+
+    expect(prompt.user).toContain("현재 문서 섹션을 찾지 못했습니다.");
+    expect(prompt.user).toContain("현재 저장된 문서가 비어 있습니다.");
+    expect(prompt.system).toContain("The selected UI language is Korean.");
+    expect(prompt.system).toContain("Answer in the same language as the question where possible.");
   });
 });

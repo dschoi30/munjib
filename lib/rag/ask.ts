@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/client";
+import type { Language } from "@/lib/i18n/language";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
 import {
@@ -32,6 +33,7 @@ export type AskDocumentQuestionInput = {
   question: string;
   chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
+  uiLanguage?: Language;
 };
 
 export type AskDocumentQuestionResult = {
@@ -143,7 +145,11 @@ export async function askDocumentQuestion(
     contentMarkdown: selectedDocument.contentMarkdown,
     question,
   });
-  const prompt = buildDirectDocumentPrompt({ question, currentDocumentContext });
+  const prompt = buildDirectDocumentPrompt({
+    question,
+    currentDocumentContext,
+    uiLanguage: input.uiLanguage,
+  });
   const citations = prompt.citations.map((citation) => ({
     ...citation,
     documentId: selectedDocument.id,

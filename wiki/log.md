@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 269
+source_count: 270
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T18:57:00+0900 - implementation
+
+- Result: Issue #126 Task 4 localized Ask AI/Workspace AI default surfaces and threaded selected UI language into AI prompt plumbing.
+- Coverage: `lib/i18n/messages.ts` now includes English/Korean Ask AI, Workspace AI, and thinking indicator keys. `ThinkingIndicator`, `AiAssistantPanel`, and `WorkspaceChatbot` render labels, placeholders, warnings, generic errors, empty state, and thinking text through `useI18n()`. Ask AI and Workspace AI POST bodies include current `uiLanguage`; routes parse it with `parseLanguage()` and ignore invalid values. `askDocumentQuestion()` and `prepareWorkspaceChatMessageStream()` pass valid UI language to `buildDirectDocumentPrompt()` / `buildRagPrompt()`, which localize fallback context phrases and add a model-facing selected UI language instruction while preserving the separate question-language-first answer instruction. Workspace chat retrieval still uses the original conversation question, not `uiLanguage`.
+- Pages: [[Project PRD]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/ai/thinking-indicator.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/components/thinking-indicator.test.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/prompt.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`.
+- Verification: red run `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts` failed on missing Korean thinking/fallback text and missing `uiLanguage` service pass-through; green runs `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
 
 ## 2026-06-21T18:30:26+0900 - implementation
 
