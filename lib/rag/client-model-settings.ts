@@ -49,11 +49,34 @@ export const RAG_CHAT_MODEL_PRESETS = [
   { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B A4B IT Free", chatProvider: "openai-compatible" },
   { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B Free", chatProvider: "openai-compatible" },
   { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B Free", chatProvider: "openai-compatible" },
+  { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", chatProvider: "openai" },
+  { id: "gpt-5.4", label: "GPT-5.4", chatProvider: "openai" },
+  { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", chatProvider: "openai" },
+  { id: "gemma4:e4b", label: "Gemma4 E4B", chatProvider: "ollama" },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;
   chatProvider: ClientRagChatProvider;
 }>;
+
+export const RAG_CHAT_PROVIDER_RESET_DEFAULTS = {
+  ollama: { chatProvider: "ollama", chatModel: "gemma4:e4b" },
+  openai: { chatProvider: "openai", chatModel: "gpt-5.4-mini" },
+  "openai-compatible": {
+    chatProvider: "openai-compatible",
+    chatModel: "google/gemma-4-31b-it:free",
+  },
+} as const satisfies Record<ClientRagChatProvider, ChatModelSetting>;
+
+export function getRagChatModelPresets(chatProvider: ClientRagChatProvider) {
+  return RAG_CHAT_MODEL_PRESETS.filter((preset) => preset.chatProvider === chatProvider);
+}
+
+export function getRagChatProviderResetDefault(
+  chatProvider: ClientRagChatProvider,
+): ChatModelSetting {
+  return RAG_CHAT_PROVIDER_RESET_DEFAULTS[chatProvider];
+}
 
 export const RAG_CHAT_PROVIDER_OPTIONS = [
   { id: "ollama", label: "Ollama" },

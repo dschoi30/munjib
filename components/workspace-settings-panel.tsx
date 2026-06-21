@@ -26,11 +26,11 @@ import {
   type ChatModelValidationError,
   INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
   RAG_CHAT_PROVIDER_OPTIONS,
-  RAG_CHAT_MODEL_PRESETS,
   addStoredCustomChatModel,
+  getRagChatModelPresets,
+  getRagChatProviderResetDefault,
   readStoredChatModelSetting,
   readStoredCustomChatModels,
-  resetStoredChatModel,
   validateChatModelSetting,
   writeStoredChatModelSetting,
 } from "@/lib/rag/client-model-settings";
@@ -144,7 +144,10 @@ export function WorkspaceSettingsPanel({
     () => readStoredCustomChatModels(workspaceSlug),
     [saveVersion, workspaceSlug],
   );
-  const showPresetModels = selectedChatProvider === "openai-compatible";
+  const visiblePresetModels = useMemo(
+    () => getRagChatModelPresets(selectedChatProvider),
+    [selectedChatProvider],
+  );
   const visibleCustomChatModels = useMemo(
     () =>
       customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
@@ -251,17 +254,24 @@ export function WorkspaceSettingsPanel({
   }, [customModel, selectedChatProvider, workspaceSlug]);
 
   const handleResetModel = useCallback(() => {
-    const reset = resetStoredChatModel(workspaceSlug);
-    if (reset) {
-      setSelectedChatProvider(defaultChatProvider);
+    const resetDefault = getRagChatProviderResetDefault(selectedChatProvider);
+    const result = writeStoredChatModelSetting(workspaceSlug, resetDefault);
+    if (!result.ok) {
+      setModelStatus(chatModelErrorMessage(result.error));
+      return;
+    }
+
+    if (result.stored) {
+      setSelectedChatProvider(result.value.chatProvider);
+      setCustomModel("");
       setSaveVersion((version) => version + 1);
     }
     setModelStatus(
-      reset
-        ? { key: "settings.ai.serverDefaultStatus", params: { model: defaultChatModel } }
+      result.stored
+        ? { key: "settings.ai.resetModelStatus", params: { model: result.value.chatModel } }
         : { key: "settings.ai.modelResetFailed" },
     );
-  }, [defaultChatModel, defaultChatProvider, workspaceSlug]);
+  }, [selectedChatProvider, workspaceSlug]);
 
   const handleImportMarkdown = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -391,7 +401,7 @@ export function WorkspaceSettingsPanel({
         role="dialog"
         aria-modal="true"
         aria-label={t("settings.dialogLabel")}
-        className="grid max-h-[min(42rem,calc(100vh-8rem))] w-full max-w-4xl grid-cols-[13rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+        className="grid h-[80vh] max-h-[80vh] w-full max-w-4xl grid-cols-[13rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
       >
         <aside className="border-r border-slate-200 bg-slate-50 p-4">
           <div className="mb-4 flex h-9 items-center">
@@ -623,11 +633,11 @@ export function WorkspaceSettingsPanel({
                 </select>
               </div>
 
-              {showPresetModels ? (
+              {visiblePresetModels.length > 0 ? (
                 <div>
                   <p className="text-sm font-semibold text-ink">{t("settings.ai.presets")}</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {RAG_CHAT_MODEL_PRESETS.map((preset) => (
+                    {visiblePresetModels.map((preset) => (
                       <Button
                         key={preset.id}
                         type="button"

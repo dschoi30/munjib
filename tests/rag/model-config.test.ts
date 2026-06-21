@@ -84,6 +84,41 @@ describe("RAG model configuration", () => {
     expect(() => getRagModelConfig()).toThrow(RAG_CONFIG_ERROR_CODES.INVALID_CONFIG);
   });
 
+  it("builds runtime chat provider overrides independently from the default provider", () => {
+    vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", "ollama");
+    vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "gemma4:e4b");
+    vi.stubEnv("OPENAI_API_KEY", "sk-openai");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_BASE_URL", "https://openrouter.ai/api/v1");
+    vi.stubEnv("MUNJIB_OPENAI_COMPATIBLE_API_KEY", "sk-openrouter");
+
+    expect(
+      getRagGenerationConfig(process.env, {
+        provider: "openai",
+        model: "gpt-4.1-mini",
+      }).chat,
+    ).toEqual({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      apiKey: "sk-openai",
+    });
+    expect(
+      getRagGenerationConfig(process.env, {
+        provider: "openai-compatible",
+        model: "google/gemma-4-31b-it:free",
+      }).chat,
+    ).toEqual({
+      provider: "openai-compatible",
+      model: "google/gemma-4-31b-it:free",
+      baseUrl: "https://openrouter.ai/api/v1",
+      apiKey: "sk-openrouter",
+    });
+    expect(getRagGenerationConfig().chat).toEqual({
+      provider: "ollama",
+      model: "gemma4:e4b",
+      baseUrl: "http://localhost:11434",
+    });
+  });
+
   it("uses trimmed official OpenAI chat environment values", () => {
     vi.stubEnv("MUNJIB_RAG_CHAT_PROVIDER", " openai ");
     vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", " gpt-4.1-mini ");

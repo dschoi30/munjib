@@ -4,8 +4,11 @@ import {
   CHAT_MODEL_SETTING_EVENT,
   INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
   INVALID_CHAT_MODEL_ERROR,
+  RAG_CHAT_PROVIDER_RESET_DEFAULTS,
   RAG_CHAT_MODEL_PRESETS,
   addStoredCustomChatModel,
+  getRagChatModelPresets,
+  getRagChatProviderResetDefault,
   readStoredChatModelSetting,
   readStoredCustomChatModels,
   readStoredChatModel,
@@ -36,6 +39,10 @@ describe("client RAG chat model settings", () => {
         { id: "google/gemma-4-26b-a4b-it:free", label: "Gemma 4 26B A4B IT Free", chatProvider: "openai-compatible" },
         { id: "openai/gpt-oss-20b:free", label: "GPT OSS 20B Free", chatProvider: "openai-compatible" },
         { id: "openai/gpt-oss-120b:free", label: "GPT OSS 120B Free", chatProvider: "openai-compatible" },
+        { id: "gpt-5.4-mini", label: "GPT-5.4 Mini", chatProvider: "openai" },
+        { id: "gpt-5.4", label: "GPT-5.4", chatProvider: "openai" },
+        { id: "gpt-4.1-mini", label: "GPT-4.1 Mini", chatProvider: "openai" },
+        { id: "gemma4:e4b", label: "Gemma4 E4B", chatProvider: "ollama" },
       ],
     );
     for (const preset of RAG_CHAT_MODEL_PRESETS) {
@@ -48,6 +55,38 @@ describe("client RAG chat model settings", () => {
       });
       expect(preset.label.length).toBeGreaterThan(0);
     }
+  });
+
+  it("returns presets and reset defaults by provider", () => {
+    expect(getRagChatModelPresets("openai-compatible").map((preset) => preset.id)).toEqual([
+      "openrouter/fusion",
+      "moonshotai/kimi-k2.7-code",
+      "qwen/qwen3.7-plus",
+      "google/gemma-4-31b-it:free",
+      "google/gemma-4-26b-a4b-it:free",
+      "openai/gpt-oss-20b:free",
+      "openai/gpt-oss-120b:free",
+    ]);
+    expect(getRagChatModelPresets("openai").map((preset) => preset.id)).toEqual([
+      "gpt-5.4-mini",
+      "gpt-5.4",
+      "gpt-4.1-mini",
+    ]);
+    expect(getRagChatModelPresets("ollama").map((preset) => preset.id)).toEqual([
+      "gemma4:e4b",
+    ]);
+    expect(RAG_CHAT_PROVIDER_RESET_DEFAULTS).toEqual({
+      ollama: { chatProvider: "ollama", chatModel: "gemma4:e4b" },
+      openai: { chatProvider: "openai", chatModel: "gpt-5.4-mini" },
+      "openai-compatible": {
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      },
+    });
+    expect(getRagChatProviderResetDefault("openai")).toEqual({
+      chatProvider: "openai",
+      chatModel: "gpt-5.4-mini",
+    });
   });
 
   it("validates and normalizes chat model ids", () => {
@@ -90,6 +129,18 @@ describe("client RAG chat model settings", () => {
     expect(validateChatModelId("gemma4:e4b", "ollama")).toEqual({
       ok: true,
       value: "gemma4:e4b",
+    });
+    expect(validateChatModelId("gpt-5.4-mini", "openai")).toEqual({
+      ok: true,
+      value: "gpt-5.4-mini",
+    });
+    expect(validateChatModelId("gpt-4.1-mini", "openai")).toEqual({
+      ok: true,
+      value: "gpt-4.1-mini",
+    });
+    expect(validateChatModelId("openai/gpt-oss-20b:free", "openai")).toEqual({
+      ok: false,
+      error: INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
     });
     expect(validateChatModelId(42)).toEqual({
       ok: false,

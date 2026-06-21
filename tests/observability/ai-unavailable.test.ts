@@ -91,6 +91,39 @@ describe("captureHandledAiUnavailable", () => {
     expect(capturedError.message).not.toContain("raw details");
   });
 
+  test("names provider configuration failures distinctly", () => {
+    captureHandledAiUnavailable({
+      error: new Error("missing base url"),
+      surface: "ask_document",
+      workspaceSlug: "company-handbook",
+      status: 503,
+      ragErrorCode: RAG_ERROR_CODES.INVALID_CONFIG,
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+
+    expect(sentryMock.scope.setContext).toHaveBeenCalledWith("ai_unavailable", {
+      chat_model: "google/gemma-4-31b-it:free",
+      chat_provider: "openai-compatible",
+      rag_error_code: RAG_ERROR_CODES.INVALID_CONFIG,
+      status: 503,
+      surface: "ask_document",
+      workspace_slug: "company-handbook",
+    });
+    expect(sentryMock.scope.setFingerprint).toHaveBeenCalledWith([
+      "handled-ai-unavailable",
+      "ask_document",
+      RAG_ERROR_CODES.INVALID_CONFIG,
+    ]);
+    const capturedError = sentryMock.captureException.mock.calls[0]?.[0];
+    expect(capturedError).toBeInstanceOf(Error);
+    expect(capturedError.name).toBe("HandledAiConfigurationError");
+    expect(capturedError.message).toBe(
+      "Handled AI provider configuration failure returned AI_UNAVAILABLE",
+    );
+    expect(capturedError.message).not.toContain("missing base url");
+  });
+
   test("omits optional provider and model fields when unknown", () => {
     captureHandledAiUnavailable({
       error: new Error("provider response included raw details"),

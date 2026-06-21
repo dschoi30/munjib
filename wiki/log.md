@@ -35,6 +35,14 @@ links:
 - Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
 - Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
 
+## 2026-06-21T19:05:00+09:00 - implementation
+
+- Result: Provider-specific AI model presets, reset defaults, and settings dialog height were implemented.
+- Coverage: `lib/rag/client-model-settings.ts` now exposes provider-filtered presets and reset defaults for OpenRouter/OpenAI/Ollama. `WorkspaceSettingsPanel` renders presets for the selected provider, keeps custom model id input, writes provider defaults on reset, and uses an 80vh dialog. Tests cover provider preset lists, reset defaults, UI preset switching, reset storage behavior, and dialog sizing.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `tests/rag/client-model-settings.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-06-21T18:57:00+0900 - implementation
 
 - Result: Issue #126 Task 4 localized Ask AI/Workspace AI default surfaces and threaded selected UI language into AI prompt plumbing.
@@ -42,6 +50,14 @@ links:
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/document-editor.tsx`, `components/ai/thinking-indicator.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/components/thinking-indicator.test.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/prompt.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`, `wiki/Document Editing Workflow.md`, `wiki/Munjib.md`, `wiki/Project PRD.md`, `wiki/RAG Process Workflow.md`.
 - Verification: red run `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts` failed on missing Korean thinking/fallback text and missing `uiLanguage` service pass-through; green runs `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
+
+## 2026-06-21T18:35:00+09:00 - design
+
+- Result: Provider-specific AI model preset and reset behavior design was recorded.
+- Coverage: Settings panel AI tab will render presets for the selected provider, keep custom model id input, reset OpenRouter to `google/gemma-4-31b-it:free`, reset OpenAI to `gpt-5.4-mini`, reset Ollama to `gemma4:e4b`, and fix the settings dialog height at 80vh with internal content scrolling.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-21-provider-model-presets-design.md`.
+- Verification: spec self-review; pnpm wiki:manifest; pnpm wiki:lint.
 
 ## 2026-06-21T18:30:26+0900 - implementation
 
@@ -51,29 +67,22 @@ links:
 - Source evidence: GitHub issue #126, `components/workspace-settings-panel.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.
 - Verification: initial red run `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"` failed because the Language tab was absent; green runs `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"`, `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts tests/components/document-list.test.tsx`, and `pnpm exec tsc --noEmit --pretty false` passed. Follow-up focused runs passed after adding native radio controls and display-language rerender coverage for saved retention status.
 
-## 2026-06-21T18:14:03+0900 - implementation
+## 2026-06-21T18:20:00+09:00 - implementation
 
-- Result: Issue #126 Task 2 implemented browser storage and the React provider for product display language.
-- Coverage: `lib/i18n/storage.ts` stores explicit browser-wide language selections in `localStorage` key `munjib:language`, ignores invalid stored values, reports blocked writes without throwing, emits same-tab language change events, listens for cross-tab storage events, and falls back from browser language hints when no value is stored. `components/i18n-provider.tsx` exposes `I18nProvider`/`useI18n()`, hydrates from storage/browser hints after mount, updates `document.documentElement.lang`, and translates message keys through the shared catalog. `app/layout.tsx` now mounts the provider around app children and the toaster while keeping SSR `<html lang="en" suppressHydrationWarning>`.
-- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #126, `app/layout.tsx`, `components/i18n-provider.tsx`, `lib/i18n/storage.ts`, `tests/components/i18n-provider.test.tsx`, `tests/i18n/storage.test.ts`.
-- Verification: initial red run `pnpm exec vitest run tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` failed because `@/lib/i18n/storage` and `@/components/i18n-provider` did not exist; green run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` passed 4 files and 15 tests; `pnpm exec tsc --noEmit --pretty false` passed.
-
-## 2026-06-21T18:00:24+0900 - implementation
-
-- Result: Issue #126 Task 1 implemented the shared product language core and first typed message catalog.
-- Coverage: `lib/i18n/language.ts` defines the supported `en`/`ko` display language contract, default language, strict parsing, browser/OS Korean hint inference, and localized language labels. `lib/i18n/messages.ts` adds the initial English/Korean Settings/app catalog with key parity and parameter interpolation so later Settings/provider/UI translation tasks use one shared catalog instead of ad hoc local objects.
+- Result: AI provider configuration failure diagnostics and provider override regression coverage were updated.
+- Coverage: Handled AI unavailable capture now names `RAG_INVALID_CONFIG` events as `HandledAiConfigurationError`, while other provider/runtime failures keep `HandledAiUnavailableError`. Tests cover runtime chat provider overrides for official OpenAI and OpenRouter/OpenAI-compatible independently from the default Ollama provider, and official OpenAI model validation rejects OpenRouter-style model ids.
 - Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #126, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`, `lib/i18n/language.ts`, `lib/i18n/messages.ts`, `tests/i18n/language.test.ts`, `tests/i18n/messages.test.ts`.
-- Verification: initial red run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts` failed because `@/lib/i18n/language` and `@/lib/i18n/messages` did not exist; green run passed 2 test files and 8 tests.
+- Source evidence: `lib/observability/ai-unavailable.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/model-config.test.ts`, `tests/rag/client-model-settings.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/model-config.test.ts tests/rag/client-model-settings.test.ts --reporter=dot`; `git diff --check`.
 
-## 2026-06-21T17:38:03+0900 - design
+## 2026-06-21T17:20:00+09:00 - design
 
-- Result: Issue #126 설계에서 제품 표시 언어를 영어/한국어로 전환하는 방향을 정리했다.
-- Coverage: 언어 preference는 browser-global app setting으로 저장하고, 저장값이 없으면 `navigator.languages`/`navigator.language`에서 `ko`/`ko-*`를 한국어로 추론한다. Settings panel `Language` section은 영어/한국어 선택, 현재 적용 중인 언어 highlight, Save/Cancel을 제공하며 Save 후 user-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states가 즉시 갱신되어야 한다. 실제 AI answer body는 question-language-first 정책을 유지하고 내부 developer/admin identifiers는 번역하지 않는다. 구현 계획은 i18n core/provider, Settings language section, AI prompt/request plumbing, workspace chrome, editor/metadata/graph translation, string sweep/wiki maintenance, PR workflow task로 나눈다.
-- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #126, `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`.
-- Verification: spec self-review; `git diff --check`.
+- Result: Runtime AI provider switching design was recorded for settings-driven Ask AI and Workspace AI provider changes.
+- Coverage: Settings panel provider/model overrides remain client-side values, while Docker web runtime must carry server-side env for Ollama, official OpenAI, and OpenRouter/OpenAI-compatible if those providers are selectable. Default chat provider/model env is only fallback state and must not limit valid request overrides. Missing selected-provider config should be observable as `RAG_INVALID_CONFIG`; embedding stays independent with current Ollama `bge-m3` 1024 identity.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-21-runtime-ai-provider-switching-design.md`.
+- Verification: spec self-review; pnpm wiki:manifest; pnpm wiki:lint.
+
 
 ## 2026-06-21T12:52:00+09:00 - implementation
 
