@@ -6,7 +6,7 @@ status: active
 summary: 신규 Munjib 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.
 created: 2026-06-21
 updated: 2026-06-21
-source_count: 10
+source_count: 21
 tags:
   - munjib
   - onboarding
@@ -136,13 +136,15 @@ flowchart TD
 | How are documents created, updated, archived, and restored? | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/service-errors.ts` | `tests/documents/service.test.ts`, `tests/workspace-actions.test.ts` |
 | How does folder navigation work? | `components/document-navigation.tsx` | `components/document-navigation/tree.ts`, `lib/folders/service.ts`, `lib/folders/path.ts` | `tests/folders/service.test.ts`, `tests/folders/path.test.ts` |
 | How do Markdown preview, properties, and folding work? | `components/document-editor.tsx` | `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `lib/markdown/folding.ts` | `tests/components/document-editor-preview.test.tsx`, `tests/markdown/folding.test.ts` |
-| How do wiki links, backlinks, tags, and graph view work? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/knowledge-graph/model.ts`, `components/knowledge-graph-view.tsx` | `tests/wiki-links/*.test.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
+| How do wiki links, backlinks, and tags get reconciled? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/wiki-links/preview.ts`, `lib/wiki-links/service.ts` | `tests/wiki-links/reconcile.test.ts`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/preview.test.ts` |
+| How does graph view data and routing work? | `lib/knowledge-graph/model.ts` | `app/workspaces/[workspaceSlug]/page.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-routes.ts` | `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
 | How are auth and permissions enforced? | `lib/auth/session.ts` | `lib/permissions/workspace.ts`, `lib/permissions/document.ts`, `lib/auth/config.ts` | `tests/auth/config.test.ts`, `tests/permissions/document.test.ts`, `tests/permissions/workspace.test.ts` |
 | How does current-document Ask AI work? | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/document-context.ts` | `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/document-context.test.ts` |
 | How does Workspace AI chat work? | `components/workspace-chatbot.tsx` | `components/workspace-chatbot-stream.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts` | `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat.test.ts`, `tests/rag/workspace-chat-route.test.ts` |
-| How do attachments, comments, versions, and audit logs connect? | `components/metadata-panel.tsx` | `lib/attachments/service.ts`, `lib/comments/service.ts`, `lib/audit/log.ts` | `tests/attachments/service.test.ts`, `tests/comments/service.test.ts`, `tests/components/metadata-panel.test.tsx` |
+| How do outline, attachments, versions, and audit logs connect? | `components/metadata-panel.tsx` | `lib/attachments/service.ts`, `lib/documents/service.ts`, `lib/audit/log.ts` | `tests/components/metadata-panel.test.tsx`, `tests/attachments/service.test.ts`, `tests/documents/service.test.ts` |
+| How do comments and document properties work? | `components/document-editor/document-properties.tsx` | `app/workspaces/[workspaceSlug]/actions.ts`, `lib/comments/service.ts` | `tests/comments/service.test.ts`, `tests/workspace-actions.test.ts` |
 | How does archived document retention work? | `components/workspace-settings-panel.tsx` | `lib/workspaces/retention-service.ts`, `lib/documents/purge-archived.ts`, `scripts/documents/purge-archived.ts` | `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts` |
-| How does wiki maintenance work? | `wiki/index.md` | `scripts/wiki/*.ts`, `lib/wiki/*.ts`, `.githooks/pre-commit` | `tests/wiki/*.test.ts` |
+| How does wiki maintenance work? | `wiki/index.md` | `scripts/wiki/find.ts`, `scripts/wiki/sync-plan.ts`, `scripts/wiki/sync-check.ts`, `lib/wiki/sync.ts`, `.githooks/pre-commit` | `tests/wiki/sync.test.ts`, `tests/wiki/search.test.ts`, `tests/wiki/lint.test.ts` |
 
 ## Verification And Wiki Maintenance
 
@@ -158,21 +160,32 @@ Before broad source search, start with:
 pnpm wiki:find "<topic>"
 ```
 
-For documentation-only changes, run:
+For documentation-only changes, stage the docs or wiki changes first, then run:
 
 ```bash
+pnpm wiki:sync-plan --staged
 pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:sync-check --staged
-git diff --check
+git diff --check --cached
 ```
 
-For source changes, run the focused test for the touched surface plus wiki sync. Examples:
+For source changes, run the focused test for the touched surface and typecheck first. Examples:
 
 ```bash
 pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts
 pnpm exec vitest run tests/documents/service.test.ts tests/wiki-links/reconcile.test.ts
 pnpm exec tsc --noEmit --pretty false
+```
+
+Then stage the source and wiki maintenance files, and run the same wiki sync bundle:
+
+```bash
+pnpm wiki:sync-plan --staged
+pnpm wiki:manifest
+pnpm wiki:lint
+pnpm wiki:sync-check --staged
+git diff --check --cached
 ```
 
 ## 근거
