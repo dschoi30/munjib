@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTagSearch } from "@/components/app-shell";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   filterKnowledgeGraph,
@@ -23,6 +24,7 @@ import {
   type WorkspaceUiGraphForces,
 } from "@/lib/workspace-ui-state";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
+import type { MessageKey } from "@/lib/i18n/messages";
 
 type ForceGraph2DProps = Record<string, unknown>;
 type ForceGraphNode = KnowledgeGraphNode & {
@@ -108,10 +110,10 @@ const DEFAULT_FORCE_SETTINGS: WorkspaceUiGraphForces = {
 
 const FILTER_OPTIONS: Array<{
   key: keyof WorkspaceUiGraphFilters;
-  label: string;
+  labelKey: MessageKey;
 }> = [
-    { key: "tag", label: "Tags" },
-    { key: "orphans", label: "Orphans" },
+    { key: "tag", labelKey: "graph.filters.tags" },
+    { key: "orphans", labelKey: "graph.filters.orphans" },
   ];
 
 export function KnowledgeGraphView({
@@ -123,6 +125,7 @@ export function KnowledgeGraphView({
   graph: KnowledgeGraphData;
   selectedDocumentId: string | null;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const tagSearch = useTagSearch();
   const graphContainerRef = useRef<HTMLDivElement | null>(null);
@@ -391,7 +394,7 @@ export function KnowledgeGraphView({
         data-testid="knowledge-graph-view"
         className="flex h-full min-h-0 items-center justify-center bg-white text-sm text-slate-500"
       >
-        No graph data available.
+        {t("graph.empty")}
       </section>
     );
   }
@@ -486,14 +489,16 @@ export function KnowledgeGraphView({
             className="pointer-events-auto absolute right-4 top-4 w-60 rounded-md border border-border bg-muted p-3 text-ink shadow-lg"
           >
             <GraphControlSection
-              title="Filters"
+              title={t("graph.filters")}
+              collapseLabel={t("graph.filters.collapse")}
+              expandLabel={t("graph.filters.expand")}
               open={filtersOpen}
               onToggle={() => setFiltersOpen((current) => !current)}
               className="mt-0 border-t-0 pt-0"
               trailingAction={
                 <Button
                   type="button"
-                  aria-label="Close graph settings"
+                  aria-label={t("graph.settings.close")}
                   className="size-7 bg-transparent p-0 text-slate-500 hover:bg-slate-200 hover:text-ink"
                   onClick={() => setSettingsOpen(false)}
                 >
@@ -516,19 +521,21 @@ export function KnowledgeGraphView({
                       checked={filters[option.key]}
                       onChange={() => toggleFilter(option.key)}
                     />
-                    {option.label}
+                    {t(option.labelKey)}
                   </label>
                 ))}
               </div>
             </GraphControlSection>
 
             <GraphControlSection
-              title="Display"
+              title={t("graph.display")}
+              collapseLabel={t("graph.display.collapse")}
+              expandLabel={t("graph.display.expand")}
               open={displayOpen}
               onToggle={() => setDisplayOpen((current) => !current)}
             >
               <label className="flex items-center justify-between gap-3 text-sm text-slate-700">
-                <span>Arrows</span>
+                <span>{t("graph.display.arrows")}</span>
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-violet-500"
@@ -537,7 +544,7 @@ export function KnowledgeGraphView({
                 />
               </label>
               <RangeControl
-                label="Text fade threshold"
+                label={t("graph.display.textFadeThreshold")}
                 max={3}
                 min={0.5}
                 step={0.1}
@@ -545,7 +552,7 @@ export function KnowledgeGraphView({
                 onChange={(value) => updateDisplay("textFadeThreshold", value)}
               />
               <RangeControl
-                label="Node size"
+                label={t("graph.display.nodeSize")}
                 max={10}
                 min={1}
                 step={1}
@@ -553,7 +560,7 @@ export function KnowledgeGraphView({
                 onChange={(value) => updateDisplay("nodeSize", value)}
               />
               <RangeControl
-                label="Link thickness"
+                label={t("graph.display.linkThickness")}
                 max={5}
                 min={0.5}
                 step={0.5}
@@ -563,12 +570,14 @@ export function KnowledgeGraphView({
             </GraphControlSection>
 
             <GraphControlSection
-              title="Forces"
+              title={t("graph.forces")}
+              collapseLabel={t("graph.forces.collapse")}
+              expandLabel={t("graph.forces.expand")}
               open={forcesOpen}
               onToggle={() => setForcesOpen((current) => !current)}
             >
               <RangeControl
-                label="Center force"
+                label={t("graph.forces.center")}
                 max={1}
                 min={0}
                 step={0.1}
@@ -576,7 +585,7 @@ export function KnowledgeGraphView({
                 onChange={(value) => updateForce("center", value)}
               />
               <RangeControl
-                label="Repel force"
+                label={t("graph.forces.repel")}
                 max={-20}
                 min={-300}
                 step={10}
@@ -584,7 +593,7 @@ export function KnowledgeGraphView({
                 onChange={(value) => updateForce("repel", value)}
               />
               <RangeControl
-                label="Link force"
+                label={t("graph.forces.link")}
                 max={1}
                 min={0}
                 step={0.1}
@@ -592,7 +601,7 @@ export function KnowledgeGraphView({
                 onChange={(value) => updateForce("link", value)}
               />
               <RangeControl
-                label="Link distance"
+                label={t("graph.forces.linkDistance")}
                 max={180}
                 min={20}
                 step={10}
@@ -604,7 +613,7 @@ export function KnowledgeGraphView({
         ) : (
           <Button
             type="button"
-            aria-label="Open graph settings"
+            aria-label={t("graph.settings.open")}
             className="pointer-events-auto absolute right-4 top-4 size-9 bg-muted p-0 text-slate-600 shadow-lg hover:bg-slate-200 hover:text-ink"
             onClick={() => setSettingsOpen(true)}
           >
@@ -666,6 +675,8 @@ function createEmptyFocus() {
 function GraphControlSection({
   children,
   className,
+  collapseLabel,
+  expandLabel,
   onToggle,
   open,
   title,
@@ -673,12 +684,13 @@ function GraphControlSection({
 }: {
   children: React.ReactNode;
   className?: string;
+  collapseLabel: string;
+  expandLabel: string;
   onToggle: () => void;
   open: boolean;
   title: string;
   trailingAction?: React.ReactNode;
 }) {
-  const action = open ? "Collapse" : "Expand";
   const ToggleIcon = open ? ChevronDown : ChevronRight;
 
   return (
@@ -686,7 +698,7 @@ function GraphControlSection({
       <div className="flex items-center justify-between gap-2">
         <Button
           type="button"
-          aria-label={`${action} ${title.toLowerCase()}`}
+          aria-label={open ? collapseLabel : expandLabel}
           className="h-7 justify-start gap-1 bg-transparent px-0 text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
           onClick={onToggle}
         >

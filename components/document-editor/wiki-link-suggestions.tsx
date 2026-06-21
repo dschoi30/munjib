@@ -1,4 +1,5 @@
 import type { WikiLinkCompletionOption } from "@/lib/wiki-links/autocomplete";
+import { useI18n } from "@/components/i18n-provider";
 
 export function WikiLinkSuggestions({
   canWrite,
@@ -9,6 +10,8 @@ export function WikiLinkSuggestions({
   suggestions: WikiLinkCompletionOption[];
   onSelect: (option: WikiLinkCompletionOption) => void;
 }) {
+  const { t } = useI18n();
+
   if (!canWrite || suggestions.length === 0) {
     return null;
   }
@@ -16,7 +19,7 @@ export function WikiLinkSuggestions({
   return (
     <div className="absolute left-4 top-12 z-10 w-72 overflow-hidden rounded-md border border-border bg-white shadow-lg">
       <div className="border-b border-border px-3 py-2 text-xs font-medium uppercase tracking-wide text-slate-500">
-        Wiki links
+        {t("editor.wikiLinks")}
       </div>
       {suggestions.map((option) => (
         <button

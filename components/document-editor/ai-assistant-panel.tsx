@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   type ChatModelSetting,
@@ -34,10 +35,11 @@ export function AiAssistantPanel({
   defaultChatModel,
   defaultChatProvider,
 }: AiAssistantPanelProps) {
+  const { language, t } = useI18n();
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<"" | "answerFailed">("");
   const [isLoading, setIsLoading] = useState(false);
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
     readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
@@ -70,10 +72,11 @@ export function AiAssistantPanel({
       const requestBody = chatModelOverride
         ? {
             question: trimmedQuestion,
+            uiLanguage: language,
             chatProvider: chatModelOverride.chatProvider,
             chatModel: chatModelOverride.chatModel,
           }
-        : { question: trimmedQuestion };
+        : { question: trimmedQuestion, uiLanguage: language };
       const response = await fetch(
         `/api/workspaces/${workspaceSlug}/documents/${documentId}/ask`,
         {
@@ -91,7 +94,7 @@ export function AiAssistantPanel({
       setAnswer(body.answer ?? "");
       setCitations(body.citations ?? []);
     } catch {
-      setError("AI 답변을 가져오지 못했습니다.");
+      setError("answerFailed");
     } finally {
       setIsLoading(false);
     }
@@ -99,37 +102,37 @@ export function AiAssistantPanel({
 
   return (
     <section
-      aria-label="AI assistant"
+      aria-label={t("ai.assistant.label")}
       className="rounded-md border border-border bg-white px-3 py-3 text-sm"
     >
       {hasUnsavedChanges ? (
         <p className="mb-2 text-xs text-amber-700">
-          저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.
+          {t("ai.unsavedWarning")}
         </p>
       ) : null}
       <div className="mb-2 flex items-center justify-between gap-3 text-xs text-slate-500">
-        <span>Model</span>
+        <span>{t("ai.model")}</span>
         <span className="min-w-0 truncate font-medium text-slate-700" title={effectiveChatModel}>
           {effectiveChatModel}
         </span>
       </div>
       <form className="space-y-2" onSubmit={handleSubmit}>
         <textarea
-          aria-label="AI question"
+          aria-label={t("ai.questionLabel")}
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           rows={3}
           className="w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
-          placeholder="Ask about this document"
+          placeholder={t("ai.askPlaceholder")}
         />
         <div className="flex justify-end">
           <Button type="submit" disabled={!trimmedQuestion || isLoading} className="h-8 px-2 text-xs">
-            Ask AI
+            {t("ai.askSubmit")}
           </Button>
         </div>
       </form>
       <ThinkingIndicator active={isLoading} className="mt-3 text-sm text-slate-500" />
-      {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-3 text-sm text-red-600">{t("ai.answerFailed")}</p> : null}
       {answer ? (
         <div className="mt-3 space-y-2 border-t border-border pt-3">
           <AiAnswer content={answer} className="text-slate-700" />

@@ -6,6 +6,7 @@ import { MessageSquare } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTagSearch } from "@/components/app-shell";
 import type { EditableDocument, CommentItem } from "@/components/document-editor/types";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 
@@ -36,10 +37,11 @@ export function DocumentProperties({
     broken: link.isBroken,
   }));
   const hasFrontmatterLinks = properties.some((property) => property.key === "links");
+  const { t } = useI18n();
 
   return (
-    <section aria-label="Document properties" className="space-y-3 py-2">
-      <h2 className="text-lg font-semibold">Properties</h2>
+    <section aria-label={t("editor.documentProperties")} className="space-y-3 py-2">
+      <h2 className="text-lg font-semibold">{t("editor.properties")}</h2>
       <div className="space-y-2 text-sm">
         {!hasFrontmatterLinks && linkedItems.length > 0 ? (
           <LinksPropertyRow
@@ -70,9 +72,9 @@ export function DocumentProperties({
             </PropertyRow>
           );
         })}
-        <PropertyRow label="comments">
+        <PropertyRow label={t("editor.comments")}>
           <div className="flex min-w-0 flex-1 flex-col items-stretch gap-2">
-            {comments.length === 0 ? <span className="text-slate-400">none</span> : null}
+            {comments.length === 0 ? <span className="text-slate-400">{t("editor.none")}</span> : null}
             {comments.map((comment) => (
               <span
                 key={comment.id}
@@ -87,17 +89,17 @@ export function DocumentProperties({
             <form action={createCommentAction} className="flex min-w-[220px] items-center gap-2">
               <input type="hidden" name="documentId" value={document.id} />
               <label className="sr-only" htmlFor={`comment-body-${document.id}`}>
-                Add comment
+                {t("editor.addComment")}
               </label>
               <input
                 id={`comment-body-${document.id}`}
                 name="body"
                 disabled={!canWrite}
-                placeholder="Add comment"
+                placeholder={t("editor.addComment")}
                 className="h-8 min-w-0 flex-1 rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
               />
               <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
-                Comment
+                {t("editor.comment")}
               </Button>
             </form>
           </div>
@@ -109,17 +111,18 @@ export function DocumentProperties({
 
 function TagsPropertyRow({ tags }: { tags: string[] }) {
   const tagSearch = useTagSearch();
+  const { t } = useI18n();
 
   return (
-    <PropertyRow label="tags">
-      {tags.length === 0 ? <span className="text-slate-400">none</span> : null}
+    <PropertyRow label={t("editor.tags")}>
+      {tags.length === 0 ? <span className="text-slate-400">{t("editor.none")}</span> : null}
       {tags.map((tag) => (
         <button
           key={tag}
           type="button"
           onClick={() => tagSearch?.requestTagSearch(tag)}
           className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600 hover:bg-violet-100 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
-          aria-label={`Search tag #${tag}`}
+          aria-label={t("editor.searchTag", { tag: `#${tag}` })}
         >
           #{tag}
         </button>
@@ -170,9 +173,11 @@ function LinksPropertyRow({
   canWrite: boolean;
   createFromBrokenLinkAction: (formData: FormData) => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   return (
-    <PropertyRow label="links">
-      {linkedItems.length === 0 ? <span className="text-slate-400">none</span> : null}
+    <PropertyRow label={t("editor.links")}>
+      {linkedItems.length === 0 ? <span className="text-slate-400">{t("editor.none")}</span> : null}
       {linkedItems.map((item) =>
         item.broken ? (
           <form key={item.id} action={createFromBrokenLinkAction} className="inline-flex">
@@ -181,7 +186,7 @@ function LinksPropertyRow({
               type="submit"
               disabled={!canWrite}
               className="rounded-full px-1 text-slate-400 underline decoration-slate-300 underline-offset-2 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
-              title="Create document from broken link"
+              title={t("editor.createFromBrokenLink")}
             >
               {item.label}
             </button>

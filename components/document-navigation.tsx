@@ -23,6 +23,7 @@ import { FolderToggleRow } from "@/components/document-navigation/folder-row";
 import { getFolderTrashSummary } from "@/components/document-navigation/folder-trash";
 import { SearchPanel } from "@/components/document-navigation/search-panel";
 import { buildTreeItems, hasTreeChildren } from "@/components/document-navigation/tree";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentResult,
   ArchiveFolderResult,
@@ -32,13 +33,13 @@ import type {
   RenameFolderResult,
 } from "@/components/document-navigation/types";
 import { openDocumentInNewTab } from "@/components/use-document-tabs";
+import type { MessageKey } from "@/lib/i18n/messages";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 const folderErrorToastId = "folder-trash-error";
 const folderCreateErrorToastId = "folder-create-error";
 const folderErrorToastClassName =
   "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
-const folderCreateErrorMessage = "Could not create the item. Try again.";
 const maxRecentDocuments = 5;
 
 export function DocumentNavigation({
@@ -82,6 +83,7 @@ export function DocumentNavigation({
   folderError: string;
   selectedDocumentId: string | null;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [isCreateTransitionPending, startCreateTransition] = useTransition();
@@ -156,7 +158,7 @@ export function DocumentNavigation({
         document.contentText.toLowerCase().includes(query),
     );
   }, [documents, searchQuery]);
-  const folderErrorText = folderErrorMessage(folderError);
+  const folderErrorText = folderErrorMessage(folderError, t);
   useEffect(() => {
     const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);
     setFavorites(parseFavorites(raw));
@@ -318,7 +320,7 @@ export function DocumentNavigation({
     } catch {
       setClearCreatePendingAfterTransition(false);
       setPendingFolderCreateAction(null);
-      toast(folderCreateErrorMessage, {
+      toast(t("nav.folderCreateFailed"), {
         id: folderCreateErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
@@ -349,7 +351,7 @@ export function DocumentNavigation({
     } catch {
       setClearCreatePendingAfterTransition(false);
       setPendingFolderCreateAction(null);
-      toast(folderCreateErrorMessage, {
+      toast(t("nav.folderCreateFailed"), {
         id: folderCreateErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
@@ -370,7 +372,7 @@ export function DocumentNavigation({
     const result = await archiveFolderAction(formData);
     if (result.error) {
       setOpenMenuId(null);
-      toast(folderErrorMessage(result.error), {
+      toast(folderErrorMessage(result.error, t), {
         id: folderErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
@@ -395,7 +397,7 @@ export function DocumentNavigation({
   async function renameFolderFromMenu(formData: FormData) {
     const result = await renameFolderAction(formData);
     if (result.error) {
-      toast(folderErrorMessage(result.error), {
+      toast(folderErrorMessage(result.error, t), {
         id: folderErrorToastId,
         className: folderErrorToastClassName,
         unstyled: true,
@@ -525,7 +527,7 @@ export function DocumentNavigation({
         {activePanel === "documents" ? (
           <>
             <DocumentSection
-              title="Recents"
+              title={t("nav.recents")}
               workspaceSlug={workspaceSlug}
               documents={recentDocuments}
               menuScope="recent-document"
@@ -537,11 +539,11 @@ export function DocumentNavigation({
               onOpenInNewTab={openDocumentRowInNewTab}
               archiveDocumentAction={archiveDocumentFromMenu}
             />
-            <nav className="space-y-1" aria-label="All documents">
-              <p className={sectionHeadingClassName}>Documents</p>
+            <nav className="space-y-1" aria-label={t("nav.allDocuments")}>
+              <p className={sectionHeadingClassName}>{t("nav.documents")}</p>
               {documents.length === 0 && folders.length === 0 ? (
                 <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
-                  No documents found.
+                  {t("nav.noDocuments")}
                 </p>
               ) : null}
               {renderTreeItems(null)}
@@ -557,11 +559,14 @@ function uniqueDocumentId(documentId: string, index: number, documentIds: string
   return documentIds.indexOf(documentId) === index;
 }
 
-function folderErrorMessage(folderError: string) {
+function folderErrorMessage(
+  folderError: string,
+  t: (key: MessageKey) => string,
+) {
   if (!folderError) return "";
-  if (folderError === "FOLDER_NOT_EMPTY") return "Empty this folder before moving it to trash.";
-  if (folderError === "FOLDER_NAME_REQUIRED") return "Folder name is required.";
-  return "The folder action could not be completed.";
+  if (folderError === "FOLDER_NOT_EMPTY") return t("nav.folderError.notEmpty");
+  if (folderError === "FOLDER_NAME_REQUIRED") return t("nav.folderError.nameRequired");
+  return t("nav.folderError.generic");
 }
 
 function parseTagSearchQuery(query: string) {

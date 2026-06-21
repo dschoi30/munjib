@@ -5,16 +5,19 @@ import {
   type ChangeEvent,
   type FormEvent,
   useCallback,
+  useEffect,
   useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
-import { Bot, Clock3, FileText, Upload, X } from "lucide-react";
+import { Bot, Clock3, FileText, Languages, Upload, X } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { LANGUAGE_OPTIONS, languageLabel } from "@/lib/i18n/language";
+import type { MessageKey } from "@/lib/i18n/messages";
 import {
   ARCHIVED_DOCUMENT_RETENTION_POLICIES,
-  archivedDocumentRetentionLabel,
   type ArchivedDocumentRetentionPolicyValue,
 } from "@/lib/workspaces/retention-policy";
 import {
@@ -31,6 +34,18 @@ import {
   validateChatModelSetting,
   writeStoredChatModelSetting,
 } from "@/lib/rag/client-model-settings";
+
+type TranslationParams = Record<string, string | number>;
+type Translate = (key: MessageKey, params?: TranslationParams) => string;
+type StatusMessage =
+  | {
+      key: Exclude<MessageKey, "settings.retention.saved">;
+      params?: TranslationParams;
+    }
+  | {
+      key: "settings.retention.saved";
+      retentionPolicy: ArchivedDocumentRetentionPolicyValue;
+    };
 
 type WorkspaceSettingsFolder = {
   id: string;
@@ -68,11 +83,14 @@ type ImportRun = {
   currentFileName: string | null;
 };
 
-type SettingsSection = "import" | "ai" | "retention";
+type SettingsSection = "import" | "ai" | "retention" | "language";
 
-const INVALID_MODEL_ID_MESSAGE = "Enter a valid model id.";
-const INCOMPATIBLE_MODEL_PROVIDER_MESSAGE =
-  "OpenRouter model ids require the server chat provider to be OpenAI-compatible.";
+const retentionPolicyMessageKeys = {
+  NEVER: "settings.retention.policy.NEVER",
+  DAYS_7: "settings.retention.policy.DAYS_7",
+  DAYS_30: "settings.retention.policy.DAYS_30",
+  DAYS_90: "settings.retention.policy.DAYS_90",
+} satisfies Record<ArchivedDocumentRetentionPolicyValue, MessageKey>;
 
 export function WorkspaceSettingsPanel({
   canWrite,
@@ -96,8 +114,11 @@ export function WorkspaceSettingsPanel({
   workspaceSlug: string;
 }) {
   const router = useRouter();
+  const { language, setLanguage, t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [activeSection, setActiveSection] = useState<SettingsSection>("import");
+  const [draftLanguage, setDraftLanguage] = useState(language);
+  const [languageStatus, setLanguageStatus] = useState<"saved" | "storageFailed" | null>(null);
   const [customModel, setCustomModel] = useState("");
   const [selectedChatProvider, setSelectedChatProvider] = useState<ClientRagChatProvider>(() =>
     readStoredChatModelSetting(workspaceSlug, defaultChatProvider)?.chatProvider ??
@@ -105,12 +126,12 @@ export function WorkspaceSettingsPanel({
   );
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
-  const [modelStatus, setModelStatus] = useState<string | null>(null);
+  const [modelStatus, setModelStatus] = useState<StatusMessage | null>(null);
   const [saveVersion, setSaveVersion] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
   const [selectedRetentionPolicy, setSelectedRetentionPolicy] =
     useState<ArchivedDocumentRetentionPolicyValue>(archivedDocumentRetentionPolicy);
-  const [retentionStatus, setRetentionStatus] = useState<string | null>(null);
+  const [retentionStatus, setRetentionStatus] = useState<StatusMessage | null>(null);
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
@@ -137,12 +158,17 @@ export function WorkspaceSettingsPanel({
   const importLocked = isImportPending || isImporting;
   const isImportActive = isImporting || importRun?.status === "importing";
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
+  const hasLanguageDraftChange = draftLanguage !== language;
   const sortedFolders = useMemo(
     () => [...folders].sort((left, right) => left.path.localeCompare(right.path)),
     [folders],
   );
   const destinationPath =
     sortedFolders.find((folder) => folder.id === destinationFolderId)?.path ?? "/";
+
+  useEffect(() => {
+    setDraftLanguage(language);
+  }, [language]);
 
   const handleOpenFilePicker = useCallback(() => {
     if (!canWrite || importLocked) return;
@@ -167,6 +193,16 @@ export function WorkspaceSettingsPanel({
     setDestinationPickerOpen(false);
   }, []);
 
+  const handleSaveLanguage = useCallback(() => {
+    const result = setLanguage(draftLanguage);
+    setLanguageStatus(result.stored ? "saved" : "storageFailed");
+  }, [draftLanguage, setLanguage]);
+
+  const handleCancelLanguage = useCallback(() => {
+    setDraftLanguage(language);
+    setLanguageStatus(null);
+  }, [language]);
+
   const handleSavePresetModel = useCallback(
     (setting: ChatModelSetting) => {
       const result = writeStoredChatModelSetting(workspaceSlug, setting);
@@ -181,8 +217,8 @@ export function WorkspaceSettingsPanel({
       }
       setModelStatus(
         result.stored
-          ? `Saved model: ${result.value.chatModel}`
-          : "Model setting could not be saved.",
+          ? { key: "settings.ai.savedModel", params: { model: result.value.chatModel } }
+          : { key: "settings.ai.modelSaveFailed" },
       );
     },
     [workspaceSlug],
@@ -208,8 +244,8 @@ export function WorkspaceSettingsPanel({
       }
       setModelStatus(
         result.stored
-          ? `Saved model: ${result.value.chatModel}`
-          : "Model setting could not be saved.",
+          ? { key: "settings.ai.savedModel", params: { model: result.value.chatModel } }
+          : { key: "settings.ai.modelSaveFailed" },
       );
       return;
     }
@@ -232,8 +268,8 @@ export function WorkspaceSettingsPanel({
     }
     setModelStatus(
       result.stored
-        ? `Reset model: ${result.value.chatModel}`
-        : "Model setting could not be reset.",
+        ? { key: "settings.ai.resetModelStatus", params: { model: result.value.chatModel } }
+        : { key: "settings.ai.modelResetFailed" },
     );
   }, [selectedChatProvider, workspaceSlug]);
 
@@ -341,16 +377,15 @@ export function WorkspaceSettingsPanel({
     startRetentionTransition(async () => {
       const result = await updateRetentionPolicyAction(formData);
       if (result.error || !result.archivedDocumentRetentionPolicy) {
-        setRetentionStatus("Choose a valid retention period.");
+        setRetentionStatus({ key: "settings.retention.invalid" });
         return;
       }
 
       setSelectedRetentionPolicy(result.archivedDocumentRetentionPolicy);
-      setRetentionStatus(
-        `Saved retention: ${archivedDocumentRetentionLabel(
-          result.archivedDocumentRetentionPolicy,
-        )}`,
-      );
+      setRetentionStatus({
+        key: "settings.retention.saved",
+        retentionPolicy: result.archivedDocumentRetentionPolicy,
+      });
     });
   }, [canWrite, isRetentionPending, updateRetentionPolicyAction]);
 
@@ -365,43 +400,53 @@ export function WorkspaceSettingsPanel({
       <section
         role="dialog"
         aria-modal="true"
-        aria-label="Workspace settings"
+        aria-label={t("settings.dialogLabel")}
         className="grid h-[80vh] max-h-[80vh] w-full max-w-4xl grid-cols-[13rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
       >
         <aside className="border-r border-slate-200 bg-slate-50 p-4">
           <div className="mb-4 flex h-9 items-center">
-            <h2 className="text-sm font-semibold text-ink">Settings</h2>
+            <h2 className="text-sm font-semibold text-ink">{t("settings.title")}</h2>
           </div>
-          <nav aria-label="Settings menu" className="space-y-1">
+          <nav aria-label={t("settings.menu")} className="space-y-1">
             <Button
               type="button"
-              aria-label="Import"
+              aria-label={t("settings.import.nav")}
               aria-pressed={activeSection === "import"}
               onClick={() => setActiveSection("import")}
               className={settingsNavButtonClassName(activeSection === "import")}
             >
               <Upload className="h-4 w-4" aria-hidden="true" />
-              Import
+              {t("settings.import.nav")}
             </Button>
             <Button
               type="button"
-              aria-label="AI"
+              aria-label={t("settings.ai.nav")}
               aria-pressed={activeSection === "ai"}
               onClick={() => setActiveSection("ai")}
               className={settingsNavButtonClassName(activeSection === "ai")}
             >
               <Bot className="h-4 w-4" aria-hidden="true" />
-              AI
+              {t("settings.ai.nav")}
             </Button>
             <Button
               type="button"
-              aria-label="Retention"
+              aria-label={t("settings.retention.nav")}
               aria-pressed={activeSection === "retention"}
               onClick={() => setActiveSection("retention")}
               className={settingsNavButtonClassName(activeSection === "retention")}
             >
               <Clock3 className="h-4 w-4" aria-hidden="true" />
-              Retention
+              {t("settings.retention.nav")}
+            </Button>
+            <Button
+              type="button"
+              aria-label={t("settings.language.nav")}
+              aria-pressed={activeSection === "language"}
+              onClick={() => setActiveSection("language")}
+              className={settingsNavButtonClassName(activeSection === "language")}
+            >
+              <Languages className="h-4 w-4" aria-hidden="true" />
+              {t("settings.language.nav")}
             </Button>
           </nav>
         </aside>
@@ -410,17 +455,19 @@ export function WorkspaceSettingsPanel({
             <>
               <div className="mb-8 flex items-start gap-4">
                 <div>
-                  <p className="text-xs font-medium text-slate-500">Workspace</p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {t("settings.workspaceEyebrow")}
+                  </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
-                    Import your contents
+                    {t("settings.import.title")}
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Markdown files become documents.
+                    {t("settings.import.description")}
                   </p>
                 </div>
                 <Button
                   type="button"
-                  aria-label="Close settings"
+                  aria-label={t("settings.close")}
                   onClick={() => {
                     if (!isImportActive) onClose();
                   }}
@@ -446,7 +493,7 @@ export function WorkspaceSettingsPanel({
                     id="markdownFiles"
                     name="markdownFiles"
                     type="file"
-                    aria-label="Markdown files"
+                    aria-label={t("settings.import.fileInput")}
                     accept=".md,.markdown,text/markdown,text/x-markdown"
                     multiple
                     tabIndex={-1}
@@ -462,21 +509,19 @@ export function WorkspaceSettingsPanel({
                   >
                     <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
                     <span className="mt-4 text-base font-semibold text-ink">
-                      Markdown files
+                      {t("settings.import.fileInput")}
                     </span>
                     <span className="mt-2 text-sm leading-6 text-slate-600">
                       {selectedFiles.length > 0
-                        ? `${selectedFiles.length} file${
-                            selectedFiles.length === 1 ? "" : "s"
-                          } selected`
-                        : ".md or .markdown"}
+                        ? t("settings.import.selectedFiles", { count: selectedFiles.length })
+                        : t("settings.import.fileTypes")}
                     </span>
                   </button>
                   <div className="grid grid-cols-[minmax(0,2fr)_minmax(9rem,1fr)] gap-3">
                     <div className="relative min-w-0">
                       <button
                         type="button"
-                        aria-label={`Import destination: ${destinationPath}`}
+                        aria-label={t("settings.import.destination", { path: destinationPath })}
                         aria-expanded={destinationPickerOpen}
                         onClick={() => setDestinationPickerOpen((open) => !open)}
                         disabled={!canWrite || importLocked}
@@ -488,7 +533,7 @@ export function WorkspaceSettingsPanel({
                         <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
                           <div
                             role="tree"
-                            aria-label="Import destination folders"
+                            aria-label={t("settings.import.destinationFolders")}
                             className="space-y-1"
                           >
                             <button
@@ -517,25 +562,29 @@ export function WorkspaceSettingsPanel({
                       ) : null}
                     </div>
                     <Button type="submit" disabled={isSubmitDisabled} className="h-10 w-full">
-                      Import Markdown
+                      {t("settings.import.submit")}
                     </Button>
                   </div>
                 </form>
               ) : null}
             </>
           ) : activeSection === "ai" ? (
-            <section aria-label="AI model settings" className="space-y-6">
+            <section aria-label={t("settings.ai.title")} className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">Workspace</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-ink">AI model</h3>
+                  <p className="text-xs font-medium text-slate-500">
+                    {t("settings.workspaceEyebrow")}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">
+                    {t("settings.ai.title")}
+                  </h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Credentials stay on the server.
+                    {t("settings.ai.description")}
                   </p>
                 </div>
                 <Button
                   type="button"
-                  aria-label="Close settings"
+                  aria-label={t("settings.close")}
                   onClick={() => {
                     if (!isImportActive) onClose();
                   }}
@@ -548,7 +597,9 @@ export function WorkspaceSettingsPanel({
 
               <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
                 <p className="text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
-                  {storedChatModel ? "Browser override" : "Server default"}
+                  {storedChatModel
+                    ? t("settings.ai.browserOverride")
+                    : t("settings.ai.serverDefault")}
                 </p>
                 <p className="mt-2 text-xs font-medium text-slate-500">
                   {providerLabel(effectiveChatProvider)}
@@ -563,11 +614,11 @@ export function WorkspaceSettingsPanel({
                   htmlFor="chatProvider"
                   className="text-sm font-semibold text-ink"
                 >
-                  Provider
+                  {t("settings.ai.provider")}
                 </label>
                 <select
                   id="chatProvider"
-                  aria-label="AI provider"
+                  aria-label={t("settings.ai.providerSelect")}
                   value={selectedChatProvider}
                   onChange={(event) =>
                     setSelectedChatProvider(event.target.value as ClientRagChatProvider)
@@ -584,13 +635,13 @@ export function WorkspaceSettingsPanel({
 
               {visiblePresetModels.length > 0 ? (
                 <div>
-                  <p className="text-sm font-semibold text-ink">Presets</p>
+                  <p className="text-sm font-semibold text-ink">{t("settings.ai.presets")}</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {visiblePresetModels.map((preset) => (
                       <Button
                         key={preset.id}
                         type="button"
-                        aria-label={`Use ${preset.label}`}
+                        aria-label={t("settings.ai.usePreset", { label: preset.label })}
                         onClick={() =>
                           handleSavePresetModel({
                             chatProvider: preset.chatProvider,
@@ -616,7 +667,7 @@ export function WorkspaceSettingsPanel({
                   htmlFor="customChatModel"
                   className="text-sm font-semibold text-ink"
                 >
-                  Custom model id
+                  {t("settings.ai.customModelId")}
                 </label>
                 <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] gap-3">
                   <input
@@ -626,20 +677,24 @@ export function WorkspaceSettingsPanel({
                     className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                   />
                   <Button type="button" onClick={handleSaveCustomModel} className="h-10">
-                    Save custom model
+                    {t("settings.ai.saveCustomModel")}
                   </Button>
                 </div>
               </div>
 
               {visibleCustomChatModels.length > 0 ? (
                 <div>
-                  <p className="text-sm font-semibold text-ink">Custom models</p>
+                  <p className="text-sm font-semibold text-ink">
+                    {t("settings.ai.customModels")}
+                  </p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
                     {visibleCustomChatModels.map((setting) => (
                       <Button
                         key={`${setting.chatProvider}:${setting.chatModel}`}
                         type="button"
-                        aria-label={`Use custom ${setting.chatModel}`}
+                        aria-label={t("settings.ai.useCustomModel", {
+                          model: setting.chatModel,
+                        })}
                         onClick={() => handleSavePresetModel(setting)}
                         className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
                       >
@@ -663,30 +718,151 @@ export function WorkspaceSettingsPanel({
                   onClick={handleResetModel}
                   className="h-10 border border-slate-200 bg-white text-ink hover:bg-slate-50"
                 >
-                  Reset model
+                  {t("settings.ai.resetModel")}
                 </Button>
                 {modelStatus ? (
                   <p role="status" className="text-sm font-medium text-slate-700">
-                    {modelStatus}
+                    {statusMessageText(modelStatus, t)}
                   </p>
                 ) : null}
               </div>
             </section>
-          ) : (
-            <section aria-label="Document retention settings" className="space-y-6">
+          ) : activeSection === "language" ? (
+            <section
+              aria-label={t("settings.language.title")}
+              className="flex min-h-full flex-col space-y-6"
+            >
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">Workspace</p>
+                  <p className="text-xs font-medium text-slate-500">
+                    {t("settings.language.eyebrow")}
+                  </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
-                    Document retention
+                    {t("settings.language.title")}
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Permanently delete documents after they have been in trash.
+                    {t("settings.language.description")}
                   </p>
                 </div>
                 <Button
                   type="button"
-                  aria-label="Close settings"
+                  aria-label={t("settings.close")}
+                  onClick={() => {
+                    if (!isImportActive) onClose();
+                  }}
+                  disabled={isImportActive}
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <fieldset className="grid gap-3 sm:grid-cols-2">
+                <legend className="sr-only">{t("settings.language.title")}</legend>
+                {LANGUAGE_OPTIONS.map((option) => {
+                  const isApplied = option.value === language;
+                  const isSelected = option.value === draftLanguage;
+                  const inputId = `settings-language-${option.value}`;
+                  return (
+                    <div key={option.value} className="relative">
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="settings-language"
+                        value={option.value}
+                        checked={isSelected}
+                        onChange={() => {
+                          setDraftLanguage(option.value);
+                          setLanguageStatus(null);
+                        }}
+                        className="peer sr-only"
+                      />
+                      <label
+                        htmlFor={inputId}
+                        className={[
+                          "block min-h-24 cursor-pointer rounded-md border px-4 py-3 text-left shadow-sm outline-none",
+                          "peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-2",
+                          isSelected
+                            ? "border-ink bg-slate-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50",
+                          isApplied ? "ring-2 ring-sky-200" : "",
+                        ].join(" ")}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-ink">
+                            {languageLabel(option.value, language)}
+                          </span>
+                          {isApplied ? (
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-800">
+                              {t("settings.language.currentBadge")}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-2 block text-xs text-slate-500">
+                          {option.nativeName}
+                        </span>
+                      </label>
+                    </div>
+                  );
+                })}
+              </fieldset>
+
+              <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+                <Button
+                  type="button"
+                  disabled={!hasLanguageDraftChange}
+                  onClick={handleSaveLanguage}
+                  className="h-10"
+                >
+                  {t("settings.language.save")}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={!hasLanguageDraftChange}
+                  onClick={handleCancelLanguage}
+                  className="h-10 border border-slate-200 bg-white text-ink hover:bg-slate-50"
+                >
+                  {t("settings.language.cancel")}
+                </Button>
+                <div role="status" className="min-w-0 text-sm font-medium text-slate-700">
+                  <p>
+                    {hasLanguageDraftChange
+                      ? t("settings.language.pending", {
+                          language: languageLabel(draftLanguage, language),
+                        })
+                      : t("settings.language.currentStatus", {
+                          language: languageLabel(language, language),
+                        })}
+                  </p>
+                  {languageStatus ? (
+                    <p className="mt-1">
+                      {languageStatus === "saved"
+                        ? t("settings.language.saved", {
+                            language: languageLabel(language, language),
+                          })
+                        : t("settings.language.storageFailed")}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </section>
+          ) : (
+            <section aria-label={t("settings.retention.title")} className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-slate-500">
+                    {t("settings.workspaceEyebrow")}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">
+                    {t("settings.retention.title")}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    {t("settings.retention.description")}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  aria-label={t("settings.close")}
                   onClick={() => {
                     if (!isImportActive) onClose();
                   }}
@@ -703,12 +879,12 @@ export function WorkspaceSettingsPanel({
                     htmlFor="archivedDocumentRetentionPolicy"
                     className="text-sm font-semibold text-ink"
                   >
-                    Deleted document retention
+                    {t("settings.retention.deletedDocumentRetention")}
                   </label>
                   <select
                     id="archivedDocumentRetentionPolicy"
                     name="archivedDocumentRetentionPolicy"
-                    aria-label="Deleted document retention"
+                    aria-label={t("settings.retention.deletedDocumentRetention")}
                     value={selectedRetentionPolicy}
                     onChange={(event) =>
                       setSelectedRetentionPolicy(
@@ -720,7 +896,7 @@ export function WorkspaceSettingsPanel({
                   >
                     {ARCHIVED_DOCUMENT_RETENTION_POLICIES.map((policy) => (
                       <option key={policy.value} value={policy.value}>
-                        {policy.label}
+                        {t(retentionPolicyMessageKeys[policy.value])}
                       </option>
                     ))}
                   </select>
@@ -732,11 +908,11 @@ export function WorkspaceSettingsPanel({
                     disabled={!canWrite || isRetentionPending}
                     className="h-10"
                   >
-                    Save retention
+                    {t("settings.retention.save")}
                   </Button>
                   {retentionStatus ? (
                     <p role="status" className="text-sm font-medium text-slate-700">
-                      {retentionStatus}
+                      {statusMessageText(retentionStatus, t)}
                     </p>
                   ) : null}
                 </div>
@@ -758,12 +934,22 @@ function settingsNavButtonClassName(isActive: boolean) {
   ].join(" ");
 }
 
-function chatModelErrorMessage(error: ChatModelValidationError): string {
+function chatModelErrorMessage(error: ChatModelValidationError): StatusMessage {
   if (error === INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR) {
-    return INCOMPATIBLE_MODEL_PROVIDER_MESSAGE;
+    return { key: "settings.ai.incompatibleProvider" };
   }
 
-  return INVALID_MODEL_ID_MESSAGE;
+  return { key: "settings.ai.invalidModel" };
+}
+
+function statusMessageText(status: StatusMessage, t: Translate) {
+  if (status.key === "settings.retention.saved") {
+    return t(status.key, {
+      policy: t(retentionPolicyMessageKeys[status.retentionPolicy]),
+    });
+  }
+
+  return t(status.key, status.params);
 }
 
 function providerLabel(providerId: ClientRagChatProvider): string {
@@ -782,28 +968,33 @@ function MarkdownImportProgressPanel({
   onClose: () => void;
   canClose: boolean;
 }) {
+  const { t } = useI18n();
   const totalCount = run.files.length;
   const completedCount = run.importedCount + run.failedCount;
   const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
-  const statusText = importRunStatusText(run, completedCount, totalCount);
+  const statusText = importRunStatusText(run, completedCount, totalCount, t);
 
   return (
     <section
       role="region"
-      aria-label="Markdown import progress"
+      aria-label={t("settings.import.progress.region")}
       className="flex min-h-0 flex-1 flex-col gap-4"
     >
       <div className="flex items-start gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">Markdown Import</p>
-          <h3 className="mt-2 text-2xl font-semibold text-ink">Importing files</h3>
+          <p className="text-xs font-medium text-slate-500">
+            {t("settings.import.progress.eyebrow")}
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-ink">
+            {t("settings.import.progress.title")}
+          </h3>
           <p className="mt-2 truncate text-sm text-slate-600">
-            Destination: {run.destinationPath}
+            {t("settings.import.progress.destination", { path: run.destinationPath })}
           </p>
         </div>
         <Button
           type="button"
-          aria-label="Close import progress"
+          aria-label={t("settings.import.progress.close")}
           onClick={onClose}
           disabled={!canClose}
           className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
@@ -824,26 +1015,28 @@ function MarkdownImportProgressPanel({
           />
         </div>
         {run.currentFileName ? (
-          <p className="mt-3 truncate text-sm text-slate-600">Current: {run.currentFileName}</p>
+          <p className="mt-3 truncate text-sm text-slate-600">
+            {t("settings.import.progress.current", { fileName: run.currentFileName })}
+          </p>
         ) : null}
       </div>
 
       <div className="min-h-0 overflow-hidden rounded-md border border-slate-200">
         <div className="max-h-[min(22rem,calc(100vh-24rem))] overflow-y-auto">
           <table
-            aria-label="Markdown import files"
+            aria-label={t("settings.import.progress.files")}
             className="w-full table-fixed text-left text-sm"
           >
             <thead className="bg-slate-50 text-xs font-medium text-slate-500">
               <tr>
                 <th scope="col" className="w-[60%] px-3 py-2">
-                  File name
+                  {t("settings.import.progress.fileName")}
                 </th>
                 <th scope="col" className="w-24 px-3 py-2">
-                  Size
+                  {t("settings.import.progress.size")}
                 </th>
                 <th scope="col" className="w-24 px-3 py-2">
-                  Status
+                  {t("settings.import.progress.status")}
                 </th>
               </tr>
             </thead>
@@ -856,7 +1049,9 @@ function MarkdownImportProgressPanel({
                   <td className="whitespace-nowrap px-3 py-2">
                     {formatFileSize(selectedFile.file.size)}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-2">{selectedFile.status}</td>
+                  <td className="whitespace-nowrap px-3 py-2">
+                    {importFileStatusLabel(selectedFile.status, t)}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -890,18 +1085,44 @@ function updateImportRunRow(
   };
 }
 
-function importRunStatusText(run: ImportRun, completedCount: number, totalCount: number) {
+function importFileStatusLabel(status: ImportFileStatus, t: Translate) {
+  switch (status) {
+    case "Ready":
+      return t("settings.import.progress.statusReady");
+    case "Queued":
+      return t("settings.import.progress.statusQueued");
+    case "Importing":
+      return t("settings.import.progress.statusImporting");
+    case "Imported":
+      return t("settings.import.progress.statusImported");
+    case "Failed":
+      return t("settings.import.progress.statusFailed");
+  }
+}
+
+function importRunStatusText(
+  run: ImportRun,
+  completedCount: number,
+  totalCount: number,
+  t: Translate,
+) {
   if (run.status === "importing") {
-    return `Importing ${Math.min(completedCount + 1, totalCount)} / ${totalCount}`;
+    return t("settings.import.progress.importing", {
+      current: Math.min(completedCount + 1, totalCount),
+      total: totalCount,
+    });
   }
 
   if (run.failedCount === 0) {
-    return `Imported ${run.importedCount} Markdown file(s).`;
+    return t("settings.import.progress.imported", { count: run.importedCount });
   }
 
   if (run.importedCount === 0) {
-    return `Import failed for ${run.failedCount} file(s).`;
+    return t("settings.import.progress.failed", { count: run.failedCount });
   }
 
-  return `Imported ${run.importedCount} file(s). ${run.failedCount} file(s) failed.`;
+  return t("settings.import.progress.partial", {
+    imported: run.importedCount,
+    failed: run.failedCount,
+  });
 }

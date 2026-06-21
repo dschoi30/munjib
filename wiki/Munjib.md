@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 60
+source_count: 61
 tags:
   - munjib
   - product
@@ -60,6 +60,8 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 
 Issue #119 implements workspace-level retention policy for trashed documents and a CLI/tools hard-delete purge command. The default policy is 30 days, writers can choose `Never`, `7 days`, `30 days`, or `90 days` in workspace settings, and actual hard delete targets archived documents only. Archived folder hard delete, attachment storage file cleanup, and production scheduling remain follow-up scope. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
 
+Issue #126 설계는 제품 표시 언어를 영어/한국어로 전환하는 browser-global app setting을 계획한다. Settings panel에 `Language` section을 추가해 Save 클릭 후 사용자-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states를 즉시 전환한다. 저장값이 없으면 최초 client hydration 때 `navigator.languages`/`navigator.language`의 `ko`/`ko-*` 여부로 한국어를 추론하고, 그 외는 영어로 시작한다. 현재 구현은 login, workspace sidebar/navigation, document tabs/toolbar, folder detail, metadata panel, editor/properties/preview/wiki-link suggestions, and knowledge graph controls까지 shared English/Korean catalog를 사용한다. Empty document/tab fallback labels are rendered from the current language at display time, while saved document titles, paths, provider/model ids, arbitrary frontmatter keys, and developer/admin-only error identifiers remain unlocalized data/internal strings. 실제 AI answer body는 계속 질문 언어를 우선하고, 관리자/개발자용 내부 error code/log/telemetry identifier는 번역하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`이다.
+
 ## 편집 경험 개선
 
 Issue #25 구현으로 문서 편집 화면은 split mode를 제거하고 edit/preview mode로 단순화되었다. Preview mode는 heading 왼쪽 chevron으로 section을 접고 펼치며, Edit mode는 CodeMirror heading fold gutter와 저장된 fold state 복원/저장을 제공한다. 접힘 상태는 문서별 `munjib:heading-folds:<documentId>` `localStorage` key에 저장되어 preview와 edit mode가 공유한다.
@@ -80,7 +82,7 @@ Issue #100 구현으로 이 RAG assistant의 permission, saved-content, graph-aw
 
 Issue #102 구현으로 OpenRouter를 `openai-compatible` provider env로 연결한 뒤 workspace settings panel에서 browser/workspace별 chat model id만 바꿔 Ask AI와 workspace chatbot answer generation 모델을 테스트할 수 있다. API key와 base URL은 server env에 유지하고, browser에는 model id만 `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key로 저장한다. Ask route와 workspace chatbot message route는 optional `chatModel` override를 validation한 뒤 service에 전달하고, 각 service는 `chat.model`만 바꾸며 embedding provider/model/dimension과 현재 Ollama `bge-m3` 1024 index contract는 건드리지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`이다.
 
-Issue #104는 Ask AI를 현재 문서 direct-context path로 전환하기 위한 context packer, Ask AI/chatbot 공통 thinking indicator, workspace chatbot 대화 이력 schema, Ask AI direct service, workspace chatbot RAG service, authenticated chatbot API routes, 우측 하단 sticky chatbot UI를 추가했다. 기존 Ask AI는 editor-local 현재 문서 assistant로 유지되며, 기본 답변 경로는 현재 저장 문서 direct context라 per-request indexing/question embedding/vector search를 호출하지 않고 chat/Langfuse generation config만 읽는다. Context packer는 heading-aware section pack뿐 아니라 heading 없는 긴 문서의 paragraph chunk fallback도 지원한다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot service가 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Chatbot UI는 workspace page 우측 하단 AI icon으로 열리고, active thread history load, message send, conversation reset, citations, selected document id pass-through, conversation-aware retrieval query, readable selected-document pre-cap retrieval priority, settings-panel chat model override, reset/send race guard를 제공한다. Thinking indicator는 Ask AI와 chatbot에서 공통으로 쓰며 `Thinking...`, `Reviewing the relevant document context...`, `Organizing the evidence and drafting an answer...`, `This is taking longer than usual. Thanks for your patience...` 순서의 영어 elapsed-time 메시지를 표시한다. Chatbot response streaming은 Issue #104 MVP에서 제외해 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
+Issue #104는 Ask AI를 현재 문서 direct-context path로 전환하기 위한 context packer, Ask AI/chatbot 공통 thinking indicator, workspace chatbot 대화 이력 schema, Ask AI direct service, workspace chatbot RAG service, authenticated chatbot API routes, 우측 하단 sticky chatbot UI를 추가했다. 기존 Ask AI는 editor-local 현재 문서 assistant로 유지되며, 기본 답변 경로는 현재 저장 문서 direct context라 per-request indexing/question embedding/vector search를 호출하지 않고 chat/Langfuse generation config만 읽는다. Context packer는 heading-aware section pack뿐 아니라 heading 없는 긴 문서의 paragraph chunk fallback도 지원한다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot service가 사용자+workspace별 대화 이력과 함께 전역 readable document retrieval에 재사용한다. Chatbot UI는 workspace page 우측 하단 AI icon으로 열리고, active thread history load, message send, conversation reset, citations, selected document id pass-through, conversation-aware retrieval query, readable selected-document pre-cap retrieval priority, settings-panel chat model override, reset/send race guard를 제공한다. Issue #126 이후 Ask AI/chatbot labels, placeholders, generic errors, empty states, and thinking indicator elapsed-time messages는 shared English/Korean i18n catalog에서 렌더링되고, Ask AI/chatbot message requests include optional `uiLanguage` so prompt fallback/status phrasing can follow the selected display language while answer body remains question-language-first. Chatbot response streaming은 Issue #104 MVP에서 제외해 Issue #105 follow-up으로 분리한다. 설계 근거는 `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`에 둔다.
 
 Ask AI RAG의 request, provider/env, indexing, retrieval, reranking, prompt, answer generation, observability 흐름은 [[RAG Process Workflow]]에서 본다.
 
@@ -145,6 +147,8 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-06-15-openrouter-chat-model-selection-design.md`
 - `docs/superpowers/specs/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot-design.md`
 - `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`
+- GitHub issue #126
+- `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`
 - GitHub issue #122
 - `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`
 - `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`
