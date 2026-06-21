@@ -37,6 +37,15 @@ import {
 
 type TranslationParams = Record<string, string | number>;
 type Translate = (key: MessageKey, params?: TranslationParams) => string;
+type StatusMessage =
+  | {
+      key: Exclude<MessageKey, "settings.retention.saved">;
+      params?: TranslationParams;
+    }
+  | {
+      key: "settings.retention.saved";
+      retentionPolicy: ArchivedDocumentRetentionPolicyValue;
+    };
 
 type WorkspaceSettingsFolder = {
   id: string;
@@ -117,12 +126,12 @@ export function WorkspaceSettingsPanel({
   );
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
-  const [modelStatus, setModelStatus] = useState<string | null>(null);
+  const [modelStatus, setModelStatus] = useState<StatusMessage | null>(null);
   const [saveVersion, setSaveVersion] = useState(0);
   const [selectedFiles, setSelectedFiles] = useState<SelectedImportFile[]>([]);
   const [selectedRetentionPolicy, setSelectedRetentionPolicy] =
     useState<ArchivedDocumentRetentionPolicyValue>(archivedDocumentRetentionPolicy);
-  const [retentionStatus, setRetentionStatus] = useState<string | null>(null);
+  const [retentionStatus, setRetentionStatus] = useState<StatusMessage | null>(null);
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
@@ -195,7 +204,7 @@ export function WorkspaceSettingsPanel({
     (setting: ChatModelSetting) => {
       const result = writeStoredChatModelSetting(workspaceSlug, setting);
       if (!result.ok) {
-        setModelStatus(chatModelErrorMessage(result.error, t));
+        setModelStatus(chatModelErrorMessage(result.error));
         return;
       }
 
@@ -205,11 +214,11 @@ export function WorkspaceSettingsPanel({
       }
       setModelStatus(
         result.stored
-          ? t("settings.ai.savedModel", { model: result.value.chatModel })
-          : t("settings.ai.modelSaveFailed"),
+          ? { key: "settings.ai.savedModel", params: { model: result.value.chatModel } }
+          : { key: "settings.ai.modelSaveFailed" },
       );
     },
-    [t, workspaceSlug],
+    [workspaceSlug],
   );
 
   const handleSaveCustomModel = useCallback(() => {
@@ -218,7 +227,7 @@ export function WorkspaceSettingsPanel({
       chatModel: customModel,
     });
     if (!validation.ok) {
-      setModelStatus(chatModelErrorMessage(validation.error, t));
+      setModelStatus(chatModelErrorMessage(validation.error));
       return;
     }
 
@@ -232,14 +241,14 @@ export function WorkspaceSettingsPanel({
       }
       setModelStatus(
         result.stored
-          ? t("settings.ai.savedModel", { model: result.value.chatModel })
-          : t("settings.ai.modelSaveFailed"),
+          ? { key: "settings.ai.savedModel", params: { model: result.value.chatModel } }
+          : { key: "settings.ai.modelSaveFailed" },
       );
       return;
     }
 
-    setModelStatus(chatModelErrorMessage(result.error, t));
-  }, [customModel, selectedChatProvider, t, workspaceSlug]);
+    setModelStatus(chatModelErrorMessage(result.error));
+  }, [customModel, selectedChatProvider, workspaceSlug]);
 
   const handleResetModel = useCallback(() => {
     const reset = resetStoredChatModel(workspaceSlug);
@@ -249,10 +258,10 @@ export function WorkspaceSettingsPanel({
     }
     setModelStatus(
       reset
-        ? t("settings.ai.serverDefaultStatus", { model: defaultChatModel })
-        : t("settings.ai.modelResetFailed"),
+        ? { key: "settings.ai.serverDefaultStatus", params: { model: defaultChatModel } }
+        : { key: "settings.ai.modelResetFailed" },
     );
-  }, [defaultChatModel, defaultChatProvider, t, workspaceSlug]);
+  }, [defaultChatModel, defaultChatProvider, workspaceSlug]);
 
   const handleImportMarkdown = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -358,18 +367,17 @@ export function WorkspaceSettingsPanel({
     startRetentionTransition(async () => {
       const result = await updateRetentionPolicyAction(formData);
       if (result.error || !result.archivedDocumentRetentionPolicy) {
-        setRetentionStatus(t("settings.retention.invalid"));
+        setRetentionStatus({ key: "settings.retention.invalid" });
         return;
       }
 
       setSelectedRetentionPolicy(result.archivedDocumentRetentionPolicy);
-      setRetentionStatus(
-        t("settings.retention.saved", {
-          policy: t(retentionPolicyMessageKeys[result.archivedDocumentRetentionPolicy]),
-        }),
-      );
+      setRetentionStatus({
+        key: "settings.retention.saved",
+        retentionPolicy: result.archivedDocumentRetentionPolicy,
+      });
     });
-  }, [canWrite, isRetentionPending, t, updateRetentionPolicyAction]);
+  }, [canWrite, isRetentionPending, updateRetentionPolicyAction]);
 
   return (
     <div
@@ -704,7 +712,7 @@ export function WorkspaceSettingsPanel({
                 </Button>
                 {modelStatus ? (
                   <p role="status" className="text-sm font-medium text-slate-700">
-                    {modelStatus}
+                    {statusMessageText(modelStatus, t)}
                   </p>
                 ) : null}
               </div>
@@ -739,49 +747,55 @@ export function WorkspaceSettingsPanel({
                 </Button>
               </div>
 
-              <div
-                role="radiogroup"
-                aria-label={t("settings.language.title")}
-                className="grid gap-3 sm:grid-cols-2"
-              >
+              <fieldset className="grid gap-3 sm:grid-cols-2">
+                <legend className="sr-only">{t("settings.language.title")}</legend>
                 {LANGUAGE_OPTIONS.map((option) => {
                   const isApplied = option.value === language;
                   const isSelected = option.value === draftLanguage;
+                  const inputId = `settings-language-${option.value}`;
                   return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      role="radio"
-                      aria-checked={isSelected}
-                      onClick={() => {
-                        setDraftLanguage(option.value);
-                        setLanguageStatus(null);
-                      }}
-                      className={[
-                        "min-h-24 rounded-md border px-4 py-3 text-left shadow-sm",
-                        isSelected
-                          ? "border-ink bg-slate-50"
-                          : "border-slate-200 bg-white hover:bg-slate-50",
-                        isApplied ? "ring-2 ring-sky-200" : "",
-                      ].join(" ")}
-                    >
-                      <span className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold text-ink">
-                          {languageLabel(option.value, language)}
-                        </span>
-                        {isApplied ? (
-                          <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-800">
-                            {t("settings.language.currentBadge")}
+                    <div key={option.value} className="relative">
+                      <input
+                        id={inputId}
+                        type="radio"
+                        name="settings-language"
+                        value={option.value}
+                        checked={isSelected}
+                        onChange={() => {
+                          setDraftLanguage(option.value);
+                          setLanguageStatus(null);
+                        }}
+                        className="peer sr-only"
+                      />
+                      <label
+                        htmlFor={inputId}
+                        className={[
+                          "block min-h-24 cursor-pointer rounded-md border px-4 py-3 text-left shadow-sm outline-none",
+                          "peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-2",
+                          isSelected
+                            ? "border-ink bg-slate-50"
+                            : "border-slate-200 bg-white hover:bg-slate-50",
+                          isApplied ? "ring-2 ring-sky-200" : "",
+                        ].join(" ")}
+                      >
+                        <span className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold text-ink">
+                            {languageLabel(option.value, language)}
                           </span>
-                        ) : null}
-                      </span>
-                      <span className="mt-2 block text-xs text-slate-500">
-                        {option.nativeName}
-                      </span>
-                    </button>
+                          {isApplied ? (
+                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-800">
+                              {t("settings.language.currentBadge")}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="mt-2 block text-xs text-slate-500">
+                          {option.nativeName}
+                        </span>
+                      </label>
+                    </div>
                   );
                 })}
-              </div>
+              </fieldset>
 
               <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
                 <Button
@@ -888,7 +902,7 @@ export function WorkspaceSettingsPanel({
                   </Button>
                   {retentionStatus ? (
                     <p role="status" className="text-sm font-medium text-slate-700">
-                      {retentionStatus}
+                      {statusMessageText(retentionStatus, t)}
                     </p>
                   ) : null}
                 </div>
@@ -910,12 +924,22 @@ function settingsNavButtonClassName(isActive: boolean) {
   ].join(" ");
 }
 
-function chatModelErrorMessage(error: ChatModelValidationError, t: Translate): string {
+function chatModelErrorMessage(error: ChatModelValidationError): StatusMessage {
   if (error === INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR) {
-    return t("settings.ai.incompatibleProvider");
+    return { key: "settings.ai.incompatibleProvider" };
   }
 
-  return t("settings.ai.invalidModel");
+  return { key: "settings.ai.invalidModel" };
+}
+
+function statusMessageText(status: StatusMessage, t: Translate) {
+  if (status.key === "settings.retention.saved") {
+    return t(status.key, {
+      policy: t(retentionPolicyMessageKeys[status.retentionPolicy]),
+    });
+  }
+
+  return t(status.key, status.params);
 }
 
 function providerLabel(providerId: ClientRagChatProvider): string {
