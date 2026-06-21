@@ -1,5 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
-import type { RagErrorCode } from "@/lib/rag/errors";
+import { RAG_ERROR_CODES, type RagErrorCode } from "@/lib/rag/errors";
 
 export type AiUnavailableSurface =
   | "ask_document"
@@ -63,8 +63,14 @@ export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableIn
       scope.setContext("ai_unavailable", context);
       scope.setFingerprint(["handled-ai-unavailable", input.surface, input.ragErrorCode]);
 
-      const error = new Error("Handled AI provider failure returned AI_UNAVAILABLE");
-      error.name = "HandledAiUnavailableError";
+      const error =
+        input.ragErrorCode === RAG_ERROR_CODES.INVALID_CONFIG
+          ? new Error("Handled AI provider configuration failure returned AI_UNAVAILABLE")
+          : new Error("Handled AI provider failure returned AI_UNAVAILABLE");
+      error.name =
+        input.ragErrorCode === RAG_ERROR_CODES.INVALID_CONFIG
+          ? "HandledAiConfigurationError"
+          : "HandledAiUnavailableError";
 
       Sentry.captureException(error);
     });
