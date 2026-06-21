@@ -92,3 +92,37 @@
   padding-left: 0.9rem;
   color: #475569;
 }
+
+.munjib-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: #e5e9ef;
+}
+
+.munjib-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.72),
+    transparent
+  );
+  animation: munjib-skeleton-shimmer 1.35s ease-in-out infinite;
+}
+
+@keyframes munjib-skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .munjib-skeleton::after {
+    animation: none;
+    transform: none;
+    background: transparent;
+  }
+}
