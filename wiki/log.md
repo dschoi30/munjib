@@ -22,10 +22,10 @@ links:
 ## 2026-06-21T18:30:26+0900 - implementation
 
 - Result: Issue #126 Task 3 implemented the Settings `Language` section.
-- Coverage: `WorkspaceSettingsPanel` now consumes `useI18n()` for Settings copy, adds a left-nav Language tab, keeps a draft language separate from the applied browser language, highlights the current applied language until Save, supports disabled Save/Cancel when unchanged, applies the saved language immediately, and reports storage failure while keeping the tab alive. The Settings import, AI, retention, and Markdown import progress labels now read from the English/Korean message catalog.
+- Coverage: `WorkspaceSettingsPanel` now consumes `useI18n()` for Settings copy, adds a left-nav Language tab, keeps a draft language separate from the applied browser language, highlights the current applied language until Save, supports disabled Save/Cancel when unchanged, applies the saved language immediately, and reports storage failure while keeping the tab alive. The Settings import, AI, retention, retention policy option labels, and Markdown import progress labels now read from the English/Korean message catalog.
 - Pages: [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #126, `components/workspace-settings-panel.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.
-- Verification: initial red run `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"` failed because the Language tab was absent; green runs `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"`, `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
+- Verification: initial red run `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"` failed because the Language tab was absent; green runs `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"`, `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts tests/components/document-list.test.tsx`, and `pnpm exec tsc --noEmit --pretty false` passed.
 
 ## 2026-06-21T18:14:03+0900 - implementation
 

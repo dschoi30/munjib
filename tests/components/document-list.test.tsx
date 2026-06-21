@@ -373,6 +373,30 @@ describe("DocumentList", () => {
     expect(screen.getByText("Saved retention: 90 days")).toBeTruthy();
   });
 
+  it("localizes retention policy labels in Korean", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }));
+    renderList({ updateRetentionPolicyAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "보존" }));
+
+    expect(screen.getByRole("option", { name: "없음" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "30일" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("삭제된 문서 보존 기간"), {
+      target: { value: "DAYS_90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "보존 설정 저장" }));
+
+    expect(await screen.findByText("저장된 보존 기간: 90일")).toBeTruthy();
+  });
+
   it("disables retention saving for read-only users", () => {
     renderList({ canWrite: false });
 
