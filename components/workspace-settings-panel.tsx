@@ -18,7 +18,6 @@ import { LANGUAGE_OPTIONS, languageLabel } from "@/lib/i18n/language";
 import type { MessageKey } from "@/lib/i18n/messages";
 import {
   ARCHIVED_DOCUMENT_RETENTION_POLICIES,
-  archivedDocumentRetentionLabel,
   type ArchivedDocumentRetentionPolicyValue,
 } from "@/lib/workspaces/retention-policy";
 import {
@@ -76,6 +75,13 @@ type ImportRun = {
 };
 
 type SettingsSection = "import" | "ai" | "retention" | "language";
+
+const retentionPolicyMessageKeys = {
+  NEVER: "settings.retention.policy.NEVER",
+  DAYS_7: "settings.retention.policy.DAYS_7",
+  DAYS_30: "settings.retention.policy.DAYS_30",
+  DAYS_90: "settings.retention.policy.DAYS_90",
+} satisfies Record<ArchivedDocumentRetentionPolicyValue, MessageKey>;
 
 export function WorkspaceSettingsPanel({
   canWrite,
@@ -359,7 +365,7 @@ export function WorkspaceSettingsPanel({
       setSelectedRetentionPolicy(result.archivedDocumentRetentionPolicy);
       setRetentionStatus(
         t("settings.retention.saved", {
-          policy: archivedDocumentRetentionLabel(result.archivedDocumentRetentionPolicy),
+          policy: t(retentionPolicyMessageKeys[result.archivedDocumentRetentionPolicy]),
         }),
       );
     });
@@ -866,7 +872,7 @@ export function WorkspaceSettingsPanel({
                   >
                     {ARCHIVED_DOCUMENT_RETENTION_POLICIES.map((policy) => (
                       <option key={policy.value} value={policy.value}>
-                        {policy.label}
+                        {t(retentionPolicyMessageKeys[policy.value])}
                       </option>
                     ))}
                   </select>
