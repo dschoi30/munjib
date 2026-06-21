@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
+import { I18nProvider } from "@/components/i18n-provider";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
 import type { KnowledgeGraphData } from "@/lib/knowledge-graph/model";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
@@ -200,7 +201,7 @@ function createTagOnlyDocumentGraph(documentCount: number): KnowledgeGraphData {
 }
 
 function renderGraph(graph = createGraph()) {
-  return render(
+  return renderWithI18n(
     <KnowledgeGraphView
       workspaceSlug="company-handbook"
       graph={graph}
@@ -220,7 +221,7 @@ function TagSearchReceiver() {
 }
 
 function renderGraphInShell(graph = createGraph()) {
-  return render(
+  return renderWithI18n(
     <AppShell
       left={<TagSearchReceiver />}
       center={
@@ -233,6 +234,14 @@ function renderGraphInShell(graph = createGraph()) {
       right={<div />}
     />,
   );
+}
+
+function renderWithI18n(ui: React.ReactElement) {
+  const result = render(<I18nProvider>{ui}</I18nProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(<I18nProvider>{nextUi}</I18nProvider>),
+  };
 }
 
 const workspaceStateKey = workspaceUiStateStorageKey("company-handbook");
@@ -354,6 +363,32 @@ describe("KnowledgeGraphView", () => {
         graph: { settingsOpen: true },
       });
     });
+  });
+
+  it("uses the selected Korean display language for graph controls", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderGraph();
+
+    expect(await screen.findByText("필터")).toBeTruthy();
+    expect(getInput("태그").checked).toBe(false);
+    expect(getInput("고립 문서").checked).toBe(false);
+    expect(screen.getByRole("button", { name: "그래프 설정 닫기" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "표시 펼치기" }));
+    expect(screen.getByLabelText("화살표")).toBeTruthy();
+    expect(screen.getByLabelText("텍스트 페이드 기준")).toBeTruthy();
+    expect(screen.getByLabelText("노드 크기")).toBeTruthy();
+    expect(screen.getByLabelText("링크 두께")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "힘 설정 펼치기" }));
+    expect(screen.getByLabelText("중심 힘")).toBeTruthy();
+    expect(screen.getByLabelText("반발 힘")).toBeTruthy();
+    expect(screen.getByLabelText("링크 힘")).toBeTruthy();
+    expect(screen.getByLabelText("링크 거리")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "그래프 설정 닫기" }));
+    expect(screen.getByRole("button", { name: "그래프 설정 열기" })).toBeTruthy();
   });
 
   it("starts tag filtering disabled and restores tag links when Tags is checked", () => {
@@ -803,7 +838,7 @@ describe("KnowledgeGraphView", () => {
 
   it("does not dim the graph when no document is selected", () => {
     const graph = createGraph();
-    render(
+    renderWithI18n(
       <KnowledgeGraphView
         workspaceSlug="company-handbook"
         graph={graph}
@@ -935,7 +970,7 @@ describe("KnowledgeGraphView", () => {
   });
 
   it("scales node size baseline down as document count grows", () => {
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <KnowledgeGraphView
         workspaceSlug="company-handbook"
         graph={createDocumentCountGraph(20)}
@@ -1111,7 +1146,7 @@ describe("KnowledgeGraphView", () => {
 
   it("applies default forces after the dynamic graph ref becomes available", async () => {
     forceGraphMock.state.attachRef = false;
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <KnowledgeGraphView
         workspaceSlug="company-handbook"
         graph={createGraph()}

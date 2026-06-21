@@ -87,6 +87,7 @@ describe("RAG ask route", () => {
       question: "What is saved?",
       chatProvider: "openai-compatible",
       chatModel: "moonshotai/kimi-k2.7-code",
+      uiLanguage: "ko",
       draftTitle: "Unsaved",
       draftContentMarkdown: "Do not send me",
       contentMarkdown: "Draft body",
@@ -101,6 +102,28 @@ describe("RAG ask route", () => {
       question: "What is saved?",
       chatProviderOverride: "openai-compatible",
       chatModelOverride: "moonshotai/kimi-k2.7-code",
+      uiLanguage: "ko",
+    });
+  });
+
+  it("ignores invalid UI language input without rejecting the ask request", async () => {
+    const response = await POST(jsonRequest({
+      question: "What is saved?",
+      uiLanguage: "jp",
+    }), {
+      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      answer: "Saved answer",
+      citations: [],
+    });
+    expect(response.status).toBe(200);
+    expect(askDocumentQuestion).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      documentId: "doc-1",
+      actorId: "user-1",
+      question: "What is saved?",
     });
   });
 

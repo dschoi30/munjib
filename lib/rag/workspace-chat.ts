@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
+import type { Language } from "@/lib/i18n/language";
 import {
   INVALID_CHAT_MODEL_ERROR,
   isChatModelCompatibleWithProvider,
@@ -34,6 +35,7 @@ export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
   selectedDocumentId?: string | null;
   chatProviderOverride?: RagProvider;
   chatModelOverride?: string;
+  uiLanguage?: Language;
   signal?: AbortSignal;
 };
 
@@ -210,6 +212,7 @@ export async function prepareWorkspaceChatMessageStream(
   const prompt = buildRagPrompt({
     question: conversationQuestion,
     chunks: promptChunks,
+    uiLanguage: input.uiLanguage,
   });
   const citationChunkIds = promptChunks.map((chunk) => chunk.id);
   const trace = createLangfuseCallbackConfig({

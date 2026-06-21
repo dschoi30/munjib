@@ -2,6 +2,7 @@
 
 import type { DocumentListItem } from "@/components/document-list";
 import { DocumentLinkRow } from "@/components/document-navigation/document-row";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -34,13 +35,17 @@ export function SearchPanel({
   onOpenInNewTab: OpenDocumentInNewTabHandler;
   archiveDocumentAction: ArchiveDocumentAction;
 }) {
-  const resultLabel = `${documents.length} ${documents.length === 1 ? "result" : "results"}`;
+  const { t } = useI18n();
+  const resultLabel = t(
+    documents.length === 1 ? "nav.searchResultCount.one" : "nav.searchResultCount.other",
+    { count: documents.length },
+  );
 
   return (
-    <section className="space-y-3" aria-label="Search results">
+    <section className="space-y-3" aria-label={t("nav.searchResults")}>
       <div className="flex h-10 items-center gap-2 rounded-md border border-slate-300 bg-white px-3 shadow-sm focus-within:border-ink">
         <label className="sr-only" htmlFor="document-list-search">
-          Search documents
+          {t("nav.searchDocuments")}
         </label>
         <input
           id="document-list-search"
@@ -48,7 +53,7 @@ export function SearchPanel({
           type="search"
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
-          placeholder="Search documents"
+          placeholder={t("nav.searchDocuments")}
           className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-slate-400"
         />
       </div>
@@ -71,7 +76,7 @@ export function SearchPanel({
         ))}
         {documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
-            No documents found.
+            {t("nav.noDocuments")}
           </p>
         ) : null}
       </div>

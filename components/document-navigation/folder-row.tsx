@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import type { FolderListItem } from "@/components/document-list";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   AddFolderChildHandler,
   AddFolderDocumentHandler,
@@ -30,6 +31,7 @@ export function FavoriteFolderRow({
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteFolderHandler;
 }) {
+  const { t } = useI18n();
   const isMenuOpen = openMenuId === rowId;
   const displayLabel = folderDisplayLabel(folder);
 
@@ -45,7 +47,7 @@ export function FavoriteFolderRow({
       </Link>
       <button
         type="button"
-        aria-label={`Open actions for ${displayLabel}`}
+        aria-label={t("nav.openActions", { label: displayLabel })}
         aria-expanded={isMenuOpen}
         onClick={() => onOpenMenu(isMenuOpen ? null : rowId)}
         data-row-action-menu
@@ -67,7 +69,7 @@ export function FavoriteFolderRow({
             onClick={() => onToggleFavorite(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
-            Remove from favorites
+            {t("nav.removeFromFavorites")}
           </button>
         </div>
       ) : null}
@@ -114,13 +116,14 @@ export function FolderToggleRow({
   onToggleFavorite: ToggleFavoriteFolderHandler;
   onToggle: () => void;
 }) {
+  const { language, t } = useI18n();
   const ChevronIcon = expanded ? ChevronDown : ChevronRight;
   const menuId = `folder:${folder.id}`;
   const isMenuOpen = openMenuId === menuId;
   const isCreatingInFolder = pendingCreateAction?.endsWith(`:${folder.id}`) ?? false;
   const displayLabel = folderDisplayLabel(folder);
   const hasDescendantsToTrash = hasTrashDescendants(trashSummary);
-  const trashConfirmMessage = folderTrashConfirmMessage(trashSummary);
+  const trashConfirmMessage = folderTrashConfirmMessage(trashSummary, language);
   const rowClassName = selected
     ? "group relative flex w-full items-center gap-1 rounded-md bg-slate-200 px-2 py-1.5 text-left text-[13px] font-medium focus-within:bg-slate-200"
     : "group relative flex w-full items-center gap-1 rounded-md px-2 py-1.5 text-left text-[13px] hover:bg-slate-200 focus-within:bg-slate-200";
@@ -139,7 +142,7 @@ export function FolderToggleRow({
       >
         <input type="hidden" name="folderId" value={folder.id} />
         <label className="sr-only" htmlFor={renameInputId}>
-          Rename {displayLabel}
+          {t("nav.renameFolder", { label: displayLabel })}
         </label>
         <input
           id={renameInputId}
@@ -153,7 +156,7 @@ export function FolderToggleRow({
           type="submit"
           className="rounded px-2 py-1 text-xs font-medium text-ink hover:bg-muted"
         >
-          Rename
+          {t("nav.rename")}
         </button>
       </form>
     );
@@ -177,7 +180,7 @@ export function FolderToggleRow({
       >
         <button
           type="button"
-          aria-label={`Open actions for ${displayLabel}`}
+          aria-label={t("nav.openActions", { label: displayLabel })}
           aria-expanded={isMenuOpen}
           onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
           data-row-action-menu
@@ -199,7 +202,7 @@ export function FolderToggleRow({
             onClick={() => onAddFolder(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >
-            Add folder
+            {t("nav.addFolder")}
           </button>
           <button
             type="button"
@@ -208,7 +211,7 @@ export function FolderToggleRow({
             onClick={() => onAddDocument(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >
-            Add document
+            {t("nav.addDocument")}
           </button>
           <button
             type="button"
@@ -217,7 +220,7 @@ export function FolderToggleRow({
             onClick={() => onStartRename(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
           >
-            Rename
+            {t("nav.rename")}
           </button>
           <form action={archiveFolderAction}>
             <input type="hidden" name="folderId" value={folder.id} />
@@ -235,7 +238,7 @@ export function FolderToggleRow({
               }}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:text-slate-400 disabled:hover:bg-transparent"
             >
-              Move to trash
+              {t("nav.moveToTrash")}
             </button>
           </form>
           <button
@@ -244,7 +247,7 @@ export function FolderToggleRow({
             onClick={() => onToggleFavorite(folder.id)}
             className="block w-full rounded px-2 py-1.5 text-left hover:bg-muted"
           >
-            {isFavorite ? "Remove from favorites" : "Add to favorites"}
+            {isFavorite ? t("nav.removeFromFavorites") : t("nav.addToFavorites")}
           </button>
         </div>
       ) : null}

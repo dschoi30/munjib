@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, RotateCcw, Send, X } from "lucide-react";
 import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
 import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   readWorkspaceChatStream,
@@ -41,13 +42,14 @@ export function WorkspaceChatbot({
   defaultChatProvider,
   defaultChatModel,
 }: WorkspaceChatbotProps) {
+  const { language, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isThinking, setIsThinking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<"" | "unavailable">("");
   const [hydratedWorkspaceSlug, setHydratedWorkspaceSlug] = useState<string | null>(null);
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
     readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
@@ -161,7 +163,7 @@ export function WorkspaceChatbot({
       })
       .catch(() => {
         if (!cancelled && loadGeneration === requestGenerationRef.current) {
-          setError("Workspace AI is unavailable.");
+          setError("unavailable");
           hasLoadedThreadRef.current = false;
         }
       });
@@ -212,6 +214,7 @@ export function WorkspaceChatbot({
         body: JSON.stringify({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
+          uiLanguage: language,
           ...(chatModelOverride
             ? {
                 chatProvider: chatModelOverride.chatProvider,
@@ -279,7 +282,7 @@ export function WorkspaceChatbot({
     } catch (sendError) {
       if (!isAbortError(sendError, abortController) && isCurrentSend()) {
         clearPendingSendMessages();
-        setError("Workspace AI is unavailable.");
+        setError("unavailable");
       }
     } finally {
       if (isCurrentSend()) {
@@ -319,7 +322,7 @@ export function WorkspaceChatbot({
       }
     } catch {
       if (resetGeneration === requestGenerationRef.current) {
-        setError("Workspace AI is unavailable.");
+        setError("unavailable");
       }
     } finally {
       if (resetGeneration === requestGenerationRef.current) {
@@ -332,7 +335,7 @@ export function WorkspaceChatbot({
     return (
       <button
         type="button"
-        aria-label="Open workspace AI chat"
+        aria-label={t("ai.workspace.open")}
         className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-white shadow-lg transition hover:bg-slate-800"
         onClick={() => setWorkspaceChatOpen(true)}
       >
@@ -343,18 +346,18 @@ export function WorkspaceChatbot({
 
   return (
     <section
-      aria-label="Workspace AI chat"
+      aria-label={t("ai.workspace.label")}
       className="fixed bottom-4 right-4 z-50 flex h-[520px] max-h-[calc(100dvh-2rem)] w-[360px] max-w-[calc(100vw-2rem)] flex-col rounded-md border border-border bg-white shadow-xl"
     >
       <header className="flex h-12 shrink-0 items-center justify-between border-b border-border px-3">
         <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900">
           <Bot className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span>Workspace AI</span>
+          <span>{t("ai.workspace.title")}</span>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
-            aria-label="Reset conversation"
+            aria-label={t("ai.workspace.reset")}
             disabled={isResetting}
             className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             onClick={handleReset}
@@ -363,7 +366,7 @@ export function WorkspaceChatbot({
           </button>
           <button
             type="button"
-            aria-label="Close workspace AI chat"
+            aria-label={t("ai.workspace.close")}
             className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
             onClick={() => setWorkspaceChatOpen(false)}
           >
@@ -373,7 +376,7 @@ export function WorkspaceChatbot({
       </header>
 
       <div className="flex h-9 shrink-0 items-center justify-between gap-3 border-b border-border px-3 text-xs text-slate-500">
-        <span>Model</span>
+        <span>{t("ai.model")}</span>
         <span
           className="min-w-0 truncate font-medium text-slate-700"
           title={effectiveChatModel}
@@ -384,7 +387,7 @@ export function WorkspaceChatbot({
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3 text-sm">
         {messages.length === 0 && !isLoading ? (
-          <p className="text-sm text-slate-500">Ask across this workspace.</p>
+          <p className="text-sm text-slate-500">{t("ai.workspace.empty")}</p>
         ) : null}
         {messages.map((message, index) => (
           <ChatBubble
@@ -394,21 +397,21 @@ export function WorkspaceChatbot({
           />
         ))}
         <ThinkingIndicator active={isThinking} className="text-sm text-slate-500" />
-        {error ? <p className="text-sm text-red-600">{error}</p> : null}
+        {error ? <p className="text-sm text-red-600">{t("ai.workspace.unavailable")}</p> : null}
       </div>
 
       <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={handleSubmit}>
         <input
-          aria-label="Workspace chat message"
+          aria-label={t("ai.workspace.messageLabel")}
           value={messageInput}
           disabled={isResetting}
           onChange={(event) => setMessageInput(event.target.value)}
           className="min-w-0 flex-1 rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
-          placeholder="Ask across this workspace"
+          placeholder={t("ai.workspace.placeholder")}
         />
         <Button
           type="submit"
-          aria-label="Send message"
+          aria-label={t("ai.workspace.send")}
           disabled={!trimmedMessage || isLoading || isResetting}
           className="h-9 w-9 px-0"
         >

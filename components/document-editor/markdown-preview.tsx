@@ -27,6 +27,7 @@ import {
   readStoredFoldedHeadingKeys,
   writeStoredFoldedHeadingKeys,
 } from "@/components/document-editor/folding-storage";
+import { useI18n } from "@/components/i18n-provider";
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import {
   buildHeadingFoldTree,
@@ -51,7 +52,12 @@ export function MarkdownPreview({
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
+  const { t } = useI18n();
   const tagSearch = useTagSearch();
+  const tagSearchLabel = useCallback(
+    (tagName: string) => t("editor.searchTag", { tag: `#${tagName}` }),
+    [t],
+  );
   const candidateBySlug = useMemo(
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
@@ -59,39 +65,39 @@ export function MarkdownPreview({
   const markdownComponents = useMemo<Components>(
     () => ({
       p: ({ children }) => (
-        <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</p>
+        <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</p>
       ),
       li: ({ children }) => (
-        <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</li>
+        <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</li>
       ),
       h1: ({ node: _node, children, ...props }) => (
-        <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h1>
+        <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h1>
       ),
       h2: ({ node: _node, children, ...props }) => (
-        <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h2>
+        <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h2>
       ),
       h3: ({ node: _node, children, ...props }) => (
-        <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h3>
+        <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h3>
       ),
       h4: ({ node: _node, children, ...props }) => (
-        <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h4>
+        <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h4>
       ),
       h5: ({ node: _node, children, ...props }) => (
-        <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h5>
+        <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h5>
       ),
       h6: ({ node: _node, children, ...props }) => (
-        <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</h6>
+        <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h6>
       ),
       blockquote: ({ node: _node, children, ...props }) => (
         <blockquote {...props}>
-          {renderTagSearchChildren(children, tagSearch?.requestTagSearch)}
+          {renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}
         </blockquote>
       ),
       td: ({ node: _node, children, ...props }) => (
-        <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</td>
+        <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</td>
       ),
       th: ({ node: _node, children, ...props }) => (
-        <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch)}</th>
+        <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</th>
       ),
       a: ({ href, children }) => {
         const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
@@ -106,7 +112,7 @@ export function MarkdownPreview({
         );
       },
     }),
-    [tagSearch?.requestTagSearch],
+    [tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
@@ -201,7 +207,7 @@ export function MarkdownPreview({
       ) : (
         <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
           {renderPreviewMarkdownWithWikiLinks(
-            strippedMarkdown.trim().length > 0 ? strippedMarkdown : "_Nothing to preview._",
+            strippedMarkdown.trim().length > 0 ? strippedMarkdown : `_${t("editor.nothingToPreview")}_`,
             candidateBySlug,
           )}
         </ReactMarkdown>
@@ -236,6 +242,7 @@ function MarkdownPreviewSection({
   sharedDefinitions: string;
   onToggle: (key: string) => void;
 }) {
+  const { t } = useI18n();
   const folded = foldedKeys.has(section.key);
   const headingLabel = markdownInlineToPlainText(section.title);
   const headingMarkdown = `${"#".repeat(section.level)} ${section.title}`;
@@ -251,7 +258,7 @@ function MarkdownPreviewSection({
         <button
           type="button"
           aria-expanded={!folded}
-          aria-label={`${folded ? "Expand" : "Collapse"} section ${headingLabel}`}
+          aria-label={t(folded ? "editor.expandSection" : "editor.collapseSection", { title: headingLabel })}
           onClick={() => onToggle(section.key)}
           className={
             folded
@@ -312,10 +319,11 @@ function getPreviewHeadingSectionClassName(level: number) {
 function renderTagSearchChildren(
   children: ReactNode,
   requestTagSearch?: (tagName: string) => void,
+  formatTagSearchLabel?: (tagName: string) => string,
 ): ReactNode[] {
   return Children.toArray(children).flatMap((child, childIndex) => {
     if (typeof child === "string") {
-      return renderTagSearchText(child, requestTagSearch, `tag-${childIndex}`);
+      return renderTagSearchText(child, requestTagSearch, formatTagSearchLabel, `tag-${childIndex}`);
     }
 
     if (typeof child === "number") {
@@ -342,7 +350,7 @@ function renderTagSearchChildren(
       return cloneElement(
         child,
         undefined,
-        renderTagSearchChildren(childProps.children, requestTagSearch),
+        renderTagSearchChildren(childProps.children, requestTagSearch, formatTagSearchLabel),
       );
     }
 
@@ -353,6 +361,7 @@ function renderTagSearchChildren(
 function renderTagSearchText(
   text: string,
   requestTagSearch: ((tagName: string) => void) | undefined,
+  formatTagSearchLabel: ((tagName: string) => string) | undefined,
   keyPrefix: string,
 ): ReactNode[] {
   const parts: ReactNode[] = [];
@@ -375,7 +384,7 @@ function renderTagSearchText(
         type="button"
         onClick={() => requestTagSearch?.(tagName)}
         className="rounded px-0.5 text-violet-600 underline underline-offset-2 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
-        aria-label={`Search tag #${tagName}`}
+        aria-label={formatTagSearchLabel?.(tagName) ?? `Search tag #${tagName}`}
       >
         #{tagName}
       </button>,
