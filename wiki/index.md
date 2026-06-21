@@ -6,13 +6,14 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, monitoring workflow navigation.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 105
+source_count: 108
 tags:
   - index
   - munjib
 links:
   - "[[Munjib]]"
   - "[[Project PRD]]"
+  - "[[Project Structure Onboarding]]"
   - "[[Document Knowledge Model]]"
   - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
@@ -48,6 +49,7 @@ links:
 
 ## 워크플로우
 
+- [[Project Structure Onboarding]] - 신규 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.
 - [[Document Editing Workflow]] - 문서 생성, 수정, properties, attachment, comment, version restore, 감사 로그, link/metadata reconciliation 흐름.
 - [[Markdown Import And Clipboard Paste Workflow]] - Markdown file import와 editor clipboard paste의 이미지/attachment 처리, draft 저장, Save 확정 흐름.
 - [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role과 document-level explicit permission 흐름.
@@ -73,6 +75,7 @@ links:
 ## 상태판
 
 - 최신 구현 현황: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]]
+- 신규 개발자 온보딩: Issue #123은 [[Project Structure Onboarding]]을 첫 1시간 진입 지도형 wiki page로 추가했다. 페이지는 Mermaid repository/runtime map, source-of-truth 표, feature-to-files guide, verification/wiki maintenance checklist를 포함하고, 상세 설명은 기존 [[Munjib]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[RAG Process Workflow]], [[Local Development Workflow]]로 연결한다. 설계 근거는 `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`이고 구현 계획은 `docs/superpowers/plans/2026-06-21-project-structure-onboarding-guide.md`이다.
 - Folder archive follow-up: Issue #92는 sidebar `Move to trash`에서 하위 folder/document counts를 포함한 사용자 확인 후 명시적 cascade archive를 허용하는 구현이다. 확인 문구의 document count는 server page가 unreadable explicit-permission documents까지 포함한 active folder document counts를 전달해 archive semantics와 맞춘다. 기본 folder archive guard는 유지하고, server service가 workspace folder-tree advisory lock 아래 active descendant subtree를 재계산해 soft delete transaction으로 처리한다. 설계 근거는 `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`이다.
 - Document retention: Issue #119 adds a workspace settings `Retention` section and stores `Never`, `7 days`, `30 days`, or `90 days` as a DB-backed policy. The default is `30 days`; `pnpm run documents:purge-archived` hard deletes expired archived documents by `archivedAt` cutoff. Archived folder hard delete, attachment storage file cleanup, and production scheduling remain follow-ups.
 - 현재 편집 경험: Issue #25 heading folding 구현과 edit/preview fold state 동기화는 [[Document Editing Workflow]]와 [[Project PRD]]에 기록되어 있다. Issue #29 문서 탭과 navigation toolbar는 workspace center 상단에 구현되었으며, 기존 `?document=<id>` 라우팅과 `Document.path` path 표시를 유지한다. Issue #32 sidebar cleanup은 always-visible search form, quick switcher, template selection을 제거하고, 제목 아래 icon toolbar의 Documents/Search/Favorites panel 전환과 blank document creation으로 단순화했다. Issue #34 graph view는 sidebar Graph icon과 `?graph=1` route로 workspace knowledge graph를 열며, [[Document Editing Workflow]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]]에 UI/DTO/link semantics를 기록한다. Issue #40 workspace settings dialog는 Import menu를 기본 선택으로 열고 Markdown 파일을 workspace document로 가져온다. Issue #42 metadata panel은 Attachments/Versions/Audit log를 tab으로 전환하며, 오른쪽 panel을 닫으면 reopen icon만 남긴다. Issue #44 metadata panel outline은 첫 번째 `Outline` tab에서 현재 문서 `#`-`####` heading tree와 preview/edit click-to-scroll navigation을 제공한다. Issue #55 multiple Markdown import는 settings panel에서 여러 file 선택, table review, tree popup 기반 destination path 선택, panel-centered import status, current-route 유지 batch import를 제공한다. Issue #58 moves multiple Markdown import progress into a separate progress panel with a top progress summary, bottom file table, icon-only `X` close control, and client-side sequential per-file imports for row status updates. Issue #71 tag click search는 Properties frontmatter tag chip, preview body `#tag`, graph view tag node를 기존 sidebar Search panel의 `tag:#name` exact search로 연결하고, Issue #85 이후 접힌 left sidebar도 tag search request에서 다시 열린다. Issue #79/#83 Recents는 현재 선택 문서를 visible list에서 제외하되 localStorage history에는 보존하고, 다른 문서로 이동하면 직전 문서가 Recents 맨 앞에 보이며 readable document order를 fallback으로 사용한다. Issue #85는 좌측 sidebar workspace name을 full-width Settings dropdown trigger로 바꾸고, `PanelLeftClose`/`PanelLeftOpen`으로 left sidebar collapse/reopen을 추가하며, workspace title row와 icon toolbar를 sticky sidebar chrome으로 유지한다. Issue #122는 좌우 sidebar open state, active sidebar panel, graph controls/section open state, graph option groups, Workspace AI chat open state를 workspace-scoped aggregate `localStorage` key로 보존한다. Workspace root에 `document`/`folder` query 없이 진입했지만 stored active tab이 readable document를 가리키면 center shell이 해당 document URL로 replace navigation해 tab과 editor body를 맞추며, stale document URL은 local tab으로 덮지 않는다. Markdown import와 clipboard paste의 세부 이미지/attachment 처리 차이는 [[Markdown Import And Clipboard Paste Workflow]]에 기록한다.

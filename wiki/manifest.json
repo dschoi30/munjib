@@ -170,6 +170,7 @@
       "links": [
         "[[Munjib]]",
         "[[Project PRD]]",
+        "[[Project Structure Onboarding]]",
         "[[Document Knowledge Model]]",
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
@@ -186,7 +187,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 105,
+      "source_count": 108,
       "searchPriority": 5
     },
     {
@@ -229,7 +230,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 255,
+      "source_count": 261,
       "searchPriority": 1
     },
     {
@@ -350,6 +351,35 @@
       ],
       "source_count": 104,
       "searchPriority": 30
+    },
+    {
+      "id": "workflow-project-structure-onboarding",
+      "path": "wiki/Project Structure Onboarding.md",
+      "title": "Project Structure Onboarding",
+      "type": "workflow",
+      "status": "active",
+      "summary": "신규 Munjib 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.",
+      "tags": [
+        "munjib",
+        "onboarding",
+        "architecture",
+        "development"
+      ],
+      "links": [
+        "[[Munjib]]",
+        "[[Project PRD]]",
+        "[[Document Knowledge Model]]",
+        "[[Folder Hierarchy Model]]",
+        "[[Wiki Links And Backlinks]]",
+        "[[Document Editing Workflow]]",
+        "[[RAG Process Workflow]]",
+        "[[Local Development Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Next.js Prisma Monolith]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 21,
+      "searchPriority": 50
     },
     {
       "id": "workflow-rag-process",

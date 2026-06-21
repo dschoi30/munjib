@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 255
+source_count: 261
 tags:
   - log
   - munjib
@@ -26,6 +26,22 @@ links:
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #122, `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`, `docs/superpowers/plans/2026-06-21-workspace-ui-state-persistence.md`, `lib/workspace-ui-state.ts`, `components/app-shell.tsx`, `components/document-list.tsx`, `components/knowledge-graph-view.tsx`, `components/workspace-chatbot.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/workspace-ui-state.test.ts`, `tests/components/app-shell.test.tsx`, `tests/components/document-list.test.tsx`, `tests/components/knowledge-graph-view.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
 - Verification: `pnpm exec vitest run tests/workspace-ui-state.test.ts tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/knowledge-graph-view.test.tsx tests/components/workspace-chatbot.test.tsx --reporter=dot`; `pnpm run db:generate`; `pnpm exec tsc --noEmit --pretty false`; `pnpm wiki:manifest`; `pnpm wiki:lint`; `pnpm wiki:sync-check --staged`; `git diff --cached --check`.
+
+## 2026-06-21T12:47:34+0900 - implementation
+
+- Result: Issue #123 구현으로 신규 개발자용 [[Project Structure Onboarding]] wiki page를 추가했다.
+- Coverage: 첫 1시간 루트, repository responsibility map, core runtime flow, data/source-of-truth table, feature-to-files guide, verification/wiki maintenance sequence를 한 page에 묶고 상세 설명은 기존 [[Munjib]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[RAG Process Workflow]], [[Local Development Workflow]]로 연결했다.
+- Pages: [[Project Structure Onboarding]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #123, `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`, `docs/superpowers/plans/2026-06-21-project-structure-onboarding-guide.md`, `wiki/Project Structure Onboarding.md`.
+- Verification: `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`, `git diff --check --cached`.
+
+## 2026-06-21T11:55:11+0900 - design
+
+- Result: Issue #123 설계에서 신규 개발자가 프로젝트 구조를 직관적으로 이해하도록 `wiki/Project Structure Onboarding.md`를 첫 1시간 진입 지도형 wiki page로 추가하는 방향을 정했다.
+- Coverage: 문서는 first-hour path, repository responsibility map, runtime request-flow map, feature-to-files guide, data/knowledge source-of-truth summary, verification/wiki maintenance checklist를 포함하고 상세 설명은 기존 wiki page로 연결한다. 실제 onboarding page 생성은 spec review 후 implementation 단계에서 진행한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #123, `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`.
+- Verification: spec self-review; `pnpm wiki:sync-plan --staged`, `git diff --check --cached`.
 
 ## 2026-06-21T11:45:30+0900 - design
 
