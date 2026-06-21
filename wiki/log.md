@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 254
+updated: 2026-06-21
+source_count: 255
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T11:45:30+0900 - design
+
+- Result: Issue #122 workspace UI state persistence design was recorded before implementation.
+- Coverage: The accepted design uses workspace-scoped `localStorage` for left/right sidebar open state, active Documents/Search/Favorites sidebar panel, knowledge graph controls and section open state, existing graph option groups, and Workspace AI chat open state. DB schema, URL state, server APIs, chat drafts, pending requests, and graph layout positions stay out of scope.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #122, `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`.
+- Verification: spec self-review; implementation plan pending.
 
 ## 2026-06-20T16:58:00+09:00 - implementation
 
