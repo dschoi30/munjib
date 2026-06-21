@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 103
+updated: 2026-06-21
+source_count: 104
 tags:
   - munjib
   - source
@@ -90,6 +90,8 @@ Issue #65 설계는 graph 탐색의 링크 coverage와 filter surface를 조정�
 
 2026-06-20 graph follow-up 설계는 기본 graph view가 실제 readable document node와 resolved document-to-document wiki edge 중심으로 보여야 한다는 contract를 정리한다. `buildKnowledgeGraph()` raw DTO가 broken/ambiguous unresolved wiki target placeholder를 만들 수 있는 것은 모델상 모순이 아니지만, default visible graph에서는 이 placeholder node와 edge를 숨기고 `Orphans`는 기존처럼 isolated document node만 제어한다. 설계 근거는 `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`이다.
 
+Issue #122 설계는 route 이동과 refresh 뒤에도 workspace UI chrome state가 유지되도록 browser/workspace-scoped `localStorage` persistence를 추가하는 계획이다. `AppShell`, `DocumentList`, `KnowledgeGraphView`, `WorkspaceChatbot`은 계속 각자 상태를 소유하고, 공통 helper는 versioned key, JSON validation, safe read/write, hydration-after-mount pattern만 맡는다. 대상 상태는 좌우 sidebar open state, active sidebar panel, graph controls/section open state, graph option groups, Workspace AI chat open state다. DB schema, URL, server APIs, chat draft, pending request, graph layout position은 변경하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`이다.
+
 Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip, preview body `#tag`, graph view tag node를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
 Issue #73은 document editor title row 우측에 `AI에게 묻기` 버튼을 추가하고, 저장된 문서 내용만 기반으로 답변하는 문서 중심 RAG assistant를 구현했다. `AiAssistantPanel`은 ask route에 trimmed `question`만 POST하고 현재 editor draft title/contentMarkdown을 보내지 않으며, dirty title/markdown 또는 pending clipboard image paste가 있을 때 saved-content-only warning을 표시한다. Ask service는 workspace page와 같은 readable document 계산으로 selected document access를 확인한 뒤 saved document indexing, pgvector search, graph-aware reranking, prompt builder, Ollama chat을 연결한다. Retrieval은 현재 문서, wiki link target, backlink source, same-tag 문서, workspace fallback 순서로 확장하며, 기본 chat model은 Ollama `gemma4:e4b`, embedding model은 `bge-m3`다. Embedding 저장과 similarity search는 PostgreSQL 안의 pgvector `vector(1024)`와 HNSW cosine index를 사용한다. 구현은 pgvector chunk schema와 `lib/rag/config.ts`, `lib/rag/ollama.ts`를 추가해 Ollama base URL, chat model, embedding model, embedding dimension을 config-driven 기본값으로 관리하고 `/api/embed`, non-streaming `/api/chat` request를 작은 client wrapper로 감싼다. Ollama client는 offline/network failure와 invalid JSON을 recoverable request error로 정규화하고, embedding payload가 configured dimension과 finite numeric value contract를 만족하는지 검증한다. `lib/rag/vector-store.ts`는 Prisma가 직접 다루지 못하는 pgvector 저장/검색 seam을 맡고, vector literal을 raw SQL 실행 전에 검증한 뒤 static SQL과 positional parameter만 사용한다. Search SQL은 `CAST($1 AS vector(1024))`, readable document id array parameter, saved document `updatedAt`과 일치하는 stale-safe chunk filter를 유지한다. HNSW index creation은 Prisma Migrate가 unsupported vector index를 drop migration으로 되돌리려는 drift를 피하기 위해 `lib/rag/vector-index.ts`와 `pnpm run db:rag:index`의 idempotent setup step으로 분리한다. `lib/rag/index-document.ts`는 replacement transaction의 stale `false` 결과를 `indexSavedDocument()` caller까지 전파해 outdated indexing job이 성공으로 기록되지 않게 한다. `lib/rag/retriever.ts`는 saved/readable documents만 입력으로 받아 selected current document, saved markdown wiki links resolved through the shared resolver, persisted outgoing links, persisted backlinks, same normalized tags, fallback readable documents 순서로 scopes를 만든다. Reranking score는 `(1 - cosine distance) + scope boost + bounded keyword overlap boost`이며 explicit tuning weights는 current `0.5`, linked `0.3`, backlink `0.25`, same-tag `0.15`, keyword term `0.05`, keyword max `0.2`다. Reranker는 모든 scope 밖의 chunk를 prompt/citation 후보에서 제외하고, punctuation-normalized Unicode token overlap을 사용하되 English stop words와 too-short Latin terms를 무시하고 Korean/CJK 2글자 terms는 keyword boost 후보로 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-05-30-document-ai-rag-assistant.md`에 둔다.
@@ -159,6 +161,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - GitHub issue #48와 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`: document editor/navigation 구조 리팩토링 설계.
 - GitHub issue #65와 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`: knowledge graph filter/link coverage 조정 설계.
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
+- GitHub issue #122와 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`: workspace UI chrome state persistence 설계.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
 - GitHub issue #100와 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`: LangChain provider abstraction과 Langfuse RAG observability 설계.
