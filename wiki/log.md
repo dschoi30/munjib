@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 282
+source_count: 283
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T23:57:58+0900 - implementation
+
+- Result: PR #130 review feedback stabilized the `I18nProvider` explicit language setter.
+- Coverage: `setLanguage` is now a `useCallback` with no changing dependencies, so consumers that only need the setter do not receive a new callback reference during language hydration or explicit language changes. Existing language storage, root `lang` update, and hydration behavior stay unchanged.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #130 Gemini inline review, `components/i18n-provider.tsx`, `tests/components/i18n-provider.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/i18n-provider.test.tsx -t "keeps the setLanguage callback stable"` failed with 3 callback references; green run `pnpm exec vitest run tests/components/i18n-provider.test.tsx tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed 111 tests.
 
 ## 2026-06-21T23:47:41+0900 - implementation
 

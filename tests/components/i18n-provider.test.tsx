@@ -102,4 +102,29 @@ describe("I18nProvider", () => {
     expect(window.localStorage.getItem(APP_LANGUAGE_STORAGE_KEY)).toBe("en");
     expect(document.documentElement.lang).toBe("en");
   });
+
+  it("keeps the setLanguage callback stable across hydration and language changes", () => {
+    const setLanguageReferences: ReturnType<typeof useI18n>["setLanguage"][] = [];
+
+    function SetLanguageReferenceProbe() {
+      const { language, setLanguage } = useI18n();
+      setLanguageReferences.push(setLanguage);
+
+      return (
+        <button type="button" onClick={() => setLanguage(language === "ko" ? "en" : "ko")}>
+          Toggle language
+        </button>
+      );
+    }
+
+    render(
+      <I18nProvider>
+        <SetLanguageReferenceProbe />
+      </I18nProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle language" }));
+
+    expect(new Set(setLanguageReferences).size).toBe(1);
+  });
 });

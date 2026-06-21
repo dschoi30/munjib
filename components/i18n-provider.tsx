@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { DEFAULT_LANGUAGE, type Language } from "@/lib/i18n/language";
 import { getMessage, type MessageKey } from "@/lib/i18n/messages";
 import {
@@ -39,19 +39,21 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = language;
   }, [isHydrated, language]);
 
+  const setLanguage = useCallback((nextLanguage: Language) => {
+    const result = writeStoredLanguage(nextLanguage);
+    setLanguageState(nextLanguage);
+    setIsHydrated(true);
+    return result;
+  }, []);
+
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
       isHydrated,
-      setLanguage: (nextLanguage) => {
-        const result = writeStoredLanguage(nextLanguage);
-        setLanguageState(nextLanguage);
-        setIsHydrated(true);
-        return result;
-      },
+      setLanguage,
       t: (key, params) => getMessage(language, key, params),
     }),
-    [isHydrated, language],
+    [isHydrated, language, setLanguage],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
