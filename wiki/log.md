@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T18:35:00+09:00 - design
+
+- Result: Provider-specific AI model preset and reset behavior design was recorded.
+- Coverage: Settings panel AI tab will render presets for the selected provider, keep custom model id input, reset OpenRouter to `google/gemma-4-31b-it:free`, reset OpenAI to `gpt-5.4-mini`, reset Ollama to `gemma:e4b`, and fix the settings dialog height at 80vh with internal content scrolling.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-21-provider-model-presets-design.md`.
+- Verification: spec self-review; pnpm wiki:manifest; pnpm wiki:lint.
+
 ## 2026-06-21T18:20:00+09:00 - implementation
 
 - Result: AI provider configuration failure diagnostics and provider override regression coverage were updated.
