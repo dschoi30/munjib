@@ -80,19 +80,17 @@ Munjib MVP는 [[Next.js Prisma Monolith]] 결정에 따라 한 repository 안에
 ```mermaid
 flowchart TD
   UI["UI component\ncomponents/*"]
-  Route["Route handler or server action\napp/workspaces/*"]
+  Route["Route handler or server action\napp/workspaces/* + app/api/workspaces/*"]
   Service["Domain service\nlib/*/service.ts or lib/rag/*"]
   DB["Prisma/PostgreSQL\nprisma/schema.prisma"]
   Derived["Derived/indexed data\nDocumentLink\nDocumentTag\nDocumentChunk"]
-  AI["AI provider boundary\nLangChain/Ollama/OpenAI-compatible"]
-  Wiki["Wiki maintenance\nwiki/index.md\nwiki/log.md\nwiki/manifest.json"]
+  AI["AI provider boundary\nLangChain/Ollama/OpenAI/OpenAI-compatible"]
 
   UI --> Route
   Route --> Service
   Service --> DB
   Service --> Derived
   Service --> AI
-  Service --> Wiki
 
   Doc["Document edit/save"] --> Route
   Doc --> Service
@@ -119,9 +117,11 @@ flowchart TD
 
 | Layer | Source of truth | Notes |
 | --- | --- | --- |
-| Product/runtime data | `prisma/schema.prisma` and PostgreSQL | User, organization, workspace, folder, document, permission, version, audit, attachment, comment, AI chat, and retention data live here. |
+| Product/runtime data | `prisma/schema.prisma` and PostgreSQL | User, organization, workspace, folder, document, permission, version, audit, attachment metadata, comment, AI chat, and retention data live here. |
+| Attachment file bytes | `storage/attachments/` | Uploaded file bytes live on disk while attachment metadata lives in PostgreSQL. |
 | Saved document content | `Document.contentMarkdown` and `Document.contentText` | Saved DB content drives preview, wiki-link parsing, metadata extraction, graph construction, and RAG indexing. Unsaved editor draft is not the source for Ask AI answers. |
-| Link/tag/index support data | `DocumentLink`, `DocumentTag`, `DocumentChunk` | These rows support backlinks, tags, graph DTOs, and workspace chatbot retrieval. They are derived from saved documents and reconciliation/indexing flows. |
+| Link/tag support data | `DocumentLink`, `DocumentTag` | These rows support backlinks, tags, and graph DTOs. They are derived from saved documents and reconciliation flows. |
+| RAG index support data | `DocumentChunk` | These rows support Ask AI and workspace chatbot retrieval. They are derived from saved documents and indexing flows. |
 | Project knowledge | `wiki/*.md` | Wiki pages are durable compiled knowledge. Start from `wiki/index.md` or `pnpm wiki:find "<topic>"` before broad source search. |
 | Design and implementation intent | `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md` | Specs and plans explain why a change exists and how it should be implemented. |
 | Immutable evidence | `raw/sources/` | Do not edit these files during wiki maintenance. |
