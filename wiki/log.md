@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 279
+source_count: 280
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T22:44:04+0900 - implementation
+
+- Result: Issue #129 Task 4 wired sidebar skeletons into `AppShell` hydration gates.
+- Coverage: `AppShell` now combines i18n hydration and workspace UI state hydration before rendering localized sidebar content or localized reopen controls. While either hydration step is pending, open sidebars render decorative left/right sidebar skeletons instead of empty `aside` content, and closed panels render collapsed skeleton buttons instead of English/Korean tooltips or labels. Existing workspace sidebar state restore/persist, closed sidebar child mount prevention, heading navigation context, tag-search reopening, and right metadata collapse controls remain intact.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/app-shell.tsx`, `tests/components/app-shell.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/app-shell.test.tsx` failed while initial sidebars were empty; green run `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/sidebar-loading-skeleton.test.tsx tests/components/i18n-provider.test.tsx` passed 17 tests.
 
 ## 2026-06-21T22:34:48+0900 - implementation
 

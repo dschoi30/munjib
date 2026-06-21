@@ -3,6 +3,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  CollapsedPanelLoadingSkeleton,
+  WorkspaceSidebarLoadingSkeleton,
+} from "@/components/sidebar-loading-skeleton";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -86,7 +90,7 @@ export function AppShell({
   right: React.ReactNode | ((controls: RightPanelControls) => React.ReactNode);
   workspaceSlug?: string;
 }) {
-  const { t } = useI18n();
+  const { isHydrated: languageHydrated, t } = useI18n();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [shellStorageHydratedWorkspace, setShellStorageHydratedWorkspace] =
@@ -167,6 +171,7 @@ export function AppShell({
     [latestTagSearchRequest, requestTagSearch],
   );
   const shellStorageHydrated = !workspaceSlug || shellStorageHydratedWorkspace === workspaceSlug;
+  const shellHydrated = languageHydrated && shellStorageHydrated;
   const rightContent =
     typeof right === "function" ? right(rightPanelControls) : right;
 
@@ -177,9 +182,9 @@ export function AppShell({
           <LeftPanelContext.Provider value={leftPanelControls}>
             {leftPanelOpen ? (
               <aside className="overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
-                {shellStorageHydrated ? left : null}
+                {shellHydrated ? left : <WorkspaceSidebarLoadingSkeleton side="left" />}
               </aside>
-            ) : (
+            ) : shellHydrated ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -195,15 +200,17 @@ export function AppShell({
                   <TooltipContent side="bottom">{t("app.openSidebar")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            ) : (
+              <CollapsedPanelLoadingSkeleton side="left" />
             )}
             <section className="min-h-0 min-w-0 overflow-hidden bg-white">{center}</section>
             {rightPanelOpen ? (
               <aside className="overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
                 <RightPanelContext.Provider value={rightPanelControls}>
-                  {shellStorageHydrated ? rightContent : null}
+                  {shellHydrated ? rightContent : <WorkspaceSidebarLoadingSkeleton side="right" />}
                 </RightPanelContext.Provider>
               </aside>
-            ) : (
+            ) : shellHydrated ? (
               <TooltipProvider delayDuration={0}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -219,6 +226,8 @@ export function AppShell({
                   <TooltipContent side="bottom">{t("app.openMetadataPanel")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            ) : (
+              <CollapsedPanelLoadingSkeleton side="right" />
             )}
           </LeftPanelContext.Provider>
         </main>
