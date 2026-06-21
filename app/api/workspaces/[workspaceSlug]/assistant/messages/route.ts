@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
+import { parseLanguage } from "@/lib/i18n/language";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import {
   INVALID_CHAT_MODEL_ERROR,
@@ -28,6 +29,7 @@ export async function POST(
   }
 
   const message = typeof body.value.message === "string" ? body.value.message.trim() : "";
+  const uiLanguage = parseLanguage(body.value.uiLanguage);
   if (!message) {
     return NextResponse.json(
       { error: WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED },
@@ -77,6 +79,7 @@ export async function POST(
       actorId: user.id,
       message,
       signal: request.signal,
+      ...(uiLanguage ? { uiLanguage } : {}),
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
       ...(chatProviderValidation?.ok
         ? { chatProviderOverride: chatProviderValidation.value }

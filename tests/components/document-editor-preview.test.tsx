@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import React from "react";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as testingRender, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
+import { I18nProvider } from "@/components/i18n-provider";
 
 const toastError = vi.hoisted(() => vi.fn());
 
@@ -114,6 +115,14 @@ function renderEditor(markdown: string, props: Partial<Parameters<typeof Documen
       />
     </DocumentViewModeProvider>,
   );
+}
+
+function render(ui: React.ReactElement) {
+  const result = testingRender(<I18nProvider>{ui}</I18nProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(<I18nProvider>{nextUi}</I18nProvider>),
+  };
 }
 
 function TagSearchReceiver() {
@@ -325,7 +334,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
 
-    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+    expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "  What should I do?  " },
@@ -344,12 +353,48 @@ describe("DocumentEditor heading preview folding", () => {
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question: "What should I do?" }),
+        body: JSON.stringify({ question: "What should I do?", uiLanguage: "en" }),
       },
     );
     const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
     expect(requestBody).not.toContain("Unsaved title");
     expect(requestBody).not.toContain("Draft body");
+  });
+
+  it("uses the selected Korean display language for Ask AI chrome, errors, and request payloads", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => {
+        throw new SyntaxError("bad json");
+      },
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    expect(await screen.findByRole("region", { name: "AI 어시스턴트" })).toBeTruthy();
+    expect(screen.getByText("모델")).toBeTruthy();
+    expect(screen.getByPlaceholderText("이 문서에 대해 질문하기")).toBeTruthy();
+    const questionInput = screen.getByLabelText("AI 질문");
+
+    fireEvent.change(questionInput, {
+      target: { value: "  무엇을 해야 하나요?  " },
+    });
+    fireEvent.submit(questionInput.closest("form") as HTMLFormElement);
+
+    expect(await screen.findByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          question: "무엇을 해야 하나요?",
+          uiLanguage: "ko",
+        }),
+      }),
+    );
   });
 
   it("shows the Ask AI thinking indicator while the request is pending", async () => {
@@ -417,6 +462,7 @@ describe("DocumentEditor heading preview folding", () => {
       expect.objectContaining({
         body: JSON.stringify({
           question: "Which model answered?",
+          uiLanguage: "en",
           chatProvider: "openai-compatible",
           chatModel: "moonshotai/kimi-k2.7-code",
         }),
@@ -466,7 +512,7 @@ describe("DocumentEditor heading preview folding", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
 
-    expect(await screen.findByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+    expect(await screen.findByText("Could not get an AI answer.")).toBeTruthy();
   });
 
   it("omits the heading separator for empty AI citation heading paths", async () => {
@@ -537,7 +583,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
 
-    expect(screen.getByText("저장되지 않은 변경사항은 AI 답변에 반영되지 않습니다.")).toBeTruthy();
+    expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
   });
 
   it("resets assistant panel state when switching documents", async () => {

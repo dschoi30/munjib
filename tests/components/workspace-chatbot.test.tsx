@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as testingRender, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "@/components/i18n-provider";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { readWorkspaceChatStream } from "@/components/workspace-chatbot-stream";
 import { writeStoredChatModel } from "@/lib/rag/client-model-settings";
@@ -182,6 +183,59 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          uiLanguage: "en",
+        }),
+      }),
+    );
+  });
+
+  it("uses the selected Korean display language for workspace AI chrome and message payloads", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) {
+        return jsonResponse({ thread: { id: "thread-1" }, messages: [] });
+      }
+      if (url.endsWith("/assistant/messages")) {
+        return ndjsonResponse([
+          { type: "start" },
+          {
+            type: "done",
+            assistantMessage: {
+              id: "message-3",
+              role: "ASSISTANT",
+              content: "Workspace answer.",
+            },
+            citations: [],
+          },
+        ]);
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Workspace AI 채팅 열기" }));
+    expect(await screen.findByRole("region", { name: "Workspace AI 채팅" })).toBeTruthy();
+    expect(screen.getByText("모델")).toBeTruthy();
+    expect(await screen.findByText("이 workspace 전체에 대해 질문해 보세요.")).toBeTruthy();
+    expect(screen.getByPlaceholderText("이 workspace 전체에 대해 질문하기")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Workspace 채팅 메시지"), {
+      target: { value: "무엇이 바뀌었나요?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "메시지 보내기" }));
+
+    expect(screen.getByText("생각 중...")).toBeTruthy();
+    expect(await screen.findByText("Workspace answer.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "대화 초기화" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Workspace AI 채팅 닫기" })).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/assistant/messages",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          message: "무엇이 바뀌었나요?",
+          selectedDocumentId: "doc-1",
+          uiLanguage: "ko",
         }),
       }),
     );
@@ -258,6 +312,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          uiLanguage: "en",
           chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
@@ -287,6 +342,7 @@ describe("WorkspaceChatbot", () => {
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
+          uiLanguage: "en",
           chatProvider: "openai-compatible",
           chatModel: "google/gemma-4-31b-it:free",
         }),
@@ -916,6 +972,14 @@ function jsonResponse(body: unknown, init?: ResponseInit) {
     status: init?.status ?? 200,
     headers: { "content-type": "application/json" },
   });
+}
+
+function render(ui: React.ReactElement) {
+  const result = testingRender(<I18nProvider>{ui}</I18nProvider>);
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(<I18nProvider>{nextUi}</I18nProvider>),
+  };
 }
 
 function createDeferred<T>() {
