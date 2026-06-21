@@ -15,6 +15,10 @@ import {
   readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
+import {
+  readStoredWorkspaceUiState,
+  updateStoredWorkspaceUiState,
+} from "@/lib/workspace-ui-state";
 
 type ChatCitation = AiCitation;
 
@@ -44,9 +48,11 @@ export function WorkspaceChatbot({
   const [isThinking, setIsThinking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState("");
+  const [hydratedWorkspaceSlug, setHydratedWorkspaceSlug] = useState<string | null>(null);
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
     readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
   );
+  const hydratedWorkspaceSlugRef = useRef<string | null>(null);
   const hasLoadedThreadRef = useRef(false);
   const requestGenerationRef = useRef(0);
   const messageVersionRef = useRef(0);
@@ -58,6 +64,7 @@ export function WorkspaceChatbot({
   const optimisticMessageCounterRef = useRef(0);
   const trimmedMessage = messageInput.trim();
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
+  const isCurrentWorkspaceHydrated = hydratedWorkspaceSlug === workspaceSlug;
 
   useEffect(() => {
     requestGenerationRef.current += 1;
@@ -78,6 +85,18 @@ export function WorkspaceChatbot({
       abortActiveSend();
     };
   }, [defaultChatProvider, workspaceSlug]);
+
+  useEffect(() => {
+    hydratedWorkspaceSlugRef.current = null;
+    setHydratedWorkspaceSlug(null);
+
+    const storedWorkspaceUiState = readStoredWorkspaceUiState(workspaceSlug);
+    const storedWorkspaceChatOpen = storedWorkspaceUiState.workspaceChatOpen === true;
+
+    hydratedWorkspaceSlugRef.current = workspaceSlug;
+    setIsOpen(storedWorkspaceChatOpen);
+    setHydratedWorkspaceSlug(workspaceSlug);
+  }, [workspaceSlug]);
 
   useEffect(() => {
     return subscribeToStoredChatModelChanges((change) => {
@@ -108,8 +127,16 @@ export function WorkspaceChatbot({
     );
   }
 
+  function setWorkspaceChatOpen(nextIsOpen: boolean) {
+    setIsOpen(nextIsOpen);
+    if (hydratedWorkspaceSlugRef.current !== workspaceSlug) return;
+    updateStoredWorkspaceUiState(workspaceSlug, () => ({
+      workspaceChatOpen: nextIsOpen,
+    }));
+  }
+
   useEffect(() => {
-    if (!isOpen || hasLoadedThreadRef.current) return;
+    if (!isCurrentWorkspaceHydrated || !isOpen || hasLoadedThreadRef.current) return;
 
     let cancelled = false;
     const loadGeneration = requestGenerationRef.current;
@@ -142,7 +169,7 @@ export function WorkspaceChatbot({
     return () => {
       cancelled = true;
     };
-  }, [isOpen, workspaceSlug]);
+  }, [isCurrentWorkspaceHydrated, isOpen, workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -301,13 +328,13 @@ export function WorkspaceChatbot({
     }
   }
 
-  if (!isOpen) {
+  if (!isCurrentWorkspaceHydrated || !isOpen) {
     return (
       <button
         type="button"
         aria-label="Open workspace AI chat"
         className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-white shadow-lg transition hover:bg-slate-800"
-        onClick={() => setIsOpen(true)}
+        onClick={() => setWorkspaceChatOpen(true)}
       >
         <Bot className="h-5 w-5" aria-hidden="true" />
       </button>
@@ -338,7 +365,7 @@ export function WorkspaceChatbot({
             type="button"
             aria-label="Close workspace AI chat"
             className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-            onClick={() => setIsOpen(false)}
+            onClick={() => setWorkspaceChatOpen(false)}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

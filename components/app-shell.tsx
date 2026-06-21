@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  readStoredWorkspaceUiState,
+  updateStoredWorkspaceUiState,
+} from "@/lib/workspace-ui-state";
 
 type LeftPanelControls = {
   isOpen: boolean;
@@ -74,18 +78,46 @@ export function AppShell({
   left,
   center,
   right,
+  workspaceSlug,
 }: {
   left: React.ReactNode;
   center: React.ReactNode;
   right: React.ReactNode | ((controls: RightPanelControls) => React.ReactNode);
+  workspaceSlug?: string;
 }) {
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [shellStorageHydratedWorkspace, setShellStorageHydratedWorkspace] =
+    useState<string | null>(null);
   const [outlineDocument, setOutlineDocument] = useState<HeadingNavigationDocument | null>(null);
   const [latestTagSearchRequest, setLatestTagSearchRequest] =
     useState<TagSearchRequest | null>(null);
   const headingNavigatorRef = useRef<HeadingNavigator>(null);
   const nextTagSearchTokenRef = useRef(0);
+  useEffect(() => {
+    if (!workspaceSlug) {
+      setShellStorageHydratedWorkspace(null);
+      return;
+    }
+
+    const storedState = readStoredWorkspaceUiState(workspaceSlug);
+    setLeftPanelOpen(storedState.leftSidebarOpen ?? true);
+    setRightPanelOpen(storedState.rightSidebarOpen ?? true);
+    setShellStorageHydratedWorkspace(workspaceSlug);
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (!workspaceSlug || shellStorageHydratedWorkspace !== workspaceSlug) {
+      return;
+    }
+
+    updateStoredWorkspaceUiState(workspaceSlug, (current) => ({
+      ...current,
+      leftSidebarOpen: leftPanelOpen,
+      rightSidebarOpen: rightPanelOpen,
+    }));
+  }, [leftPanelOpen, rightPanelOpen, shellStorageHydratedWorkspace, workspaceSlug]);
+
   const requestTagSearch = useCallback((tagName: string) => {
     setLeftPanelOpen(true);
     nextTagSearchTokenRef.current += 1;

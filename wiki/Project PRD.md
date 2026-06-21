@@ -90,7 +90,7 @@ Issue #65 설계는 graph 탐색의 링크 coverage와 filter surface를 조정�
 
 2026-06-20 graph follow-up 설계는 기본 graph view가 실제 readable document node와 resolved document-to-document wiki edge 중심으로 보여야 한다는 contract를 정리한다. `buildKnowledgeGraph()` raw DTO가 broken/ambiguous unresolved wiki target placeholder를 만들 수 있는 것은 모델상 모순이 아니지만, default visible graph에서는 이 placeholder node와 edge를 숨기고 `Orphans`는 기존처럼 isolated document node만 제어한다. 설계 근거는 `docs/superpowers/specs/2026-06-20-knowledge-graph-hide-unresolved-targets-design.md`이다.
 
-Issue #122 설계는 route 이동과 refresh 뒤에도 workspace UI chrome state가 유지되도록 browser/workspace-scoped `localStorage` persistence를 추가하는 계획이다. `AppShell`, `DocumentList`, `KnowledgeGraphView`, `WorkspaceChatbot`은 계속 각자 상태를 소유하고, 공통 helper는 versioned key, JSON validation, safe read/write, hydration-after-mount pattern만 맡는다. 대상 상태는 좌우 sidebar open state, active sidebar panel, graph controls/section open state, graph option groups, Workspace AI chat open state다. DB schema, URL, server APIs, chat draft, pending request, graph layout position은 변경하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`이다.
+Issue #122 구현은 route 이동과 refresh 뒤에도 workspace UI chrome state가 유지되도록 browser/workspace-scoped aggregate `localStorage` persistence를 추가했다. `AppShell`, `DocumentList`, `KnowledgeGraphView`, `WorkspaceChatbot`은 계속 각자 상태를 소유하고, 공통 helper는 versioned key, JSON validation, safe read/write, hydration-after-mount pattern만 맡는다. 대상 상태는 좌우 sidebar open state, active sidebar panel, graph controls/section open state, graph option groups, Workspace AI chat open state다. DB schema, URL, server APIs, chat draft, pending request, graph layout position은 변경하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`이다.
 
 Issue #71은 Obsidian-style tag navigation을 기존 sidebar search에 얹었다. 사용자는 `tag:#name` literal query를 직접 입력하거나 Properties frontmatter tag chip, preview body `#tag`, graph view tag node를 클릭해 exact normalized tag search를 실행한다. 검색 결과는 frontmatter tags와 body tags의 reconciled tag index를 모두 쓰지만, Properties tags row는 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
@@ -161,7 +161,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - GitHub issue #48와 `docs/superpowers/specs/2026-05-17-document-editor-navigation-refactor-design.md`: document editor/navigation 구조 리팩토링 설계.
 - GitHub issue #65와 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`: knowledge graph filter/link coverage 조정 설계.
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
-- GitHub issue #122와 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`: workspace UI chrome state persistence 설계.
+- GitHub issue #122와 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`: workspace UI chrome state persistence 설계와 구현 범위.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
 - GitHub issue #100와 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`: LangChain provider abstraction과 Langfuse RAG observability 설계.

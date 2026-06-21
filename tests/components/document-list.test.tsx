@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
+import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
@@ -1243,6 +1244,99 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("link", { name: "Welcome" })).toBeNull();
   });
 
+  it("restores and persists the active sidebar panel", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+
+    renderList();
+
+    expect(await screen.findByText("Favorites")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    expect(screen.getByLabelText("Search documents")).toBeTruthy();
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({ activeSidebarPanel: "search" });
+    });
+  });
+
+  it("does not write the default active sidebar panel on passive graph mount", async () => {
+    renderList({ isGraphView: true });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).not.toHaveProperty("activeSidebarPanel");
+    });
+  });
+
+  it("preserves a stored active sidebar panel on passive graph mount", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+
+    renderList({ isGraphView: true });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({ activeSidebarPanel: "favorites" });
+    });
+  });
+
+  it("persists an explicit document panel choice from graph view", async () => {
+    renderList({ isGraphView: true });
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).not.toHaveProperty("activeSidebarPanel");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({ activeSidebarPanel: "documents" });
+    });
+  });
+
+  it("opens favorites from graph view when favorites was the stored panel", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+
+    renderList({ isGraphView: true });
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    expect(await screen.findByText("Favorites")).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({ activeSidebarPanel: "favorites" });
+    });
+  });
+
   it("opens sidebar search with a literal tag query from AppShell tag search requests", () => {
     render(
       <AppShell
@@ -1257,6 +1351,37 @@ describe("DocumentList", () => {
     expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
       "tag:#LangChain",
     );
+  });
+
+  it("lets tag search override a stored non-search panel and persists search", async () => {
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+
+    render(
+      <AppShell
+        workspaceSlug="company-handbook"
+        left={<DocumentList {...baseProps} />}
+        center={<TagSearchRequester tag="LangChain" />}
+        right={<div>Right</div>}
+      />,
+    );
+
+    expect(await screen.findByText("Favorites")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
+
+    expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
+      "tag:#LangChain",
+    );
+    await waitFor(() => {
+      expect(
+        JSON.parse(
+          window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook")) ?? "{}",
+        ),
+      ).toMatchObject({ activeSidebarPanel: "search" });
+    });
   });
 
   it("does not replay an old tag search request after later document navigation", () => {
