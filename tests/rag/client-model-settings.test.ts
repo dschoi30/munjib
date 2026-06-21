@@ -91,6 +91,14 @@ describe("client RAG chat model settings", () => {
       ok: true,
       value: "gemma4:e4b",
     });
+    expect(validateChatModelId("gpt-4.1-mini", "openai")).toEqual({
+      ok: true,
+      value: "gpt-4.1-mini",
+    });
+    expect(validateChatModelId("openai/gpt-oss-20b:free", "openai")).toEqual({
+      ok: false,
+      error: INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
+    });
     expect(validateChatModelId(42)).toEqual({
       ok: false,
       error: INVALID_CHAT_MODEL_ERROR,

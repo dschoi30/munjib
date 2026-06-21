@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T18:20:00+09:00 - implementation
+
+- Result: AI provider configuration failure diagnostics and provider override regression coverage were updated.
+- Coverage: Handled AI unavailable capture now names `RAG_INVALID_CONFIG` events as `HandledAiConfigurationError`, while other provider/runtime failures keep `HandledAiUnavailableError`. Tests cover runtime chat provider overrides for official OpenAI and OpenRouter/OpenAI-compatible independently from the default Ollama provider, and official OpenAI model validation rejects OpenRouter-style model ids.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/observability/ai-unavailable.ts`, `tests/observability/ai-unavailable.test.ts`, `tests/rag/model-config.test.ts`, `tests/rag/client-model-settings.test.ts`.
+- Verification: `pnpm exec vitest run tests/observability/ai-unavailable.test.ts tests/rag/model-config.test.ts tests/rag/client-model-settings.test.ts --reporter=dot`; `git diff --check`.
+
 ## 2026-06-21T17:20:00+09:00 - design
 
 - Result: Runtime AI provider switching design was recorded for settings-driven Ask AI and Workspace AI provider changes.
