@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 278
+source_count: 279
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T22:34:48+0900 - implementation
+
+- Result: Issue #129 Task 3 added reusable sidebar loading skeleton components for refresh-time empty sidebar states.
+- Coverage: `components/sidebar-loading-skeleton.tsx` exports left/right workspace sidebar shell skeletons, collapsed panel skeletons, and a document navigation body skeleton built on the shared shimmer `Skeleton` primitive. The skeletons are decorative shape-only UI with no user-facing text, so they can render before display-language hydration without flashing English labels, and tests assert row counts, `aria-hidden` behavior, and collapsed-panel text absence.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed while the module was missing; green run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx tests/components/skeleton.test.tsx` passed 5 tests.
 
 ## 2026-06-21T22:08:00+0900 - design
 
