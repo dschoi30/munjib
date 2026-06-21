@@ -24,6 +24,7 @@ import {
 import { MarkdownPreview } from "@/components/document-editor/markdown-preview";
 import { WikiLinkSuggestions } from "@/components/document-editor/wiki-link-suggestions";
 import { useDocumentViewMode } from "@/components/document-view-mode";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { buildHeadingFoldTree } from "@/lib/markdown/folding";
 import {
@@ -218,6 +219,7 @@ export function DocumentEditor({
   createFromBrokenLinkAction,
   createCommentAction,
 }: DocumentEditorProps) {
+  const { t } = useI18n();
   const { mode } = useDocumentViewMode();
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
@@ -594,7 +596,7 @@ export function DocumentEditor({
           className="h-8 shrink-0 px-2 text-xs"
         >
           <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-          AI에게 묻기
+          {t("ai.askSubmit")}
         </Button>
       </div>
       {isAiAssistantOpen ? (
