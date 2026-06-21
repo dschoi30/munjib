@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useHeadingNavigation, useLeftPanel } from "@/components/app-shell";
+import { I18nProvider } from "@/components/i18n-provider";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 
 afterEach(() => {
@@ -48,6 +49,14 @@ function MountProbe({ onMount }: { onMount: () => void }) {
   return <div>Mounted panel content</div>;
 }
 
+function renderWithI18n(ui: React.ReactElement) {
+  return render(
+    <I18nProvider>
+      {ui}
+    </I18nProvider>,
+  );
+}
+
 describe("AppShell", () => {
   it("restores and persists workspace sidebar open state", async () => {
     window.localStorage.setItem(
@@ -59,7 +68,7 @@ describe("AppShell", () => {
       }),
     );
 
-    render(
+    renderWithI18n(
       <AppShell
         workspaceSlug="company-handbook"
         left={<div>Left</div>}
@@ -96,7 +105,7 @@ describe("AppShell", () => {
       JSON.stringify({ leftSidebarOpen: false }),
     );
 
-    render(
+    renderWithI18n(
       <AppShell
         workspaceSlug="company-handbook"
         left={<MountProbe onMount={onMount} />}
@@ -111,7 +120,7 @@ describe("AppShell", () => {
   });
 
   it("starts the left sidebar at the same vertical origin as the center chrome", () => {
-    render(
+    renderWithI18n(
       <AppShell left={<div>Left</div>} center={<div>Center</div>} right={<div>Right</div>} />,
     );
 
@@ -124,7 +133,7 @@ describe("AppShell", () => {
   });
 
   it("can collapse the right metadata panel to a single reopen button without a sidebar rail", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<div>Left</div>}
         center={<div>Center</div>}
@@ -148,7 +157,7 @@ describe("AppShell", () => {
   });
 
   it("shows a tooltip for the metadata panel reopen icon", async () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<div>Left</div>}
         center={<div>Center</div>}
@@ -165,7 +174,7 @@ describe("AppShell", () => {
   it("shares heading navigation between center content and the metadata panel area", () => {
     const onNavigate = vi.fn();
 
-    render(
+    renderWithI18n(
       <AppShell
         left={<div>Left</div>}
         center={<HeadingNavigationProbe onNavigate={onNavigate} />}
@@ -179,7 +188,7 @@ describe("AppShell", () => {
   });
 
   it("can collapse and reopen the left sidebar", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<LeftPanelProbe />}
         center={<div>Center</div>}

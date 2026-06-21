@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 261
+source_count: 273
 tags:
   - log
   - munjib
@@ -18,6 +18,62 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T21:16:00+0900 - implementation
+
+- Result: Issue #126 Task 5 localized the remaining major workspace product chrome for English/Korean display language switching.
+- Coverage: `lib/i18n/messages.ts` now includes login, nav/sidebar, tab/toolbar, metadata, folder, editor/properties/preview/wiki-link suggestion, and graph control keys. The affected React surfaces consume `useI18n()` so a saved Settings language change rerenders current labels, placeholders, empty states, accessible names, and control text without a reload. Empty document/tab fallback labels are translated at render time, while user-authored document titles, paths, provider/model ids, arbitrary frontmatter property keys, URLs, and developer/admin-only identifiers remain data/internal strings.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `app/login/login-form.tsx`, `components/app-shell.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/folder-detail.tsx`, `components/metadata-panel.tsx`, `components/document-editor.tsx`, `components/document-editor/document-properties.tsx`, `components/document-editor/markdown-preview.tsx`, `components/document-editor/wiki-link-suggestions.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-tree.ts`, `tests/components/login-form.test.tsx`, `tests/components/folder-detail.test.tsx`, `wiki/Document Editing Workflow.md`.
+- Verification: focused component/i18n runs passed, `pnpm exec tsc --noEmit --pretty false` passed, `git diff --check` passed, and full `pnpm test` passed 74 files / 814 tests.
+
+## 2026-06-21T20:30:32+0900 - implementation
+
+- Result: Issue #126 Task 4 follow-up disambiguated the Ask AI opener and submit controls after code quality review.
+- Coverage: `DocumentEditor` now keeps the opener's visible Ask AI affordance while giving it localized open/close accessible names, so the panel opener and the form submit button no longer share the same button name when the assistant is open. The message catalog now has separate English/Korean `ai.assistant.open` and `ai.assistant.close` keys, and component coverage asserts the open/close labels plus a single panel-local submit button.
+- Pages: [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/document-editor.tsx`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
+
+## 2026-06-21T18:57:00+0900 - implementation
+
+- Result: Issue #126 Task 4 localized Ask AI/Workspace AI default surfaces and threaded selected UI language into AI prompt plumbing.
+- Coverage: `lib/i18n/messages.ts` now includes English/Korean Ask AI, Workspace AI, and thinking indicator keys. `DocumentEditor`, `ThinkingIndicator`, `AiAssistantPanel`, and `WorkspaceChatbot` render opener labels, placeholders, warnings, generic errors, empty state, and thinking text through `useI18n()`. Ask AI and Workspace AI POST bodies include current `uiLanguage`; routes parse it with `parseLanguage()` and ignore invalid values. `askDocumentQuestion()` and `prepareWorkspaceChatMessageStream()` pass valid UI language to `buildDirectDocumentPrompt()` / `buildRagPrompt()`, which localize fallback context phrases and add a model-facing selected UI language instruction while preserving the separate question-language-first answer instruction. Workspace chat retrieval still uses the original conversation question, not `uiLanguage`. Durable AI workflow pages now describe the catalog-backed thinking/status behavior and `uiLanguage` request/prompt flow instead of the old English-only thinking text.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `components/document-editor.tsx`, `components/ai/thinking-indicator.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/rag/prompt.ts`, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `tests/components/thinking-indicator.test.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`, `tests/rag/prompt.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/workspace-chat-route.test.ts`, `wiki/Document Editing Workflow.md`, `wiki/Munjib.md`, `wiki/Project PRD.md`, `wiki/RAG Process Workflow.md`.
+- Verification: red run `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts` failed on missing Korean thinking/fallback text and missing `uiLanguage` service pass-through; green runs `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/components/thinking-indicator.test.tsx tests/components/document-editor-preview.test.tsx tests/components/workspace-chatbot.test.tsx tests/rag/prompt.test.ts tests/rag/ask-route.test.ts tests/rag/workspace-chat-route.test.ts`, `pnpm exec vitest run tests/components/document-editor-preview.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, and `pnpm exec tsc --noEmit --pretty false` passed.
+
+## 2026-06-21T18:30:26+0900 - implementation
+
+- Result: Issue #126 Task 3 implemented the Settings `Language` section.
+- Coverage: `WorkspaceSettingsPanel` now consumes `useI18n()` for Settings copy, adds a left-nav Language tab, keeps a draft language separate from the applied browser language, highlights the current applied language until Save, supports disabled Save/Cancel when unchanged, applies the saved language immediately, and reports storage failure while keeping the tab alive. The Language options use native radio controls styled as cards, and Settings status messages store translation keys/state so visible status text can rerender in the current display language. The Settings import, AI, retention, retention policy option labels, and Markdown import progress labels now read from the English/Korean message catalog.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `components/workspace-settings-panel.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.
+- Verification: initial red run `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"` failed because the Language tab was absent; green runs `pnpm exec vitest run tests/components/document-list.test.tsx -t "Language settings"`, `pnpm exec vitest run tests/components/document-list.test.tsx`, `pnpm exec vitest run tests/i18n/messages.test.ts`, `pnpm exec vitest run tests/i18n/messages.test.ts tests/components/document-list.test.tsx`, and `pnpm exec tsc --noEmit --pretty false` passed. Follow-up focused runs passed after adding native radio controls and display-language rerender coverage for saved retention status.
+
+## 2026-06-21T18:14:03+0900 - implementation
+
+- Result: Issue #126 Task 2 implemented browser storage and the React provider for product display language.
+- Coverage: `lib/i18n/storage.ts` stores explicit browser-wide language selections in `localStorage` key `munjib:language`, ignores invalid stored values, reports blocked writes without throwing, emits same-tab language change events, listens for cross-tab storage events, and falls back from browser language hints when no value is stored. `components/i18n-provider.tsx` exposes `I18nProvider`/`useI18n()`, hydrates from storage/browser hints after mount, updates `document.documentElement.lang`, and translates message keys through the shared catalog. `app/layout.tsx` now mounts the provider around app children and the toaster while keeping SSR `<html lang="en" suppressHydrationWarning>`.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `app/layout.tsx`, `components/i18n-provider.tsx`, `lib/i18n/storage.ts`, `tests/components/i18n-provider.test.tsx`, `tests/i18n/storage.test.ts`.
+- Verification: initial red run `pnpm exec vitest run tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` failed because `@/lib/i18n/storage` and `@/components/i18n-provider` did not exist; green run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` passed 4 files and 15 tests; `pnpm exec tsc --noEmit --pretty false` passed.
+
+## 2026-06-21T18:00:24+0900 - implementation
+
+- Result: Issue #126 Task 1 implemented the shared product language core and first typed message catalog.
+- Coverage: `lib/i18n/language.ts` defines the supported `en`/`ko` display language contract, default language, strict parsing, browser/OS Korean hint inference, and localized language labels. `lib/i18n/messages.ts` adds the initial English/Korean Settings/app catalog with key parity and parameter interpolation so later Settings/provider/UI translation tasks use one shared catalog instead of ad hoc local objects.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`, `lib/i18n/language.ts`, `lib/i18n/messages.ts`, `tests/i18n/language.test.ts`, `tests/i18n/messages.test.ts`.
+- Verification: initial red run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts` failed because `@/lib/i18n/language` and `@/lib/i18n/messages` did not exist; green run passed 2 test files and 8 tests.
+
+## 2026-06-21T17:38:03+0900 - design
+
+- Result: Issue #126 설계에서 제품 표시 언어를 영어/한국어로 전환하는 방향을 정리했다.
+- Coverage: 언어 preference는 browser-global app setting으로 저장하고, 저장값이 없으면 `navigator.languages`/`navigator.language`에서 `ko`/`ko-*`를 한국어로 추론한다. Settings panel `Language` section은 영어/한국어 선택, 현재 적용 중인 언어 highlight, Save/Cancel을 제공하며 Save 후 user-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states가 즉시 갱신되어야 한다. 실제 AI answer body는 question-language-first 정책을 유지하고 내부 developer/admin identifiers는 번역하지 않는다. 구현 계획은 i18n core/provider, Settings language section, AI prompt/request plumbing, workspace chrome, editor/metadata/graph translation, string sweep/wiki maintenance, PR workflow task로 나눈다.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`.
+- Verification: spec self-review; `git diff --check`.
 
 ## 2026-06-21T12:52:00+09:00 - implementation
 

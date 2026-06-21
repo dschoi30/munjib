@@ -10,6 +10,7 @@ import {
   useRightPanel,
   type HeadingNavigationTarget,
 } from "@/components/app-shell";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -49,6 +50,7 @@ export function MetadataPanel({
   onTogglePanel?: () => void;
   onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
   const rightPanel = useRightPanel();
   const headingNavigation = useHeadingNavigation();
@@ -84,37 +86,37 @@ export function MetadataPanel({
       <TooltipProvider delayDuration={0}>
         <div className="flex h-11 items-center gap-1">
           <MetadataTabButton
-            label="Outline"
+            label={t("metadata.outline")}
             active={activeTab === "outline"}
             onClick={() => setActiveTab("outline")}
           >
             <ListTree className="h-4 w-4" aria-hidden="true" />
           </MetadataTabButton>
           <MetadataTabButton
-            label="Attachments"
+            label={t("metadata.attachments")}
             active={activeTab === "attachments"}
             onClick={() => setActiveTab("attachments")}
           >
             <Paperclip className="h-4 w-4" aria-hidden="true" />
           </MetadataTabButton>
           <MetadataTabButton
-            label="Versions"
+            label={t("metadata.versions")}
             active={activeTab === "versions"}
             onClick={() => setActiveTab("versions")}
           >
             <History className="h-4 w-4" aria-hidden="true" />
           </MetadataTabButton>
           <MetadataTabButton
-            label="Audit log"
+            label={t("metadata.auditLog")}
             active={activeTab === "audit"}
             onClick={() => setActiveTab("audit")}
           >
             <FileClock className="h-4 w-4" aria-hidden="true" />
           </MetadataTabButton>
-          <ToolbarTooltip label="Close metadata panel">
+          <ToolbarTooltip label={t("metadata.closePanel")}>
             <Button
               type="button"
-              aria-label="Close metadata panel"
+              aria-label={t("metadata.closePanel")}
               onClick={collapsePanel}
               className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink"
             >
@@ -146,11 +148,13 @@ function OutlineList({
   items: MarkdownOutlineItem[];
   onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <section>
-      <h2 className="text-sm font-semibold">Outline</h2>
+      <h2 className="text-sm font-semibold">{t("metadata.outline")}</h2>
       {items.length === 0 ? (
-        <p className="mt-2 text-sm text-slate-600">No outline headings</p>
+        <p className="mt-2 text-sm text-slate-600">{t("metadata.noOutlineHeadings")}</p>
       ) : (
         <ul className="mt-2 space-y-1 text-sm text-slate-600">
           {items.map((item) => (
@@ -173,11 +177,13 @@ function OutlineItemRow({
   item: MarkdownOutlineItem;
   onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <li>
       <button
         type="button"
-        aria-label={`Go to heading ${item.title}`}
+        aria-label={t("metadata.goToHeading", { title: item.title })}
         onClick={() => onNavigateToHeading?.({ id: item.id, lineNumber: item.lineNumber })}
         className="flex w-full min-w-0 rounded px-2 py-1 text-left text-slate-600 hover:bg-slate-200 hover:text-ink focus:bg-slate-200 focus:text-ink focus:outline-none"
       >
@@ -238,11 +244,13 @@ function MetadataTabButton({
 }
 
 function AttachmentsList({ attachments }: { attachments: Attachment[] }) {
+  const { t } = useI18n();
+
   return (
     <section>
-      <h2 className="text-sm font-semibold">Attachments</h2>
+      <h2 className="text-sm font-semibold">{t("metadata.attachments")}</h2>
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
-        {attachments.length === 0 ? <li>No attachments</li> : null}
+        {attachments.length === 0 ? <li>{t("metadata.noAttachments")}</li> : null}
         {attachments.map((attachment) => (
           <li key={attachment.id} className="rounded border border-border px-2 py-2">
             <Link className="font-medium underline" href={`/api/attachments/${attachment.id}`}>
@@ -267,11 +275,13 @@ function VersionsList({
   canWrite: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
 }) {
+  const { t } = useI18n();
+
   return (
     <section>
-      <h2 className="text-sm font-semibold">Versions</h2>
+      <h2 className="text-sm font-semibold">{t("metadata.versions")}</h2>
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
-        {versions.length === 0 ? <li>No versions</li> : null}
+        {versions.length === 0 ? <li>{t("metadata.noVersions")}</li> : null}
         {versions.map((version) => (
           <li key={version.id} className="rounded border border-border px-2 py-2">
             <div className="flex items-start justify-between gap-2">
@@ -283,7 +293,7 @@ function VersionsList({
               <form action={restoreVersionAction}>
                 <input type="hidden" name="versionId" value={version.id} />
                 <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
-                  Restore
+                  {t("metadata.restore")}
                 </Button>
               </form>
             </div>
@@ -295,11 +305,13 @@ function VersionsList({
 }
 
 function AuditLogList({ auditLogs }: { auditLogs: AuditLog[] }) {
+  const { t } = useI18n();
+
   return (
     <section>
-      <h2 className="text-sm font-semibold">Audit log</h2>
+      <h2 className="text-sm font-semibold">{t("metadata.auditLog")}</h2>
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
-        {auditLogs.length === 0 ? <li>No audit logs</li> : null}
+        {auditLogs.length === 0 ? <li>{t("metadata.noAuditLogs")}</li> : null}
         {auditLogs.map((log) => (
           <li key={log.id}>{log.action}</li>
         ))}

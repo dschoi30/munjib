@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
+import { I18nProvider } from "@/components/i18n-provider";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
@@ -116,7 +117,25 @@ afterEach(() => {
 });
 
 function renderList(props: Partial<Parameters<typeof DocumentList>[0]> = {}) {
-  return render(<DocumentList {...baseProps} {...props} />);
+  return renderWithI18n(
+    <DocumentList {...baseProps} {...props} />,
+  );
+}
+
+function renderWithI18n(ui: React.ReactElement) {
+  const result = render(
+    <I18nProvider>
+      {ui}
+    </I18nProvider>,
+  );
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(
+      <I18nProvider>
+        {nextUi}
+      </I18nProvider>,
+    ),
+  };
 }
 
 function TagSearchRequester({ tag }: { tag: string }) {
@@ -127,6 +146,15 @@ function TagSearchRequester({ tag }: { tag: string }) {
       Search tag
     </button>
   );
+}
+
+function languageOptionCard(name: RegExp) {
+  const radio = screen.getByRole("radio", { name }) as HTMLInputElement;
+  const card = document.querySelector(`label[for="${radio.id}"]`);
+  if (!(card instanceof HTMLElement)) {
+    throw new Error(`Could not find language option card for ${name}`);
+  }
+  return card;
 }
 
 describe("DocumentList", () => {
@@ -145,8 +173,53 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("combobox", { name: /template/i })).toBeNull();
   });
 
+  it("uses the selected Korean display language for workspace sidebar chrome", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    renderList();
+
+    const workspaceMenuButton = await screen.findByRole("button", {
+      name: "워크스페이스 메뉴",
+    });
+    expect(workspaceMenuButton.textContent).toBe("Company Handbook");
+    expect(screen.getByRole("button", { name: "사이드바 닫기" })).toBeTruthy();
+
+    const toolbar = screen.getByTestId("document-create-toolbar");
+    expect(within(toolbar).getByRole("button", { name: "문서" })).toHaveProperty(
+      "ariaPressed",
+      "true",
+    );
+    expect(within(toolbar).getByRole("button", { name: "그래프" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "새 문서" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "새 폴더" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "검색" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "즐겨찾기" })).toBeTruthy();
+
+    expect(screen.getByText("최근")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "모든 문서" })).toBeTruthy();
+    expect(screen.getByText("문서")).toBeTruthy();
+
+    fireEvent.click(workspaceMenuButton);
+    const workspaceMenu = screen.getByRole("menu", { name: "워크스페이스 메뉴" });
+    expect(within(workspaceMenu).getByRole("menuitem", { name: "설정" })).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "검색" }));
+    expect(screen.getByLabelText("문서 검색")).toBeTruthy();
+    expect(screen.getByPlaceholderText("문서 검색")).toBeTruthy();
+    expect(screen.getByText("2개 결과")).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "즐겨찾기" }));
+    expect(screen.getByText("즐겨찾기")).toBeTruthy();
+    expect(screen.getByText("아직 즐겨찾기가 없습니다.")).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "문서" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Welcome 작업 열기" })[0]);
+    expect(screen.getByRole("menuitem", { name: "즐겨찾기에 추가" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "새 탭에서 열기" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "휴지통으로 이동" })).toBeTruthy();
+  });
+
   it("collapses and reopens the real document list inside AppShell", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<div>Center</div>}
@@ -265,6 +338,87 @@ describe("DocumentList", () => {
     expect(screen.getByRole("button", { name: "Save retention" })).toBeTruthy();
   });
 
+  describe("Language settings", () => {
+    it("opens the Language settings tab and highlights the current language", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+
+      expect(screen.getByRole("heading", { name: "Language" })).toBeTruthy();
+      expect(screen.getByText("Current language: English")).toBeTruthy();
+      expect(screen.getByRole("radio", { name: /English/ })).toHaveProperty("checked", true);
+      expect(within(languageOptionCard(/English/)).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
+    });
+
+    it("keeps the current language highlighted until Save", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+
+      expect(screen.getByText("Korean will apply after you save.")).toBeTruthy();
+      expect(screen.getByRole("radio", { name: /Korean/ })).toHaveProperty("checked", true);
+      expect(within(languageOptionCard(/English/)).getByText("Current")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", false);
+      expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", false);
+
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("heading", { name: "언어" })).toBeTruthy();
+      expect(screen.getByText("현재 언어: 한국어")).toBeTruthy();
+      expect(window.localStorage.getItem("munjib:language")).toBe("ko");
+    });
+
+    it("discards a draft language on Cancel", () => {
+      window.localStorage.setItem("munjib:language", "en");
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByText("Current language: English")).toBeTruthy();
+      expect(screen.queryByText("Korean will apply after you save.")).toBeNull();
+      expect(window.localStorage.getItem("munjib:language")).toBe("en");
+    });
+
+    it("keeps the UI alive with a localized status when language storage fails", async () => {
+      window.localStorage.setItem("munjib:language", "en");
+      const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+      vi.spyOn(window.localStorage, "setItem").mockImplementation((key, value) => {
+        if (key === "munjib:language") {
+          throw new Error("storage unavailable");
+        }
+        originalSetItem(key, value);
+      });
+      renderList();
+
+      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+      fireEvent.click(screen.getByRole("button", { name: "Language" }));
+      fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(screen.getByRole("heading", { name: "언어" })).toBeTruthy();
+      expect(
+        await screen.findByText(
+          "이 탭의 언어는 변경되었지만 이 브라우저에 저장하지 못했습니다.",
+        ),
+      ).toBeTruthy();
+      expect(window.localStorage.getItem("munjib:language")).toBe("en");
+    });
+  });
+
   it("saves the selected retention policy through the settings action", async () => {
     const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
       archivedDocumentRetentionPolicy: String(
@@ -287,6 +441,57 @@ describe("DocumentList", () => {
     const submitted = (updateRetentionPolicyAction.mock.calls as unknown as FormData[][])[0][0];
     expect(submitted.get("archivedDocumentRetentionPolicy")).toBe("DAYS_90");
     expect(screen.getByText("Saved retention: 90 days")).toBeTruthy();
+  });
+
+  it("localizes retention policy labels in Korean", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }));
+    renderList({ updateRetentionPolicyAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "워크스페이스 메뉴" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "설정" }));
+    fireEvent.click(screen.getByRole("button", { name: "보존" }));
+
+    expect(screen.getByRole("option", { name: "없음" })).toBeTruthy();
+    expect(screen.getByRole("option", { name: "30일" })).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("삭제된 문서 보존 기간"), {
+      target: { value: "DAYS_90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "보존 설정 저장" }));
+
+    expect(await screen.findByText("저장된 보존 기간: 90일")).toBeTruthy();
+  });
+
+  it("rerenders saved retention status when the display language changes", async () => {
+    window.localStorage.setItem("munjib:language", "en");
+    const updateRetentionPolicyAction = vi.fn(async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }));
+    renderList({ updateRetentionPolicyAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retention" }));
+    fireEvent.change(screen.getByLabelText("Deleted document retention"), {
+      target: { value: "DAYS_90" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save retention" }));
+
+    expect(await screen.findByText("Saved retention: 90 days")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "보존" }));
+
+    expect(screen.getByText("저장된 보존 기간: 90일")).toBeTruthy();
   });
 
   it("disables retention saving for read-only users", () => {
@@ -575,7 +780,7 @@ describe("DocumentList", () => {
   });
 
   it("closes the workspace menu when an AppShell tag search request opens search", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -595,7 +800,7 @@ describe("DocumentList", () => {
   });
 
   it("reopens the left sidebar for AppShell tag search requests while collapsed", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -881,7 +1086,7 @@ describe("DocumentList", () => {
     });
 
     expect(screen.queryByRole("table", { name: "Markdown import files" })).toBeNull();
-    expect(screen.getByText("2 files selected")).toBeTruthy();
+    expect(screen.getByText("2 file(s) selected")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
 
@@ -1338,7 +1543,7 @@ describe("DocumentList", () => {
   });
 
   it("opens sidebar search with a literal tag query from AppShell tag search requests", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -1359,7 +1564,7 @@ describe("DocumentList", () => {
       JSON.stringify({ activeSidebarPanel: "favorites" }),
     );
 
-    render(
+    renderWithI18n(
       <AppShell
         workspaceSlug="company-handbook"
         left={<DocumentList {...baseProps} />}
@@ -1385,7 +1590,7 @@ describe("DocumentList", () => {
   });
 
   it("does not replay an old tag search request after later document navigation", () => {
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} selectedDocumentId="doc-1" />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -1414,7 +1619,7 @@ describe("DocumentList", () => {
   });
 
   it("opens tag search from graph view without leaving graph mode", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} isGraphView selectedDocumentId="doc-1" />}
         center={<TagSearchRequester tag="Design" />}
