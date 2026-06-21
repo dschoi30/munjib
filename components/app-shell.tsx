@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -85,6 +86,7 @@ export function AppShell({
   right: React.ReactNode | ((controls: RightPanelControls) => React.ReactNode);
   workspaceSlug?: string;
 }) {
+  const { t } = useI18n();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [shellStorageHydratedWorkspace, setShellStorageHydratedWorkspace] =
@@ -183,14 +185,14 @@ export function AppShell({
                   <TooltipTrigger asChild>
                     <Button
                       type="button"
-                      aria-label="Open sidebar"
+                      aria-label={t("app.openSidebar")}
                       onClick={() => setLeftPanelOpen(true)}
                       className="absolute left-4 top-1.5 z-30 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
                     >
                       <PanelLeftOpen className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Open sidebar</TooltipContent>
+                  <TooltipContent side="bottom">{t("app.openSidebar")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}
@@ -207,14 +209,14 @@ export function AppShell({
                   <TooltipTrigger asChild>
                     <Button
                       type="button"
-                      aria-label="Open metadata panel"
+                      aria-label={t("app.openMetadataPanel")}
                       onClick={() => setRightPanelOpen(true)}
                       className="absolute right-4 top-1.5 h-8 w-8 bg-muted p-0 text-slate-600 shadow-sm hover:bg-slate-200 hover:text-ink"
                     >
                       <PanelRightOpen className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent side="bottom">Open metadata panel</TooltipContent>
+                  <TooltipContent side="bottom">{t("app.openMetadataPanel")}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             )}

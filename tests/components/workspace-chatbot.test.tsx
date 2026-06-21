@@ -213,13 +213,13 @@ describe("WorkspaceChatbot", () => {
     });
     render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" workspaceSlug="company-handbook" selectedDocumentId="doc-1" />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Workspace AI 채팅 열기" }));
-    expect(await screen.findByRole("region", { name: "Workspace AI 채팅" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "워크스페이스 AI 채팅 열기" }));
+    expect(await screen.findByRole("region", { name: "워크스페이스 AI 채팅" })).toBeTruthy();
     expect(screen.getByText("모델")).toBeTruthy();
-    expect(await screen.findByText("이 workspace 전체에 대해 질문해 보세요.")).toBeTruthy();
-    expect(screen.getByPlaceholderText("이 workspace 전체에 대해 질문하기")).toBeTruthy();
+    expect(await screen.findByText("이 워크스페이스 전체에 대해 질문해 보세요.")).toBeTruthy();
+    expect(screen.getByPlaceholderText("이 워크스페이스 전체에 대해 질문하기")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Workspace 채팅 메시지"), {
+    fireEvent.change(screen.getByLabelText("워크스페이스 채팅 메시지"), {
       target: { value: "무엇이 바뀌었나요?" },
     });
     fireEvent.click(screen.getByRole("button", { name: "메시지 보내기" }));
@@ -227,7 +227,7 @@ describe("WorkspaceChatbot", () => {
     expect(screen.getByText("생각 중...")).toBeTruthy();
     expect(await screen.findByText("Workspace answer.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "대화 초기화" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Workspace AI 채팅 닫기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "워크스페이스 AI 채팅 닫기" })).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/assistant/messages",
       expect.objectContaining({

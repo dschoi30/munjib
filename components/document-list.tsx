@@ -6,6 +6,7 @@ import { PanelLeftClose, Settings } from "lucide-react";
 import { useLeftPanel, useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   CreateDocumentAction,
   CreateDocumentFormAction,
@@ -92,6 +93,7 @@ export function DocumentList({
   defaultChatProvider: "ollama" | "openai" | "openai-compatible";
   isGraphView?: boolean;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const leftPanel = useLeftPanel();
   const tagSearch = useTagSearch();
@@ -240,7 +242,7 @@ export function DocumentList({
             <div className="flex h-11 items-center gap-2">
               <Button
                 type="button"
-                aria-label="Workspace menu"
+                aria-label={t("app.workspaceMenu")}
                 aria-expanded={workspaceMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => setWorkspaceMenuOpen((open) => !open)}
@@ -252,21 +254,21 @@ export function DocumentList({
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
-                    aria-label="Close sidebar"
+                    aria-label={t("app.closeSidebar")}
                     onClick={closeSidebar}
                     className={iconButtonClassName}
                   >
                     <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom">Close sidebar</TooltipContent>
+                <TooltipContent side="bottom">{t("app.closeSidebar")}</TooltipContent>
               </Tooltip>
             </div>
           </TooltipProvider>
           {workspaceMenuOpen ? (
             <div
               role="menu"
-              aria-label="Workspace menu"
+              aria-label={t("app.workspaceMenu")}
               className="absolute left-0 right-0 top-11 z-30 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg"
             >
               <button
@@ -276,7 +278,7 @@ export function DocumentList({
                 className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-muted"
               >
                 <Settings className="h-4 w-4" aria-hidden="true" />
-                Settings
+                {t("settings.title")}
               </button>
             </div>
           ) : null}

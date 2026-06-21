@@ -4,6 +4,7 @@ import type { DocumentListItem, FolderListItem } from "@/components/document-lis
 import { DocumentLinkRow } from "@/components/document-navigation/document-row";
 import { sectionHeadingClassName } from "@/components/document-navigation/document-section";
 import { FavoriteFolderRow } from "@/components/document-navigation/folder-row";
+import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -37,13 +38,15 @@ export function FavoriteSection({
   onOpenInNewTab: OpenDocumentInNewTabHandler;
   archiveDocumentAction: ArchiveDocumentAction;
 }) {
+  const { t } = useI18n();
+
   return (
     <section className="mb-4">
-      <p className={sectionHeadingClassName}>Favorites</p>
+      <p className={sectionHeadingClassName}>{t("nav.favorites")}</p>
       <div className="space-y-1">
         {folders.length === 0 && documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
-            No favorites yet.
+            {t("nav.noFavorites")}
           </p>
         ) : null}
         {folders.map((folder) => (

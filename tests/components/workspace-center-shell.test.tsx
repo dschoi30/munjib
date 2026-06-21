@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useLeftPanel } from "@/components/app-shell";
+import { I18nProvider } from "@/components/i18n-provider";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 
 const router = vi.hoisted(() => ({
@@ -50,7 +51,7 @@ afterEach(() => {
 });
 
 function renderShell(selectedDocument = documents[0]) {
-  return render(
+  return renderWithI18n(
     <WorkspaceCenterShell
       workspaceSlug="company-handbook"
       documents={documents}
@@ -60,6 +61,22 @@ function renderShell(selectedDocument = documents[0]) {
       <div>Editor content</div>
     </WorkspaceCenterShell>,
   );
+}
+
+function renderWithI18n(ui: React.ReactElement) {
+  const result = render(
+    <I18nProvider>
+      {ui}
+    </I18nProvider>,
+  );
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(
+      <I18nProvider>
+        {nextUi}
+      </I18nProvider>,
+    ),
+  };
 }
 
 function LeftSidebarCloser() {
@@ -97,6 +114,46 @@ describe("WorkspaceCenterShell", () => {
     expect(screen.getByRole("button", { name: "Preview" })).toBeTruthy();
   });
 
+  it("uses the selected Korean display language for center toolbar and tabs", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    renderShell();
+
+    expect(await screen.findByRole("button", { name: "편집" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "뒤로 이동" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "앞으로 이동" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Welcome 닫기" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "탭 추가" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "편집" }));
+    expect(screen.getByRole("button", { name: "미리보기" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "탭 추가" }));
+    expect(await screen.findByRole("button", { name: "새 탭" })).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for blank document tab fallbacks", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    window.localStorage.setItem(
+      "munjib:open-tabs:company-handbook",
+      JSON.stringify([{ id: "tab-blank", documentId: "doc-blank", title: "", path: "/" }]),
+    );
+    window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-blank");
+
+    renderWithI18n(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={[...documents, { id: "doc-blank", title: "", path: "/" }]}
+        selectedDocument={{ id: "doc-blank", title: "", path: "/" }}
+        selectedFolder={null}
+      >
+        <div>Blank editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(await screen.findByRole("button", { name: "제목 없음" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "제목 없음 닫기" })).toBeTruthy();
+  });
+
   it("renders stored readable tabs and switches by router push", () => {
     window.localStorage.setItem(
       "munjib:open-tabs:company-handbook",
@@ -114,7 +171,7 @@ describe("WorkspaceCenterShell", () => {
   });
 
   it("reserves document tab row space for the sidebar reopen button", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<LeftSidebarCloser />}
         center={
@@ -153,7 +210,7 @@ describe("WorkspaceCenterShell", () => {
     );
     window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
 
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}
@@ -180,7 +237,7 @@ describe("WorkspaceCenterShell", () => {
     );
     window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
 
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}
@@ -231,7 +288,7 @@ describe("WorkspaceCenterShell", () => {
     );
     window.localStorage.setItem("munjib:open-tabs-active:company-handbook", "tab-2");
 
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}
@@ -250,7 +307,7 @@ describe("WorkspaceCenterShell", () => {
   });
 
   it("shows graph toolbar state without document mode controls", () => {
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}
@@ -269,7 +326,7 @@ describe("WorkspaceCenterShell", () => {
   });
 
   it("keeps graph content mounted in the workspace scroll container", () => {
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}
@@ -285,7 +342,7 @@ describe("WorkspaceCenterShell", () => {
   });
 
   it("lets graph content fill the center area without scroll padding", () => {
-    render(
+    renderWithI18n(
       <WorkspaceCenterShell
         workspaceSlug="company-handbook"
         documents={documents}

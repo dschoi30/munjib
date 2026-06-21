@@ -43,7 +43,7 @@ export function DocumentSection({
       <div className="space-y-1">
         {documents.map((document) => (
           <DocumentLinkRow
-            key={`${title}-${document.id}`}
+            key={`${menuScope}-${document.id}`}
             rowId={`${menuScope}:${document.id}`}
             workspaceSlug={workspaceSlug}
             document={document}

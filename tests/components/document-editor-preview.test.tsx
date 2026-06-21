@@ -403,6 +403,76 @@ describe("DocumentEditor heading preview folding", () => {
     );
   });
 
+  it("uses the selected Korean display language for the empty editor state", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    render(
+      <DocumentViewModeProvider>
+        <DocumentEditor {...baseProps} document={null} />
+      </DocumentViewModeProvider>,
+    );
+
+    expect(await screen.findByText("문서를 만들거나 선택하세요.")).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for editor chrome and properties", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderEditor("# A\nBody", {
+      properties: [{ id: "property-tags", key: "tags", valueJson: [] }],
+      linkPanels: {
+        outgoing: [
+          {
+            id: "link-1",
+            targetTitleRaw: "Missing",
+            alias: null,
+            isBroken: true,
+            isAmbiguous: false,
+            targetDocument: null,
+          },
+        ],
+        backlinks: [],
+        brokenLinks: [],
+        ambiguousLinks: [],
+      },
+    });
+
+    expect(await screen.findByLabelText("문서 제목")).toBeTruthy();
+    const properties = screen.getByRole("region", { name: "문서 속성" });
+    expect(within(properties).getByText("속성")).toBeTruthy();
+    expect(within(properties).getAllByText("없음").length).toBeGreaterThan(0);
+    expect(within(properties).getByLabelText("댓글 추가")).toBeTruthy();
+    expect(within(properties).getByPlaceholderText("댓글 추가")).toBeTruthy();
+    expect(within(properties).getByRole("button", { name: "댓글" })).toBeTruthy();
+    expect(within(properties).getByTitle("깨진 링크에서 문서 만들기")).toBeTruthy();
+    expect(screen.getByLabelText("첨부 파일 업로드")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "업로드" })).toBeTruthy();
+    expect(screen.getByText("저장을 누르면 Markdown 변경사항이 저장됩니다.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "저장" })).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for preview folding and wiki link suggestions", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+
+    renderEditor("# A\nBody", {
+      linkCandidates: [{ id: "doc-2", slug: "welcome", title: "Welcome", path: "/Welcome" }],
+    });
+
+    fireEvent.click(await screen.findByRole("button", { name: "A 섹션 접기" }));
+    expect(screen.getByRole("button", { name: "A 섹션 펼치기" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await screen.findByLabelText("Markdown 편집기");
+
+    act(() => {
+      codeMirrorHarness.changeHandlers[0]?.("[[Wel", {
+        state: { selection: { main: { head: 5 } } },
+      });
+    });
+
+    expect(await screen.findByText("위키 링크")).toBeTruthy();
+  });
+
   it("shows the Ask AI thinking indicator while the request is pending", async () => {
     vi.useFakeTimers();
     const deferred = createDeferred<Response>();

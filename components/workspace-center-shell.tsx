@@ -10,6 +10,7 @@ import {
   useDocumentViewMode,
   type DocumentViewMode,
 } from "@/components/document-view-mode";
+import { useI18n } from "@/components/i18n-provider";
 import { useDocumentTabs } from "@/components/use-document-tabs";
 import type { DocumentTabDocument } from "@/lib/document-tabs";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
@@ -58,6 +59,7 @@ function WorkspaceCenterShellContent({
   restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const leftPanel = useLeftPanel();
   const { setMode } = useDocumentViewMode();
@@ -216,7 +218,7 @@ function WorkspaceCenterShellContent({
         onAdd={handleAdd}
       />
       <DocumentToolbar
-        path={isGraphView ? "Graph view" : selectedDocument?.path ?? selectedFolder?.path ?? "/"}
+        path={isGraphView ? t("toolbar.graphView") : selectedDocument?.path ?? selectedFolder?.path ?? "/"}
         canNavigateBack={canNavigateBack}
         canNavigateForward={canNavigateForward}
         showModeToggle={Boolean(selectedDocument) && !isGraphView}
