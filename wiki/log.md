@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 273
+source_count: 274
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T22:08:00+0900 - design
+
+- Result: Issue #129 설계에서 workspace refresh 중 좌우 sidebar가 빈 column처럼 보이는 상태를 skeleton loading UI로 대체하고, 저장된 한국어 display language가 hydrate되기 전 영어 workspace chrome이 먼저 보이는 flash를 막는 방향을 정리했다.
+- Coverage: `I18nProvider`는 language hydration 완료 신호를 제공하고, language가 확정되기 전에는 sidebar/metadata의 user-facing text 대신 decorative shape skeleton만 보여준다. Language hydration 이후에는 localized stable chrome을 보여주되, workspace UI state 또는 sidebar child state가 아직 hydrate 중이면 recents/search/favorites rows, navigation body, metadata outline/list content를 좌에서 우로 흐르는 shimmer bar skeleton으로 표시한다. Issue #122의 closed sidebar child mount 지연과 workspace-scoped UI state 보존은 유지한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, user-approved visual direction B from brainstorming.
+- Verification: spec self-review.
 
 ## 2026-06-21T21:16:00+0900 - implementation
 
