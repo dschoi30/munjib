@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T18:00:24+0900 - implementation
+
+- Result: Issue #126 Task 1 implemented the shared product language core and first typed message catalog.
+- Coverage: `lib/i18n/language.ts` defines the supported `en`/`ko` display language contract, default language, strict parsing, browser/OS Korean hint inference, and localized language labels. `lib/i18n/messages.ts` adds the initial English/Korean Settings/app catalog with key parity and parameter interpolation so later Settings/provider/UI translation tasks use one shared catalog instead of ad hoc local objects.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`, `lib/i18n/language.ts`, `lib/i18n/messages.ts`, `tests/i18n/language.test.ts`, `tests/i18n/messages.test.ts`.
+- Verification: initial red run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts` failed because `@/lib/i18n/language` and `@/lib/i18n/messages` did not exist; green run passed 2 test files and 8 tests.
+
 ## 2026-06-21T17:38:03+0900 - design
 
 - Result: Issue #126 설계에서 제품 표시 언어를 영어/한국어로 전환하는 방향을 정리했다.
