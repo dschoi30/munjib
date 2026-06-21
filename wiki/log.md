@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 263
+source_count: 268
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-21T18:14:03+0900 - implementation
+
+- Result: Issue #126 Task 2 implemented browser storage and the React provider for product display language.
+- Coverage: `lib/i18n/storage.ts` stores explicit browser-wide language selections in `localStorage` key `munjib:language`, ignores invalid stored values, reports blocked writes without throwing, emits same-tab language change events, listens for cross-tab storage events, and falls back from browser language hints when no value is stored. `components/i18n-provider.tsx` exposes `I18nProvider`/`useI18n()`, hydrates from storage/browser hints after mount, updates `document.documentElement.lang`, and translates message keys through the shared catalog. `app/layout.tsx` now mounts the provider around app children and the toaster while keeping SSR `<html lang="en" suppressHydrationWarning>`.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `app/layout.tsx`, `components/i18n-provider.tsx`, `lib/i18n/storage.ts`, `tests/components/i18n-provider.test.tsx`, `tests/i18n/storage.test.ts`.
+- Verification: initial red run `pnpm exec vitest run tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` failed because `@/lib/i18n/storage` and `@/components/i18n-provider` did not exist; green run `pnpm exec vitest run tests/i18n/language.test.ts tests/i18n/messages.test.ts tests/i18n/storage.test.ts tests/components/i18n-provider.test.tsx` passed 4 files and 15 tests; `pnpm exec tsc --noEmit --pretty false` passed.
 
 ## 2026-06-21T18:00:24+0900 - implementation
 
