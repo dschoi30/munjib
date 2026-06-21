@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 275
+source_count: 278
 tags:
   - log
   - munjib
@@ -34,6 +34,14 @@ links:
 - Pages: [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `docs/superpowers/plans/2026-06-21-sidebar-loading-skeleton-language-hydration.md`, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, GitHub issue #129.
 - Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
+
+## 2026-06-21T22:19:38+0900 - implementation
+
+- Result: Issue #129 Task 1 exposed an i18n hydration signal for language-sensitive workspace chrome.
+- Coverage: `useI18n()` now returns `isHydrated`, which is false on the first client render with the default English language and true after `I18nProvider` reads browser storage/browser hints. The provider only updates `document.documentElement.lang` after hydration, and explicit language writes mark the context hydrated. Component coverage asserts that consumers can render loading text during the first render and never show English Settings chrome before saved Korean hydration completes.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/i18n-provider.tsx`, `tests/components/i18n-provider.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/i18n-provider.test.tsx -t "hide language-sensitive chrome"` failed with `isHydrated: undefined`; green run `pnpm exec vitest run tests/components/i18n-provider.test.tsx` passed 4 tests.
 
 ## 2026-06-21T21:16:00+0900 - implementation
 

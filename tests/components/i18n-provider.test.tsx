@@ -58,6 +58,37 @@ describe("I18nProvider", () => {
     expect(screen.getByText("Settings")).toBeTruthy();
   });
 
+  it("lets consumers hide language-sensitive chrome until language hydration completes", () => {
+    window.localStorage.setItem(APP_LANGUAGE_STORAGE_KEY, "ko");
+    const renderStates: Array<{
+      language: string;
+      isHydrated: boolean;
+      visibleText: string;
+    }> = [];
+
+    function HydrationProbe() {
+      const { language, isHydrated, t } = useI18n();
+      const visibleText = isHydrated ? t("settings.title") : "loading";
+      renderStates.push({ language, isHydrated, visibleText });
+      return <p>{visibleText}</p>;
+    }
+
+    render(
+      <I18nProvider>
+        <HydrationProbe />
+      </I18nProvider>,
+    );
+
+    expect(renderStates[0]).toEqual({
+      language: "en",
+      isHydrated: false,
+      visibleText: "loading",
+    });
+    expect(renderStates.some((state) => state.visibleText === "Settings")).toBe(false);
+    expect(screen.getByText("설정")).toBeTruthy();
+    expect(document.documentElement.lang).toBe("ko");
+  });
+
   it("updates language and stores explicit user selection", () => {
     render(
       <I18nProvider>
