@@ -24,6 +24,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  readStoredWorkspaceUiState,
+  updateStoredWorkspaceUiState,
+  type WorkspaceSidebarPanel,
+} from "@/lib/workspace-ui-state";
 import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
@@ -90,9 +95,11 @@ export function DocumentList({
   const router = useRouter();
   const leftPanel = useLeftPanel();
   const tagSearch = useTagSearch();
-  const [activePanel, setActivePanel] = useState<"documents" | "search" | "favorites">(
-    "documents",
+  const [activePanel, setActivePanel] = useState<WorkspaceSidebarPanel>("documents");
+  const [activePanelHydratedWorkspace, setActivePanelHydratedWorkspace] = useState<string | null>(
+    null,
   );
+  const [hasActivePanelInteraction, setHasActivePanelInteraction] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -100,6 +107,33 @@ export function DocumentList({
   const handledTagSearchTokenRef = useRef<number | null>(null);
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
+
+  useEffect(() => {
+    const storedState = readStoredWorkspaceUiState(workspaceSlug);
+    setActivePanel(storedState.activeSidebarPanel ?? "documents");
+    setHasActivePanelInteraction(false);
+    setActivePanelHydratedWorkspace(workspaceSlug);
+  }, [workspaceSlug]);
+
+  useEffect(() => {
+    if (activePanelHydratedWorkspace !== workspaceSlug) {
+      return;
+    }
+    if (isGraphView && !hasActivePanelInteraction) {
+      return;
+    }
+
+    updateStoredWorkspaceUiState(workspaceSlug, (current) => ({
+      ...current,
+      activeSidebarPanel: activePanel,
+    }));
+  }, [
+    activePanel,
+    activePanelHydratedWorkspace,
+    hasActivePanelInteraction,
+    isGraphView,
+    workspaceSlug,
+  ]);
 
   const clearGraphRoute = useCallback(() => {
     if (!isGraphView) return;
@@ -129,6 +163,7 @@ export function DocumentList({
   const openSearch = useCallback(() => {
     setWorkspaceMenuOpen(false);
     setSettingsOpen(false);
+    setHasActivePanelInteraction(true);
     setActivePanel("search");
     clearGraphRoute();
   }, [clearGraphRoute]);
@@ -136,6 +171,7 @@ export function DocumentList({
   const openDocuments = useCallback(() => {
     setWorkspaceMenuOpen(false);
     setSettingsOpen(false);
+    setHasActivePanelInteraction(true);
     setActivePanel("documents");
     clearGraphRoute();
   }, [clearGraphRoute]);
@@ -143,9 +179,12 @@ export function DocumentList({
   const openFavorites = useCallback(() => {
     setWorkspaceMenuOpen(false);
     setSettingsOpen(false);
-    setActivePanel((current) => (current === "favorites" ? "documents" : "favorites"));
+    setHasActivePanelInteraction(true);
+    setActivePanel((current) =>
+      !isGraphView && current === "favorites" ? "documents" : "favorites",
+    );
     clearGraphRoute();
-  }, [clearGraphRoute]);
+  }, [clearGraphRoute, isGraphView]);
 
   const openGraph = useCallback(() => {
     setWorkspaceMenuOpen(false);
@@ -164,6 +203,7 @@ export function DocumentList({
     handledTagSearchTokenRef.current = request.token;
     setWorkspaceMenuOpen(false);
     setSettingsOpen(false);
+    setHasActivePanelInteraction(true);
     setActivePanel("search");
     setSearchQuery(`tag:#${tagName}`);
   }, [tagSearch?.latestTagSearchRequest]);

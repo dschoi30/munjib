@@ -11,11 +11,17 @@ import {
   filterKnowledgeGraph,
   getKnowledgeGraphFocus,
   type KnowledgeGraphData,
-  type KnowledgeGraphFilters,
   type KnowledgeGraphLink,
   type KnowledgeGraphNode,
 } from "@/lib/knowledge-graph/model";
 import { cn } from "@/lib/utils";
+import {
+  readStoredWorkspaceUiState,
+  updateStoredWorkspaceUiState,
+  type WorkspaceUiGraphDisplay,
+  type WorkspaceUiGraphFilters,
+  type WorkspaceUiGraphForces,
+} from "@/lib/workspace-ui-state";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type ForceGraph2DProps = Record<string, unknown>;
@@ -52,25 +58,14 @@ type CenterGravityForce = {
   (alpha: number): void;
   initialize: (nodes: ForceGraphNode[]) => void;
 };
-type GraphDisplaySettings = {
-  arrows: boolean;
-  linkThickness: number;
-  nodeSize: number;
-  textFadeThreshold: number;
-};
-type GraphForceSettings = {
-  center: number;
-  link: number;
-  linkDistance: number;
-  repel: number;
-};
-type GraphSettingsGroup = "display" | "filters" | "forces";
+type GraphDisplaySettings = WorkspaceUiGraphDisplay;
+type GraphForceSettings = WorkspaceUiGraphForces;
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 }) as ComponentType<ForceGraph2DProps>;
 
-const DEFAULT_FILTERS: KnowledgeGraphFilters = {
+const DEFAULT_FILTERS: WorkspaceUiGraphFilters = {
   tag: false,
   orphans: false,
 };
@@ -96,16 +91,15 @@ const BASE_LABEL_FONT_SIZE = 8;
 const LABEL_PADDING = 5;
 const LINK_COLOR = "#94a3b8";
 const FOCUSED_LINK_COLOR = "#64748b";
-const KNOWLEDGE_GRAPH_STORAGE_VERSION = "v1";
 
-const DEFAULT_DISPLAY_SETTINGS: GraphDisplaySettings = {
+const DEFAULT_DISPLAY_SETTINGS: WorkspaceUiGraphDisplay = {
   arrows: false,
   linkThickness: 1,
   nodeSize: 3,
   textFadeThreshold: 1,
 };
 
-const DEFAULT_FORCE_SETTINGS: GraphForceSettings = {
+const DEFAULT_FORCE_SETTINGS: WorkspaceUiGraphForces = {
   center: 0.3,
   link: 0.4,
   linkDistance: 80,
@@ -113,7 +107,7 @@ const DEFAULT_FORCE_SETTINGS: GraphForceSettings = {
 };
 
 const FILTER_OPTIONS: Array<{
-  key: keyof KnowledgeGraphFilters;
+  key: keyof WorkspaceUiGraphFilters;
   label: string;
 }> = [
     { key: "tag", label: "Tags" },
@@ -140,7 +134,7 @@ export function KnowledgeGraphView({
   const [filtersOpen, setFiltersOpen] = useState(true);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [forcesOpen, setForcesOpen] = useState(false);
-  const [filters, setFilters] = useState<KnowledgeGraphFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<WorkspaceUiGraphFilters>(DEFAULT_FILTERS);
   const [display, setDisplay] = useState<GraphDisplaySettings>(DEFAULT_DISPLAY_SETTINGS);
   const [forces, setForces] = useState<GraphForceSettings>(DEFAULT_FORCE_SETTINGS);
   const [settingsHydrated, setSettingsHydrated] = useState<string | null>(null);
@@ -156,18 +150,14 @@ export function KnowledgeGraphView({
   );
 
   useEffect(() => {
-    setFilters(
-      readStoredGraphSettings(workspaceSlug, "filters", validateStoredFilters) ??
-        DEFAULT_FILTERS,
-    );
-    setDisplay(
-      readStoredGraphSettings(workspaceSlug, "display", validateStoredDisplay) ??
-        DEFAULT_DISPLAY_SETTINGS,
-    );
-    setForces(
-      readStoredGraphSettings(workspaceSlug, "forces", validateStoredForces) ??
-        DEFAULT_FORCE_SETTINGS,
-    );
+    const storedGraph = readStoredWorkspaceUiState(workspaceSlug).graph;
+    setSettingsOpen(storedGraph?.settingsOpen ?? true);
+    setFiltersOpen(storedGraph?.filtersOpen ?? true);
+    setDisplayOpen(storedGraph?.displayOpen ?? false);
+    setForcesOpen(storedGraph?.forcesOpen ?? false);
+    setFilters(storedGraph?.filters ?? DEFAULT_FILTERS);
+    setDisplay(storedGraph?.display ?? DEFAULT_DISPLAY_SETTINGS);
+    setForces(storedGraph?.forces ?? DEFAULT_FORCE_SETTINGS);
     setSettingsHydrated(workspaceSlug);
   }, [workspaceSlug]);
 
@@ -176,24 +166,28 @@ export function KnowledgeGraphView({
       return;
     }
 
-    writeStoredGraphSettings(workspaceSlug, "filters", filters);
-  }, [filters, settingsHydrated, workspaceSlug]);
-
-  useEffect(() => {
-    if (settingsHydrated !== workspaceSlug) {
-      return;
-    }
-
-    writeStoredGraphSettings(workspaceSlug, "display", display);
-  }, [display, settingsHydrated, workspaceSlug]);
-
-  useEffect(() => {
-    if (settingsHydrated !== workspaceSlug) {
-      return;
-    }
-
-    writeStoredGraphSettings(workspaceSlug, "forces", forces);
-  }, [forces, settingsHydrated, workspaceSlug]);
+    updateStoredWorkspaceUiState(workspaceSlug, () => ({
+      graph: {
+        settingsOpen,
+        filtersOpen,
+        displayOpen,
+        forcesOpen,
+        filters,
+        display,
+        forces,
+      },
+    }));
+  }, [
+    display,
+    displayOpen,
+    filters,
+    filtersOpen,
+    forces,
+    forcesOpen,
+    settingsHydrated,
+    settingsOpen,
+    workspaceSlug,
+  ]);
 
   const visibleGraph = useMemo(() => filterKnowledgeGraph(graph, filters), [filters, graph]);
   const selectedFocus = useMemo(() => {
@@ -357,7 +351,7 @@ export function KnowledgeGraphView({
     forceGraphRef.current?.resumeAnimation?.();
   }, [display]);
 
-  const toggleFilter = useCallback((key: keyof KnowledgeGraphFilters) => {
+  const toggleFilter = useCallback((key: keyof WorkspaceUiGraphFilters) => {
     setFilters((current) => ({ ...current, [key]: !current[key] }));
   }, []);
 
@@ -739,104 +733,6 @@ function RangeControl({
       />
     </label>
   );
-}
-
-function graphSettingsStorageKey(workspaceSlug: string, group: GraphSettingsGroup) {
-  return `munjib:knowledge-graph:${workspaceSlug}:${KNOWLEDGE_GRAPH_STORAGE_VERSION}:${group}`;
-}
-
-function readStoredGraphSettings<State>(
-  workspaceSlug: string,
-  group: GraphSettingsGroup,
-  validate: (value: unknown) => State | null,
-) {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const raw = window.sessionStorage.getItem(graphSettingsStorageKey(workspaceSlug, group));
-    if (!raw) {
-      return null;
-    }
-
-    return validate(JSON.parse(raw));
-  } catch {
-    return null;
-  }
-}
-
-function writeStoredGraphSettings<State>(
-  workspaceSlug: string,
-  group: GraphSettingsGroup,
-  value: State,
-) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.sessionStorage.setItem(
-      graphSettingsStorageKey(workspaceSlug, group),
-      JSON.stringify(value),
-    );
-  } catch {
-    return;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function validateStoredFilters(value: unknown): KnowledgeGraphFilters | null {
-  if (!isRecord(value) || typeof value.tag !== "boolean" || typeof value.orphans !== "boolean") {
-    return null;
-  }
-
-  return { tag: value.tag, orphans: value.orphans };
-}
-
-function isNumberInRange(value: unknown, min: number, max: number): value is number {
-  return typeof value === "number" && Number.isFinite(value) && value >= min && value <= max;
-}
-
-function validateStoredDisplay(value: unknown): GraphDisplaySettings | null {
-  if (
-    !isRecord(value) ||
-    typeof value.arrows !== "boolean" ||
-    !isNumberInRange(value.linkThickness, 0.5, 5) ||
-    !isNumberInRange(value.nodeSize, 1, 10) ||
-    !isNumberInRange(value.textFadeThreshold, 0.5, 3)
-  ) {
-    return null;
-  }
-
-  return {
-    arrows: value.arrows,
-    linkThickness: value.linkThickness,
-    nodeSize: value.nodeSize,
-    textFadeThreshold: value.textFadeThreshold,
-  };
-}
-
-function validateStoredForces(value: unknown): GraphForceSettings | null {
-  if (
-    !isRecord(value) ||
-    !isNumberInRange(value.center, 0, 1) ||
-    !isNumberInRange(value.link, 0, 1) ||
-    !isNumberInRange(value.linkDistance, 20, 180) ||
-    !isNumberInRange(value.repel, -300, -20)
-  ) {
-    return null;
-  }
-
-  return {
-    center: value.center,
-    link: value.link,
-    linkDistance: value.linkDistance,
-    repel: value.repel,
-  };
 }
 
 function hexToRgb(color: string) {
