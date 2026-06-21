@@ -25,7 +25,7 @@ links:
 - Coverage: 첫 1시간 루트, repository responsibility map, core runtime flow, data/source-of-truth table, feature-to-files guide, verification/wiki maintenance sequence를 한 page에 묶고 상세 설명은 기존 [[Munjib]], [[Document Knowledge Model]], [[Document Editing Workflow]], [[RAG Process Workflow]], [[Local Development Workflow]]로 연결했다.
 - Pages: [[Project Structure Onboarding]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #123, `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`, `docs/superpowers/plans/2026-06-21-project-structure-onboarding-guide.md`, `wiki/Project Structure Onboarding.md`.
-- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`, `git diff --check`.
+- Verification: `pnpm wiki:install-hooks`, `pnpm wiki:sync-plan --staged`, `pnpm wiki:manifest`, `pnpm wiki:lint`, `pnpm wiki:sync-check --staged`, `git diff --check --cached`.
 
 ## 2026-06-21T11:55:11+0900 - design
 

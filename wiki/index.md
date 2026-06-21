@@ -39,7 +39,6 @@ links:
 
 - [[Munjib]] - Obsidian형 기업 문서 위키로서의 제품 정의와 최신 구현 범위.
 - [[Project PRD]] - `prd.md`, `obsidian-analysis-report.md`, 현재 source code, 남은 roadmap을 연결한 source note.
-- [[Project Structure Onboarding]] - 신규 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.
 
 ## 핵심 개념
 
@@ -50,6 +49,7 @@ links:
 
 ## 워크플로우
 
+- [[Project Structure Onboarding]] - 신규 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.
 - [[Document Editing Workflow]] - 문서 생성, 수정, properties, attachment, comment, version restore, 감사 로그, link/metadata reconciliation 흐름.
 - [[Markdown Import And Clipboard Paste Workflow]] - Markdown file import와 editor clipboard paste의 이미지/attachment 처리, draft 저장, Save 확정 흐름.
 - [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role과 document-level explicit permission 흐름.
