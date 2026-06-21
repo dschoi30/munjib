@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T21:16:00+0900 - implementation
+
+- Result: Issue #126 Task 5 localized the remaining major workspace product chrome for English/Korean display language switching.
+- Coverage: `lib/i18n/messages.ts` now includes login, nav/sidebar, tab/toolbar, metadata, folder, editor/properties/preview/wiki-link suggestion, and graph control keys. The affected React surfaces consume `useI18n()` so a saved Settings language change rerenders current labels, placeholders, empty states, accessible names, and control text without a reload. Empty document/tab fallback labels are translated at render time, while user-authored document titles, paths, provider/model ids, arbitrary frontmatter property keys, URLs, and developer/admin-only identifiers remain data/internal strings.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #126, `lib/i18n/messages.ts`, `app/login/login-form.tsx`, `components/app-shell.tsx`, `components/document-list.tsx`, `components/document-navigation.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `components/folder-detail.tsx`, `components/metadata-panel.tsx`, `components/document-editor.tsx`, `components/document-editor/document-properties.tsx`, `components/document-editor/markdown-preview.tsx`, `components/document-editor/wiki-link-suggestions.tsx`, `components/knowledge-graph-view.tsx`, `lib/workspace-tree.ts`, `tests/components/login-form.test.tsx`, `tests/components/folder-detail.test.tsx`, `wiki/Document Editing Workflow.md`.
+- Verification: focused component/i18n runs passed, `pnpm exec tsc --noEmit --pretty false` passed, `git diff --check` passed, and full `pnpm test` passed 74 files / 814 tests.
+
 ## 2026-06-21T20:30:32+0900 - implementation
 
 - Result: Issue #126 Task 4 follow-up disambiguated the Ask AI opener and submit controls after code quality review.

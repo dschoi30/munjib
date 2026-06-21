@@ -117,11 +117,25 @@ afterEach(() => {
 });
 
 function renderList(props: Partial<Parameters<typeof DocumentList>[0]> = {}) {
-  return render(
+  return renderWithI18n(
+    <DocumentList {...baseProps} {...props} />,
+  );
+}
+
+function renderWithI18n(ui: React.ReactElement) {
+  const result = render(
     <I18nProvider>
-      <DocumentList {...baseProps} {...props} />
+      {ui}
     </I18nProvider>,
   );
+  return {
+    ...result,
+    rerender: (nextUi: React.ReactElement) => result.rerender(
+      <I18nProvider>
+        {nextUi}
+      </I18nProvider>,
+    ),
+  };
 }
 
 function TagSearchRequester({ tag }: { tag: string }) {
@@ -159,8 +173,53 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("combobox", { name: /template/i })).toBeNull();
   });
 
+  it("uses the selected Korean display language for workspace sidebar chrome", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    renderList();
+
+    const workspaceMenuButton = await screen.findByRole("button", {
+      name: "워크스페이스 메뉴",
+    });
+    expect(workspaceMenuButton.textContent).toBe("Company Handbook");
+    expect(screen.getByRole("button", { name: "사이드바 닫기" })).toBeTruthy();
+
+    const toolbar = screen.getByTestId("document-create-toolbar");
+    expect(within(toolbar).getByRole("button", { name: "문서" })).toHaveProperty(
+      "ariaPressed",
+      "true",
+    );
+    expect(within(toolbar).getByRole("button", { name: "그래프" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "새 문서" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "새 폴더" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "검색" })).toBeTruthy();
+    expect(within(toolbar).getByRole("button", { name: "즐겨찾기" })).toBeTruthy();
+
+    expect(screen.getByText("최근")).toBeTruthy();
+    expect(screen.getByRole("navigation", { name: "모든 문서" })).toBeTruthy();
+    expect(screen.getByText("문서")).toBeTruthy();
+
+    fireEvent.click(workspaceMenuButton);
+    const workspaceMenu = screen.getByRole("menu", { name: "워크스페이스 메뉴" });
+    expect(within(workspaceMenu).getByRole("menuitem", { name: "설정" })).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "검색" }));
+    expect(screen.getByLabelText("문서 검색")).toBeTruthy();
+    expect(screen.getByPlaceholderText("문서 검색")).toBeTruthy();
+    expect(screen.getByText("2개 결과")).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "즐겨찾기" }));
+    expect(screen.getByText("즐겨찾기")).toBeTruthy();
+    expect(screen.getByText("아직 즐겨찾기가 없습니다.")).toBeTruthy();
+
+    fireEvent.click(within(toolbar).getByRole("button", { name: "문서" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Welcome 작업 열기" })[0]);
+    expect(screen.getByRole("menuitem", { name: "즐겨찾기에 추가" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "새 탭에서 열기" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "휴지통으로 이동" })).toBeTruthy();
+  });
+
   it("collapses and reopens the real document list inside AppShell", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<div>Center</div>}
@@ -393,8 +452,8 @@ describe("DocumentList", () => {
     }));
     renderList({ updateRetentionPolicyAction });
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "워크스페이스 메뉴" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "설정" }));
     fireEvent.click(screen.getByRole("button", { name: "보존" }));
 
     expect(screen.getByRole("option", { name: "없음" })).toBeTruthy();
@@ -721,7 +780,7 @@ describe("DocumentList", () => {
   });
 
   it("closes the workspace menu when an AppShell tag search request opens search", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -741,7 +800,7 @@ describe("DocumentList", () => {
   });
 
   it("reopens the left sidebar for AppShell tag search requests while collapsed", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -1484,7 +1543,7 @@ describe("DocumentList", () => {
   });
 
   it("opens sidebar search with a literal tag query from AppShell tag search requests", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -1505,7 +1564,7 @@ describe("DocumentList", () => {
       JSON.stringify({ activeSidebarPanel: "favorites" }),
     );
 
-    render(
+    renderWithI18n(
       <AppShell
         workspaceSlug="company-handbook"
         left={<DocumentList {...baseProps} />}
@@ -1531,7 +1590,7 @@ describe("DocumentList", () => {
   });
 
   it("does not replay an old tag search request after later document navigation", () => {
-    const { rerender } = render(
+    const { rerender } = renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} selectedDocumentId="doc-1" />}
         center={<TagSearchRequester tag="LangChain" />}
@@ -1560,7 +1619,7 @@ describe("DocumentList", () => {
   });
 
   it("opens tag search from graph view without leaving graph mode", () => {
-    render(
+    renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} isGraphView selectedDocumentId="doc-1" />}
         center={<TagSearchRequester tag="Design" />}

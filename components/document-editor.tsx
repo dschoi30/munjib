@@ -307,7 +307,7 @@ export function DocumentEditor({
                 if (activeDocumentIdRef.current === pasteDocumentId) {
                   setContentMarkdown(nextDraft);
                 }
-                toast.error("Image paste failed");
+                toast.error(t("editor.imagePasteFailed"));
               })
               .finally(() => {
                 setPendingImagePasteCounts((counts) => {
@@ -371,7 +371,7 @@ export function DocumentEditor({
                   if (activeDocumentIdRef.current === pasteDocumentId) {
                     setContentMarkdown(nextDraft);
                   }
-                  toast.error("Image paste failed");
+                  toast.error(t("editor.imagePasteFailed"));
                 })
                 .finally(() => {
                   setPendingImagePasteCounts((counts) => {
@@ -397,7 +397,7 @@ export function DocumentEditor({
         },
       }),
     ],
-    [canWrite, document?.id, pasteImageAttachmentAction],
+    [canWrite, document?.id, pasteImageAttachmentAction, t],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
@@ -557,7 +557,7 @@ export function DocumentEditor({
   if (!document) {
     return (
       <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border bg-white">
-        <p className="text-sm text-slate-500">Create or select a document.</p>
+        <p className="text-sm text-slate-500">{t("editor.empty")}</p>
       </div>
     );
   }
@@ -573,7 +573,7 @@ export function DocumentEditor({
           }
 
           event.preventDefault();
-          toast.error("Image upload is still in progress");
+          toast.error(t("editor.imageUploadPending"));
         }}
       >
         <input type="hidden" name="documentId" value={document.id} />
@@ -581,7 +581,7 @@ export function DocumentEditor({
       </form>
       <div className="flex items-center gap-3">
         <input
-          aria-label="Document title"
+          aria-label={t("editor.documentTitle")}
           form={`document-save-${document.id}`}
           name="title"
           value={title}
@@ -627,7 +627,7 @@ export function DocumentEditor({
         <input type="hidden" name="documentId" value={document.id} />
         <Paperclip className="h-4 w-4 text-slate-500" aria-hidden="true" />
         <label className="sr-only" htmlFor={`attachment-${document.id}`}>
-          Upload attachment
+          {t("editor.uploadAttachment")}
         </label>
         <input
           id={`attachment-${document.id}`}
@@ -639,7 +639,7 @@ export function DocumentEditor({
         />
         <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
           <Upload className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-          Upload
+          {t("editor.upload")}
         </Button>
       </form>
       <div className="overflow-hidden rounded-md border border-border bg-white">
@@ -658,7 +658,7 @@ export function DocumentEditor({
               onChange={(value, viewUpdate) =>
                 updateMarkdown(value, viewUpdate.state.selection.main.head)
               }
-              aria-label="Markdown editor"
+              aria-label={t("editor.markdownEditor")}
             />
             <WikiLinkSuggestions
               canWrite={canWrite}
@@ -680,11 +680,11 @@ export function DocumentEditor({
       </div>
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">
-          {canWrite ? "Markdown changes are saved when you press Save." : "Viewer access is read-only."}
+          {canWrite ? t("editor.markdownSavedOnSave") : t("editor.viewerReadOnly")}
         </p>
         <Button form={`document-save-${document.id}`} type="submit" disabled={!canWrite || hasPendingImagePaste}>
           <Save className="mr-2 h-4 w-4" aria-hidden="true" />
-          Save
+          {t("editor.save")}
         </Button>
       </div>
     </div>

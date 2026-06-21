@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 import type { DocumentTab } from "@/lib/document-tabs";
 
@@ -48,6 +49,7 @@ export function DocumentTabs({
   onAdd,
   reserveLeadingSlot = false,
 }: DocumentTabsProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const leadingReservedWidth = reserveLeadingSlot ? SIDEBAR_REOPEN_SLOT_WIDTH : 0;
@@ -74,7 +76,7 @@ export function DocumentTabs({
   }, []);
 
   return (
-    <nav aria-label="Open documents" className="h-11 border-b border-border bg-muted">
+    <nav aria-label={t("tabs.openDocuments")} className="h-11 border-b border-border bg-muted">
       <div ref={containerRef} className="flex h-full min-w-0 overflow-x-auto overflow-y-hidden">
         {reserveLeadingSlot ? (
           <div
@@ -86,6 +88,9 @@ export function DocumentTabs({
         <ul className="flex h-full min-w-0 shrink-0 overflow-hidden">
           {tabs.map((tab) => {
             const selected = tab.id === activeTabId;
+            const title = tab.documentId
+              ? tab.title.trim() || t("nav.untitledDocument")
+              : t("tabs.new");
 
             return (
               <li
@@ -102,11 +107,11 @@ export function DocumentTabs({
                   className="h-full min-w-0 flex-1 truncate px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ink"
                   onClick={() => onSelect(tab.id)}
                 >
-                  {tab.title}
+                  {title}
                 </button>
                 <button
                   type="button"
-                  aria-label={`Close ${tab.title}`}
+                  aria-label={t("tabs.close", { title })}
                   className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                   onClick={() => onClose(tab.id)}
                 >
@@ -118,7 +123,7 @@ export function DocumentTabs({
         </ul>
         <button
           type="button"
-          aria-label="Add tab"
+          aria-label={t("tabs.add")}
           className="inline-flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-slate-500 hover:bg-white hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
           onClick={onAdd}
         >

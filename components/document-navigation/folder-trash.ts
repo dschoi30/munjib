@@ -3,6 +3,8 @@ import type {
   FolderDocumentCounts,
   FolderListItem,
 } from "@/components/document-list";
+import { DEFAULT_LANGUAGE, type Language } from "@/lib/i18n/language";
+import { getMessage } from "@/lib/i18n/messages";
 
 export type FolderTrashSummary = {
   descendantFolderCount: number;
@@ -76,24 +78,39 @@ export function hasTrashDescendants(summary: FolderTrashSummary) {
   return summary.descendantFolderCount > 0 || summary.descendantDocumentCount > 0;
 }
 
-export function folderTrashConfirmMessage(summary: FolderTrashSummary) {
-  if (!hasTrashDescendants(summary)) return "Move this folder to trash?";
+export function folderTrashConfirmMessage(
+  summary: FolderTrashSummary,
+  language: Language = DEFAULT_LANGUAGE,
+) {
+  if (!hasTrashDescendants(summary)) {
+    return getMessage(language, "nav.folderTrash.confirmEmpty");
+  }
 
   const parts: string[] = [];
   if (summary.descendantFolderCount > 0) {
     parts.push(
-      `${summary.descendantFolderCount} ${
-        summary.descendantFolderCount === 1 ? "folder" : "folders"
-      }`,
+      getMessage(
+        language,
+        summary.descendantFolderCount === 1
+          ? "nav.folderTrash.folderCount.one"
+          : "nav.folderTrash.folderCount.other",
+        { count: summary.descendantFolderCount },
+      ),
     );
   }
   if (summary.descendantDocumentCount > 0) {
     parts.push(
-      `${summary.descendantDocumentCount} ${
-        summary.descendantDocumentCount === 1 ? "document" : "documents"
-      }`,
+      getMessage(
+        language,
+        summary.descendantDocumentCount === 1
+          ? "nav.folderTrash.documentCount.one"
+          : "nav.folderTrash.documentCount.other",
+        { count: summary.descendantDocumentCount },
+      ),
     );
   }
 
-  return `Move this folder to trash with ${parts.join(" and ")}?`;
+  return getMessage(language, "nav.folderTrash.confirmWithContents", {
+    items: parts.join(language === "ko" ? " 및 " : " and "),
+  });
 }
