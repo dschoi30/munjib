@@ -40,6 +40,14 @@ function LeftPanelProbe() {
   );
 }
 
+function MountProbe({ onMount }: { onMount: () => void }) {
+  useEffect(() => {
+    onMount();
+  }, [onMount]);
+
+  return <div>Mounted panel content</div>;
+}
+
 describe("AppShell", () => {
   it("restores and persists workspace sidebar open state", async () => {
     window.localStorage.setItem(
@@ -79,6 +87,27 @@ describe("AppShell", () => {
         activeSidebarPanel: "favorites",
       });
     });
+  });
+
+  it("does not mount closed workspace sidebar contents before storage hydration", async () => {
+    const onMount = vi.fn();
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ leftSidebarOpen: false }),
+    );
+
+    render(
+      <AppShell
+        workspaceSlug="company-handbook"
+        left={<MountProbe onMount={onMount} />}
+        center={<div>Center</div>}
+        right={<div>Right</div>}
+      />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Open sidebar" })).toBeTruthy();
+    expect(screen.queryByText("Mounted panel content")).toBeNull();
+    expect(onMount).not.toHaveBeenCalled();
   });
 
   it("starts the left sidebar at the same vertical origin as the center chrome", () => {

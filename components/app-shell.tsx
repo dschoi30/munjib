@@ -164,6 +164,7 @@ export function AppShell({
     }),
     [latestTagSearchRequest, requestTagSearch],
   );
+  const shellStorageHydrated = !workspaceSlug || shellStorageHydratedWorkspace === workspaceSlug;
   const rightContent =
     typeof right === "function" ? right(rightPanelControls) : right;
 
@@ -174,7 +175,7 @@ export function AppShell({
           <LeftPanelContext.Provider value={leftPanelControls}>
             {leftPanelOpen ? (
               <aside className="overflow-auto border-r border-border bg-muted px-4 pb-4 pt-0">
-                {left}
+                {shellStorageHydrated ? left : null}
               </aside>
             ) : (
               <TooltipProvider delayDuration={0}>
@@ -197,7 +198,7 @@ export function AppShell({
             {rightPanelOpen ? (
               <aside className="overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
                 <RightPanelContext.Provider value={rightPanelControls}>
-                  {rightContent}
+                  {shellStorageHydrated ? rightContent : null}
                 </RightPanelContext.Provider>
               </aside>
             ) : (
