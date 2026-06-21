@@ -211,7 +211,10 @@ describe("DocumentList", () => {
 
     fireEvent.click(within(workspaceMenu).getByRole("menuitem", { name: "Settings" }));
 
-    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog", { name: "Workspace settings" });
+    expect(dialog).toBeTruthy();
+    expect(dialog.className).toContain("h-[80vh]");
+    expect(dialog.className).toContain("max-h-[80vh]");
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Import" }).getAttribute("aria-pressed")).toBe(
       "true",
@@ -318,16 +321,26 @@ describe("DocumentList", () => {
     expect(await screen.findByText("Choose a valid retention period.")).toBeTruthy();
   });
 
-  it("hides OpenRouter presets for non OpenRouter providers while keeping custom input", () => {
+  it("shows presets for the selected AI provider while keeping custom input", () => {
     renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
-    expect(screen.queryByText("Presets")).toBeNull();
+    expect(screen.getByText("Presets")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use Gemma E4B" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Use Kimi K2.7 Code" })).toBeNull();
     expect(screen.getByLabelText("Custom model id")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("AI provider"), {
+      target: { value: "openai" },
+    });
+
+    expect(screen.getByRole("button", { name: "Use GPT-5.4 Mini" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use GPT-5.4" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Use GPT-4.1 Mini" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use Gemma E4B" })).toBeNull();
   });
 
   it("saves a preset chat model override in workspace-scoped storage", () => {
@@ -345,7 +358,7 @@ describe("DocumentList", () => {
     expect(screen.getByText("Saved model: moonshotai/kimi-k2.7-code")).toBeTruthy();
   });
 
-  it("saves a custom chat model override and can reset to server default", () => {
+  it("saves a custom chat model override and can reset to the provider default", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
 
     fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
@@ -371,8 +384,11 @@ describe("DocumentList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
-    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBeNull();
-    expect(screen.getByText("Using server default: openrouter/fusion")).toBeTruthy();
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+    expect(screen.getByText("Reset model: google/gemma-4-31b-it:free")).toBeTruthy();
   });
 
   it("saves custom OpenRouter models after changing the AI provider", () => {
@@ -478,14 +494,17 @@ describe("DocumentList", () => {
   it("reports when a model override cannot be reset in browser storage", () => {
     window.localStorage.setItem(
       "munjib:rag-chat-model:company-handbook",
-      "moonshotai/kimi-k2.7-code",
+      JSON.stringify({
+        chatProvider: "openai-compatible",
+        chatModel: "moonshotai/kimi-k2.7-code",
+      }),
     );
-    const originalRemoveItem = window.localStorage.removeItem.bind(window.localStorage);
-    vi.spyOn(window.localStorage, "removeItem").mockImplementation((key) => {
+    const originalSetItem = window.localStorage.setItem.bind(window.localStorage);
+    vi.spyOn(window.localStorage, "setItem").mockImplementation((key, value) => {
       if (key === "munjib:rag-chat-model:company-handbook") {
         throw new Error("storage unavailable");
       }
-      originalRemoveItem(key);
+      originalSetItem(key, value);
     });
 
     renderList({ defaultChatModel: "openrouter/fusion" });
@@ -496,9 +515,10 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
     expect(screen.getByText("Model setting could not be reset.")).toBeTruthy();
-    expect(window.localStorage.getItem("munjib:rag-chat-model:company-handbook")).toBe(
-      "moonshotai/kimi-k2.7-code",
-    );
+    expect(JSON.parse(window.localStorage.getItem("munjib:rag-chat-model:company-handbook") ?? "")).toEqual({
+      chatProvider: "openai-compatible",
+      chatModel: "moonshotai/kimi-k2.7-code",
+    });
   });
 
   it("keeps the document list visible behind the workspace settings dialog", () => {

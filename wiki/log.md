@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-21T19:05:00+09:00 - implementation
+
+- Result: Provider-specific AI model presets, reset defaults, and settings dialog height were implemented.
+- Coverage: `lib/rag/client-model-settings.ts` now exposes provider-filtered presets and reset defaults for OpenRouter/OpenAI/Ollama. `WorkspaceSettingsPanel` renders presets for the selected provider, keeps custom model id input, writes provider defaults on reset, and uses an 80vh dialog. Tests cover provider preset lists, reset defaults, UI preset switching, reset storage behavior, and dialog sizing.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/client-model-settings.ts`, `components/workspace-settings-panel.tsx`, `tests/rag/client-model-settings.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/rag/client-model-settings.test.ts tests/components/document-list.test.tsx --reporter=dot`; `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-06-21T18:35:00+09:00 - design
 
 - Result: Provider-specific AI model preset and reset behavior design was recorded.
