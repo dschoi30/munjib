@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 274
+source_count: 275
 tags:
   - log
   - munjib
@@ -26,6 +26,14 @@ links:
 - Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub issue #129, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, user-approved visual direction B from brainstorming.
 - Verification: spec self-review.
+
+## 2026-06-21T22:24:00+0900 - plan
+
+- Result: Issue #129 implementation plan을 TDD task 단위로 작성했다.
+- Coverage: plan은 i18n hydration signal, shared shimmer skeleton primitive, sidebar loading shape components, `AppShell` hydration gate, `DocumentList` body skeleton, focused verification/wiki sync/manual browser smoke 순서로 구현을 나눈다. Subagent-driven execution을 전제로 task별 failing test, expected red/green commands, commit boundary를 포함한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-21-sidebar-loading-skeleton-language-hydration.md`, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, GitHub issue #129.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
 
 ## 2026-06-21T21:16:00+0900 - implementation
 
