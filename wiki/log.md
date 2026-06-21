@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-21
-source_count: 262
+source_count: 263
 tags:
   - log
   - munjib
@@ -22,9 +22,9 @@ links:
 ## 2026-06-21T17:38:03+0900 - design
 
 - Result: Issue #126 설계에서 제품 표시 언어를 영어/한국어로 전환하는 방향을 정리했다.
-- Coverage: 언어 preference는 browser-global app setting으로 저장하고, 저장값이 없으면 `navigator.languages`/`navigator.language`에서 `ko`/`ko-*`를 한국어로 추론한다. Settings panel `Language` section은 영어/한국어 선택, 현재 적용 중인 언어 highlight, Save/Cancel을 제공하며 Save 후 user-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states가 즉시 갱신되어야 한다. 실제 AI answer body는 question-language-first 정책을 유지하고 내부 developer/admin identifiers는 번역하지 않는다.
+- Coverage: 언어 preference는 browser-global app setting으로 저장하고, 저장값이 없으면 `navigator.languages`/`navigator.language`에서 `ko`/`ko-*`를 한국어로 추론한다. Settings panel `Language` section은 영어/한국어 선택, 현재 적용 중인 언어 highlight, Save/Cancel을 제공하며 Save 후 user-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states가 즉시 갱신되어야 한다. 실제 AI answer body는 question-language-first 정책을 유지하고 내부 developer/admin identifiers는 번역하지 않는다. 구현 계획은 i18n core/provider, Settings language section, AI prompt/request plumbing, workspace chrome, editor/metadata/graph translation, string sweep/wiki maintenance, PR workflow task로 나눈다.
 - Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: GitHub issue #126, `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`.
+- Source evidence: GitHub issue #126, `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`, `docs/superpowers/plans/2026-06-21-product-language-internationalization-settings.md`.
 - Verification: spec self-review; `git diff --check`.
 
 ## 2026-06-21T12:52:00+09:00 - implementation
