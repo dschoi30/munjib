@@ -127,3 +127,74 @@ flowchart TD
 | Project knowledge | `wiki/*.md` | Wiki pages are durable compiled knowledge. Start from `wiki/index.md` or `pnpm wiki:find "<topic>"` before broad source search. |
 | Design and implementation intent | `docs/superpowers/specs/*.md`, `docs/superpowers/plans/*.md` | Specs and plans explain why a change exists and how it should be implemented. |
 | Immutable evidence | `raw/sources/` | Do not edit these files during wiki maintenance. |
+
+## Feature-To-Files Guide
+
+| Question | Start reading | Supporting files | Tests |
+| --- | --- | --- | --- |
+| How does the workspace screen load? | `app/workspaces/[workspaceSlug]/page.tsx` | `components/app-shell.tsx`, `components/workspace-center-shell.tsx`, `lib/workspace-tree.ts` | `tests/components/app-shell.test.tsx`, `tests/workspace-tree.test.ts` |
+| How are documents created, updated, archived, and restored? | `app/workspaces/[workspaceSlug]/actions.ts` | `lib/documents/service.ts`, `lib/service-errors.ts` | `tests/documents/service.test.ts`, `tests/workspace-actions.test.ts` |
+| How does folder navigation work? | `components/document-navigation.tsx` | `components/document-navigation/tree.ts`, `lib/folders/service.ts`, `lib/folders/path.ts` | `tests/folders/service.test.ts`, `tests/folders/path.test.ts` |
+| How do Markdown preview, properties, and folding work? | `components/document-editor.tsx` | `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `lib/markdown/folding.ts` | `tests/components/document-editor-preview.test.tsx`, `tests/markdown/folding.test.ts` |
+| How do wiki links, backlinks, tags, and graph view work? | `lib/wiki-links/reconcile.ts` | `lib/wiki-links/parser.ts`, `lib/wiki-links/resolve.ts`, `lib/knowledge-graph/model.ts`, `components/knowledge-graph-view.tsx` | `tests/wiki-links/*.test.ts`, `tests/knowledge-graph/model.test.ts`, `tests/components/knowledge-graph-view.test.tsx` |
+| How are auth and permissions enforced? | `lib/auth/session.ts` | `lib/permissions/workspace.ts`, `lib/permissions/document.ts`, `lib/auth/config.ts` | `tests/auth/config.test.ts`, `tests/permissions/document.test.ts`, `tests/permissions/workspace.test.ts` |
+| How does current-document Ask AI work? | `components/document-editor/ai-assistant-panel.tsx` | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, `lib/rag/document-context.ts` | `tests/rag/ask.test.ts`, `tests/rag/ask-route.test.ts`, `tests/rag/document-context.test.ts` |
+| How does Workspace AI chat work? | `components/workspace-chatbot.tsx` | `components/workspace-chatbot-stream.ts`, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `lib/rag/workspace-chat.ts` | `tests/components/workspace-chatbot.test.tsx`, `tests/rag/workspace-chat.test.ts`, `tests/rag/workspace-chat-route.test.ts` |
+| How do attachments, comments, versions, and audit logs connect? | `components/metadata-panel.tsx` | `lib/attachments/service.ts`, `lib/comments/service.ts`, `lib/audit/log.ts` | `tests/attachments/service.test.ts`, `tests/comments/service.test.ts`, `tests/components/metadata-panel.test.tsx` |
+| How does archived document retention work? | `components/workspace-settings-panel.tsx` | `lib/workspaces/retention-service.ts`, `lib/documents/purge-archived.ts`, `scripts/documents/purge-archived.ts` | `tests/workspaces/retention-service.test.ts`, `tests/documents/purge-archived.test.ts`, `tests/documents/purge-archived-cli.test.ts` |
+| How does wiki maintenance work? | `wiki/index.md` | `scripts/wiki/*.ts`, `lib/wiki/*.ts`, `.githooks/pre-commit` | `tests/wiki/*.test.ts` |
+
+## Verification And Wiki Maintenance
+
+Before changing source code, create or confirm a GitHub issue with:
+
+```bash
+pnpm wiki:feature-start "<feature title>"
+```
+
+Before broad source search, start with:
+
+```bash
+pnpm wiki:find "<topic>"
+```
+
+For documentation-only changes, run:
+
+```bash
+pnpm wiki:manifest
+pnpm wiki:lint
+pnpm wiki:sync-check --staged
+git diff --check
+```
+
+For source changes, run the focused test for the touched surface plus wiki sync. Examples:
+
+```bash
+pnpm exec vitest run tests/rag/workspace-chat.test.ts tests/rag/workspace-chat-route.test.ts
+pnpm exec vitest run tests/documents/service.test.ts tests/wiki-links/reconcile.test.ts
+pnpm exec tsc --noEmit --pretty false
+```
+
+## 근거
+
+- GitHub issue #123
+- `docs/superpowers/specs/2026-06-21-project-structure-onboarding-design.md`
+- `wiki/index.md`
+- `wiki/Munjib.md`
+- `wiki/Document Knowledge Model.md`
+- `wiki/Document Editing Workflow.md`
+- `wiki/RAG Process Workflow.md`
+- `wiki/Local Development Workflow.md`
+- `app/workspaces/[workspaceSlug]/page.tsx`
+- `app/workspaces/[workspaceSlug]/actions.ts`
+- `components/app-shell.tsx`
+- `components/document-editor.tsx`
+- `components/document-navigation.tsx`
+- `components/knowledge-graph-view.tsx`
+- `components/workspace-chatbot.tsx`
+- `lib/documents/service.ts`
+- `lib/knowledge-graph/model.ts`
+- `lib/rag/ask.ts`
+- `lib/rag/workspace-chat.ts`
+- `prisma/schema.prisma`
+- `package.json`
