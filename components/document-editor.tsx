@@ -593,6 +593,7 @@ export function DocumentEditor({
           type="button"
           onClick={() => setIsAiAssistantOpen((isOpen) => !isOpen)}
           aria-expanded={isAiAssistantOpen}
+          aria-label={t(isAiAssistantOpen ? "ai.assistant.close" : "ai.assistant.open")}
           className="h-8 shrink-0 px-2 text-xs"
         >
           <Sparkles className="mr-1 h-3.5 w-3.5" aria-hidden="true" />

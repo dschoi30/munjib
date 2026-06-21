@@ -332,7 +332,12 @@ describe("DocumentEditor heading preview folding", () => {
       state: { selection: { main: { head: "Draft body".length } } },
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
+
+    const assistant = await screen.findByRole("region", { name: "AI assistant" });
+    expect(screen.getByRole("button", { name: "Close AI assistant" })).toBeTruthy();
+    expect(within(assistant).getByRole("button", { name: "Ask AI" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Ask AI" }).length).toBe(1);
 
     expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
 
@@ -373,8 +378,9 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI 어시스턴트 열기" }));
     expect(await screen.findByRole("region", { name: "AI 어시스턴트" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "AI 어시스턴트 닫기" })).toBeTruthy();
     expect(screen.getByText("모델")).toBeTruthy();
     expect(screen.getByPlaceholderText("이 문서에 대해 질문하기")).toBeTruthy();
     const questionInput = screen.getByLabelText("AI 질문");
@@ -403,7 +409,7 @@ describe("DocumentEditor heading preview folding", () => {
     vi.stubGlobal("fetch", vi.fn(() => deferred.promise));
 
     renderEditor("# Saved\n\nContent");
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What is saved?" },
     });
@@ -429,7 +435,7 @@ describe("DocumentEditor heading preview folding", () => {
   it("shows the server default AI model when no browser override is stored", () => {
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
 
     expect(screen.getByText("Model")).toBeTruthy();
     expect(screen.getByText("openrouter/fusion")).toBeTruthy();
@@ -448,7 +454,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     expect(screen.getByText("moonshotai/kimi-k2.7-code")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "Which model answered?" },
@@ -473,7 +479,7 @@ describe("DocumentEditor heading preview folding", () => {
   it("updates the displayed AI model when settings change in the same browser tab", () => {
     renderEditor("# A\nBody", { defaultChatModel: "openrouter/fusion" });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     expect(screen.getByText("openrouter/fusion")).toBeTruthy();
 
     window.localStorage.setItem(
@@ -506,7 +512,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What should I do?" },
     });
@@ -530,7 +536,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     renderEditor("# A\nBody");
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "What should I do?" },
     });
@@ -581,7 +587,7 @@ describe("DocumentEditor heading preview folding", () => {
       expect(screen.getByRole("button", { name: /save/i }).hasAttribute("disabled")).toBe(true);
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
 
     expect(screen.getByText("Unsaved changes are not included in AI answers.")).toBeTruthy();
   });
@@ -602,7 +608,7 @@ describe("DocumentEditor heading preview folding", () => {
       </DocumentViewModeProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
     fireEvent.change(screen.getByLabelText("AI question"), {
       target: { value: "Question for first" },
     });
