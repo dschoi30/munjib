@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-21
-source_count: 273
+updated: 2026-06-22
+source_count: 274
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:11:44+0900 - design
+
+- Result: Issue #131 design records the UX policy for showing document paths with folder names and `Document.title` instead of slugified stored paths.
+- Coverage: Stored `Document.path` and `Folder.path` remain the internal identity for uniqueness, moves, wiki-link resolution, graph/RAG/audit metadata, and search compatibility. User-facing path labels in toolbar/search/sidebar descriptions should receive a separate display-only path derived from folder `name` and `Document.title`; original import file extensions are out of scope.
+- Pages: [[Munjib]], [[Project PRD]], [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #131, `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`, user confirmation that `Document.title` is the file-name display source.
+- Verification: spec self-review; baseline `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 74 files / 817 tests before the spec/wiki edit.
 
 ## 2026-06-21T21:16:00+0900 - implementation
 
