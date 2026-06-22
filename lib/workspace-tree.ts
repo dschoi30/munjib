@@ -12,6 +12,10 @@ export type WorkspaceTreeFolder = Pick<Folder, "id" | "parentFolderId" | "name" 
 export type DisplayPathFolder = Pick<Folder, "id" | "parentFolderId" | "name" | "path">;
 
 type ResolvedFolderDisplayPath = { path: string; valid: boolean };
+type DocumentDisplayPathInput = Pick<Document, "title" | "path"> & {
+  displayPath?: string;
+  displayPathNeedsStoredPath?: boolean;
+};
 
 export function filterReadableDocuments<TDocument extends WorkspaceTreeDocument>(input: {
   documents: TDocument[];
@@ -46,9 +50,13 @@ function escapeRegExp(value: string) {
 }
 
 function needsStoredPathDisambiguation(
-  document: Pick<Document, "title" | "path">,
+  document: DocumentDisplayPathInput,
   fallbackLabel: string,
 ) {
+  if (document.displayPathNeedsStoredPath) {
+    return true;
+  }
+
   const label = documentDisplayLabel(document, fallbackLabel);
   const storedLeaf = fallbackPathSegment(document.path, "");
   const titleSlug = slugifyTitle(label);
@@ -193,8 +201,39 @@ export function documentDisplayPath(
   return joinDisplayPath(parentDisplayPath, label);
 }
 
-export function documentDisplayPathLabel(
-  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+export type DocumentDisplayPathMapValue = {
+  path: string;
+  needsStoredPathDisambiguation: boolean;
+};
+
+export function buildDocumentDisplayPathMap<
+  TDocument extends Pick<Document, "id" | "folderId" | "title" | "path">,
+>(
+  documents: TDocument[],
+  folderDisplayPaths: Map<string, string>,
+) {
+  const displayPathsByDocumentId = new Map<string, string>();
+  const displayPathCounts = new Map<string, number>();
+
+  for (const document of documents) {
+    const displayPath = documentDisplayPath(document, folderDisplayPaths);
+    displayPathsByDocumentId.set(document.id, displayPath);
+    displayPathCounts.set(displayPath, (displayPathCounts.get(displayPath) ?? 0) + 1);
+  }
+
+  const documentDisplayPaths = new Map<string, DocumentDisplayPathMapValue>();
+  for (const [documentId, displayPath] of displayPathsByDocumentId) {
+    documentDisplayPaths.set(documentId, {
+      path: displayPath,
+      needsStoredPathDisambiguation: (displayPathCounts.get(displayPath) ?? 0) > 1,
+    });
+  }
+
+  return documentDisplayPaths;
+}
+
+function documentDisplayPathLabelBase(
+  document: DocumentDisplayPathInput,
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
@@ -220,15 +259,25 @@ export function documentDisplayPathLabel(
   return document.path === rootPath ? label : formatStoredPath(document.path);
 }
 
+export function documentDisplayPathLabel(
+  document: DocumentDisplayPathInput,
+  fallbackLabel = "Untitled",
+) {
+  const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
+  return document.displayPath !== undefined && needsStoredPathDisambiguation(document, fallbackLabel)
+    ? `${displayPath} · ${document.path}`
+    : displayPath;
+}
+
 export function documentDisplayDescription(
-  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+  document: DocumentDisplayPathInput,
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
   const title = document.title.trim();
 
   if (document.displayPath !== undefined) {
-    const displayPath = documentDisplayPathLabel(document, fallbackLabel);
+    const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
     const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
     if (displayPath === label) {
       return needsDisambiguation ? document.path : undefined;
@@ -250,12 +299,12 @@ export function documentDisplayDescription(
 }
 
 export function documentActionLabel(
-  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+  document: DocumentDisplayPathInput,
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
   if (document.displayPath !== undefined) {
-    const displayPath = documentDisplayPathLabel(document, fallbackLabel);
+    const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
     const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
     if (displayPath === label) {
       return needsDisambiguation ? `${label} · ${document.path}` : label;

@@ -1233,6 +1233,61 @@ describe("DocumentList", () => {
     ).toBeTruthy();
   });
 
+  it("keeps stored path context when slash-title display paths collide", () => {
+    const folders = [
+      { ...folderFixtures[0], name: "A", path: "/a", displayPath: "A" },
+      { ...folderFixtures[1], name: "B", path: "/a/b", displayPath: "A / B" },
+    ];
+    const documents = [
+      {
+        id: "doc-selected",
+        folderId: null,
+        title: "Welcome",
+        path: "/welcome",
+        contentText: "Welcome body",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-slash-title",
+        folderId: "folder-engineering",
+        title: "B / C",
+        path: "/a/b-c",
+        displayPath: "A / B / C",
+        displayPathNeedsStoredPath: true,
+        contentText: "Slash title",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-nested",
+        folderId: "folder-runbooks",
+        title: "C",
+        path: "/a/b/c",
+        displayPath: "A / B / C",
+        displayPathNeedsStoredPath: true,
+        contentText: "Nested title",
+        tagNames: [],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: "doc-selected" });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b-c");
+    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b/c");
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for B / C · A / B / C · /a/b-c",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for C · A / B / C · /a/b/c",
+      }),
+    ).toBeTruthy();
+  });
+
   it("shows a visible fallback label for empty document titles", () => {
     renderList({
       documents: [

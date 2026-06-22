@@ -19,9 +19,9 @@ import {
 } from "@/lib/permissions/document";
 import { canWriteWorkspace } from "@/lib/permissions/workspace";
 import {
+  buildDocumentDisplayPathMap,
   buildFolderDisplayPathMap,
   countFolderChildren,
-  documentDisplayPath,
   filterReadableDocuments,
   folderDisplayPath,
 } from "@/lib/workspace-tree";
@@ -135,6 +135,7 @@ export default async function WorkspacePage({
     userPermissionsByDocumentId: userPermissionByDocumentId,
   });
   const folderDisplayPaths = buildFolderDisplayPathMap(workspace.folders);
+  const documentDisplayPaths = buildDocumentDisplayPathMap(readableDocuments, folderDisplayPaths);
   const activeDocumentCountsByFolderId = workspace.documents.reduce<Record<string, number>>(
     (counts, document) => {
       if (!document.folderId) return counts;
@@ -270,6 +271,14 @@ export default async function WorkspacePage({
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const defaultChatModel = getDefaultRagChatModel();
   const defaultChatProvider = getDefaultRagChatProvider();
+  function documentDisplayPathProps(document: (typeof readableDocuments)[number]) {
+    const displayPath = documentDisplayPaths.get(document.id);
+    return {
+      displayPath: displayPath?.path ?? document.path,
+      displayPathNeedsStoredPath: displayPath?.needsStoredPathDisambiguation ?? false,
+    };
+  }
+
   const selectedCenterFolder = selectedFolder
     ? {
         id: selectedFolder.id,
@@ -303,7 +312,7 @@ export default async function WorkspacePage({
               folderId: document.folderId,
               title: document.title,
               path: document.path,
-              displayPath: documentDisplayPath(document, folderDisplayPaths),
+              ...documentDisplayPathProps(document),
               contentText: document.contentText,
               tagNames: tagNamesByDocumentId.get(document.id) ?? [],
               canWrite: canWriteDocument({
@@ -337,7 +346,7 @@ export default async function WorkspacePage({
               id: document.id,
               title: document.title,
               path: document.path,
-              displayPath: documentDisplayPath(document, folderDisplayPaths),
+              ...documentDisplayPathProps(document),
             }))}
             selectedDocument={
               selectedDocument
@@ -345,7 +354,7 @@ export default async function WorkspacePage({
                     id: selectedDocument.id,
                     title: selectedDocument.title,
                     path: selectedDocument.path,
-                    displayPath: documentDisplayPath(selectedDocument, folderDisplayPaths),
+                    ...documentDisplayPathProps(selectedDocument),
                   }
                 : null
             }
