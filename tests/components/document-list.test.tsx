@@ -1184,6 +1184,55 @@ describe("DocumentList", () => {
     }
   });
 
+  it("keeps stored path context when title display paths collide", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-selected",
+        folderId: null,
+        title: "Welcome",
+        path: "/welcome",
+        contentText: "Welcome body",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook",
+        displayPath: "Engineering / Runbooks / Runbook",
+        contentText: "Release checklist",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-runbook-duplicate",
+        folderId: "folder-runbooks",
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook-2",
+        displayPath: "Engineering / Runbooks / Runbook",
+        contentText: "Second checklist",
+        tagNames: [],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: "doc-selected" });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    expect(allDocumentsNav.textContent).toContain(
+      "Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+    );
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+      }),
+    ).toBeTruthy();
+  });
+
   it("shows a visible fallback label for empty document titles", () => {
     renderList({
       documents: [
