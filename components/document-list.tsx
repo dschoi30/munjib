@@ -43,6 +43,7 @@ export type DocumentListItem = {
   title: string;
   path: string;
   displayPath?: string;
+  displayPathNeedsStoredPath?: boolean;
   contentText: string;
   tagNames: string[];
   canWrite: boolean;

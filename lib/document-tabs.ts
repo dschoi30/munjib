@@ -3,6 +3,7 @@ export type DocumentTabDocument = {
   title: string;
   path: string;
   displayPath?: string;
+  displayPathNeedsStoredPath?: boolean;
 };
 
 export type DocumentTab = {

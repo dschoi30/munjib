@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-22
-source_count: 293
+updated: 2026-06-23
+source_count: 294
 tags:
   - log
   - munjib
@@ -58,6 +58,14 @@ links:
 - Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: PR #132 review comments, `lib/workspace-tree.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
 - Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 110 tests; `pnpm exec tsc --noEmit --pretty false` passed; escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 77 files / 852 tests.
+
+## 2026-06-23T01:24:42+0900 - review follow-up
+
+- Result: PR #132 review feedback now disambiguates display-path collisions caused by slash-containing document titles and nested folder paths.
+- Coverage: `buildDocumentDisplayPathMap()` counts computed display paths across readable documents and marks collisions for stored-path context. `documentDisplayPathLabel()`, visible descriptions, and action labels append the unique `Document.path` when two different documents would otherwise display the same title-based path, such as folder `A` with title `B / C` and folder `A / B` with title `C`.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #132 unresolved review thread, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-list.tsx`, `lib/document-tabs.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 113 tests.
 
 ## 2026-06-22T23:23:24+0900 - implementation
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDocumentDisplayPathMap,
   buildFolderDisplayPathMap,
   countFolderChildren,
   documentActionLabel,
@@ -152,6 +153,55 @@ describe("workspace tree helpers", () => {
         displayPath: "Engineering / Runbooks / Runbook",
       }),
     ).toBe("Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2");
+  });
+
+  it("uses stored path context when display paths collide through slash titles", () => {
+    const slashTitleDocument = {
+      title: "B / C",
+      path: "/a/b-c",
+      displayPath: "A / B / C",
+      displayPathNeedsStoredPath: true,
+    };
+    const nestedDocument = {
+      title: "C",
+      path: "/a/b/c",
+      displayPath: "A / B / C",
+      displayPathNeedsStoredPath: true,
+    };
+
+    expect(documentDisplayPathLabel(slashTitleDocument)).toBe("A / B / C · /a/b-c");
+    expect(documentDisplayDescription(slashTitleDocument)).toBe("A / B / C · /a/b-c");
+    expect(documentActionLabel(slashTitleDocument)).toBe("B / C · A / B / C · /a/b-c");
+    expect(documentDisplayPathLabel(nestedDocument)).toBe("A / B / C · /a/b/c");
+    expect(documentDisplayDescription(nestedDocument)).toBe("A / B / C · /a/b/c");
+    expect(documentActionLabel(nestedDocument)).toBe("C · A / B / C · /a/b/c");
+  });
+
+  it("marks computed document display path collisions for stored path disambiguation", () => {
+    const folders = [
+      { id: "folder-a", parentFolderId: null, name: "A", path: "/a" },
+      { id: "folder-a-b", parentFolderId: "folder-a", name: "B", path: "/a/b" },
+    ];
+    const folderDisplayPaths = buildFolderDisplayPathMap(folders);
+    const documents = [
+      { id: "doc-slash-title", folderId: "folder-a", title: "B / C", path: "/a/b-c" },
+      { id: "doc-nested", folderId: "folder-a-b", title: "C", path: "/a/b/c" },
+      { id: "doc-other", folderId: "folder-a", title: "Other", path: "/a/other" },
+    ];
+    const documentDisplayPaths = buildDocumentDisplayPathMap(documents, folderDisplayPaths);
+
+    expect(documentDisplayPaths.get("doc-slash-title")).toEqual({
+      path: "A / B / C",
+      needsStoredPathDisambiguation: true,
+    });
+    expect(documentDisplayPaths.get("doc-nested")).toEqual({
+      path: "A / B / C",
+      needsStoredPathDisambiguation: true,
+    });
+    expect(documentDisplayPaths.get("doc-other")).toEqual({
+      path: "A / Other",
+      needsStoredPathDisambiguation: false,
+    });
   });
 
   it("keeps stored path fallback when a display parent is missing", () => {
