@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-22
-source_count: 287
+source_count: 288
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:23:24+0900 - implementation
+
+- Result: Sidebar skeleton tests now guard the right metadata close slot separation explicitly.
+- Coverage: The right toolbar test checks the `right-sidebar-loading` root spacing contract and asserts the fifth `sidebar-toolbar-icon-skeleton` carries `ml-auto`, so the close icon can’t silently drift back into the tab-icon group without a test failure.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]], [[Project PRD]].
+- Source evidence: `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed after the assertion update.
 
 ## 2026-06-22T23:19:11+0900 - implementation
 

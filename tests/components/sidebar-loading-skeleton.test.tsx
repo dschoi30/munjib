@@ -85,11 +85,16 @@ describe("sidebar loading skeletons", () => {
   it("matches right metadata toolbar compact spacing", () => {
     render(<WorkspaceSidebarLoadingSkeleton side="right" />);
 
+    const loading = screen.getByTestId("right-sidebar-loading");
     const toolbar = screen.getByTestId("right-sidebar-loading-toolbar");
+    const toolbarIcons = within(toolbar).getAllByTestId("sidebar-toolbar-icon-skeleton");
 
+    expect(loading.className).toContain("space-y-4");
+    expect(loading.className).toContain("pt-2");
     expect(toolbar.className).toContain("h-11");
     expect(toolbar.className).toContain("gap-1");
-    expect(within(toolbar).getAllByTestId("sidebar-toolbar-icon-skeleton")).toHaveLength(5);
+    expect(toolbarIcons).toHaveLength(5);
+    expect(toolbarIcons[4].className).toContain("ml-auto");
   });
 
   it("renders a collapsed panel loading shape without text", () => {
