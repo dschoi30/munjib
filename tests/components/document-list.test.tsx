@@ -4,7 +4,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
-import { I18nProvider } from "@/components/i18n-provider";
+import { I18nProvider, useI18n } from "@/components/i18n-provider";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
@@ -138,6 +138,63 @@ function renderWithI18n(ui: React.ReactElement) {
   };
 }
 
+function CommitSnapshot({ onCommit }: { onCommit: () => void }) {
+  React.useLayoutEffect(onCommit);
+  return null;
+}
+
+function HydratedDocumentList({
+  onFirstNavigationBodyCommit,
+  props = {},
+}: {
+  onFirstNavigationBodyCommit: (html: string) => void;
+  props?: Partial<Parameters<typeof DocumentList>[0]>;
+}) {
+  const { isHydrated } = useI18n();
+  const capturedFirstCommitRef = React.useRef(false);
+
+  if (!isHydrated) {
+    return null;
+  }
+
+  return (
+    <>
+      <DocumentList {...baseProps} {...props} />
+      <CommitSnapshot
+        onCommit={() => {
+          if (capturedFirstCommitRef.current) return;
+          capturedFirstCommitRef.current = true;
+          onFirstNavigationBodyCommit(
+            document.querySelector('[data-testid="document-list-navigation-body"]')?.innerHTML ??
+              "",
+          );
+        }}
+      />
+    </>
+  );
+}
+
+function DocumentListWithFirstCommitSnapshot({
+  onFirstCommit,
+}: {
+  onFirstCommit: (html: string) => void;
+}) {
+  const capturedFirstCommitRef = React.useRef(false);
+
+  return (
+    <>
+      <DocumentList {...baseProps} />
+      <CommitSnapshot
+        onCommit={() => {
+          if (capturedFirstCommitRef.current) return;
+          capturedFirstCommitRef.current = true;
+          onFirstCommit(document.body.innerHTML);
+        }}
+      />
+    </>
+  );
+}
+
 function TagSearchRequester({ tag }: { tag: string }) {
   const tagSearch = useTagSearch();
 
@@ -158,6 +215,57 @@ function languageOptionCard(name: RegExp) {
 }
 
 describe("DocumentList", () => {
+  it("shows a body skeleton until the stored Korean active sidebar panel hydrates", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    window.localStorage.setItem(
+      workspaceUiStateStorageKey("company-handbook"),
+      JSON.stringify({ activeSidebarPanel: "favorites" }),
+    );
+    const firstNavigationBodyCommits: string[] = [];
+
+    render(
+      <I18nProvider>
+        <HydratedDocumentList
+          onFirstNavigationBodyCommit={(html) => firstNavigationBodyCommits.push(html)}
+        />
+      </I18nProvider>,
+    );
+
+    expect(firstNavigationBodyCommits).toHaveLength(1);
+    expect(firstNavigationBodyCommits[0]).toContain("document-navigation-loading");
+    expect(firstNavigationBodyCommits[0]).not.toContain("Recents");
+    expect(firstNavigationBodyCommits[0]).not.toContain("All documents");
+    expect(firstNavigationBodyCommits[0]).not.toContain("최근");
+    expect(firstNavigationBodyCommits[0]).not.toContain("모든 문서");
+
+    const navigationBody = screen.getByTestId("document-list-navigation-body");
+    expect(await within(navigationBody).findByText("즐겨찾기")).toBeTruthy();
+    expect(within(navigationBody).getByText("아직 즐겨찾기가 없습니다.")).toBeTruthy();
+    expect(screen.queryByTestId("document-navigation-loading")).toBeNull();
+  });
+
+  it("renders only a text-free standalone shell before Korean language hydration", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const firstCommits: string[] = [];
+
+    render(
+      <I18nProvider>
+        <DocumentListWithFirstCommitSnapshot onFirstCommit={(html) => firstCommits.push(html)} />
+      </I18nProvider>,
+    );
+
+    expect(firstCommits).toHaveLength(1);
+    expect(firstCommits[0]).toContain("left-sidebar-loading");
+    expect(firstCommits[0]).not.toContain("Workspace menu");
+    expect(firstCommits[0]).not.toContain("Close sidebar");
+    expect(firstCommits[0]).not.toContain("New document");
+    expect(firstCommits[0]).not.toContain("Recents");
+    expect(firstCommits[0]).not.toContain("Documents");
+
+    expect(await screen.findByRole("button", { name: "워크스페이스 메뉴" })).toBeTruthy();
+    expect(screen.getByText("최근")).toBeTruthy();
+  });
+
   it("shows the workspace title inline with icon-only create controls", () => {
     renderList();
 

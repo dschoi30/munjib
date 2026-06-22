@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-21
-source_count: 273
+updated: 2026-06-22
+source_count: 288
 tags:
   - log
   - munjib
@@ -18,6 +18,110 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:23:24+0900 - implementation
+
+- Result: Sidebar skeleton tests now guard the right metadata close slot separation explicitly.
+- Coverage: The right toolbar test checks the `right-sidebar-loading` root spacing contract and asserts the fifth `sidebar-toolbar-icon-skeleton` carries `ml-auto`, so the close icon can’t silently drift back into the tab-icon group without a test failure.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]], [[Project PRD]].
+- Source evidence: `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed after the assertion update.
+
+## 2026-06-22T23:19:11+0900 - implementation
+
+- Result: Issue #129 sidebar skeleton spacing was corrected to match the loaded sidebar rhythm.
+- Coverage: Left sidebar loading root no longer adds extra top padding or inter-slot spacing, and `DocumentNavigationBodySkeleton` no longer carries its own outer `space-y-4` gap. The real sidebar still owns the vertical rhythm through the loaded body wrapper and section spacing, while the right sidebar loading contract remains unchanged.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed against the extra left-root and body-level spacing classes; green runs `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed.
+
+## 2026-06-22T23:13:11+0900 - implementation
+
+- Result: Issue #129 sidebar skeleton alignment now matches loaded sidebar slots.
+- Coverage: Left sidebar loading chrome and toolbar now map to the real title-bar, create-toolbar, and body slots; right metadata loading uses a compact toolbar with the close icon pushed to the end; document rows are uniform full-width text slots with no icon placeholder; folder rows keep the chevron icon slot and full-width text; document navigation body uses recents plus all-documents sections with the expected row pattern.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed against the previous generic row helper; green runs `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed.
+
+## 2026-06-22T23:09:51+0900 - plan
+
+- Result: Issue #129 sidebar skeleton alignment implementation plan was written.
+- Coverage: The plan keeps the change scoped to `components/sidebar-loading-skeleton.tsx` and `tests/components/sidebar-loading-skeleton.test.tsx`, starts with failing structural tests, implements slot-matched skeleton rows, then runs focused component verification, wiki sync, push, and PR review/CI recheck.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-22-sidebar-skeleton-alignment.md`, `docs/superpowers/specs/2026-06-22-sidebar-skeleton-alignment-design.md`.
+- Verification: plan self-review.
+
+## 2026-06-22T23:00:05+0900 - design
+
+- Result: Issue #129 sidebar skeleton alignment follow-up design was recorded after visual brainstorming.
+- Coverage: The follow-up fixes skeleton placement to loaded sidebar slots: left workspace chrome, create toolbar, navigation body offset, section rhythm, document row text slots, folder chevron slots, right metadata toolbar spacing, and metadata text rows. Document row skeletons are intentionally uniform full-width bars with no icon placeholder; folder rows keep only the real chevron icon slot.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-22-sidebar-skeleton-alignment-design.md`, user-approved visual companion v2.
+- Verification: spec self-review.
+
+## 2026-06-21T23:57:58+0900 - implementation
+
+- Result: PR #130 review feedback stabilized the `I18nProvider` explicit language setter.
+- Coverage: `setLanguage` is now a `useCallback` with no changing dependencies, so consumers that only need the setter do not receive a new callback reference during language hydration or explicit language changes. Existing language storage, root `lang` update, and hydration behavior stay unchanged.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #130 Gemini inline review, `components/i18n-provider.tsx`, `tests/components/i18n-provider.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/i18n-provider.test.tsx -t "keeps the setLanguage callback stable"` failed with 3 callback references; green run `pnpm exec vitest run tests/components/i18n-provider.test.tsx tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed 111 tests.
+
+## 2026-06-21T23:47:41+0900 - implementation
+
+- Result: Issue #129 follow-up stabilized sidebar icon positions when sidebar vertical overflow appears or disappears.
+- Coverage: Open left/right `AppShell` sidebar scroll containers now reserve a stable scrollbar gutter through a shared CSS utility, so sidebar header, toolbar, metadata tab, close, and row action icons do not shift horizontally when content starts or stops needing vertical scrolling.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/app-shell.tsx`, `app/globals.css`, `tests/components/app-shell.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/app-shell.test.tsx -t "reserves sidebar scrollbar gutters"` failed because sidebar `aside` elements lacked the stable gutter class; green run `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed 106 tests.
+
+## 2026-06-21T22:53:55+0900 - implementation
+
+- Result: Issue #129 Task 5 wired navigation-body skeletons into `DocumentList` active panel hydration.
+- Coverage: `DocumentList` now renders a text-free left sidebar skeleton when used before display-language hydration, and renders localized sticky sidebar chrome with `DocumentNavigationBodySkeleton` until the workspace active sidebar panel state hydrates. Once the active panel is hydrated, existing Documents/Search/Favorites navigation behavior, tag-search handling, graph route clearing, settings menu, create controls, and active panel persistence continue unchanged.
+- Pages: [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red focused tests failed while `document-navigation-loading` and standalone `left-sidebar-loading` were absent; green run `pnpm exec vitest run tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx tests/components/i18n-provider.test.tsx` passed 100 tests.
+
+## 2026-06-21T22:44:04+0900 - implementation
+
+- Result: Issue #129 Task 4 wired sidebar skeletons into `AppShell` hydration gates.
+- Coverage: `AppShell` now combines i18n hydration and workspace UI state hydration before rendering localized sidebar content or localized reopen controls. While either hydration step is pending, open sidebars render decorative left/right sidebar skeletons instead of empty `aside` content, and closed panels render collapsed skeleton buttons instead of English/Korean tooltips or labels. Existing workspace sidebar state restore/persist, closed sidebar child mount prevention, heading navigation context, tag-search reopening, and right metadata collapse controls remain intact.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/app-shell.tsx`, `tests/components/app-shell.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/app-shell.test.tsx` failed while initial sidebars were empty; green run `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/sidebar-loading-skeleton.test.tsx tests/components/i18n-provider.test.tsx` passed 17 tests.
+
+## 2026-06-21T22:34:48+0900 - implementation
+
+- Result: Issue #129 Task 3 added reusable sidebar loading skeleton components for refresh-time empty sidebar states.
+- Coverage: `components/sidebar-loading-skeleton.tsx` exports left/right workspace sidebar shell skeletons, collapsed panel skeletons, and a document navigation body skeleton built on the shared shimmer `Skeleton` primitive. The skeletons are decorative shape-only UI with no user-facing text, so they can render before display-language hydration without flashing English labels, and tests assert row counts, `aria-hidden` behavior, and collapsed-panel text absence.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed while the module was missing; green run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx tests/components/skeleton.test.tsx` passed 5 tests.
+
+## 2026-06-21T22:08:00+0900 - design
+
+- Result: Issue #129 설계에서 workspace refresh 중 좌우 sidebar가 빈 column처럼 보이는 상태를 skeleton loading UI로 대체하고, 저장된 한국어 display language가 hydrate되기 전 영어 workspace chrome이 먼저 보이는 flash를 막는 방향을 정리했다.
+- Coverage: `I18nProvider`는 language hydration 완료 신호를 제공하고, language가 확정되기 전에는 sidebar/metadata의 user-facing text 대신 decorative shape skeleton만 보여준다. Language hydration 이후에는 localized stable chrome을 보여주되, workspace UI state 또는 sidebar child state가 아직 hydrate 중이면 recents/search/favorites rows, navigation body, metadata outline/list content를 좌에서 우로 흐르는 shimmer bar skeleton으로 표시한다. Issue #122의 closed sidebar child mount 지연과 workspace-scoped UI state 보존은 유지한다.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, user-approved visual direction B from brainstorming.
+- Verification: spec self-review.
+
+## 2026-06-21T22:24:00+0900 - plan
+
+- Result: Issue #129 implementation plan을 TDD task 단위로 작성했다.
+- Coverage: plan은 i18n hydration signal, shared shimmer skeleton primitive, sidebar loading shape components, `AppShell` hydration gate, `DocumentList` body skeleton, focused verification/wiki sync/manual browser smoke 순서로 구현을 나눈다. Subagent-driven execution을 전제로 task별 failing test, expected red/green commands, commit boundary를 포함한다.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-21-sidebar-loading-skeleton-language-hydration.md`, `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`, GitHub issue #129.
+- Verification: plan self-review for spec coverage, placeholder scan, and type consistency.
+
+## 2026-06-21T22:19:38+0900 - implementation
+
+- Result: Issue #129 Task 1 exposed an i18n hydration signal for language-sensitive workspace chrome.
+- Coverage: `useI18n()` now returns `isHydrated`, which is false on the first client render with the default English language and true after `I18nProvider` reads browser storage/browser hints. The provider only updates `document.documentElement.lang` after hydration, and explicit language writes mark the context hydrated. Component coverage asserts that consumers can render loading text during the first render and never show English Settings chrome before saved Korean hydration completes.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #129, `components/i18n-provider.tsx`, `tests/components/i18n-provider.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/i18n-provider.test.tsx -t "hide language-sensitive chrome"` failed with `isHydrated: undefined`; green run `pnpm exec vitest run tests/components/i18n-provider.test.tsx` passed 4 tests.
 
 ## 2026-06-21T21:16:00+0900 - implementation
 

@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-06-21
-source_count: 61
+updated: 2026-06-22
+source_count: 63
 tags:
   - munjib
   - product
@@ -73,6 +73,8 @@ Issue #48 설계는 `components/document-editor.tsx`와 `components/document-nav
 Issue #65 설계는 workspace knowledge graph를 Obsidian-style 탐색에 더 가깝게 다듬는 계획이다. Graph view는 Properties Links/backlinks의 frontmatter 기반 계약을 유지하면서 graph 전용으로 문서 전체 markdown의 wiki link를 볼 수 있게 하고, filter는 Tags와 Orphans 중심으로 단순화한다. 구현 전 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-filter-link-coverage-design.md`이다. Issue #67 설계는 graph zoom 상한/하한, bounded label scaling, sessionStorage 기반 graph option persistence, 기본 off Tags/Orphans filter, 문서 수 기반 node size baseline을 계획한다. 설계 근거는 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`이다.
 
 Issue #122 구현은 workspace UI chrome state를 workspace-scoped aggregate `localStorage` key로 보존한다. 대상은 좌우 sidebar open state, 좌측 Documents/Search/Favorites active menu, knowledge graph controls panel과 Filters/Display/Forces section open state, 기존 graph filter/display/force option persistence의 `localStorage` 전환, Workspace AI chat open state다. DB, URL, server API, chat draft, pending request, graph layout position은 범위에서 제외한다. 설계 근거는 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`이다.
+
+Issue #129 설계는 workspace refresh 중 좌우 sidebar가 빈 column으로 보이지 않도록 skeleton loading state를 추가하는 계획이다. 저장된 display language가 아직 hydrate되지 않았으면 sidebar와 metadata panel의 user-facing text를 숨기고 shape-only skeleton을 보여주며, language hydration 이후에는 한국어/영어로 localized된 stable chrome과 데이터 영역 shimmer skeleton을 함께 보여준다. 이 설계는 Issue #126의 초기 영어 fallback 허용을 workspace chrome에서는 더 엄격하게 바꿔, 한국어 설정 사용자가 영어 sidebar label을 먼저 보지 않게 한다. 2026-06-22 follow-up 설계는 skeleton placeholder를 실제 sidebar chrome, toolbar, section, folder row, document row, metadata toolbar/text slot에 맞추고, document row는 icon slot 없이 full-width bar로 통일하며 folder row만 실제 chevron 위치에 icon skeleton을 둔다. 해당 alignment는 `components/sidebar-loading-skeleton.tsx`와 `tests/components/sidebar-loading-skeleton.test.tsx` 구현으로 반영되었다. 설계 근거는 `docs/superpowers/specs/2026-06-21-sidebar-loading-skeleton-language-hydration-design.md`와 `docs/superpowers/specs/2026-06-22-sidebar-skeleton-alignment-design.md`이다.
 
 Issue #71은 tag click search를 추가해 frontmatter tag chip, preview mode body `#tag`, graph view tag node를 기존 sidebar Search panel의 `tag:#name` exact search로 연결했다. 검색 결과는 YAML frontmatter `tags:`와 body `#tag`에서 reconcile된 tag index를 모두 사용하지만, Properties tags row는 계속 frontmatter-only 정책을 유지한다. 설계 근거는 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`이다.
 
