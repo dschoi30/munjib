@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #20에서 folder-like document creation을 실제 Folder 컨테이너와 path 기반 document hierarchy로 대체하는 설계 결정.
 created: 2026-05-04
-updated: 2026-06-20
-source_count: 49
+updated: 2026-06-22
+source_count: 51
 tags:
   - munjib
   - data-model
@@ -93,7 +93,7 @@ Wiki link reconciliation은 path-qualified target을 document `path`로 우선 r
 
 Workspace 화면은 active folder와 readable active document를 함께 읽어 경로 기준 tree row로 표시한다. Sidebar의 folder row는 document처럼 editor target을 바꾸는 link가 아니라 accordion toggle button이다. Folder row를 열고 닫아도 현재 editor document는 유지된다.
 
-Issue #29 구현은 path model을 center navigation toolbar에 노출한다. Document view는 `Document.path`, folder detail view는 `Folder.path`, workspace root는 `/`를 표시한다. 이 toolbar path는 display-only UI이며, folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
+Issue #29 구현은 path model을 center navigation toolbar에 노출한다. 기존 toolbar는 `Document.path`와 `Folder.path`를 그대로 보여주었지만, Issue #131 설계는 stored slug path와 사용자-facing display path를 분리한다. `Document.path`와 `Folder.path`는 DB uniqueness, folder/document move, path-qualified wiki link, graph/RAG/audit metadata의 내부 identity로 유지하고, toolbar/search/sidebar 같은 일반 UX path label은 folder `name`과 `Document.title`을 조합한 display-only path를 보여준다. 예를 들어 stored path `/operations/contextual-retrieval`은 `Operations / Contextual Retrieval`처럼 표시된다. 이 표시 정책은 folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
 
 Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chevron icon을 사용한다. 펼쳐진 folder의 하위 row group은 chevron 아래로 이어지는 왼쪽 세로선을 표시해 folder/document 관계를 시각적으로 묶는다.
 
@@ -110,12 +110,14 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 - GitHub issue #20
 - GitHub issue #26
 - GitHub issue #29
+- GitHub issue #131
 - GitHub issue #83
 - GitHub issue #92
 - `docs/superpowers/specs/2026-05-04-real-folder-hierarchy-design.md`
 - `docs/superpowers/specs/2026-06-05-cascade-folder-trash-confirmation-design.md`
 - `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`
 - `components/document-navigation.tsx`
+- `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`
 - `tests/components/document-list.test.tsx`
 - `lib/folders/path.ts`
 - `lib/folders/service.ts`
