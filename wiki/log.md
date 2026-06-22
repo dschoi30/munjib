@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-22
-source_count: 284
+source_count: 285
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:09:51+0900 - plan
+
+- Result: Issue #129 sidebar skeleton alignment implementation plan was written.
+- Coverage: The plan keeps the change scoped to `components/sidebar-loading-skeleton.tsx` and `tests/components/sidebar-loading-skeleton.test.tsx`, starts with failing structural tests, implements slot-matched skeleton rows, then runs focused component verification, wiki sync, push, and PR review/CI recheck.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-22-sidebar-skeleton-alignment.md`, `docs/superpowers/specs/2026-06-22-sidebar-skeleton-alignment-design.md`.
+- Verification: plan self-review.
 
 ## 2026-06-22T23:00:05+0900 - design
 
