@@ -42,6 +42,8 @@ export type DocumentListItem = {
   folderId: string | null;
   title: string;
   path: string;
+  displayPath?: string;
+  displayPathNeedsStoredPath?: boolean;
   contentText: string;
   tagNames: string[];
   canWrite: boolean;
@@ -52,6 +54,7 @@ export type FolderListItem = {
   parentFolderId: string | null;
   name: string;
   path: string;
+  displayPath?: string;
 };
 
 export type FolderDocumentCounts = Record<string, number>;

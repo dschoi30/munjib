@@ -34,6 +34,7 @@ import type {
 } from "@/components/document-navigation/types";
 import { openDocumentInNewTab } from "@/components/use-document-tabs";
 import type { MessageKey } from "@/lib/i18n/messages";
+import { documentDisplayDescription, documentDisplayLabel } from "@/lib/workspace-tree";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 const folderErrorToastId = "folder-trash-error";
@@ -100,6 +101,7 @@ export function DocumentNavigation({
     () => new Set(folders.map((folder) => folder.id)),
   );
   const recentDocumentStorageKey = `munjib:recents:${workspaceSlug}`;
+  const untitledDocumentLabel = t("nav.untitledDocument");
 
   const favoriteDocumentIds = useMemo(
     () => new Set(favorites.documents),
@@ -152,12 +154,19 @@ export function DocumentNavigation({
     const query = trimmedQuery.toLowerCase();
     if (!query) return documents;
     return documents.filter(
-      (document) =>
-        document.title.toLowerCase().includes(query) ||
-        document.path.toLowerCase().includes(query) ||
-        document.contentText.toLowerCase().includes(query),
+      (document) => {
+        const displayLabel = documentDisplayLabel(document, untitledDocumentLabel);
+        const displayDescription = documentDisplayDescription(document, untitledDocumentLabel);
+
+        return (
+          displayLabel.toLowerCase().includes(query) ||
+          document.path.toLowerCase().includes(query) ||
+          (displayDescription?.toLowerCase().includes(query) ?? false) ||
+          document.contentText.toLowerCase().includes(query)
+        );
+      },
     );
-  }, [documents, searchQuery]);
+  }, [documents, searchQuery, untitledDocumentLabel]);
   const folderErrorText = folderErrorMessage(folderError, t);
   useEffect(() => {
     const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);

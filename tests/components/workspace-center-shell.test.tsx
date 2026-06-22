@@ -16,9 +16,19 @@ vi.mock("next/navigation", () => ({
 }));
 
 const documents = [
-  { id: "doc-1", title: "Welcome", path: "/welcome" },
-  { id: "doc-2", title: "Engineering Runbook", path: "/engineering/runbook" },
-  { id: "doc-3", title: "Operations Runbook", path: "/operations/runbook" },
+  { id: "doc-1", title: "Welcome", path: "/welcome", displayPath: "Welcome" },
+  {
+    id: "doc-2",
+    title: "Engineering Runbook",
+    path: "/engineering/runbook",
+    displayPath: "Engineering / Engineering Runbook",
+  },
+  {
+    id: "doc-3",
+    title: "Operations Runbook",
+    path: "/operations/runbook",
+    displayPath: "Operations / Operations Runbook",
+  },
 ];
 
 beforeEach(() => {
@@ -94,8 +104,42 @@ describe("WorkspaceCenterShell", () => {
     renderShell();
 
     expect(screen.getByRole("button", { name: "Welcome" }).getAttribute("aria-current")).toBe("page");
-    expect(screen.getByText("welcome")).toBeTruthy();
+    expect(screen.getAllByText("Welcome").length).toBeGreaterThan(0);
+    expect(screen.queryByText("welcome")).toBeNull();
     expect(screen.getByText("Editor content")).toBeTruthy();
+  });
+
+  it("shows title-based folder and document display paths in the toolbar", () => {
+    const { rerender } = renderShell(documents[1]);
+
+    expect(screen.getByText("Engineering / Engineering Runbook")).toBeTruthy();
+    expect(screen.queryByText("engineering / runbook")).toBeNull();
+
+    rerender(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={documents}
+        selectedDocument={null}
+        selectedFolder={{ path: "/engineering/runbooks", displayPath: "Engineering / Runbooks" }}
+      >
+        <div>Folder content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(screen.getByText("Engineering / Runbooks")).toBeTruthy();
+    expect(screen.queryByText("engineering / runbooks")).toBeNull();
+  });
+
+  it("keeps slash characters inside document titles in toolbar display paths", () => {
+    renderShell({
+      id: "doc-slash",
+      title: "Q1/Q2 Plan",
+      path: "/engineering/q1-q2-plan",
+      displayPath: "Engineering / Q1/Q2 Plan",
+    });
+
+    expect(screen.getByText("Engineering / Q1/Q2 Plan")).toBeTruthy();
+    expect(screen.queryByText("Engineering / Q1 / Q2 Plan")).toBeNull();
   });
 
   it("shows a single toolbar mode toggle for the next document mode", () => {
@@ -152,6 +196,30 @@ describe("WorkspaceCenterShell", () => {
 
     expect(await screen.findByRole("button", { name: "제목 없음" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "제목 없음 닫기" })).toBeTruthy();
+  });
+
+  it("uses the selected Korean display language for blank document toolbar paths", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const blankDocument = {
+      id: "doc-blank-folder",
+      title: "",
+      path: "/engineering/runbooks/untitled",
+      displayPath: "Engineering / Runbooks",
+    };
+
+    renderWithI18n(
+      <WorkspaceCenterShell
+        workspaceSlug="company-handbook"
+        documents={[...documents, blankDocument]}
+        selectedDocument={blankDocument}
+        selectedFolder={null}
+      >
+        <div>Blank editor content</div>
+      </WorkspaceCenterShell>,
+    );
+
+    expect(await screen.findByText("Engineering / Runbooks / 제목 없음")).toBeTruthy();
+    expect(screen.queryByText("Engineering / Runbooks / Untitled")).toBeNull();
   });
 
   it("renders stored readable tabs and switches by router push", () => {
