@@ -155,6 +155,7 @@ export function DocumentNavigation({
       (document) =>
         document.title.toLowerCase().includes(query) ||
         document.path.toLowerCase().includes(query) ||
+        (document.displayPath?.toLowerCase().includes(query) ?? false) ||
         document.contentText.toLowerCase().includes(query),
     );
   }, [documents, searchQuery]);
@@ -436,6 +437,7 @@ export function DocumentNavigation({
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
             selected={item.document.id === selectedDocumentId}
+            description={item.document.displayPath ?? item.document.path}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}

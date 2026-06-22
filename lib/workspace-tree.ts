@@ -9,6 +9,10 @@ export type WorkspaceTreeDocument = Pick<
 
 export type WorkspaceTreeFolder = Pick<Folder, "id" | "parentFolderId" | "name" | "path">;
 
+export type DisplayPathFolder = Pick<Folder, "id" | "parentFolderId" | "name" | "path">;
+
+type ResolvedFolderDisplayPath = { path: string; valid: boolean };
+
 export function filterReadableDocuments<TDocument extends WorkspaceTreeDocument>(input: {
   documents: TDocument[];
   role: WorkspaceRole;
@@ -28,6 +32,23 @@ export function treeDepth(path: string) {
   return Math.max(0, path.split("/").filter(Boolean).length - 1);
 }
 
+function formatStoredPath(path: string) {
+  const segments = path.split("/").filter(Boolean);
+  return segments.length ? segments.join(" / ") : "/";
+}
+
+function fallbackPathSegment(path: string, fallbackLabel: string) {
+  return path.split("/").filter(Boolean).at(-1) ?? fallbackLabel;
+}
+
+function folderNameLabel(folder: Pick<Folder, "name" | "path">, fallbackLabel: string) {
+  return folder.name.trim() || fallbackPathSegment(folder.path, fallbackLabel);
+}
+
+function joinDisplayPath(parentDisplayPath: string, label: string) {
+  return parentDisplayPath === "/" ? label : `${parentDisplayPath} / ${label}`;
+}
+
 export function documentDisplayLabel(
   document: Pick<Document, "title" | "path">,
   fallbackLabel = "Untitled",
@@ -35,11 +56,92 @@ export function documentDisplayLabel(
   return document.title.trim() || fallbackLabel;
 }
 
-export function documentActionLabel(
-  document: Pick<Document, "title" | "path">,
+export function buildFolderDisplayPathMap<TFolder extends DisplayPathFolder>(
+  folders: TFolder[],
+  fallbackLabel = "Untitled folder",
+) {
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const folderDisplayPaths = new Map<string, string>();
+  const resolvedFolderDisplayPaths = new Map<string, ResolvedFolderDisplayPath>();
+  const resolvingFolderIds = new Set<string>();
+
+  function resolveFolderDisplayPath(folder: TFolder): ResolvedFolderDisplayPath {
+    const cachedDisplayPath = resolvedFolderDisplayPaths.get(folder.id);
+    if (cachedDisplayPath) {
+      return cachedDisplayPath;
+    }
+
+    if (resolvingFolderIds.has(folder.id)) {
+      return { path: formatStoredPath(folder.path), valid: false };
+    }
+
+    resolvingFolderIds.add(folder.id);
+
+    const label = folderNameLabel(folder, fallbackLabel);
+    const parentFolder = folder.parentFolderId ? foldersById.get(folder.parentFolderId) : null;
+    const displayPath: ResolvedFolderDisplayPath = ((): ResolvedFolderDisplayPath => {
+      if (!folder.parentFolderId) {
+        return { path: label, valid: true };
+      }
+
+      if (!parentFolder) {
+        return { path: formatStoredPath(folder.path), valid: false };
+      }
+
+      const parentDisplayPath: ResolvedFolderDisplayPath = resolveFolderDisplayPath(parentFolder);
+      return parentDisplayPath.valid
+        ? { path: joinDisplayPath(parentDisplayPath.path, label), valid: true }
+        : { path: formatStoredPath(folder.path), valid: false };
+    })();
+
+    resolvingFolderIds.delete(folder.id);
+    resolvedFolderDisplayPaths.set(folder.id, displayPath);
+
+    if (displayPath.valid) {
+      folderDisplayPaths.set(folder.id, displayPath.path);
+    }
+
+    return displayPath;
+  }
+
+  for (const folder of folders) {
+    resolveFolderDisplayPath(folder);
+  }
+
+  return folderDisplayPaths;
+}
+
+export function folderDisplayPath(
+  folder: Pick<Folder, "id" | "path">,
+  folderDisplayPaths: Map<string, string>,
+) {
+  return folderDisplayPaths.get(folder.id) ?? formatStoredPath(folder.path);
+}
+
+export function documentDisplayPath(
+  document: Pick<Document, "folderId" | "title" | "path">,
+  folderDisplayPaths: Map<string, string>,
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
+
+  if (!document.folderId) {
+    return label;
+  }
+
+  const parentDisplayPath = folderDisplayPaths.get(document.folderId);
+  return parentDisplayPath ? joinDisplayPath(parentDisplayPath, label) : formatStoredPath(document.path);
+}
+
+export function documentActionLabel(
+  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  if (document.displayPath && document.displayPath !== label) {
+    return `${label} · ${document.displayPath}`;
+  }
+
   const rootPath = `/${slugifyTitle(label)}`;
   return document.path === rootPath ? label : `${label} · ${document.path}`;
 }

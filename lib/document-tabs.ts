@@ -2,6 +2,7 @@ export type DocumentTabDocument = {
   id: string;
   title: string;
   path: string;
+  displayPath?: string;
 };
 
 export type DocumentTab = {

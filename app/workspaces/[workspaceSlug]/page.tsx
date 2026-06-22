@@ -18,7 +18,13 @@ import {
   highestPermissionLevel,
 } from "@/lib/permissions/document";
 import { canWriteWorkspace } from "@/lib/permissions/workspace";
-import { countFolderChildren, filterReadableDocuments } from "@/lib/workspace-tree";
+import {
+  buildFolderDisplayPathMap,
+  countFolderChildren,
+  documentDisplayPath,
+  filterReadableDocuments,
+  folderDisplayPath,
+} from "@/lib/workspace-tree";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
   createFolderAction,
@@ -128,6 +134,7 @@ export default async function WorkspacePage({
     explicitDocumentIds,
     userPermissionsByDocumentId: userPermissionByDocumentId,
   });
+  const folderDisplayPaths = buildFolderDisplayPathMap(workspace.folders);
   const activeDocumentCountsByFolderId = workspace.documents.reduce<Record<string, number>>(
     (counts, document) => {
       if (!document.folderId) return counts;
@@ -268,6 +275,12 @@ export default async function WorkspacePage({
         id: selectedFolder.id,
         name: selectedFolder.name,
         path: selectedFolder.path,
+        displayPath: folderDisplayPath(selectedFolder, folderDisplayPaths),
+        childCount: countFolderChildren({
+          folderId: selectedFolder.id,
+          folders: workspace.folders,
+          documents: readableDocuments,
+        }),
       }
     : null;
 
@@ -283,12 +296,14 @@ export default async function WorkspacePage({
               parentFolderId: folder.parentFolderId,
               name: folder.name,
               path: folder.path,
+              displayPath: folderDisplayPath(folder, folderDisplayPaths),
             }))}
             documents={readableDocuments.map((document) => ({
               id: document.id,
               folderId: document.folderId,
               title: document.title,
               path: document.path,
+              displayPath: documentDisplayPath(document, folderDisplayPaths),
               contentText: document.contentText,
               tagNames: tagNamesByDocumentId.get(document.id) ?? [],
               canWrite: canWriteDocument({
@@ -322,6 +337,7 @@ export default async function WorkspacePage({
               id: document.id,
               title: document.title,
               path: document.path,
+              displayPath: documentDisplayPath(document, folderDisplayPaths),
             }))}
             selectedDocument={
               selectedDocument
@@ -329,6 +345,7 @@ export default async function WorkspacePage({
                     id: selectedDocument.id,
                     title: selectedDocument.title,
                     path: selectedDocument.path,
+                    displayPath: documentDisplayPath(selectedDocument, folderDisplayPaths),
                   }
                 : null
             }
@@ -344,16 +361,7 @@ export default async function WorkspacePage({
               />
             ) : selectedFolder ? (
               <FolderDetail
-                folder={{
-                  id: selectedFolder.id,
-                  name: selectedFolder.name,
-                  path: selectedFolder.path,
-                  childCount: countFolderChildren({
-                    folderId: selectedFolder.id,
-                    folders: workspace.folders,
-                    documents: readableDocuments,
-                  }),
-                }}
+                folder={selectedCenterFolder}
                 canWrite={canWrite}
               />
             ) : (
