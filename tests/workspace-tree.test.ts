@@ -76,6 +76,26 @@ describe("workspace tree helpers", () => {
       documentDisplayPathLabel(
         {
           title: "",
+          path: "/untitled",
+          displayPath: "",
+        },
+        "제목 없음",
+      ),
+    ).toBe("제목 없음");
+    expect(
+      documentActionLabel(
+        {
+          title: "",
+          path: "/untitled",
+          displayPath: "",
+        },
+        "제목 없음",
+      ),
+    ).toBe("제목 없음");
+    expect(
+      documentDisplayPathLabel(
+        {
+          title: "",
           path: "/engineering/runbooks/untitled",
           displayPath: "Engineering / Runbooks",
         },
@@ -101,6 +121,37 @@ describe("workspace tree helpers", () => {
         },
       ),
     ).toBeUndefined();
+  });
+
+  it("keeps stored path context when title display paths collide", () => {
+    expect(
+      documentDisplayDescription({
+        title: "Runbook",
+        path: "/runbook-2",
+        displayPath: "Runbook",
+      }),
+    ).toBe("/runbook-2");
+    expect(
+      documentActionLabel({
+        title: "Runbook",
+        path: "/runbook-2",
+        displayPath: "Runbook",
+      }),
+    ).toBe("Runbook · /runbook-2");
+    expect(
+      documentDisplayDescription({
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook-2",
+        displayPath: "Engineering / Runbooks / Runbook",
+      }),
+    ).toBe("Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2");
+    expect(
+      documentActionLabel({
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook-2",
+        displayPath: "Engineering / Runbooks / Runbook",
+      }),
+    ).toBe("Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2");
   });
 
   it("keeps stored path fallback when a display parent is missing", () => {

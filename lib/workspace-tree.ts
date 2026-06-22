@@ -41,6 +41,20 @@ function fallbackPathSegment(path: string, fallbackLabel: string) {
   return path.split("/").filter(Boolean).at(-1) ?? fallbackLabel;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function needsStoredPathDisambiguation(
+  document: Pick<Document, "title" | "path">,
+  fallbackLabel: string,
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  const storedLeaf = fallbackPathSegment(document.path, "");
+  const titleSlug = slugifyTitle(label);
+  return new RegExp(`^${escapeRegExp(titleSlug)}-\\d+$`).test(storedLeaf);
+}
+
 function folderNameLabel(folder: Pick<Folder, "name" | "path">, fallbackLabel: string) {
   return folder.name.trim() || fallbackPathSegment(folder.path, fallbackLabel);
 }
@@ -147,12 +161,16 @@ export function documentDisplayPathLabel(
   const label = documentDisplayLabel(document, fallbackLabel);
   const title = document.title.trim();
 
-  if (document.displayPath) {
+  if (document.displayPath !== undefined) {
     if (title) {
       return document.displayPath;
     }
 
-    return document.displayPath === "/" ? label : joinDisplayPath(document.displayPath, label);
+    if (!document.displayPath || document.displayPath === "/") {
+      return label;
+    }
+
+    return joinDisplayPath(document.displayPath, label);
   }
 
   if (!title && (document.path === "/" || document.path === "/untitled")) {
@@ -172,7 +190,12 @@ export function documentDisplayDescription(
 
   if (document.displayPath !== undefined) {
     const displayPath = documentDisplayPathLabel(document, fallbackLabel);
-    return displayPath === label ? undefined : displayPath;
+    const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
+    if (displayPath === label) {
+      return needsDisambiguation ? document.path : undefined;
+    }
+
+    return needsDisambiguation ? `${displayPath} · ${document.path}` : displayPath;
   }
 
   if (!title && (document.path === "/" || document.path === "/untitled")) {
@@ -194,7 +217,14 @@ export function documentActionLabel(
   const label = documentDisplayLabel(document, fallbackLabel);
   if (document.displayPath !== undefined) {
     const displayPath = documentDisplayPathLabel(document, fallbackLabel);
-    return displayPath === label ? label : `${label} · ${displayPath}`;
+    const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
+    if (displayPath === label) {
+      return needsDisambiguation ? `${label} · ${document.path}` : label;
+    }
+
+    return needsDisambiguation
+      ? `${label} · ${displayPath} · ${document.path}`
+      : `${label} · ${displayPath}`;
   }
 
   if (!document.title.trim() && (document.path === "/" || document.path === "/untitled")) {
