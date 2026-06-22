@@ -3,8 +3,10 @@ import {
   buildFolderDisplayPathMap,
   countFolderChildren,
   documentActionLabel,
+  documentDisplayDescription,
   documentDisplayLabel,
   documentDisplayPath,
+  documentDisplayPathLabel,
   folderDisplayPath,
   treeDepth,
 } from "@/lib/workspace-tree";
@@ -57,6 +59,48 @@ describe("workspace tree helpers", () => {
         folderDisplayPaths,
       ),
     ).toBe("Engineering / Runbooks / Contextual Retrieval");
+    expect(
+      documentDisplayPath(
+        {
+          folderId: "folder-runbooks",
+          title: "",
+          path: "/engineering/runbooks/untitled",
+        },
+        folderDisplayPaths,
+      ),
+    ).toBe("Engineering / Runbooks");
+  });
+
+  it("completes blank title display paths with the caller fallback label", () => {
+    expect(
+      documentDisplayPathLabel(
+        {
+          title: "",
+          path: "/engineering/runbooks/untitled",
+          displayPath: "Engineering / Runbooks",
+        },
+        "제목 없음",
+      ),
+    ).toBe("Engineering / Runbooks / 제목 없음");
+    expect(
+      documentActionLabel(
+        {
+          title: "",
+          path: "/engineering/runbooks/untitled",
+          displayPath: "Engineering / Runbooks",
+        },
+        "제목 없음",
+      ),
+    ).toBe("제목 없음 · Engineering / Runbooks / 제목 없음");
+    expect(
+      documentDisplayDescription(
+        {
+          title: "Welcome",
+          path: "/welcome",
+          displayPath: "Welcome",
+        },
+      ),
+    ).toBeUndefined();
   });
 
   it("keeps stored path fallback when a display parent is missing", () => {

@@ -3,7 +3,6 @@
 import { ArrowLeft, ArrowRight, Eye, Pencil } from "lucide-react";
 import { useDocumentViewMode, type DocumentViewMode } from "@/components/document-view-mode";
 import { useI18n } from "@/components/i18n-provider";
-import { formatWorkspacePath } from "@/lib/document-tabs";
 
 type DocumentToolbarProps = {
   path: string;
@@ -53,7 +52,7 @@ export function DocumentToolbar({
         </button>
       </div>
       <div className="max-w-[42vw] min-w-0 truncate text-center text-sm font-medium text-slate-500">
-        {formatWorkspacePath(path)}
+        {path}
       </div>
       <div className="flex items-center justify-self-end">
         {showModeToggle ? (

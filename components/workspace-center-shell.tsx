@@ -12,7 +12,8 @@ import {
 } from "@/components/document-view-mode";
 import { useI18n } from "@/components/i18n-provider";
 import { useDocumentTabs } from "@/components/use-document-tabs";
-import type { DocumentTabDocument } from "@/lib/document-tabs";
+import { formatWorkspacePath, type DocumentTabDocument } from "@/lib/document-tabs";
+import { documentDisplayPathLabel } from "@/lib/workspace-tree";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 type WorkspaceCenterShellProps = {
@@ -207,13 +208,17 @@ function WorkspaceCenterShellContent({
     setMode(nextMode);
   }
 
+  const selectedDocumentPath = selectedDocument
+    ? selectedDocument.displayPath !== undefined || !selectedDocument.title.trim()
+      ? documentDisplayPathLabel(selectedDocument, t("nav.untitledDocument"))
+      : formatWorkspacePath(selectedDocument.path)
+    : undefined;
+  const selectedFolderPath = selectedFolder
+    ? selectedFolder.displayPath ?? formatWorkspacePath(selectedFolder.path)
+    : undefined;
   const toolbarPath = isGraphView
     ? t("toolbar.graphView")
-    : selectedDocument?.displayPath ??
-      selectedDocument?.path ??
-      selectedFolder?.displayPath ??
-      selectedFolder?.path ??
-      "/";
+    : selectedDocumentPath ?? selectedFolderPath ?? "/";
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">

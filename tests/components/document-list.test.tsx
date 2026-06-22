@@ -1099,6 +1099,47 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
+  it("uses the selected Korean display language for blank document display paths", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    renderList({
+      folders: [
+        { ...folderFixtures[0], displayPath: "Engineering" },
+        { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+      ],
+      documents: [
+        {
+          id: "doc-empty-title",
+          folderId: "folder-runbooks",
+          title: "",
+          path: "/engineering/runbooks/untitled",
+          displayPath: "Engineering / Runbooks",
+          contentText: "",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+      selectedDocumentId: null,
+    });
+
+    expect((await screen.findAllByText("Engineering / Runbooks / 제목 없음")).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getAllByRole("button", {
+        name: "제목 없음 · Engineering / Runbooks / 제목 없음 작업 열기",
+      }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Engineering / Runbooks / Untitled")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "검색" }));
+    fireEvent.change(screen.getByLabelText("문서 검색"), {
+      target: { value: "제목 없음" },
+    });
+
+    expect(screen.getByText("1개 결과")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /제목 없음/ })).toBeTruthy();
+  });
+
   it("closes the workspace settings panel", () => {
     renderList();
 
