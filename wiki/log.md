@@ -27,6 +27,14 @@ links:
 - Source evidence: GitHub issue #131, `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`, user confirmation that `Document.title` is the file-name display source.
 - Verification: spec self-review; baseline `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 74 files / 817 tests before the spec/wiki edit.
 
+## 2026-06-22T23:35:00+0900 - planning
+
+- Result: Issue #131 implementation plan was written for the title-based display path UX.
+- Coverage: The plan decomposes the change into display-path helpers, server prop wiring, center toolbar rendering, sidebar/search/favorites/action labels, settings import destination labels, folder detail, wiki sync, verification, push, and PR review workflow.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`.
+- Verification: plan self-review for spec coverage, red-flag scan, and type consistency.
+
 ## 2026-06-21T21:16:00+0900 - implementation
 
 - Result: Issue #126 Task 5 localized the remaining major workspace product chrome for English/Korean display language switching.
