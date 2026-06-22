@@ -121,16 +121,70 @@ export function folderDisplayPath(
 export function documentDisplayPath(
   document: Pick<Document, "folderId" | "title" | "path">,
   folderDisplayPaths: Map<string, string>,
-  fallbackLabel = "Untitled",
 ) {
-  const label = documentDisplayLabel(document, fallbackLabel);
+  const label = document.title.trim();
 
   if (!document.folderId) {
     return label;
   }
 
   const parentDisplayPath = folderDisplayPaths.get(document.folderId);
-  return parentDisplayPath ? joinDisplayPath(parentDisplayPath, label) : formatStoredPath(document.path);
+  if (!parentDisplayPath) {
+    return label ? formatStoredPath(document.path) : "";
+  }
+
+  if (!label) {
+    return parentDisplayPath;
+  }
+
+  return joinDisplayPath(parentDisplayPath, label);
+}
+
+export function documentDisplayPathLabel(
+  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  const title = document.title.trim();
+
+  if (document.displayPath) {
+    if (title) {
+      return document.displayPath;
+    }
+
+    return document.displayPath === "/" ? label : joinDisplayPath(document.displayPath, label);
+  }
+
+  if (!title && (document.path === "/" || document.path === "/untitled")) {
+    return label;
+  }
+
+  const rootPath = `/${slugifyTitle(label)}`;
+  return document.path === rootPath ? label : formatStoredPath(document.path);
+}
+
+export function documentDisplayDescription(
+  document: Pick<Document, "title" | "path"> & { displayPath?: string },
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  const title = document.title.trim();
+
+  if (document.displayPath !== undefined) {
+    const displayPath = documentDisplayPathLabel(document, fallbackLabel);
+    return displayPath === label ? undefined : displayPath;
+  }
+
+  if (!title && (document.path === "/" || document.path === "/untitled")) {
+    return undefined;
+  }
+
+  const rootPath = `/${slugifyTitle(label)}`;
+  if (document.path === rootPath) {
+    return undefined;
+  }
+
+  return document.path;
 }
 
 export function documentActionLabel(
@@ -138,8 +192,13 @@ export function documentActionLabel(
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
-  if (document.displayPath && document.displayPath !== label) {
-    return `${label} · ${document.displayPath}`;
+  if (document.displayPath !== undefined) {
+    const displayPath = documentDisplayPathLabel(document, fallbackLabel);
+    return displayPath === label ? label : `${label} · ${displayPath}`;
+  }
+
+  if (!document.title.trim() && (document.path === "/" || document.path === "/untitled")) {
+    return label;
   }
 
   const rootPath = `/${slugifyTitle(label)}`;

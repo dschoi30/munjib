@@ -10,7 +10,11 @@ import type {
   OpenMenuHandler,
   ToggleFavoriteDocumentHandler,
 } from "@/components/document-navigation/types";
-import { documentActionLabel, documentDisplayLabel } from "@/lib/workspace-tree";
+import {
+  documentActionLabel,
+  documentDisplayDescription,
+  documentDisplayLabel,
+} from "@/lib/workspace-tree";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
 export function DocumentLinkRow({
@@ -41,8 +45,10 @@ export function DocumentLinkRow({
   const { t } = useI18n();
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
-  const displayLabel = documentDisplayLabel(document, t("nav.untitledDocument"));
-  const actionLabel = documentActionLabel(document, t("nav.untitledDocument"));
+  const fallbackLabel = t("nav.untitledDocument");
+  const displayLabel = documentDisplayLabel(document, fallbackLabel);
+  const rowDescription = description ?? documentDisplayDescription(document, fallbackLabel);
+  const actionLabel = documentActionLabel(document, fallbackLabel);
   const rowClassName = selected
     ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
     : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
@@ -55,8 +61,8 @@ export function DocumentLinkRow({
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
         <span className="block truncate">{displayLabel}</span>
-        {description ? (
-          <span className="mt-0.5 block truncate text-[11px] text-slate-500">{description}</span>
+        {rowDescription ? (
+          <span className="mt-0.5 block truncate text-[11px] text-slate-500">{rowDescription}</span>
         ) : null}
       </Link>
       <button

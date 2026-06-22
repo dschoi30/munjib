@@ -49,7 +49,6 @@ export function DocumentSection({
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
             selected={document.id === selectedDocumentId}
-            description={document.displayPath ?? document.path}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}
