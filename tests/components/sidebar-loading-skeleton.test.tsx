@@ -18,6 +18,8 @@ describe("sidebar loading skeletons", () => {
 
     const loading = screen.getByTestId("left-sidebar-loading");
     expect(loading.getAttribute("aria-hidden")).toBe("true");
+    expect(loading.className).not.toContain("pt-2");
+    expect(loading.className).not.toContain("space-y-4");
     expect(screen.getByTestId("left-sidebar-loading-chrome").className).toContain("h-11");
     expect(screen.getByTestId("left-sidebar-loading-toolbar").className).toContain("justify-between");
     expect(loading.textContent).toBe("");
@@ -103,6 +105,7 @@ describe("sidebar loading skeletons", () => {
 
     const loading = screen.getByTestId("document-navigation-loading");
     expect(loading.getAttribute("aria-hidden")).toBe("true");
+    expect(loading.className).not.toContain("space-y-4");
     expect(within(loading).getAllByTestId("document-row-skeleton").length).toBe(6);
     expect(within(loading).getAllByTestId("folder-row-skeleton").length).toBe(3);
   });

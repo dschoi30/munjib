@@ -32,7 +32,6 @@ export function WorkspaceSidebarLoadingSkeleton({ side }: { side: SidebarSide })
     <div
       aria-hidden="true"
       data-testid="left-sidebar-loading"
-      className="space-y-4 pt-2"
     >
       <div className="sticky top-0 z-20 bg-muted pb-1">
         <div data-testid="left-sidebar-loading-chrome" className="flex h-11 items-center gap-2">
@@ -61,7 +60,6 @@ export function DocumentNavigationBodySkeleton() {
     <div
       aria-hidden="true"
       data-testid="document-navigation-loading"
-      className="space-y-4"
     >
       <section className="mb-4 space-y-2">
         <Skeleton className="h-3 w-16 rounded-full" />

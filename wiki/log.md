@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-22
-source_count: 286
+source_count: 287
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:19:11+0900 - implementation
+
+- Result: Issue #129 sidebar skeleton spacing was corrected to match the loaded sidebar rhythm.
+- Coverage: Left sidebar loading root no longer adds extra top padding or inter-slot spacing, and `DocumentNavigationBodySkeleton` no longer carries its own outer `space-y-4` gap. The real sidebar still owns the vertical rhythm through the loaded body wrapper and section spacing, while the right sidebar loading contract remains unchanged.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed against the extra left-root and body-level spacing classes; green runs `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed.
 
 ## 2026-06-22T23:13:11+0900 - implementation
 
