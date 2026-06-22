@@ -122,6 +122,45 @@ export function buildFolderDisplayPathMap<TFolder extends DisplayPathFolder>(
     resolveFolderDisplayPath(folder);
   }
 
+  const displayPathCounts = new Map<string, number>();
+  for (const displayPath of folderDisplayPaths.values()) {
+    displayPathCounts.set(displayPath, (displayPathCounts.get(displayPath) ?? 0) + 1);
+  }
+
+  const duplicateDisplayPathFolderIds = new Set<string>();
+  for (const [folderId, displayPath] of folderDisplayPaths) {
+    if ((displayPathCounts.get(displayPath) ?? 0) > 1) {
+      duplicateDisplayPathFolderIds.add(folderId);
+    }
+  }
+
+  function hasDuplicateDisplayPathAncestor(folder: TFolder) {
+    let currentFolder: TFolder | undefined = folder;
+    const seenFolderIds = new Set<string>();
+
+    while (currentFolder) {
+      if (seenFolderIds.has(currentFolder.id)) {
+        return false;
+      }
+      if (duplicateDisplayPathFolderIds.has(currentFolder.id)) {
+        return true;
+      }
+
+      seenFolderIds.add(currentFolder.id);
+      currentFolder = currentFolder.parentFolderId
+        ? foldersById.get(currentFolder.parentFolderId)
+        : undefined;
+    }
+
+    return false;
+  }
+
+  for (const folder of folders) {
+    if (folderDisplayPaths.has(folder.id) && hasDuplicateDisplayPathAncestor(folder)) {
+      folderDisplayPaths.set(folder.id, formatStoredPath(folder.path));
+    }
+  }
+
   return folderDisplayPaths;
 }
 
