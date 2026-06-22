@@ -2,10 +2,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 type SidebarSide = "left" | "right";
 
-const leftRowWidths = ["w-28", "w-20", "w-24", "w-32", "w-24", "w-36", "w-28", "w-32", "w-24"];
-const rightRowWidths = ["w-20", "w-32", "w-28", "w-36", "w-24"];
-const bodyRowWidths = ["w-20", "w-32", "w-28", "w-36", "w-24", "w-32", "w-28", "w-36"];
-
 export function WorkspaceSidebarLoadingSkeleton({ side }: { side: SidebarSide }) {
   if (side === "right") {
     return (
@@ -14,16 +10,18 @@ export function WorkspaceSidebarLoadingSkeleton({ side }: { side: SidebarSide })
         data-testid="right-sidebar-loading"
         className="space-y-4 pt-2"
       >
-        <div className="flex h-11 items-center gap-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-8 w-8" />
-          ))}
-          <Skeleton className="ml-auto h-8 w-8" />
+        <div data-testid="right-sidebar-loading-toolbar" className="flex h-11 items-center gap-1">
+          <ToolbarIconSkeleton />
+          <ToolbarIconSkeleton />
+          <ToolbarIconSkeleton />
+          <ToolbarIconSkeleton />
+          <ToolbarIconSkeleton className="ml-auto" />
         </div>
+
         <div className="space-y-2">
           <Skeleton className="h-3 w-16 rounded-full" />
-          {rightRowWidths.map((width, index) => (
-            <SkeletonRow key={index} width={width} dot />
+          {Array.from({ length: 5 }).map((_, index) => (
+            <MetadataRowSkeleton key={index} />
           ))}
         </div>
       </div>
@@ -36,19 +34,23 @@ export function WorkspaceSidebarLoadingSkeleton({ side }: { side: SidebarSide })
       data-testid="left-sidebar-loading"
       className="space-y-4 pt-2"
     >
-      <div className="flex h-11 items-center gap-2">
-        <Skeleton className="h-3 w-36 rounded-full" />
-        <Skeleton className="ml-auto h-8 w-8" />
+      <div className="sticky top-0 z-20 bg-muted pb-1">
+        <div data-testid="left-sidebar-loading-chrome" className="flex h-11 items-center gap-2">
+          <Skeleton className="h-3 w-36 rounded-full" />
+          <Skeleton className="ml-auto h-8 w-8" />
+        </div>
+        <div
+          data-testid="left-sidebar-loading-toolbar"
+          className="mb-4 flex h-11 items-center justify-between"
+        >
+          {Array.from({ length: 6 }).map((_, index) => (
+            <ToolbarIconSkeleton key={index} />
+          ))}
+        </div>
       </div>
-      <div className="flex h-11 items-center justify-between">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <Skeleton key={index} className="h-8 w-8" />
-        ))}
-      </div>
-      <div className="space-y-2">
-        {leftRowWidths.map((width, index) => (
-          <SkeletonRow key={index} width={width} square={index > 2} />
-        ))}
+
+      <div className="pt-3">
+        <DocumentNavigationBodySkeleton />
       </div>
     </div>
   );
@@ -61,18 +63,22 @@ export function DocumentNavigationBodySkeleton() {
       data-testid="document-navigation-loading"
       className="space-y-4"
     >
-      <section className="space-y-2">
+      <section className="mb-4 space-y-2">
         <Skeleton className="h-3 w-16 rounded-full" />
-        {bodyRowWidths.slice(0, 3).map((width, index) => (
-          <SkeletonRow key={index} width={width} square />
-        ))}
+        <DocumentRowSkeleton />
+        <DocumentRowSkeleton />
+        <DocumentRowSkeleton />
       </section>
-      <section className="space-y-2">
+
+      <nav className="space-y-1">
         <Skeleton className="h-3 w-20 rounded-full" />
-        {bodyRowWidths.map((width, index) => (
-          <SkeletonRow key={index} width={width} square />
-        ))}
-      </section>
+        <FolderRowSkeleton />
+        <DocumentRowSkeleton />
+        <FolderRowSkeleton />
+        <DocumentRowSkeleton />
+        <DocumentRowSkeleton />
+        <FolderRowSkeleton />
+      </nav>
     </div>
   );
 }
@@ -89,20 +95,37 @@ export function CollapsedPanelLoadingSkeleton({ side }: { side: SidebarSide }) {
   );
 }
 
-function SkeletonRow({
-  width,
-  dot = false,
-  square = false,
-}: {
-  width: string;
-  dot?: boolean;
-  square?: boolean;
-}) {
+function ToolbarIconSkeleton({ className }: { className?: string }) {
+  return <Skeleton data-testid="sidebar-toolbar-icon-skeleton" className={`h-8 w-8 ${className ?? ""}`.trim()} />;
+}
+
+function DocumentRowSkeleton() {
   return (
-    <div data-testid="skeleton-row" className="flex items-center gap-2">
-      {dot ? <Skeleton className="h-2.5 w-2.5 rounded-full" /> : null}
-      {square ? <Skeleton className="h-4 w-4" /> : null}
-      <Skeleton className={`h-2.5 rounded-full ${width}`} />
+    <div data-testid="document-row-skeleton" className="flex min-w-0 rounded-md px-2 py-1.5">
+      <Skeleton data-testid="document-row-text-skeleton" className="h-[13px] w-full rounded-full" />
+    </div>
+  );
+}
+
+function FolderRowSkeleton() {
+  return (
+    <div
+      data-testid="folder-row-skeleton"
+      className="flex w-full items-center gap-1 rounded-md px-2 py-1.5"
+    >
+      <Skeleton
+        data-testid="folder-row-icon-skeleton"
+        className="h-4 w-4 shrink-0 rounded"
+      />
+      <Skeleton data-testid="folder-row-text-skeleton" className="h-[13px] w-full rounded-full" />
+    </div>
+  );
+}
+
+function MetadataRowSkeleton() {
+  return (
+    <div data-testid="metadata-row-skeleton" className="flex w-full min-w-0 rounded px-2 py-1">
+      <Skeleton className="h-2.5 w-full rounded-full" />
     </div>
   );
 }

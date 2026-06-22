@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-22
-source_count: 285
+source_count: 286
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:13:11+0900 - implementation
+
+- Result: Issue #129 sidebar skeleton alignment now matches loaded sidebar slots.
+- Coverage: Left sidebar loading chrome and toolbar now map to the real title-bar, create-toolbar, and body slots; right metadata loading uses a compact toolbar with the close icon pushed to the end; document rows are uniform full-width text slots with no icon placeholder; folder rows keep the chevron icon slot and full-width text; document navigation body uses recents plus all-documents sections with the expected row pattern.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/sidebar-loading-skeleton.tsx`, `tests/components/sidebar-loading-skeleton.test.tsx`.
+- Verification: red run `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` failed against the previous generic row helper; green runs `pnpm exec vitest run tests/components/sidebar-loading-skeleton.test.tsx` and `pnpm exec vitest run tests/components/app-shell.test.tsx tests/components/document-list.test.tsx tests/components/sidebar-loading-skeleton.test.tsx` passed.
 
 ## 2026-06-22T23:09:51+0900 - plan
 
