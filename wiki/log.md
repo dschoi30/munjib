@@ -53,11 +53,11 @@ links:
 
 ## 2026-06-23T00:59:23+0900 - review follow-up
 
-- Result: PR #132 review feedback fixed display-path edge cases for root blank titles and duplicate title collisions.
-- Coverage: `documentDisplayPathLabel()` treats `displayPath: ""` as an intentional computed display path so root blank-title documents render the current UI language fallback instead of slugified stored paths. When a duplicate title receives a suffixed stored slug such as `runbook-2`, visible descriptions and action labels append the stored `Document.path` as secondary context while keeping the title-based display path primary.
+- Result: PR #132 review feedback fixed display-path edge cases for root blank titles and duplicate document/folder collisions.
+- Coverage: `documentDisplayPathLabel()` treats `displayPath: ""` as an intentional computed display path so root blank-title documents render the current UI language fallback instead of slugified stored paths. When a duplicate document title receives a suffixed stored slug such as `runbook-2`, visible descriptions and action labels append the stored `Document.path` as secondary context while keeping the title-based display path primary. When duplicate folder names collapse to the same folder display path, those folder subtrees fall back to stored folder paths so downstream picker/detail/favorites labels stay distinguishable.
 - Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
 - Source evidence: PR #132 review comments, `lib/workspace-tree.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
-- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 109 tests; `pnpm exec tsc --noEmit --pretty false` passed.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 110 tests; `pnpm exec tsc --noEmit --pretty false` passed; escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 77 files / 852 tests.
 
 ## 2026-06-22T23:23:24+0900 - implementation
 

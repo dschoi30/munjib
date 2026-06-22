@@ -167,6 +167,45 @@ describe("workspace tree helpers", () => {
     ).toBe("engineering / runbooks / contextual-retrieval");
   });
 
+  it("falls back to stored folder paths when folder display paths collide", () => {
+    const folders = [
+      { id: "folder-ops", parentFolderId: null, name: "Ops", path: "/ops" },
+      {
+        id: "folder-runbook",
+        parentFolderId: "folder-ops",
+        name: "Runbook",
+        path: "/ops/runbook",
+      },
+      {
+        id: "folder-runbook-2",
+        parentFolderId: "folder-ops",
+        name: "Runbook",
+        path: "/ops/runbook-2",
+      },
+      {
+        id: "folder-child",
+        parentFolderId: "folder-runbook-2",
+        name: "Child",
+        path: "/ops/runbook-2/child",
+      },
+    ];
+    const folderDisplayPaths = buildFolderDisplayPathMap(folders);
+
+    expect(folderDisplayPath(folders[1], folderDisplayPaths)).toBe("ops / runbook");
+    expect(folderDisplayPath(folders[2], folderDisplayPaths)).toBe("ops / runbook-2");
+    expect(folderDisplayPath(folders[3], folderDisplayPaths)).toBe("ops / runbook-2 / child");
+    expect(
+      documentDisplayPath(
+        {
+          folderId: "folder-runbook-2",
+          title: "Deploy",
+          path: "/ops/runbook-2/deploy",
+        },
+        folderDisplayPaths,
+      ),
+    ).toBe("ops / runbook-2 / Deploy");
+  });
+
   it("keeps descendant folders and documents on stored paths when a folder parent is missing", () => {
     const folders = [
       {
