@@ -7,6 +7,10 @@ import { useLeftPanel, useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  DocumentNavigationBodySkeleton,
+  WorkspaceSidebarLoadingSkeleton,
+} from "@/components/sidebar-loading-skeleton";
 import type {
   CreateDocumentAction,
   CreateDocumentFormAction,
@@ -93,7 +97,7 @@ export function DocumentList({
   defaultChatProvider: "ollama" | "openai" | "openai-compatible";
   isGraphView?: boolean;
 }) {
-  const { t } = useI18n();
+  const { isHydrated: languageHydrated, t } = useI18n();
   const router = useRouter();
   const leftPanel = useLeftPanel();
   const tagSearch = useTagSearch();
@@ -234,6 +238,12 @@ export function DocumentList({
     };
   }, [closeWorkspaceMenu, workspaceMenuOpen]);
 
+  const activePanelHydrated = activePanelHydratedWorkspace === workspaceSlug;
+
+  if (!languageHydrated) {
+    return <WorkspaceSidebarLoadingSkeleton side="left" />;
+  }
+
   return (
     <div>
       <div data-testid="document-list-sticky-chrome" className="sticky top-0 z-20 bg-muted pb-1">
@@ -295,27 +305,31 @@ export function DocumentList({
         />
       </div>
       <div data-testid="document-list-navigation-body" className="pt-3">
-        <DocumentNavigation
-          workspaceSlug={workspaceSlug}
-          folders={folders}
-          documents={documents}
-          folderDocumentCounts={folderDocumentCounts}
-          activePanel={activePanel}
-          isWorkspaceMenuOpen={workspaceMenuOpen}
-          searchQuery={searchQuery}
-          onOpenSearch={openSearch}
-          onOpenDocuments={openDocuments}
-          onSearchQueryChange={setSearchQuery}
-          selectedFolderId={selectedFolderId}
-          canWrite={canWrite}
-          createAction={createAction}
-          createFolderAction={createFolderAction}
-          renameFolderAction={renameFolderAction}
-          archiveFolderAction={archiveFolderAction}
-          archiveDocumentAction={archiveDocumentAction}
-          folderError={folderError}
-          selectedDocumentId={selectedDocumentId}
-        />
+        {activePanelHydrated ? (
+          <DocumentNavigation
+            workspaceSlug={workspaceSlug}
+            folders={folders}
+            documents={documents}
+            folderDocumentCounts={folderDocumentCounts}
+            activePanel={activePanel}
+            isWorkspaceMenuOpen={workspaceMenuOpen}
+            searchQuery={searchQuery}
+            onOpenSearch={openSearch}
+            onOpenDocuments={openDocuments}
+            onSearchQueryChange={setSearchQuery}
+            selectedFolderId={selectedFolderId}
+            canWrite={canWrite}
+            createAction={createAction}
+            createFolderAction={createFolderAction}
+            renameFolderAction={renameFolderAction}
+            archiveFolderAction={archiveFolderAction}
+            archiveDocumentAction={archiveDocumentAction}
+            folderError={folderError}
+            selectedDocumentId={selectedDocumentId}
+          />
+        ) : (
+          <DocumentNavigationBodySkeleton />
+        )}
       </div>
       {settingsOpen ? (
         <WorkspaceSettingsPanel
