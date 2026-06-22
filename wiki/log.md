@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-21
-source_count: 283
+updated: 2026-06-22
+source_count: 284
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:00:05+0900 - design
+
+- Result: Issue #129 sidebar skeleton alignment follow-up design was recorded after visual brainstorming.
+- Coverage: The follow-up fixes skeleton placement to loaded sidebar slots: left workspace chrome, create toolbar, navigation body offset, section rhythm, document row text slots, folder chevron slots, right metadata toolbar spacing, and metadata text rows. Document row skeletons are intentionally uniform full-width bars with no icon placeholder; folder rows keep only the real chevron icon slot.
+- Pages: [[Munjib]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/specs/2026-06-22-sidebar-skeleton-alignment-design.md`, user-approved visual companion v2.
+- Verification: spec self-review.
 
 ## 2026-06-21T23:57:58+0900 - implementation
 
