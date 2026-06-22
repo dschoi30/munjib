@@ -114,7 +114,7 @@ function SearchResultRow({
       document={document}
       isFavorite={isFavorite}
       selected={selected}
-      description={document.path}
+      description={document.displayPath ?? document.path}
       openMenuId={openMenuId}
       onOpenMenu={onOpenMenu}
       onToggleFavorite={onToggleFavorite}

@@ -93,13 +93,13 @@ Wiki link reconciliation은 path-qualified target을 document `path`로 우선 r
 
 Workspace 화면은 active folder와 readable active document를 함께 읽어 경로 기준 tree row로 표시한다. Sidebar의 folder row는 document처럼 editor target을 바꾸는 link가 아니라 accordion toggle button이다. Folder row를 열고 닫아도 현재 editor document는 유지된다.
 
-Issue #29 구현은 path model을 center navigation toolbar에 노출한다. 기존 toolbar는 `Document.path`와 `Folder.path`를 그대로 보여주었지만, Issue #131 설계는 stored slug path와 사용자-facing display path를 분리한다. `Document.path`와 `Folder.path`는 DB uniqueness, folder/document move, path-qualified wiki link, graph/RAG/audit metadata의 내부 identity로 유지하고, toolbar/search/sidebar 같은 일반 UX path label은 folder `name`과 `Document.title`을 조합한 display-only path를 보여준다. 예를 들어 stored path `/operations/contextual-retrieval`은 `Operations / Contextual Retrieval`처럼 표시된다. 이 표시 정책은 folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
+Issue #29 구현은 path model을 center navigation toolbar에 노출한다. 기존 toolbar는 `Document.path`와 `Folder.path`를 그대로 보여주었지만, Issue #131 구현은 stored slug path와 사용자-facing display path를 분리한다. `Document.path`와 `Folder.path`는 DB uniqueness, folder/document move, path-qualified wiki link, graph/RAG/audit metadata의 내부 identity로 유지하고, toolbar/search/sidebar/settings/folder detail 같은 일반 UX path label은 folder `name`과 `Document.title`을 조합한 display-only path를 보여준다. 예를 들어 stored path `/operations/contextual-retrieval`은 `Operations / Contextual Retrieval`처럼 표시된다. 이 표시 정책은 folder/document path 계산 규칙이나 DB schema를 바꾸지 않는다.
 
 Folder row는 folder icon 대신 Obsidian reference에 가까운 disclosure chevron icon을 사용한다. 펼쳐진 folder의 하위 row group은 chevron 아래로 이어지는 왼쪽 세로선을 표시해 folder/document 관계를 시각적으로 묶는다.
 
 `New folder`는 더 이상 folder-like document를 만들지 않고 `createFolderAction()`을 통해 `Folder` row를 생성한다. Sidebar top-level `New document`와 `New folder`는 현재 선택 folder id를 hidden input으로 넘기지 않고 항상 workspace root에 생성한다. Folder 안의 새 folder/document 생성은 folder row action menu의 `Add folder`와 `Add document`가 담당한다.
 
-문서 navigation row는 duplicate title이 있어도 화면에는 항상 document `title`만 표시한다. Duplicate title 구분이 필요한 action label이나 내부 identity는 `Document.path`를 사용할 수 있지만, sidebar visible label은 `Title · /folder/title`처럼 path context를 붙이지 않는다. Sidebar tree는 같은 parent 안에서 folder를 document보다 먼저 보여주고, folder name과 document title은 각각 오름차순으로 정렬한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, Issue #79와 Issue #83 이후 선택 history를 workspace-scoped localStorage에 저장해 최근 선택 순서를 유지한다. 현재 선택 document id는 reload/session 보존을 위해 history에는 저장하지만 visible Recents에서는 제외하므로, 다른 document로 이동한 뒤에야 직전 selected document가 목록 맨 앞에 보인다. Missing/unreadable id는 filtered out되며, history가 부족하면 현재 선택 document를 제외한 readable document 순서로 채운다. Favorites localStorage 상태와는 무관하다. 전체 tree section은 `Documents` heading 아래에 표시한다.
+문서 navigation row는 duplicate title이 있어도 primary row text에는 document `title`을 표시한다. Duplicate title 구분이 필요한 visible description과 action label은 Issue #131 이후 `Document.path` 대신 folder `name`과 `Document.title` 기반 display path를 우선 사용하고, display path가 없을 때만 stored path로 fallback한다. Stored path는 여전히 search compatibility와 internal identity로 유지된다. Sidebar tree는 같은 parent 안에서 folder를 document보다 먼저 보여주고, folder name과 document title은 각각 오름차순으로 정렬한다. Sidebar의 `Recents` section은 최대 5개 document만 표시하고, Issue #79와 Issue #83 이후 선택 history를 workspace-scoped localStorage에 저장해 최근 선택 순서를 유지한다. 현재 선택 document id는 reload/session 보존을 위해 history에는 저장하지만 visible Recents에서는 제외하므로, 다른 document로 이동한 뒤에야 직전 selected document가 목록 맨 앞에 보인다. Missing/unreadable id는 filtered out되며, history가 부족하면 현재 선택 document를 제외한 readable document 순서로 채운다. Favorites localStorage 상태와는 무관하다. 전체 tree section은 `Documents` heading 아래에 표시한다.
 
 Seed data는 root 문서 호환성을 유지하면서 `/operations` folder와 `/operations/operations-runbook` 문서를 추가한다. 이 seed는 folder tree와 folder-scoped document creation을 로컬/e2e 환경에서 확인하기 위한 기준 데이터다.
 
@@ -118,6 +118,7 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 - `docs/superpowers/plans/2026-05-05-real-folder-hierarchy.md`
 - `components/document-navigation.tsx`
 - `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`
+- `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`
 - `tests/components/document-list.test.tsx`
 - `lib/folders/path.ts`
 - `lib/folders/service.ts`
@@ -133,9 +134,15 @@ Issue #26은 folder/document row interaction을 보강한다. Folder row와 docu
 - `tests/wiki-links/reconcile.test.ts`
 - `tests/wiki-links/preview.test.ts`
 - `lib/workspace-tree.ts`
+- `tests/workspace-tree.test.ts`
 - `components/folder-detail.tsx`
 - `components/document-list.tsx`
 - `components/document-navigation.tsx`
+- `components/document-navigation/document-section.tsx`
+- `components/document-navigation/search-panel.tsx`
+- `components/document-navigation/favorites-panel.tsx`
+- `components/workspace-settings-panel.tsx`
+- `tests/components/workspace-settings-panel.test.tsx`
 - `wiki/designs/obsidian1.png`
 - `docs/superpowers/specs/2026-05-11-document-tabs-navigation-toolbar-design.md`
 - `app/workspaces/[workspaceSlug]/actions.ts`

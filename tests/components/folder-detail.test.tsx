@@ -15,6 +15,24 @@ function renderWithI18n(ui: React.ReactElement) {
 }
 
 describe("FolderDetail", () => {
+  it("shows the folder display path instead of the stored slug path", () => {
+    renderWithI18n(
+      <FolderDetail
+        folder={{
+          id: "folder-runbooks",
+          name: "Runbooks",
+          path: "/engineering/runbooks",
+          displayPath: "Engineering / Runbooks",
+          childCount: 0,
+        }}
+        canWrite
+      />,
+    );
+
+    expect(screen.getByText("Engineering / Runbooks")).toBeTruthy();
+    expect(screen.queryByText("/engineering/runbooks")).toBeNull();
+  });
+
   it("uses the selected Korean display language for folder states", async () => {
     window.localStorage.setItem("munjib:language", "ko");
 

@@ -43,7 +43,9 @@ export function FavoriteFolderRow({
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
         <span className="block truncate">{folder.name}</span>
-        <span className="mt-1 block truncate text-[11px] text-slate-500">{folder.path}</span>
+        <span className="mt-1 block truncate text-[11px] text-slate-500">
+          {folder.displayPath ?? folder.path}
+        </span>
       </Link>
       <button
         type="button"
@@ -255,6 +257,6 @@ export function FolderToggleRow({
   );
 }
 
-function folderDisplayLabel(folder: Pick<FolderListItem, "name" | "path">) {
-  return `${folder.name} ${folder.path}`;
+function folderDisplayLabel(folder: Pick<FolderListItem, "name" | "path" | "displayPath">) {
+  return `${folder.name} ${folder.displayPath ?? folder.path}`;
 }

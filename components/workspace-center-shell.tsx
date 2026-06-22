@@ -19,7 +19,7 @@ type WorkspaceCenterShellProps = {
   workspaceSlug: string;
   documents: DocumentTabDocument[];
   selectedDocument: DocumentTabDocument | null;
-  selectedFolder: { path: string } | null;
+  selectedFolder: { path: string; displayPath?: string } | null;
   isGraphView?: boolean;
   restoreStoredActiveTab?: boolean;
   children: React.ReactNode;
@@ -207,6 +207,14 @@ function WorkspaceCenterShellContent({
     setMode(nextMode);
   }
 
+  const toolbarPath = isGraphView
+    ? t("toolbar.graphView")
+    : selectedDocument?.displayPath ??
+      selectedDocument?.path ??
+      selectedFolder?.displayPath ??
+      selectedFolder?.path ??
+      "/";
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-white">
       <DocumentTabs
@@ -218,7 +226,7 @@ function WorkspaceCenterShellContent({
         onAdd={handleAdd}
       />
       <DocumentToolbar
-        path={isGraphView ? t("toolbar.graphView") : selectedDocument?.path ?? selectedFolder?.path ?? "/"}
+        path={toolbarPath}
         canNavigateBack={canNavigateBack}
         canNavigateForward={canNavigateForward}
         showModeToggle={Boolean(selectedDocument) && !isGraphView}

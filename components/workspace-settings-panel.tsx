@@ -50,6 +50,7 @@ type StatusMessage =
 type WorkspaceSettingsFolder = {
   id: string;
   path: string;
+  displayPath?: string;
 };
 
 export type MarkdownImportActionResult = {
@@ -163,8 +164,8 @@ export function WorkspaceSettingsPanel({
     () => [...folders].sort((left, right) => left.path.localeCompare(right.path)),
     [folders],
   );
-  const destinationPath =
-    sortedFolders.find((folder) => folder.id === destinationFolderId)?.path ?? "/";
+  const destinationFolder = sortedFolders.find((folder) => folder.id === destinationFolderId);
+  const destinationPath = destinationFolder?.displayPath ?? destinationFolder?.path ?? "/";
 
   useEffect(() => {
     setDraftLanguage(language);
@@ -554,7 +555,7 @@ export function WorkspaceSettingsPanel({
                                 onClick={() => handleSelectDestination(folder.id)}
                                 className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
                               >
-                                {folder.path}
+                                {folder.displayPath ?? folder.path}
                               </button>
                             ))}
                           </div>

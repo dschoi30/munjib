@@ -35,6 +35,14 @@ links:
 - Source evidence: `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`.
 - Verification: plan self-review for spec coverage, red-flag scan, and type consistency.
 
+## 2026-06-23T00:22:00+0900 - implementation
+
+- Result: Issue #131 shows document and folder path labels with folder names and `Document.title` instead of slugified stored paths.
+- Coverage: `lib/workspace-tree.ts` builds validity-aware display paths so missing/cyclic folder ancestry falls back to each entity's own stored path. `app/workspaces/[workspaceSlug]/page.tsx` computes folder/document display paths once and passes them to the center toolbar, sidebar tree/recents/search/favorites/action labels, workspace settings import destination picker/progress, and folder detail. Stored `Document.path` and `Folder.path` remain available for uniqueness, sorting, wiki-link matching, graph/RAG/audit metadata, and stored-path search compatibility.
+- Pages: [[Munjib]], [[Project PRD]], [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #131, `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`, `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/workspace-center-shell.tsx`, `components/document-navigation.tsx`, `components/document-navigation/document-section.tsx`, `components/document-navigation/search-panel.tsx`, `components/document-navigation/favorites-panel.tsx`, `components/workspace-settings-panel.tsx`, `components/folder-detail.tsx`, `tests/workspace-tree.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-settings-panel.test.tsx`, `tests/components/folder-detail.test.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`, focused component/helper Vitest runs, and escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 75 files / 829 tests. A sandboxed full test failed with Prisma `Can't reach database server` despite ready Docker Postgres; [[Local Development Workflow]] now documents using sandbox escalation or another unsandboxed path for DB-backed localhost tests.
+
 ## 2026-06-21T21:16:00+0900 - implementation
 
 - Result: Issue #126 Task 5 localized the remaining major workspace product chrome for English/Korean display language switching.

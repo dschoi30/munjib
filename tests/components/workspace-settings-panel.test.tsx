@@ -1,0 +1,101 @@
+// @vitest-environment jsdom
+import React from "react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { I18nProvider } from "@/components/i18n-provider";
+import { WorkspaceSettingsPanel } from "@/components/workspace-settings-panel";
+import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
+
+const router = vi.hoisted(() => ({ refresh: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+}));
+
+beforeEach(() => {
+  router.refresh.mockReset();
+  window.localStorage.clear();
+});
+
+afterEach(() => {
+  cleanup();
+});
+
+function renderSettingsPanel(
+  props: Partial<React.ComponentProps<typeof WorkspaceSettingsPanel>> = {},
+) {
+  const defaultProps: React.ComponentProps<typeof WorkspaceSettingsPanel> = {
+    canWrite: true,
+    defaultChatModel: "gemma4:e4b",
+    defaultChatProvider: "openai-compatible",
+    folders: [
+      {
+        id: "folder-engineering",
+        path: "/engineering",
+        displayPath: "Engineering",
+      },
+      {
+        id: "folder-runbooks",
+        path: "/engineering/runbooks",
+        displayPath: "Engineering / Runbooks",
+      },
+    ],
+    importMarkdownAction: async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    }),
+    archivedDocumentRetentionPolicy: "DAYS_30" as ArchivedDocumentRetentionPolicyValue,
+    updateRetentionPolicyAction: async (formData: FormData) => ({
+      archivedDocumentRetentionPolicy: String(
+        formData.get("archivedDocumentRetentionPolicy"),
+      ) as ArchivedDocumentRetentionPolicyValue,
+    }),
+    onClose: () => {},
+    workspaceSlug: "company-handbook",
+  };
+
+  return render(
+    <I18nProvider>
+      <WorkspaceSettingsPanel {...defaultProps} {...props} />
+    </I18nProvider>,
+  );
+}
+
+describe("WorkspaceSettingsPanel", () => {
+  it("uses folder display paths in the import destination picker and progress", async () => {
+    const importMarkdownAction = vi.fn(async () => ({
+      documentIds: ["doc-imported"],
+      imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
+      failed: [],
+    }));
+    renderSettingsPanel({ importMarkdownAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Import destination: /" }));
+
+    expect(screen.getByRole("treeitem", { name: "Engineering" })).toBeTruthy();
+    expect(screen.getByRole("treeitem", { name: "Engineering / Runbooks" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("treeitem", { name: "Engineering / Runbooks" }));
+
+    const selectedDestinationButton = screen.getByRole("button", {
+      name: "Import destination: Engineering / Runbooks",
+    });
+    expect(selectedDestinationButton.textContent).toBe("Engineering / Runbooks");
+
+    const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
+    fireEvent.change(screen.getByLabelText("Markdown files"), {
+      target: {
+        files: [importedFile],
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Import Markdown" }));
+
+    await waitFor(() => {
+      expect(importMarkdownAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (importMarkdownAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
+    expect(await screen.findByText("Destination: Engineering / Runbooks")).toBeTruthy();
+  });
+});
