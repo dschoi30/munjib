@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-22
-source_count: 288
+updated: 2026-06-23
+source_count: 294
 tags:
   - log
   - munjib
@@ -18,6 +18,54 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-22T23:11:44+0900 - design
+
+- Result: Issue #131 design records the UX policy for showing document paths with folder names and `Document.title` instead of slugified stored paths.
+- Coverage: Stored `Document.path` and `Folder.path` remain the internal identity for uniqueness, moves, wiki-link resolution, graph/RAG/audit metadata, and search compatibility. User-facing path labels in toolbar/search/sidebar descriptions should receive a separate display-only path derived from folder `name` and `Document.title`; original import file extensions are out of scope.
+- Pages: [[Munjib]], [[Project PRD]], [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #131, `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`, user confirmation that `Document.title` is the file-name display source.
+- Verification: spec self-review; baseline `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 74 files / 817 tests before the spec/wiki edit.
+
+## 2026-06-22T23:35:00+0900 - planning
+
+- Result: Issue #131 implementation plan was written for the title-based display path UX.
+- Coverage: The plan decomposes the change into display-path helpers, server prop wiring, center toolbar rendering, sidebar/search/favorites/action labels, settings import destination labels, folder detail, wiki sync, verification, push, and PR review workflow.
+- Pages: [[log|Wiki Log]].
+- Source evidence: `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`.
+- Verification: plan self-review for spec coverage, red-flag scan, and type consistency.
+
+## 2026-06-23T00:22:00+0900 - implementation
+
+- Result: Issue #131 shows document and folder path labels with folder names and `Document.title` instead of slugified stored paths.
+- Coverage: `lib/workspace-tree.ts` builds validity-aware display paths so missing/cyclic folder ancestry falls back to each entity's own stored path. `app/workspaces/[workspaceSlug]/page.tsx` computes folder/document display paths once and passes them to the center toolbar, sidebar tree/recents/search/favorites/action labels, workspace settings import destination picker/progress, and folder detail. Stored `Document.path` and `Folder.path` remain available for uniqueness, sorting, wiki-link matching, graph/RAG/audit metadata, and stored-path search compatibility.
+- Pages: [[Munjib]], [[Project PRD]], [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #131, `docs/superpowers/specs/2026-06-22-document-title-display-path-design.md`, `docs/superpowers/plans/2026-06-22-document-title-display-paths.md`, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/workspace-center-shell.tsx`, `components/document-navigation.tsx`, `components/document-navigation/document-section.tsx`, `components/document-navigation/search-panel.tsx`, `components/document-navigation/favorites-panel.tsx`, `components/workspace-settings-panel.tsx`, `components/folder-detail.tsx`, `tests/workspace-tree.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/components/document-list.test.tsx`, `tests/components/workspace-settings-panel.test.tsx`, `tests/components/folder-detail.test.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false`, focused component/helper Vitest runs, and escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 75 files / 829 tests. A sandboxed full test failed with Prisma `Can't reach database server` despite ready Docker Postgres; [[Local Development Workflow]] now documents using sandbox escalation or another unsandboxed path for DB-backed localhost tests.
+
+## 2026-06-23T00:40:29+0900 - review follow-up
+
+- Result: Issue #131 review follow-up preserves exact `Document.title` characters in toolbar/sidebar display paths and localizes blank-title display paths at render time.
+- Coverage: `DocumentToolbar` renders prepared display labels directly instead of reformatting display paths, so literal `/` characters inside titles remain part of the title. `documentDisplayPath()` no longer appends a server-side English fallback for blank saved titles; client helpers append the current UI language fallback after the parent display path and suppress duplicate root descriptions. Search, recents, tree, favorites, and toolbar now share the same document display-description/action-label helpers.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR review follow-up, `lib/workspace-tree.ts`, `components/document-toolbar.tsx`, `components/workspace-center-shell.tsx`, `components/document-navigation/document-row.tsx`, `components/document-navigation/document-section.tsx`, `components/document-navigation/search-panel.tsx`, `components/document-navigation/favorites-panel.tsx`, `components/document-navigation.tsx`, `tests/workspace-tree.test.ts`, `tests/components/workspace-center-shell.test.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/workspace-center-shell.test.tsx tests/components/document-list.test.tsx` passed 3 files / 127 tests; `pnpm exec tsc --noEmit --pretty false` passed; escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 75 files / 833 tests.
+
+## 2026-06-23T00:59:23+0900 - review follow-up
+
+- Result: PR #132 review feedback fixed display-path edge cases for root blank titles and duplicate document/folder collisions.
+- Coverage: `documentDisplayPathLabel()` treats `displayPath: ""` as an intentional computed display path so root blank-title documents render the current UI language fallback instead of slugified stored paths. When a duplicate document title receives a suffixed stored slug such as `runbook-2`, visible descriptions and action labels append the stored `Document.path` as secondary context while keeping the title-based display path primary. When duplicate folder names collapse to the same folder display path, those folder subtrees fall back to stored folder paths so downstream picker/detail/favorites labels stay distinguishable.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #132 review comments, `lib/workspace-tree.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 110 tests; `pnpm exec tsc --noEmit --pretty false` passed; escalated `DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test` passed 77 files / 852 tests.
+
+## 2026-06-23T01:24:42+0900 - review follow-up
+
+- Result: PR #132 review feedback now disambiguates display-path collisions caused by slash-containing document titles and nested folder paths.
+- Coverage: `buildDocumentDisplayPathMap()` counts computed display paths across readable documents and marks collisions for stored-path context. `documentDisplayPathLabel()`, visible descriptions, and action labels append the unique `Document.path` when two different documents would otherwise display the same title-based path, such as folder `A` with title `B / C` and folder `A / B` with title `C`.
+- Pages: [[Folder Hierarchy Model]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #132 unresolved review thread, `lib/workspace-tree.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-list.tsx`, `lib/document-tabs.ts`, `tests/workspace-tree.test.ts`, `tests/components/document-list.test.tsx`.
+- Verification: `pnpm exec vitest run tests/workspace-tree.test.ts tests/components/document-list.test.tsx` passed 2 files / 113 tests.
 
 ## 2026-06-22T23:23:24+0900 - implementation
 

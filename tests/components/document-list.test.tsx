@@ -843,7 +843,7 @@ describe("DocumentList", () => {
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
     expect(screen.getByText("Recents")).toBeTruthy();
     expect(screen.getByText("Documents")).toBeTruthy();
-    expect(screen.getAllByRole("link", { name: "Welcome" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Welcome/ }).length).toBeGreaterThan(0);
   });
 
   it("closes the workspace menu when switching sidebar views", () => {
@@ -982,7 +982,7 @@ describe("DocumentList", () => {
     const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
     const rowNames = Array.from(
       allDocumentsNav.querySelectorAll("button[aria-expanded]:not([data-row-action-menu]), a[href]"),
-    ).map((element) => element.textContent?.trim());
+    ).map((element) => element.querySelector("span")?.textContent?.trim());
 
     expect(rowNames).toEqual(["Alpha", "Zulu", "Alpha Doc", "Zulu Doc"]);
   });
@@ -1015,7 +1015,7 @@ describe("DocumentList", () => {
     expect(recentsSection).toBeTruthy();
     await waitFor(() => {
       expect(
-        within(recentsSection as HTMLElement).getByRole("link", { name: "Welcome" }),
+        within(recentsSection as HTMLElement).getByRole("link", { name: /Welcome/ }),
       ).toBeTruthy();
     });
   });
@@ -1038,7 +1038,7 @@ describe("DocumentList", () => {
       expect(
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
-          .map((link) => link.textContent?.trim()),
+          .map((link) => link.querySelector("span")?.textContent?.trim()),
       ).toEqual(["Document 1", "Document 2", "Document 3", "Document 4", "Document 6"]);
     });
 
@@ -1056,7 +1056,7 @@ describe("DocumentList", () => {
       expect(
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
-          .map((link) => link.textContent?.trim()),
+          .map((link) => link.querySelector("span")?.textContent?.trim()),
       ).toEqual(["Document 5", "Document 1", "Document 2", "Document 3", "Document 4"]);
     });
 
@@ -1088,12 +1088,12 @@ describe("DocumentList", () => {
       expect(
         within(recentsSection as HTMLElement)
           .getAllByRole("link")
-          .map((link) => link.textContent?.trim()),
+          .map((link) => link.querySelector("span")?.textContent?.trim()),
       ).toEqual(["Document 5", "Document 1", "Document 2", "Document 3", "Document 4"]);
     });
   });
 
-  it("shows duplicate document titles without path context in visible rows", () => {
+  it("shows duplicate document titles with stored path context in visible rows", () => {
     renderList({
       documents: [
         {
@@ -1117,13 +1117,175 @@ describe("DocumentList", () => {
       ],
     });
 
-    expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(4);
-    expect(screen.queryByText("Runbook · /operations/runbook")).toBeNull();
+    expect(screen.getAllByRole("link", { name: /Runbook/ })).toHaveLength(4);
+    expect(screen.getAllByText("/operations/runbook").length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("button", {
         name: "Open actions for Runbook · /operations/runbook",
       }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("uses display paths in normal document tree and recent rows", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-selected",
+        folderId: null,
+        title: "Welcome",
+        path: "/welcome",
+        contentText: "Welcome body",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Engineering Runbook",
+        path: "/engineering/runbooks/engineering-runbook",
+        displayPath: "Engineering / Runbooks / Engineering Runbook",
+        contentText: "Release checklist",
+        tagNames: ["engineering"],
+        canWrite: true,
+      },
+      {
+        id: "doc-operations",
+        folderId: null,
+        title: "Operations Runbook",
+        path: "/operations/runbook",
+        contentText: "Operations checklist",
+        tagNames: [],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: "doc-selected" });
+
+    const recentsSection = screen.getByText("Recents").closest("section");
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    expect(recentsSection).toBeTruthy();
+
+    for (const surface of [recentsSection as HTMLElement, allDocumentsNav]) {
+      expect(
+        within(surface).getByText("Engineering / Runbooks / Engineering Runbook"),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("button", {
+          name: "Open actions for Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
+        }),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("button", {
+          name: "Open actions for Operations Runbook · /operations/runbook",
+        }),
+      ).toBeTruthy();
+    }
+  });
+
+  it("keeps stored path context when title display paths collide", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-selected",
+        folderId: null,
+        title: "Welcome",
+        path: "/welcome",
+        contentText: "Welcome body",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook",
+        displayPath: "Engineering / Runbooks / Runbook",
+        contentText: "Release checklist",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-runbook-duplicate",
+        folderId: "folder-runbooks",
+        title: "Runbook",
+        path: "/engineering/runbooks/runbook-2",
+        displayPath: "Engineering / Runbooks / Runbook",
+        contentText: "Second checklist",
+        tagNames: [],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: "doc-selected" });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    expect(allDocumentsNav.textContent).toContain(
+      "Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+    );
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("keeps stored path context when slash-title display paths collide", () => {
+    const folders = [
+      { ...folderFixtures[0], name: "A", path: "/a", displayPath: "A" },
+      { ...folderFixtures[1], name: "B", path: "/a/b", displayPath: "A / B" },
+    ];
+    const documents = [
+      {
+        id: "doc-selected",
+        folderId: null,
+        title: "Welcome",
+        path: "/welcome",
+        contentText: "Welcome body",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-slash-title",
+        folderId: "folder-engineering",
+        title: "B / C",
+        path: "/a/b-c",
+        displayPath: "A / B / C",
+        displayPathNeedsStoredPath: true,
+        contentText: "Slash title",
+        tagNames: [],
+        canWrite: true,
+      },
+      {
+        id: "doc-nested",
+        folderId: "folder-runbooks",
+        title: "C",
+        path: "/a/b/c",
+        displayPath: "A / B / C",
+        displayPathNeedsStoredPath: true,
+        contentText: "Nested title",
+        tagNames: [],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: "doc-selected" });
+
+    const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b-c");
+    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b/c");
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for B / C · A / B / C · /a/b-c",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for C · A / B / C · /a/b/c",
+      }),
+    ).toBeTruthy();
   });
 
   it("shows a visible fallback label for empty document titles", () => {
@@ -1141,12 +1303,53 @@ describe("DocumentList", () => {
       ],
     });
 
-    expect(screen.getAllByRole("link", { name: "Untitled" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("link", { name: /Untitled/ }).length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("button", {
         name: "Open actions for Untitled",
       }).length,
     ).toBeGreaterThan(0);
+  });
+
+  it("uses the selected Korean display language for blank document display paths", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    renderList({
+      folders: [
+        { ...folderFixtures[0], displayPath: "Engineering" },
+        { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+      ],
+      documents: [
+        {
+          id: "doc-empty-title",
+          folderId: "folder-runbooks",
+          title: "",
+          path: "/engineering/runbooks/untitled",
+          displayPath: "Engineering / Runbooks",
+          contentText: "",
+          tagNames: [],
+          canWrite: true,
+        },
+      ],
+      selectedDocumentId: null,
+    });
+
+    expect((await screen.findAllByText("Engineering / Runbooks / 제목 없음")).length).toBeGreaterThan(
+      0,
+    );
+    expect(
+      screen.getAllByRole("button", {
+        name: "제목 없음 · Engineering / Runbooks / 제목 없음 작업 열기",
+      }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Engineering / Runbooks / Untitled")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "검색" }));
+    fireEvent.change(screen.getByLabelText("문서 검색"), {
+      target: { value: "제목 없음" },
+    });
+
+    expect(screen.getByText("1개 결과")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /제목 없음/ })).toBeTruthy();
   });
 
   it("closes the workspace settings panel", () => {
@@ -1577,6 +1780,73 @@ describe("DocumentList", () => {
     expect(screen.queryByRole("link", { name: "Welcome" })).toBeNull();
   });
 
+  it("searches and displays title-based document paths", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Engineering Runbook",
+        path: "/engineering/runbooks/engineering-runbook",
+        displayPath: "Engineering / Runbooks / Engineering Runbook",
+        contentText: "Release checklist",
+        tagNames: ["engineering"],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "Runbooks / Engineering" },
+    });
+
+    const searchResults = screen.getByRole("region", { name: "Search results" });
+    expect(screen.getByText("1 result")).toBeTruthy();
+    expect(within(searchResults).getByRole("link", { name: /Engineering Runbook/ })).toBeTruthy();
+    expect(searchResults.textContent).toContain(
+      "Engineering / Runbooks / Engineering Runbook",
+    );
+    expect(searchResults.textContent).not.toContain(
+      "/engineering/runbooks/engineering-runbook",
+    );
+  });
+
+  it("keeps stored paths remain searchable when display paths are present", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Engineering Runbook",
+        path: "/engineering/runbooks/engineering-runbook",
+        displayPath: "Engineering / Runbooks / Engineering Runbook",
+        contentText: "Release checklist",
+        tagNames: ["engineering"],
+        canWrite: true,
+      },
+    ];
+    renderList({ folders, documents, selectedDocumentId: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    fireEvent.change(screen.getByLabelText("Search documents"), {
+      target: { value: "/engineering/runbooks/engineering-runbook" },
+    });
+
+    const searchResults = screen.getByRole("region", { name: "Search results" });
+    expect(screen.getByText("1 result")).toBeTruthy();
+    expect(within(searchResults).getByRole("link", { name: /Engineering Runbook/ })).toBeTruthy();
+    expect(searchResults.textContent).toContain(
+      "Engineering / Runbooks / Engineering Runbook",
+    );
+  });
+
   it("restores and persists the active sidebar panel", async () => {
     window.localStorage.setItem(
       workspaceUiStateStorageKey("company-handbook"),
@@ -1840,9 +2110,48 @@ describe("DocumentList", () => {
     fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
 
     expect(screen.getByText("Favorites")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Engineering Runbook" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Engineering Runbook/ })).toBeTruthy();
     expect(screen.queryByText("Recents")).toBeNull();
     expect(screen.queryByText("Documents")).toBeNull();
+  });
+
+  it("uses display paths in favorite folder rows and document action labels", () => {
+    const folders = [
+      { ...folderFixtures[0], displayPath: "Engineering" },
+      { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
+    ];
+    const documents = [
+      {
+        id: "doc-runbook",
+        folderId: "folder-runbooks",
+        title: "Engineering Runbook",
+        path: "/engineering/runbooks/engineering-runbook",
+        displayPath: "Engineering / Runbooks / Engineering Runbook",
+        contentText: "Release checklist",
+        tagNames: ["engineering"],
+        canWrite: true,
+      },
+    ];
+    window.localStorage.setItem(
+      "munjib:favorites:company-handbook",
+      JSON.stringify({ documents: ["doc-runbook"], folders: ["folder-runbooks"] }),
+    );
+    renderList({ folders, documents, selectedDocumentId: null });
+
+    fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+
+    const favoritesSection = screen.getByText("Favorites").closest("section");
+    expect(favoritesSection).toBeTruthy();
+    expect(favoritesSection?.textContent).toContain("Engineering / Runbooks");
+    expect(favoritesSection?.textContent).toContain(
+      "Engineering / Runbooks / Engineering Runbook",
+    );
+    expect(favoritesSection?.textContent).not.toContain("/engineering/runbooks");
+    expect(
+      screen.getByRole("button", {
+        name: "Open actions for Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
+      }),
+    ).toBeTruthy();
   });
 
   it("opens graph view from the toolbar with focus on the selected document", () => {
@@ -1893,7 +2202,7 @@ describe("DocumentList", () => {
 
     expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-1");
     expect(screen.getByText("Favorites")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Engineering Runbook" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Engineering Runbook/ })).toBeTruthy();
   });
 
   it("clears graph route to workspace root when no document is selected", () => {
@@ -1960,7 +2269,7 @@ describe("DocumentList", () => {
     expect(documentsLabel.className).toContain("uppercase");
     expect(documentsLabel.className).toContain("tracking-wide");
 
-    const selectedRow = screen.getAllByRole("link", { name: "Welcome" })[0].parentElement;
+    const selectedRow = screen.getAllByRole("link", { name: /Welcome/ })[0].parentElement;
     expect(selectedRow?.className).toContain("bg-slate-200");
   });
 

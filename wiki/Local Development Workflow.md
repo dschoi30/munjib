@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 58
+updated: 2026-06-22
+source_count: 59
 tags:
   - munjib
   - workflow
@@ -198,6 +198,21 @@ pnpm wiki:feature-start "Markdown heading folding"
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
 
+DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
+
+```bash
+POSTGRES_PORT=55432 docker compose ps
+docker exec obsidian-clone-postgres-1 pg_isready -U obsidian -d obsidian_clone
+```
+
+If Postgres is ready, rerun the DB-backed command with sandbox escalation or another unsandboxed execution path instead of treating the failure as a product regression. The standard full-suite verification command is:
+
+```bash
+DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public' pnpm test
+```
+
+The same rule applies to `prisma db push`, migration, seed, and any focused Vitest file that calls `tests/setup/prisma.ts`. If port `55432` is already allocated by an existing Postgres container, use that ready container or choose an alternate `POSTGRES_PORT` and matching `DATABASE_URL`; do not start another compose project on the same host port.
+
 ## Service error codes
 
 Service layer에서 caller/test가 비교하는 error code는 `lib/service-errors.ts`의 `SERVICE_ERROR_CODES`를 우선 사용한다. Folder/document service처럼 여러 module에서 공유하는 code는 문자열 literal을 직접 던지지 않고 이 상수 object를 참조해 drift를 줄인다.
@@ -231,6 +246,7 @@ PR merge 이후에는 관련 GitHub issue가 닫혔는지 반드시 확인한다
 - `.env.docker.example`
 - `public/.gitkeep`
 - `tests/docker/compose.test.ts`
+- `tests/setup/prisma.ts`
 - `prisma/seed.ts`
 - `playwright.config.ts`
 - `tests/e2e/login.spec.ts`

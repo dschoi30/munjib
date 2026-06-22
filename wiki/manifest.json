@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 91,
+      "source_count": 93,
       "searchPriority": 50
     },
     {
@@ -153,7 +153,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 49,
+      "source_count": 53,
       "searchPriority": 50
     },
     {
@@ -187,7 +187,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 124,
+      "source_count": 125,
       "searchPriority": 5
     },
     {
@@ -210,7 +210,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 58,
+      "source_count": 59,
       "searchPriority": 50
     },
     {
@@ -230,7 +230,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 288,
+      "source_count": 294,
       "searchPriority": 1
     },
     {
@@ -349,7 +349,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 106,
+      "source_count": 108,
       "searchPriority": 30
     },
     {

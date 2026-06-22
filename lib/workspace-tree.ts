@@ -9,6 +9,14 @@ export type WorkspaceTreeDocument = Pick<
 
 export type WorkspaceTreeFolder = Pick<Folder, "id" | "parentFolderId" | "name" | "path">;
 
+export type DisplayPathFolder = Pick<Folder, "id" | "parentFolderId" | "name" | "path">;
+
+type ResolvedFolderDisplayPath = { path: string; valid: boolean };
+type DocumentDisplayPathInput = Pick<Document, "title" | "path"> & {
+  displayPath?: string;
+  displayPathNeedsStoredPath?: boolean;
+};
+
 export function filterReadableDocuments<TDocument extends WorkspaceTreeDocument>(input: {
   documents: TDocument[];
   role: WorkspaceRole;
@@ -28,6 +36,41 @@ export function treeDepth(path: string) {
   return Math.max(0, path.split("/").filter(Boolean).length - 1);
 }
 
+function formatStoredPath(path: string) {
+  const segments = path.split("/").filter(Boolean);
+  return segments.length ? segments.join(" / ") : "/";
+}
+
+function fallbackPathSegment(path: string, fallbackLabel: string) {
+  return path.split("/").filter(Boolean).at(-1) ?? fallbackLabel;
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function needsStoredPathDisambiguation(
+  document: DocumentDisplayPathInput,
+  fallbackLabel: string,
+) {
+  if (document.displayPathNeedsStoredPath) {
+    return true;
+  }
+
+  const label = documentDisplayLabel(document, fallbackLabel);
+  const storedLeaf = fallbackPathSegment(document.path, "");
+  const titleSlug = slugifyTitle(label);
+  return new RegExp(`^${escapeRegExp(titleSlug)}-\\d+$`).test(storedLeaf);
+}
+
+function folderNameLabel(folder: Pick<Folder, "name" | "path">, fallbackLabel: string) {
+  return folder.name.trim() || fallbackPathSegment(folder.path, fallbackLabel);
+}
+
+function joinDisplayPath(parentDisplayPath: string, label: string) {
+  return parentDisplayPath === "/" ? label : `${parentDisplayPath} / ${label}`;
+}
+
 export function documentDisplayLabel(
   document: Pick<Document, "title" | "path">,
   fallbackLabel = "Untitled",
@@ -35,11 +78,247 @@ export function documentDisplayLabel(
   return document.title.trim() || fallbackLabel;
 }
 
-export function documentActionLabel(
-  document: Pick<Document, "title" | "path">,
+export function buildFolderDisplayPathMap<TFolder extends DisplayPathFolder>(
+  folders: TFolder[],
+  fallbackLabel = "Untitled folder",
+) {
+  const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+  const folderDisplayPaths = new Map<string, string>();
+  const resolvedFolderDisplayPaths = new Map<string, ResolvedFolderDisplayPath>();
+  const resolvingFolderIds = new Set<string>();
+
+  function resolveFolderDisplayPath(folder: TFolder): ResolvedFolderDisplayPath {
+    const cachedDisplayPath = resolvedFolderDisplayPaths.get(folder.id);
+    if (cachedDisplayPath) {
+      return cachedDisplayPath;
+    }
+
+    if (resolvingFolderIds.has(folder.id)) {
+      return { path: formatStoredPath(folder.path), valid: false };
+    }
+
+    resolvingFolderIds.add(folder.id);
+
+    const label = folderNameLabel(folder, fallbackLabel);
+    const parentFolder = folder.parentFolderId ? foldersById.get(folder.parentFolderId) : null;
+    const displayPath: ResolvedFolderDisplayPath = ((): ResolvedFolderDisplayPath => {
+      if (!folder.parentFolderId) {
+        return { path: label, valid: true };
+      }
+
+      if (!parentFolder) {
+        return { path: formatStoredPath(folder.path), valid: false };
+      }
+
+      const parentDisplayPath: ResolvedFolderDisplayPath = resolveFolderDisplayPath(parentFolder);
+      return parentDisplayPath.valid
+        ? { path: joinDisplayPath(parentDisplayPath.path, label), valid: true }
+        : { path: formatStoredPath(folder.path), valid: false };
+    })();
+
+    resolvingFolderIds.delete(folder.id);
+    resolvedFolderDisplayPaths.set(folder.id, displayPath);
+
+    if (displayPath.valid) {
+      folderDisplayPaths.set(folder.id, displayPath.path);
+    }
+
+    return displayPath;
+  }
+
+  for (const folder of folders) {
+    resolveFolderDisplayPath(folder);
+  }
+
+  const displayPathCounts = new Map<string, number>();
+  for (const displayPath of folderDisplayPaths.values()) {
+    displayPathCounts.set(displayPath, (displayPathCounts.get(displayPath) ?? 0) + 1);
+  }
+
+  const duplicateDisplayPathFolderIds = new Set<string>();
+  for (const [folderId, displayPath] of folderDisplayPaths) {
+    if ((displayPathCounts.get(displayPath) ?? 0) > 1) {
+      duplicateDisplayPathFolderIds.add(folderId);
+    }
+  }
+
+  function hasDuplicateDisplayPathAncestor(folder: TFolder) {
+    let currentFolder: TFolder | undefined = folder;
+    const seenFolderIds = new Set<string>();
+
+    while (currentFolder) {
+      if (seenFolderIds.has(currentFolder.id)) {
+        return false;
+      }
+      if (duplicateDisplayPathFolderIds.has(currentFolder.id)) {
+        return true;
+      }
+
+      seenFolderIds.add(currentFolder.id);
+      currentFolder = currentFolder.parentFolderId
+        ? foldersById.get(currentFolder.parentFolderId)
+        : undefined;
+    }
+
+    return false;
+  }
+
+  for (const folder of folders) {
+    if (folderDisplayPaths.has(folder.id) && hasDuplicateDisplayPathAncestor(folder)) {
+      folderDisplayPaths.set(folder.id, formatStoredPath(folder.path));
+    }
+  }
+
+  return folderDisplayPaths;
+}
+
+export function folderDisplayPath(
+  folder: Pick<Folder, "id" | "path">,
+  folderDisplayPaths: Map<string, string>,
+) {
+  return folderDisplayPaths.get(folder.id) ?? formatStoredPath(folder.path);
+}
+
+export function documentDisplayPath(
+  document: Pick<Document, "folderId" | "title" | "path">,
+  folderDisplayPaths: Map<string, string>,
+) {
+  const label = document.title.trim();
+
+  if (!document.folderId) {
+    return label;
+  }
+
+  const parentDisplayPath = folderDisplayPaths.get(document.folderId);
+  if (!parentDisplayPath) {
+    return label ? formatStoredPath(document.path) : "";
+  }
+
+  if (!label) {
+    return parentDisplayPath;
+  }
+
+  return joinDisplayPath(parentDisplayPath, label);
+}
+
+export type DocumentDisplayPathMapValue = {
+  path: string;
+  needsStoredPathDisambiguation: boolean;
+};
+
+export function buildDocumentDisplayPathMap<
+  TDocument extends Pick<Document, "id" | "folderId" | "title" | "path">,
+>(
+  documents: TDocument[],
+  folderDisplayPaths: Map<string, string>,
+) {
+  const displayPathsByDocumentId = new Map<string, string>();
+  const displayPathCounts = new Map<string, number>();
+
+  for (const document of documents) {
+    const displayPath = documentDisplayPath(document, folderDisplayPaths);
+    displayPathsByDocumentId.set(document.id, displayPath);
+    displayPathCounts.set(displayPath, (displayPathCounts.get(displayPath) ?? 0) + 1);
+  }
+
+  const documentDisplayPaths = new Map<string, DocumentDisplayPathMapValue>();
+  for (const [documentId, displayPath] of displayPathsByDocumentId) {
+    documentDisplayPaths.set(documentId, {
+      path: displayPath,
+      needsStoredPathDisambiguation: (displayPathCounts.get(displayPath) ?? 0) > 1,
+    });
+  }
+
+  return documentDisplayPaths;
+}
+
+function documentDisplayPathLabelBase(
+  document: DocumentDisplayPathInput,
   fallbackLabel = "Untitled",
 ) {
   const label = documentDisplayLabel(document, fallbackLabel);
+  const title = document.title.trim();
+
+  if (document.displayPath !== undefined) {
+    if (title) {
+      return document.displayPath;
+    }
+
+    if (!document.displayPath || document.displayPath === "/") {
+      return label;
+    }
+
+    return joinDisplayPath(document.displayPath, label);
+  }
+
+  if (!title && (document.path === "/" || document.path === "/untitled")) {
+    return label;
+  }
+
+  const rootPath = `/${slugifyTitle(label)}`;
+  return document.path === rootPath ? label : formatStoredPath(document.path);
+}
+
+export function documentDisplayPathLabel(
+  document: DocumentDisplayPathInput,
+  fallbackLabel = "Untitled",
+) {
+  const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
+  return document.displayPath !== undefined && needsStoredPathDisambiguation(document, fallbackLabel)
+    ? `${displayPath} · ${document.path}`
+    : displayPath;
+}
+
+export function documentDisplayDescription(
+  document: DocumentDisplayPathInput,
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  const title = document.title.trim();
+
+  if (document.displayPath !== undefined) {
+    const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
+    const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
+    if (displayPath === label) {
+      return needsDisambiguation ? document.path : undefined;
+    }
+
+    return needsDisambiguation ? `${displayPath} · ${document.path}` : displayPath;
+  }
+
+  if (!title && (document.path === "/" || document.path === "/untitled")) {
+    return undefined;
+  }
+
+  const rootPath = `/${slugifyTitle(label)}`;
+  if (document.path === rootPath) {
+    return undefined;
+  }
+
+  return document.path;
+}
+
+export function documentActionLabel(
+  document: DocumentDisplayPathInput,
+  fallbackLabel = "Untitled",
+) {
+  const label = documentDisplayLabel(document, fallbackLabel);
+  if (document.displayPath !== undefined) {
+    const displayPath = documentDisplayPathLabelBase(document, fallbackLabel);
+    const needsDisambiguation = needsStoredPathDisambiguation(document, fallbackLabel);
+    if (displayPath === label) {
+      return needsDisambiguation ? `${label} · ${document.path}` : label;
+    }
+
+    return needsDisambiguation
+      ? `${label} · ${displayPath} · ${document.path}`
+      : `${label} · ${displayPath}`;
+  }
+
+  if (!document.title.trim() && (document.path === "/" || document.path === "/untitled")) {
+    return label;
+  }
+
   const rootPath = `/${slugifyTitle(label)}`;
   return document.path === rootPath ? label : `${label} · ${document.path}`;
 }
