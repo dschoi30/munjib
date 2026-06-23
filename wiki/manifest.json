@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-22",
+  "updated": "2026-06-23",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -46,7 +46,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 38,
+      "source_count": 42,
       "searchPriority": 50
     },
     {
@@ -187,7 +187,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 125,
+      "source_count": 126,
       "searchPriority": 5
     },
     {
@@ -210,7 +210,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 59,
+      "source_count": 60,
       "searchPriority": 50
     },
     {
@@ -405,7 +405,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 106,
+      "source_count": 111,
       "searchPriority": 50
     },
     {

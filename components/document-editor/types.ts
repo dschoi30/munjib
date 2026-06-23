@@ -1,4 +1,5 @@
 import type { DocumentProperty, Tag } from "@prisma/client";
+import type { ClientRagChatProviderAvailability } from "@/lib/rag/client-model-settings";
 import type { DocumentLinkPanels } from "@/lib/wiki-links/types";
 
 export type EditableDocument = {
@@ -24,6 +25,7 @@ export type DocumentEditorProps = {
   workspaceSlug: string;
   defaultChatModel: string;
   defaultChatProvider: "ollama" | "openai" | "openai-compatible";
+  availableChatProviders: ClientRagChatProviderAvailability;
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;

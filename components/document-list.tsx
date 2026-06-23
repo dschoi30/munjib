@@ -35,6 +35,7 @@ import {
   type WorkspaceSidebarPanel,
 } from "@/lib/workspace-ui-state";
 import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
+import type { ClientRagChatProviderAvailability } from "@/lib/rag/client-model-settings";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 export type DocumentListItem = {
@@ -78,6 +79,7 @@ export function DocumentList({
   selectedDocumentId,
   defaultChatModel,
   defaultChatProvider,
+  availableChatProviders,
   isGraphView = false,
 }: {
   workspaceSlug: string;
@@ -98,6 +100,7 @@ export function DocumentList({
   selectedDocumentId: string | null;
   defaultChatModel: string;
   defaultChatProvider: "ollama" | "openai" | "openai-compatible";
+  availableChatProviders: ClientRagChatProviderAvailability;
   isGraphView?: boolean;
 }) {
   const { isHydrated: languageHydrated, t } = useI18n();
@@ -344,6 +347,7 @@ export function DocumentList({
           updateRetentionPolicyAction={updateRetentionPolicyAction}
           defaultChatModel={defaultChatModel}
           defaultChatProvider={defaultChatProvider}
+          availableChatProviders={availableChatProviders}
           onClose={() => setSettingsOpen(false)}
         />
       ) : null}

@@ -85,6 +85,7 @@ describe("GitHub Actions CI/CD workflow", () => {
       DEPLOY_SHA: "${{ github.sha }}",
       SENTRY_RELEASE: "${{ github.sha }}",
       NEXT_PUBLIC_SENTRY_RELEASE: "${{ github.sha }}",
+      DEPLOY_ENV_FILE: "/etc/munjib/env",
       DEPLOY_HEALTHCHECK_URL: "http://127.0.0.1:3000",
       DEPLOY_HEALTHCHECK_HOST: "munjib.andrewchoi.link",
     });
@@ -93,7 +94,7 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
     expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
     expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST",
+      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST",
     );
     expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
     expect(deployStep?.with.script).toContain("git fetch --force origin main");
@@ -102,17 +103,18 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(deployStep?.with.script).not.toContain("git pull --ff-only");
     expect(deployStep?.with.script).not.toContain("docker login ghcr.io");
     expect(deployStep?.with.script).not.toContain("docker compose pull web");
+    expect(deployStep?.with.script).toContain('sudo test -r "$DEPLOY_ENV_FILE"');
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose build web tools',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm exec prisma migrate deploy',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm run db:rag:index',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web',
     );
     expect(deployStep?.with.script).toContain(
       "for attempt in 1 2 3 4 5 6 7 8 9 10; do",

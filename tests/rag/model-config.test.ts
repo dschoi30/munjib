@@ -6,6 +6,7 @@ import {
   getDefaultRagChatModel,
   getRagGenerationConfig,
   getRagModelConfig,
+  getRagChatProviderAvailability,
   RAG_CONFIG_ERROR_CODES,
 } from "@/lib/rag/model-config";
 
@@ -63,6 +64,30 @@ describe("RAG model configuration", () => {
     vi.stubEnv("MUNJIB_RAG_CHAT_MODEL", "");
 
     expect(getDefaultRagChatModel()).toBe("gemma4:e4b");
+  });
+
+  it("reports available chat providers from server env without exposing values", () => {
+    expect(getRagChatProviderAvailability({})).toEqual({
+      ollama: true,
+      openai: false,
+      "openai-compatible": false,
+    });
+    expect(
+      getRagChatProviderAvailability({
+        OPENAI_API_KEY: " sk-openai ",
+        MUNJIB_OPENAI_COMPATIBLE_BASE_URL: " https://openrouter.ai/api/v1 ",
+        MUNJIB_OPENAI_COMPATIBLE_API_KEY: " sk-openrouter ",
+      }),
+    ).toEqual({
+      ollama: true,
+      openai: true,
+      "openai-compatible": true,
+    });
+    expect(
+      getRagChatProviderAvailability({
+        MUNJIB_OPENAI_API_KEY: " sk-openai ",
+      }).openai,
+    ).toBe(true);
   });
 
   it("reads chat generation config without validating embedding index settings", () => {
