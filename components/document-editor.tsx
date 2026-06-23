@@ -206,6 +206,7 @@ export function DocumentEditor({
   workspaceSlug,
   defaultChatModel,
   defaultChatProvider,
+  availableChatProviders,
   document,
   canWrite,
   action,
@@ -608,6 +609,7 @@ export function DocumentEditor({
           hasUnsavedChanges={hasUnsavedChanges}
           defaultChatModel={defaultChatModel}
           defaultChatProvider={defaultChatProvider}
+          availableChatProviders={availableChatProviders}
         />
       ) : null}
       <DocumentProperties

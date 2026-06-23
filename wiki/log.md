@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-23T23:35:00+0900 - implementation
+
+- Result: Issue #133 hides unavailable AI chat providers from settings and standardizes production Compose env loading on a host-local env file.
+- Coverage: Server-side provider availability now reports Ollama always available, official OpenAI only with an OpenAI key, and OpenAI-compatible/OpenRouter only with a base URL. Workspace settings hides unavailable provider options, ignores stale browser overrides for unavailable providers, and Ask AI/Workspace AI clients drop those stale overrides before sending requests. The deploy workflow now uses `DEPLOY_ENV_FILE=/etc/munjib/env` and passes it to every remote `docker compose --env-file` command so `.env.docker` is not mistakenly treated as an automatically loaded production source.
+- Pages: [[RAG Process Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #133, `lib/rag/model-config.ts`, `lib/rag/client-model-settings.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `components/workspace-settings-panel.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `.github/workflows/ci-cd.yml`, `docker-compose.yml`.
+- Verification: `pnpm exec tsc --noEmit --pretty false` passed; escalated focused Vitest run for RAG config/client settings/settings panel/workspace chatbot/document editor/document list passed 6 files / 222 tests.
+
 ## 2026-06-22T23:11:44+0900 - design
 
 - Result: Issue #131 design records the UX policy for showing document paths with folder names and `Document.title` instead of slugified stored paths.

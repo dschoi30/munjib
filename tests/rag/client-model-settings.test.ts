@@ -7,6 +7,8 @@ import {
   RAG_CHAT_PROVIDER_RESET_DEFAULTS,
   RAG_CHAT_MODEL_PRESETS,
   addStoredCustomChatModel,
+  availableChatModelSetting,
+  firstAvailableChatProvider,
   getRagChatModelPresets,
   getRagChatProviderResetDefault,
   readStoredChatModelSetting,
@@ -87,6 +89,29 @@ describe("client RAG chat model settings", () => {
       chatProvider: "openai",
       chatModel: "gpt-5.4-mini",
     });
+  });
+
+  it("filters settings by available chat providers", () => {
+    const availability = {
+      ollama: true,
+      openai: false,
+      "openai-compatible": false,
+    };
+
+    expect(firstAvailableChatProvider(availability, "openai-compatible")).toBe("ollama");
+    expect(firstAvailableChatProvider({ ...availability, openai: true }, "openai")).toBe("openai");
+    expect(
+      availableChatModelSetting(
+        { chatProvider: "openai-compatible", chatModel: "google/gemma-4-31b-it:free" },
+        availability,
+      ),
+    ).toBeNull();
+    expect(
+      availableChatModelSetting(
+        { chatProvider: "ollama", chatModel: "gemma4:e4b" },
+        availability,
+      ),
+    ).toEqual({ chatProvider: "ollama", chatModel: "gemma4:e4b" });
   });
 
   it("validates and normalizes chat model ids", () => {

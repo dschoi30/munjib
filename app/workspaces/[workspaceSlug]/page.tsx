@@ -12,7 +12,11 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
 import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
-import { getDefaultRagChatModel, getDefaultRagChatProvider } from "@/lib/rag/model-config";
+import {
+  getDefaultRagChatModel,
+  getDefaultRagChatProvider,
+  getRagChatProviderAvailability,
+} from "@/lib/rag/model-config";
 import {
   canWriteDocument,
   highestPermissionLevel,
@@ -271,6 +275,7 @@ export default async function WorkspacePage({
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const defaultChatModel = getDefaultRagChatModel();
   const defaultChatProvider = getDefaultRagChatProvider();
+  const availableChatProviders = getRagChatProviderAvailability();
   function documentDisplayPathProps(document: (typeof readableDocuments)[number]) {
     const displayPath = documentDisplayPaths.get(document.id);
     return {
@@ -336,6 +341,7 @@ export default async function WorkspacePage({
             selectedDocumentId={selectedDocument?.id ?? null}
             defaultChatModel={defaultChatModel}
             defaultChatProvider={defaultChatProvider}
+            availableChatProviders={availableChatProviders}
             isGraphView={isGraphView}
           />
         }
@@ -407,6 +413,7 @@ export default async function WorkspacePage({
                 createCommentAction={commentAction}
                 defaultChatModel={defaultChatModel}
                 defaultChatProvider={defaultChatProvider}
+                availableChatProviders={availableChatProviders}
               />
             )}
           </WorkspaceCenterShell>
@@ -432,6 +439,7 @@ export default async function WorkspacePage({
         selectedDocumentId={selectedDocument?.id ?? null}
         defaultChatProvider={defaultChatProvider}
         defaultChatModel={defaultChatModel}
+        availableChatProviders={availableChatProviders}
       />
     </>
   );

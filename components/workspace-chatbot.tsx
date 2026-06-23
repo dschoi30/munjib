@@ -13,6 +13,9 @@ import {
 import {
   type ChatModelSetting,
   type ClientRagChatProvider,
+  type ClientRagChatProviderAvailability,
+  availableChatModelSetting,
+  firstAvailableChatProvider,
   readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
@@ -30,6 +33,7 @@ type WorkspaceChatbotProps = {
   selectedDocumentId: string | null;
   defaultChatProvider: ClientRagChatProvider;
   defaultChatModel: string;
+  availableChatProviders: ClientRagChatProviderAvailability;
 };
 
 type ThreadResponse = {
@@ -41,6 +45,7 @@ export function WorkspaceChatbot({
   selectedDocumentId,
   defaultChatProvider,
   defaultChatModel,
+  availableChatProviders,
 }: WorkspaceChatbotProps) {
   const { language, t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
@@ -51,8 +56,15 @@ export function WorkspaceChatbot({
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<"" | "unavailable">("");
   const [hydratedWorkspaceSlug, setHydratedWorkspaceSlug] = useState<string | null>(null);
+  const fallbackChatProvider = firstAvailableChatProvider(
+    availableChatProviders,
+    defaultChatProvider,
+  );
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
+    availableChatModelSetting(
+      readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+      availableChatProviders,
+    ),
   );
   const hydratedWorkspaceSlugRef = useRef<string | null>(null);
   const hasLoadedThreadRef = useRef(false);
@@ -73,7 +85,12 @@ export function WorkspaceChatbot({
     messageVersionRef.current += 1;
     abortActiveSend();
     hasLoadedThreadRef.current = false;
-    setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
+    setChatModelOverride(
+      availableChatModelSetting(
+        readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+        availableChatProviders,
+      ),
+    );
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
@@ -86,7 +103,7 @@ export function WorkspaceChatbot({
       messageVersionRef.current += 1;
       abortActiveSend();
     };
-  }, [defaultChatProvider, workspaceSlug]);
+  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
 
   useEffect(() => {
     hydratedWorkspaceSlugRef.current = null;
@@ -104,12 +121,15 @@ export function WorkspaceChatbot({
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(
-        change.chatModel && change.chatProvider
-          ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
-          : null,
+        availableChatModelSetting(
+          change.chatModel && change.chatProvider
+            ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
+            : null,
+          availableChatProviders,
+        ),
       );
-    }, { chatProvider: defaultChatProvider });
-  }, [defaultChatProvider, workspaceSlug]);
+    }, { chatProvider: fallbackChatProvider });
+  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
 
   function abortActiveSend() {
     activeSendAbortRef.current?.abort();

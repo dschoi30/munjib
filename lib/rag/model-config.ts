@@ -45,6 +45,8 @@ export type RagChatOverride = {
   model?: string;
 };
 
+export type RagChatProviderAvailability = Record<RagProvider, boolean>;
+
 export const RAG_CONFIG_ERROR_CODES = {
   INVALID_CONFIG: RAG_ERROR_CODES.INVALID_CONFIG,
 } as const;
@@ -76,6 +78,21 @@ export function getDefaultRagChatModel(env: RagEnv = process.env): string {
 
 export function getDefaultRagChatProvider(env: RagEnv = process.env): RagProvider {
   return readProvider(env, "MUNJIB_RAG_CHAT_PROVIDER", DEFAULTS.chatProvider);
+}
+
+export function getRagChatProviderAvailability(
+  env: RagEnv = process.env,
+): RagChatProviderAvailability {
+  return {
+    ollama: true,
+    openai: Boolean(
+      readOptionalEnv(env, "OPENAI_API_KEY") ??
+        readOptionalEnv(env, "MUNJIB_OPENAI_API_KEY"),
+    ),
+    "openai-compatible": Boolean(
+      readOptionalEnv(env, "MUNJIB_OPENAI_COMPATIBLE_BASE_URL"),
+    ),
+  };
 }
 
 const PROVIDERS = new Set<RagProvider>(["ollama", "openai", "openai-compatible"]);

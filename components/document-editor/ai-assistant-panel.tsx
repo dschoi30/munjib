@@ -8,6 +8,9 @@ import { Button } from "@/components/ui/button";
 import {
   type ChatModelSetting,
   type ClientRagChatProvider,
+  type ClientRagChatProviderAvailability,
+  availableChatModelSetting,
+  firstAvailableChatProvider,
   readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
 } from "@/lib/rag/client-model-settings";
@@ -26,6 +29,7 @@ type AiAssistantPanelProps = {
   hasUnsavedChanges: boolean;
   defaultChatModel: string;
   defaultChatProvider: ClientRagChatProvider;
+  availableChatProviders: ClientRagChatProviderAvailability;
 };
 
 export function AiAssistantPanel({
@@ -34,6 +38,7 @@ export function AiAssistantPanel({
   hasUnsavedChanges,
   defaultChatModel,
   defaultChatProvider,
+  availableChatProviders,
 }: AiAssistantPanelProps) {
   const { language, t } = useI18n();
   const [question, setQuestion] = useState("");
@@ -41,23 +46,38 @@ export function AiAssistantPanel({
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
   const [error, setError] = useState<"" | "answerFailed">("");
   const [isLoading, setIsLoading] = useState(false);
+  const fallbackChatProvider = firstAvailableChatProvider(
+    availableChatProviders,
+    defaultChatProvider,
+  );
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
+    availableChatModelSetting(
+      readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+      availableChatProviders,
+    ),
   );
   const trimmedQuestion = question.trim();
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
-    setChatModelOverride(readStoredChatModelSetting(workspaceSlug, defaultChatProvider));
+    setChatModelOverride(
+      availableChatModelSetting(
+        readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+        availableChatProviders,
+      ),
+    );
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(
-        change.chatModel && change.chatProvider
-          ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
-          : null,
+        availableChatModelSetting(
+          change.chatModel && change.chatProvider
+            ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
+            : null,
+          availableChatProviders,
+        ),
       );
-    }, { chatProvider: defaultChatProvider });
-  }, [defaultChatProvider, workspaceSlug]);
+    }, { chatProvider: fallbackChatProvider });
+  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -80,6 +80,11 @@ const baseProps = {
   workspaceSlug: "company-handbook",
   defaultChatModel: "gemma4:e4b",
   defaultChatProvider: "openai-compatible" as const,
+  availableChatProviders: {
+    ollama: true,
+    openai: true,
+    "openai-compatible": true,
+  },
   canWrite: true,
   action: async () => {},
   uploadAttachmentAction: async () => {},
