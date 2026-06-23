@@ -74,6 +74,41 @@ describe("WorkspaceChatbot", () => {
     );
   });
 
+  it("does not reset an open thread when only the selected document changes", async () => {
+    const { rerender } = render(
+      <WorkspaceChatbot
+        defaultChatModel="openrouter/fusion"
+        defaultChatProvider="openai-compatible"
+        availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }}
+        workspaceSlug="company-handbook"
+        selectedDocumentId="doc-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    expect(await screen.findByText("Earlier workspace answer.")).toBeTruthy();
+    const threadLoadCount = fetchMock.mock.calls.filter(
+      ([url]) => typeof url === "string" && url.endsWith("/assistant/thread"),
+    ).length;
+
+    rerender(
+      <WorkspaceChatbot
+        defaultChatModel="openrouter/fusion"
+        defaultChatProvider="openai-compatible"
+        availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }}
+        workspaceSlug="company-handbook"
+        selectedDocumentId="doc-2"
+      />,
+    );
+
+    expect(screen.getByText("Earlier workspace answer.")).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.filter(
+        ([url]) => typeof url === "string" && url.endsWith("/assistant/thread"),
+      ).length,
+    ).toBe(threadLoadCount);
+  });
+
   it("persists opening and closing while preserving unrelated workspace UI state", async () => {
     const storageKey = workspaceUiStateStorageKey("company-handbook");
     window.localStorage.setItem(
@@ -320,7 +355,7 @@ describe("WorkspaceChatbot", () => {
     );
   });
 
-  it("does not send a stored workspace chat override when its provider is unavailable", async () => {
+  it("uses an available fallback override when the stored and default providers are unavailable", async () => {
     window.localStorage.setItem(
       "munjib:rag-chat-model:company-handbook",
       JSON.stringify({
@@ -331,8 +366,8 @@ describe("WorkspaceChatbot", () => {
 
     render(
       <WorkspaceChatbot
-        defaultChatModel="gemma4:e4b"
-        defaultChatProvider="ollama"
+        defaultChatModel="openrouter/fusion"
+        defaultChatProvider="openai-compatible"
         availableChatProviders={{ ollama: true, openai: false, "openai-compatible": false }}
         workspaceSlug="company-handbook"
         selectedDocumentId="doc-1"
@@ -356,6 +391,8 @@ describe("WorkspaceChatbot", () => {
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
           uiLanguage: "en",
+          chatProvider: "ollama",
+          chatModel: "gemma4:e4b",
         }),
       }),
     );

@@ -121,6 +121,23 @@ export function availableChatModelSetting(
   return setting && isChatProviderAvailable(setting.chatProvider, availability) ? setting : null;
 }
 
+export function effectiveChatModelSetting(
+  storedSetting: ChatModelSetting | null,
+  defaultChatProvider: ClientRagChatProvider,
+  availability: ClientRagChatProviderAvailability = DEFAULT_CHAT_PROVIDER_AVAILABILITY,
+): ChatModelSetting | null {
+  const availableStoredSetting = availableChatModelSetting(storedSetting, availability);
+  if (availableStoredSetting) {
+    return availableStoredSetting;
+  }
+  if (isChatProviderAvailable(defaultChatProvider, availability)) {
+    return null;
+  }
+
+  const fallbackChatProvider = firstAvailableChatProvider(availability, defaultChatProvider);
+  return getRagChatProviderResetDefault(fallbackChatProvider);
+}
+
 const CHAT_MODEL_STORAGE_PREFIX = "munjib:rag-chat-model:";
 const CUSTOM_CHAT_MODELS_STORAGE_PREFIX = "munjib:rag-custom-chat-models:";
 const CHAT_MODEL_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9/._:-]*$/;

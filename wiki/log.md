@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-06-24T00:05:00+0900 - review follow-up
+
+- Result: PR #134 review feedback now keeps Workspace AI thread state stable across selected-document changes and sends an explicit fallback model override when the default AI provider is unavailable.
+- Coverage: Ask AI and Workspace AI derive an effective browser model setting that preserves valid stored overrides, returns no override when the default provider is available, and otherwise falls back to the first available provider reset default. Workspace AI stores provider availability/default provider in refs so changing only the selected document or receiving a fresh availability object does not clear the open thread.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #134 review comments, `lib/rag/client-model-settings.ts`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `tests/rag/client-model-settings.test.ts`, `tests/components/document-editor-preview.test.tsx`, `tests/components/workspace-chatbot.test.tsx`.
+- Verification: `pnpm exec tsc --noEmit --pretty false` passed; escalated focused Vitest run for client model settings, Workspace AI, and document editor preview passed 3 files / 100 tests.
+
 ## 2026-06-23T23:35:00+0900 - implementation
 
 - Result: Issue #133 hides unavailable AI chat providers from settings and standardizes production Compose env loading on a host-local env file.

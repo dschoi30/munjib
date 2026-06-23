@@ -8,6 +8,7 @@ import {
   RAG_CHAT_MODEL_PRESETS,
   addStoredCustomChatModel,
   availableChatModelSetting,
+  effectiveChatModelSetting,
   firstAvailableChatProvider,
   getRagChatModelPresets,
   getRagChatProviderResetDefault,
@@ -112,6 +113,11 @@ describe("client RAG chat model settings", () => {
         availability,
       ),
     ).toEqual({ chatProvider: "ollama", chatModel: "gemma4:e4b" });
+    expect(effectiveChatModelSetting(null, "openai-compatible", availability)).toEqual({
+      chatProvider: "ollama",
+      chatModel: "gemma4:e4b",
+    });
+    expect(effectiveChatModelSetting(null, "ollama", availability)).toBeNull();
   });
 
   it("validates and normalizes chat model ids", () => {

@@ -9,7 +9,7 @@ import {
   type ChatModelSetting,
   type ClientRagChatProvider,
   type ClientRagChatProviderAvailability,
-  availableChatModelSetting,
+  effectiveChatModelSetting,
   firstAvailableChatProvider,
   readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
@@ -51,8 +51,9 @@ export function AiAssistantPanel({
     defaultChatProvider,
   );
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    availableChatModelSetting(
+    effectiveChatModelSetting(
       readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+      defaultChatProvider,
       availableChatProviders,
     ),
   );
@@ -61,23 +62,25 @@ export function AiAssistantPanel({
 
   useEffect(() => {
     setChatModelOverride(
-      availableChatModelSetting(
+      effectiveChatModelSetting(
         readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+        defaultChatProvider,
         availableChatProviders,
       ),
     );
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(
-        availableChatModelSetting(
+        effectiveChatModelSetting(
           change.chatModel && change.chatProvider
             ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
             : null,
+          defaultChatProvider,
           availableChatProviders,
         ),
       );
     }, { chatProvider: fallbackChatProvider });
-  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
+  }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

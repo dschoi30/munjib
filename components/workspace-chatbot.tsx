@@ -14,7 +14,7 @@ import {
   type ChatModelSetting,
   type ClientRagChatProvider,
   type ClientRagChatProviderAvailability,
-  availableChatModelSetting,
+  effectiveChatModelSetting,
   firstAvailableChatProvider,
   readStoredChatModelSetting,
   subscribeToStoredChatModelChanges,
@@ -60,9 +60,16 @@ export function WorkspaceChatbot({
     availableChatProviders,
     defaultChatProvider,
   );
+  const availableChatProvidersRef = useRef(availableChatProviders);
+  availableChatProvidersRef.current = availableChatProviders;
+  const fallbackChatProviderRef = useRef(fallbackChatProvider);
+  fallbackChatProviderRef.current = fallbackChatProvider;
+  const defaultChatProviderRef = useRef(defaultChatProvider);
+  defaultChatProviderRef.current = defaultChatProvider;
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    availableChatModelSetting(
+    effectiveChatModelSetting(
       readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+      defaultChatProvider,
       availableChatProviders,
     ),
   );
@@ -86,9 +93,10 @@ export function WorkspaceChatbot({
     abortActiveSend();
     hasLoadedThreadRef.current = false;
     setChatModelOverride(
-      availableChatModelSetting(
-        readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
-        availableChatProviders,
+      effectiveChatModelSetting(
+        readStoredChatModelSetting(workspaceSlug, fallbackChatProviderRef.current),
+        defaultChatProviderRef.current,
+        availableChatProvidersRef.current,
       ),
     );
     setMessages([]);
@@ -103,7 +111,7 @@ export function WorkspaceChatbot({
       messageVersionRef.current += 1;
       abortActiveSend();
     };
-  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
+  }, [workspaceSlug]);
 
   useEffect(() => {
     hydratedWorkspaceSlugRef.current = null;
@@ -121,15 +129,16 @@ export function WorkspaceChatbot({
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(
-        availableChatModelSetting(
+        effectiveChatModelSetting(
           change.chatModel && change.chatProvider
             ? { chatProvider: change.chatProvider, chatModel: change.chatModel }
             : null,
-          availableChatProviders,
+          defaultChatProviderRef.current,
+          availableChatProvidersRef.current,
         ),
       );
-    }, { chatProvider: fallbackChatProvider });
-  }, [availableChatProviders, fallbackChatProvider, workspaceSlug]);
+    }, { chatProvider: fallbackChatProviderRef.current });
+  }, [workspaceSlug]);
 
   function abortActiveSend() {
     activeSendAbortRef.current?.abort();
