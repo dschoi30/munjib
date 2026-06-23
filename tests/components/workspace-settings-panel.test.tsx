@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { WorkspaceSettingsPanel } from "@/components/workspace-settings-panel";
@@ -28,6 +28,11 @@ function renderSettingsPanel(
     canWrite: true,
     defaultChatModel: "gemma4:e4b",
     defaultChatProvider: "openai-compatible",
+    availableChatProviders: {
+      ollama: true,
+      openai: true,
+      "openai-compatible": true,
+    },
     folders: [
       {
         id: "folder-engineering",
@@ -63,6 +68,39 @@ function renderSettingsPanel(
 }
 
 describe("WorkspaceSettingsPanel", () => {
+  it("hides chat providers that are unavailable in server env", () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      JSON.stringify({
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      }),
+    );
+
+    renderSettingsPanel({
+      defaultChatProvider: "ollama",
+      availableChatProviders: {
+        ollama: true,
+        openai: false,
+        "openai-compatible": false,
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+
+    const providerSelect = screen.getByRole("combobox", { name: "AI provider" });
+    expect(within(providerSelect).getByRole("option", { name: "Ollama" })).toBeTruthy();
+    expect(within(providerSelect).queryByRole("option", { name: "OpenAI" })).toBeNull();
+    expect(
+      within(providerSelect).queryByRole("option", {
+        name: "OpenRouter / OpenAI-compatible",
+      }),
+    ).toBeNull();
+    expect(screen.getByText("Server default")).toBeTruthy();
+    expect(screen.getAllByText("gemma4:e4b").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Google Gemma 4 31B IT Free")).toBeNull();
+  });
+
   it("uses folder display paths in the import destination picker and progress", async () => {
     const importMarkdownAction = vi.fn(async () => ({
       documentIds: ["doc-imported"],

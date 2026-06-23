@@ -23,10 +23,13 @@ import {
 import {
   type ChatModelSetting,
   type ClientRagChatProvider,
+  type ClientRagChatProviderAvailability,
   type ChatModelValidationError,
   INCOMPATIBLE_CHAT_MODEL_PROVIDER_ERROR,
   RAG_CHAT_PROVIDER_OPTIONS,
   addStoredCustomChatModel,
+  availableChatModelSetting,
+  firstAvailableChatProvider,
   getRagChatModelPresets,
   getRagChatProviderResetDefault,
   readStoredChatModelSetting,
@@ -97,6 +100,7 @@ export function WorkspaceSettingsPanel({
   canWrite,
   defaultChatModel,
   defaultChatProvider,
+  availableChatProviders,
   folders,
   importMarkdownAction,
   archivedDocumentRetentionPolicy,
@@ -107,6 +111,7 @@ export function WorkspaceSettingsPanel({
   canWrite: boolean;
   defaultChatModel: string;
   defaultChatProvider: ClientRagChatProvider;
+  availableChatProviders: ClientRagChatProviderAvailability;
   folders: WorkspaceSettingsFolder[];
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   archivedDocumentRetentionPolicy: ArchivedDocumentRetentionPolicyValue;
@@ -121,10 +126,18 @@ export function WorkspaceSettingsPanel({
   const [draftLanguage, setDraftLanguage] = useState(language);
   const [languageStatus, setLanguageStatus] = useState<"saved" | "storageFailed" | null>(null);
   const [customModel, setCustomModel] = useState("");
-  const [selectedChatProvider, setSelectedChatProvider] = useState<ClientRagChatProvider>(() =>
-    readStoredChatModelSetting(workspaceSlug, defaultChatProvider)?.chatProvider ??
-    defaultChatProvider,
-  );
+  const [selectedChatProvider, setSelectedChatProvider] = useState<ClientRagChatProvider>(() => {
+    const fallbackProvider = firstAvailableChatProvider(
+      availableChatProviders,
+      defaultChatProvider,
+    );
+    return (
+      availableChatModelSetting(
+        readStoredChatModelSetting(workspaceSlug, fallbackProvider),
+        availableChatProviders,
+      )?.chatProvider ?? fallbackProvider
+    );
+  });
   const [isImportPending, startImportTransition] = useTransition();
   const [isImporting, setIsImporting] = useState(false);
   const [modelStatus, setModelStatus] = useState<StatusMessage | null>(null);
@@ -137,9 +150,21 @@ export function WorkspaceSettingsPanel({
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
   const [isRetentionPending, startRetentionTransition] = useTransition();
+  const fallbackChatProvider = useMemo(
+    () => firstAvailableChatProvider(availableChatProviders, defaultChatProvider),
+    [availableChatProviders, defaultChatProvider],
+  );
+  const availableProviderOptions = useMemo(
+    () => RAG_CHAT_PROVIDER_OPTIONS.filter((provider) => availableChatProviders[provider.id]),
+    [availableChatProviders],
+  );
   const storedChatModel = useMemo(
-    () => readStoredChatModelSetting(workspaceSlug, defaultChatProvider),
-    [defaultChatProvider, saveVersion, workspaceSlug],
+    () =>
+      availableChatModelSetting(
+        readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
+        availableChatProviders,
+      ),
+    [availableChatProviders, fallbackChatProvider, saveVersion, workspaceSlug],
   );
   const customChatModels = useMemo(
     () => readStoredCustomChatModels(workspaceSlug),
@@ -154,8 +179,14 @@ export function WorkspaceSettingsPanel({
       customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
     [customChatModels, selectedChatProvider],
   );
-  const effectiveChatProvider = storedChatModel?.chatProvider ?? defaultChatProvider;
+  const effectiveChatProvider = storedChatModel?.chatProvider ?? fallbackChatProvider;
   const effectiveChatModel = storedChatModel?.chatModel ?? defaultChatModel;
+
+  useEffect(() => {
+    if (!availableChatProviders[selectedChatProvider]) {
+      setSelectedChatProvider(fallbackChatProvider);
+    }
+  }, [availableChatProviders, fallbackChatProvider, selectedChatProvider]);
   const importLocked = isImportPending || isImporting;
   const isImportActive = isImporting || importRun?.status === "importing";
   const isSubmitDisabled = !canWrite || importLocked || selectedFiles.length === 0;
@@ -626,7 +657,7 @@ export function WorkspaceSettingsPanel({
                   }
                   className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
                 >
-                  {RAG_CHAT_PROVIDER_OPTIONS.map((provider) => (
+                  {availableProviderOptions.map((provider) => (
                     <option key={provider.id} value={provider.id}>
                       {provider.label}
                     </option>

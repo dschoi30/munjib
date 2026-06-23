@@ -10,6 +10,8 @@ export type ChatModelSetting = {
   chatModel: string;
 };
 
+export type ClientRagChatProviderAvailability = Record<ClientRagChatProvider, boolean>;
+
 export type ChatModelValidationError =
   | typeof INVALID_CHAT_MODEL_ERROR
   | typeof INVALID_CHAT_PROVIDER_ERROR
@@ -83,6 +85,58 @@ export const RAG_CHAT_PROVIDER_OPTIONS = [
   { id: "openai", label: "OpenAI" },
   { id: "openai-compatible", label: "OpenRouter / OpenAI-compatible" },
 ] as const satisfies ReadonlyArray<{ id: ClientRagChatProvider; label: string }>;
+
+export const DEFAULT_CHAT_PROVIDER_AVAILABILITY = {
+  ollama: true,
+  openai: true,
+  "openai-compatible": true,
+} as const satisfies ClientRagChatProviderAvailability;
+
+export function isChatProviderAvailable(
+  chatProvider: ClientRagChatProvider,
+  availability: ClientRagChatProviderAvailability = DEFAULT_CHAT_PROVIDER_AVAILABILITY,
+): boolean {
+  return availability[chatProvider] === true;
+}
+
+export function firstAvailableChatProvider(
+  availability: ClientRagChatProviderAvailability = DEFAULT_CHAT_PROVIDER_AVAILABILITY,
+  fallbackChatProvider: ClientRagChatProvider = "ollama",
+): ClientRagChatProvider {
+  if (isChatProviderAvailable(fallbackChatProvider, availability)) {
+    return fallbackChatProvider;
+  }
+
+  return (
+    RAG_CHAT_PROVIDER_OPTIONS.find((provider) =>
+      isChatProviderAvailable(provider.id, availability),
+    )?.id ?? "ollama"
+  );
+}
+
+export function availableChatModelSetting(
+  setting: ChatModelSetting | null,
+  availability: ClientRagChatProviderAvailability = DEFAULT_CHAT_PROVIDER_AVAILABILITY,
+): ChatModelSetting | null {
+  return setting && isChatProviderAvailable(setting.chatProvider, availability) ? setting : null;
+}
+
+export function effectiveChatModelSetting(
+  storedSetting: ChatModelSetting | null,
+  defaultChatProvider: ClientRagChatProvider,
+  availability: ClientRagChatProviderAvailability = DEFAULT_CHAT_PROVIDER_AVAILABILITY,
+): ChatModelSetting | null {
+  const availableStoredSetting = availableChatModelSetting(storedSetting, availability);
+  if (availableStoredSetting) {
+    return availableStoredSetting;
+  }
+  if (isChatProviderAvailable(defaultChatProvider, availability)) {
+    return null;
+  }
+
+  const fallbackChatProvider = firstAvailableChatProvider(availability, defaultChatProvider);
+  return getRagChatProviderResetDefault(fallbackChatProvider);
+}
 
 const CHAT_MODEL_STORAGE_PREFIX = "munjib:rag-chat-model:";
 const CUSTOM_CHAT_MODELS_STORAGE_PREFIX = "munjib:rag-custom-chat-models:";

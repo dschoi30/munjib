@@ -80,6 +80,11 @@ const baseProps = {
   workspaceSlug: "company-handbook",
   defaultChatModel: "gemma4:e4b",
   defaultChatProvider: "openai-compatible" as const,
+  availableChatProviders: {
+    ollama: true,
+    openai: true,
+    "openai-compatible": true,
+  },
   canWrite: true,
   action: async () => {},
   uploadAttachmentAction: async () => {},
@@ -364,6 +369,43 @@ describe("DocumentEditor heading preview folding", () => {
     const requestBody = String(fetchMock.mock.calls[0]?.[1]?.body ?? "");
     expect(requestBody).not.toContain("Unsaved title");
     expect(requestBody).not.toContain("Draft body");
+  });
+
+  it("uses an available fallback override when the Ask AI default provider is unavailable", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ answer: "Fallback answer.", citations: [] }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    renderEditor("# A\nBody", {
+      defaultChatProvider: "openai-compatible",
+      defaultChatModel: "openrouter/fusion",
+      availableChatProviders: { ollama: true, openai: false, "openai-compatible": false },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open AI assistant" }));
+    expect(await screen.findByText("gemma4:e4b")).toBeTruthy();
+    const questionInput = screen.getByLabelText("AI question");
+
+    fireEvent.change(questionInput, {
+      target: { value: "What should I do?" },
+    });
+    fireEvent.submit(questionInput.closest("form") as HTMLFormElement);
+
+    expect(await screen.findByText("Fallback answer.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          question: "What should I do?",
+          uiLanguage: "en",
+          chatProvider: "ollama",
+          chatModel: "gemma4:e4b",
+        }),
+      }),
+    );
   });
 
   it("uses the selected Korean display language for Ask AI chrome, errors, and request payloads", async () => {

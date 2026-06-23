@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.
 created: 2026-06-05
-updated: 2026-06-05
-source_count: 38
+updated: 2026-06-23
+source_count: 42
 tags:
   - munjib
   - workflow
@@ -86,6 +86,7 @@ WEB_IMAGE=munjib-web:latest
 DEPLOY_SHA=${{ github.sha }}
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+DEPLOY_ENV_FILE=/etc/munjib/env
 DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
 ```
@@ -115,10 +116,11 @@ cd "${{ secrets.DEPLOY_PATH }}"
 git fetch --force origin main
 git checkout --detach "$DEPLOY_SHA"
 test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose build web tools
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm exec prisma migrate deploy
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose run --rm tools pnpm run db:rag:index
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose up -d web
+sudo test -r "$DEPLOY_ENV_FILE"
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
     break
@@ -135,7 +137,7 @@ sudo docker image prune -f
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
-OCI server production env는 `/home/deployer/munjib/.env`가 기준이다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
+OCI server production env는 repository checkout 안의 `.env`나 `.env.docker`가 아니라 host-local secret file `/etc/munjib/env`가 기준이다. Deploy workflow는 모든 remote Compose 명령에 `docker compose --env-file "$DEPLOY_ENV_FILE"`를 명시하고, 실제 compose interpolation은 이 파일과 workflow가 넘기는 release env를 함께 사용한다. `docker-compose.yml`의 `environment:` 항목은 `${VAR:-}` 형태라서 service-level `env_file`만 추가하면 빈 문자열이 우선되어 provider credentials가 계속 비는 문제가 생길 수 있다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
 
 ```text
 NEXTAUTH_URL="https://munjib.example.invalid"
@@ -145,6 +147,8 @@ SENTRY_ENVIRONMENT=production
 SENTRY_TRACES_SAMPLE_RATE=1.0
 NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
 NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0
+MUNJIB_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1
+MUNJIB_OPENAI_COMPATIBLE_API_KEY=<secret>
 ```
 
 ### Docker runtime
@@ -243,6 +247,7 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub Actions run `27016407598` deploy failure log
 - GitHub Actions run `27017475831` cancelled publish log
 - PR #99 review threads
+- GitHub issue #133
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
 - `docker-compose.yml`
