@@ -6,7 +6,7 @@ status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
 updated: 2026-06-27
-source_count: 64
+source_count: 65
 tags:
   - munjib
   - product
@@ -88,7 +88,7 @@ Issue #104는 Ask AI를 현재 문서 direct-context path로 전환하기 위한
 
 Ask AI RAG의 request, provider/env, indexing, retrieval, reranking, prompt, answer generation, observability 흐름은 [[RAG Process Workflow]]에서 본다.
 
-Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. 일반 문서 선택은 현재 탭을 교체하고, 마지막 tab 바로 오른쪽의 `+` button 또는 sidebar row `...` menu의 Open in new tab만 새 탭을 만든다. Tab width는 row 공간이 부족해질 때 함께 줄어든다. Toolbar는 document navigation history 기반 back/forward와 현재 document 또는 folder path 표시를 제공하며, forward 대상 document가 없거나 readable하지 않으면 forward button을 비활성화한다. Issue #131 구현은 이 path 표시와 sidebar/search/favorites/settings/folder detail path labels를 stored slug path가 아니라 folder `name`과 `Document.title` 기반 display-only path로 바꾸되, 기존 stored `Document.path`/`Folder.path`는 내부 identity와 wiki-link/RAG/graph/audit metadata 및 stored-path search compatibility로 유지한다. Issue #137 설계는 이 display-path 정책을 유지하되 일반 `Documents` sidebar tree와 recents row는 title-only로 더 조용하게 표시하고, Search/Favorites에서는 display-path context를 계속 보여주는 후속 UX 정리를 계획한다. 같은 설계는 top-level 새 문서/폴더 생성의 direct redirect flash를 client-controlled `redirect=false` flow로 줄이고, 생성 항목으로 scroll하며, 하단 row action menu는 필요한 경우 위쪽으로 열도록 제한한다.
+Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wiki/designs/obsidian1.png`를 기준으로 한 문서 탭 strip과 navigation toolbar가 추가되었다. 기존 `?document=<id>` 라우팅은 active document source of truth로 유지되고, 열린 탭 목록은 workspace-scoped `munjib:open-tabs:<workspaceSlug>` `localStorage` UI state로 관리된다. 일반 문서 선택은 현재 탭을 교체하고, 마지막 tab 바로 오른쪽의 `+` button 또는 sidebar row `...` menu의 Open in new tab만 새 탭을 만든다. Tab width는 row 공간이 부족해질 때 함께 줄어든다. Toolbar는 document navigation history 기반 back/forward와 현재 document 또는 folder path 표시를 제공하며, forward 대상 document가 없거나 readable하지 않으면 forward button을 비활성화한다. Issue #131 구현은 이 path 표시와 sidebar/search/favorites/settings/folder detail path labels를 stored slug path가 아니라 folder `name`과 `Document.title` 기반 display-only path로 바꾸되, 기존 stored `Document.path`/`Folder.path`는 내부 identity와 wiki-link/RAG/graph/audit metadata 및 stored-path search compatibility로 유지한다. Issue #137 구현은 이 display-path 정책을 유지하되 일반 `Documents` sidebar tree와 recents row를 title-only로 더 조용하게 표시하고, Search/Favorites에서는 display-path context를 계속 보여준다. Top-level 새 문서/폴더 생성은 client-controlled `redirect=false` flow로 direct redirect flash를 줄이고 생성 항목으로 scroll하며, 하단 row action menu는 필요한 경우 위쪽으로 열린다.
 
 ## 빠른 진입점
 

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-27
-source_count: 297
+source_count: 298
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-27T16:44:19+0900 - implementation
+
+- Result: Issue #137 smooths the document-list sidebar creation and row menu UX.
+- Coverage: Top-level `New document` and `New folder` now submit `redirect=false` and route on the client, created documents/folders scroll into view once the refreshed list contains them, normal Documents/Recents document rows are title-only, Search/Favorites keep title-based display-path context, title-only links preserve accessible disambiguation, and bottom-edge row action menus open upward against the viewport or sidebar scroll boundary.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #137, `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`, `docs/superpowers/plans/2026-06-27-document-list-sidebar-ux.md`, `components/document-list.tsx`, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `components/document-navigation/document-row.tsx`, `components/document-navigation/folder-row.tsx`, `components/document-navigation/menu-placement.ts`, `tests/components/document-list.test.tsx`.
+- Verification: focused `document-list` Vitest run passed; `tsc --noEmit --pretty false` passed; wiki manifest/lint/sync-check passed with the known `wiki/designs/sidebar.md` pasted-image warning.
 
 ## 2026-06-27T15:34:35+0900 - design
 
