@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-23
-source_count: 294
+updated: 2026-06-27
+source_count: 296
 tags:
   - log
   - munjib
@@ -18,6 +18,22 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-27T15:08:00+0900 - review follow-up
+
+- Result: PR #136 review feedback hardens Sentry metric helpers against unavailable metric APIs and unexpected metric payload shapes.
+- Coverage: `captureMetricCount()` now returns before compacting attributes when `Sentry.metrics.count` is unavailable, and `scrubSentryMetric()` returns null, undefined, and primitive payloads unchanged instead of throwing.
+- Pages: [[Production Observability Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #136 Gemini review threads, `lib/observability/application-metrics.ts`, `lib/observability/sentry-scrub-event.ts`, `tests/observability/application-metrics.test.ts`, `tests/observability/sentry-scrub-event.test.ts`.
+- Verification: red focused Vitest run failed on the two review cases, green focused Vitest run passed 2 files / 18 tests, focused observability/Docker Vitest run passed 6 files / 52 tests, and `pnpm exec tsc --noEmit --pretty false` passed.
+
+## 2026-06-27T12:10:00+0900 - implementation
+
+- Result: Issue #135 records the low-cost production observability slice that keeps Docker logs as the startup/env/DB source of truth while extending Sentry with opt-in Node runtime metrics, privacy-masked error-only Replay, and low-cardinality application metrics.
+- Coverage: `web` compose now passes runtime metric env and Browser Replay build args, Dockerfile bundles public Replay sample rates at build time, environment examples document low-cost defaults, Sentry metric scrubbing removes server/user identity attributes, and handled AI unavailable paths increment `munjib.ai.unavailable` without workspace/document/user labels.
+- Pages: [[Production Observability Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #135, `docs/superpowers/specs/2026-06-27-low-cost-production-observability-design.md`, `docs/superpowers/plans/2026-06-27-low-cost-production-observability.md`, `lib/observability/sentry-config.ts`, `lib/observability/sentry-scrub-event.ts`, `lib/observability/application-metrics.ts`, `lib/observability/ai-unavailable.ts`, `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `Dockerfile`, `docker-compose.yml`, `.env.example`, `.env.docker.example`.
+- Verification: focused Sentry config/files/scrubber, application metrics, handled AI unavailable, and Docker compose Vitest runs passed; `pnpm exec tsc --noEmit --pretty false` passed after `pnpm run db:generate`; `pnpm wiki:manifest` and `pnpm wiki:lint` passed with the known pasted-image warning.
 
 ## 2026-06-24T00:05:00+0900 - review follow-up
 

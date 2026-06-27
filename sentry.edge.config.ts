@@ -3,6 +3,7 @@ import { getServerSentryConfig } from "@/lib/observability/sentry-config";
 import {
   scrubSentryBreadcrumb,
   scrubSentryEvent,
+  scrubSentryMetric,
   scrubSentrySpan,
 } from "@/lib/observability/sentry-scrub-event";
 
@@ -18,6 +19,7 @@ if (config.enabled) {
     beforeSendTransaction: scrubSentryEvent,
     beforeSendSpan: scrubSentrySpan,
     beforeBreadcrumb: scrubSentryBreadcrumb,
+    beforeSendMetric: scrubSentryMetric,
     dataCollection: {
       userInfo: false,
       cookies: false,

@@ -17,6 +17,11 @@ type SentryBreadcrumb = {
   data?: Record<string, unknown>;
 };
 
+type SentryMetric = {
+  attributes?: Record<string, unknown>;
+  tags?: Record<string, unknown>;
+};
+
 type ScrubbableSentryEvent = {
   request?: SentryRequest;
   user?: Record<string, unknown>;
@@ -56,6 +61,12 @@ const SPAN_NETWORK_KEYS = new Set([
   "url.domain",
   "url.port",
   "user_agent.original",
+]);
+const METRIC_ATTRIBUTE_KEYS = new Set([
+  "server.address",
+  "user.email",
+  "user.id",
+  "user.name",
 ]);
 
 function isSensitiveSpanDataKey(key: string): boolean {
@@ -198,4 +209,24 @@ export function scrubSentryEvent<T extends ScrubbableSentryEvent>(event: T): T {
   }
 
   return event;
+}
+
+export function scrubSentryMetric<T>(metric: T): T {
+  if (!metric || typeof metric !== "object") {
+    return metric;
+  }
+
+  const scrubbableMetric = metric as SentryMetric;
+
+  for (const container of [scrubbableMetric.attributes, scrubbableMetric.tags]) {
+    if (!container) {
+      continue;
+    }
+
+    for (const key of METRIC_ATTRIBUTE_KEYS) {
+      delete container[key];
+    }
+  }
+
+  return metric;
 }
