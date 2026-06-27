@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-27
-source_count: 298
+source_count: 299
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-27T16:55:01+0900 - review follow-up
+
+- Result: PR #138 review feedback ensures created-row scrolling still runs after returning to the Documents panel.
+- Coverage: `DocumentList` now reruns the pending-created-row scroll effect when the active sidebar panel changes, so creating from Search/Favorites and later opening Documents scrolls the newly rendered row into view.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #138 Gemini review thread, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red focused Vitest reproduced the missing scroll after returning to Documents; green focused Vitest passed the new regression test; full focused `document-list` Vitest and `tsc --noEmit --pretty false` passed.
 
 ## 2026-06-27T16:44:19+0900 - implementation
 

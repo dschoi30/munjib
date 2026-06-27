@@ -1264,6 +1264,79 @@ describe("DocumentList", () => {
     }
   });
 
+  it("scrolls a newly created toolbar row after returning to the documents panel", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      window.HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+      const view = renderWithI18n(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+      expect(await screen.findByText("Favorites")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "New document" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?document=doc-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          selectedDocumentId="doc-created"
+          documents={[
+            ...baseProps.documents,
+            {
+              id: "doc-created",
+              folderId: null,
+              title: "Created Document",
+              path: "/created-document",
+              contentText: "",
+              tagNames: [],
+              canWrite: true,
+            },
+          ]}
+        />,
+      );
+
+      expect(document.querySelector('[data-document-row-id="doc-created"]')).toBeNull();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+      await waitFor(() => {
+        const createdDocumentRow = document.querySelector('[data-document-row-id="doc-created"]');
+        expect(createdDocumentRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdDocumentRow);
+      });
+    } finally {
+      if (originalScrollIntoViewDescriptor) {
+        Object.defineProperty(
+          window.HTMLElement.prototype,
+          "scrollIntoView",
+          originalScrollIntoViewDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(window.HTMLElement.prototype, "scrollIntoView");
+      }
+    }
+  });
+
   it("keeps recents populated when a recent document is favorited", async () => {
     window.localStorage.setItem(
       "munjib:favorites:company-handbook",

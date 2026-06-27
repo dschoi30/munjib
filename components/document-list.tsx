@@ -325,7 +325,7 @@ export function DocumentList({
 
     target.scrollIntoView({ block: "nearest" });
     setPendingCreatedTarget(null);
-  }, [documents, folders, pendingCreatedTarget]);
+  }, [activePanel, documents, folders, pendingCreatedTarget]);
 
   useEffect(() => {
     if (!workspaceMenuOpen) return;
