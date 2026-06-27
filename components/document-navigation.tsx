@@ -445,6 +445,7 @@ export function DocumentNavigation({
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
             selected={item.document.id === selectedDocumentId}
+            showDescription={false}
             openMenuId={openMenuId}
             onOpenMenu={setOpenMenuId}
             onToggleFavorite={toggleFavoriteDocument}
@@ -542,6 +543,7 @@ export function DocumentNavigation({
               menuScope="recent-document"
               favoriteDocumentIds={favoriteDocumentIds}
               selectedDocumentId={selectedDocumentId}
+              showDescription={false}
               openMenuId={openMenuId}
               onOpenMenu={setOpenMenuId}
               onToggleFavorite={toggleFavoriteDocument}

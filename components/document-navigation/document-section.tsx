@@ -19,6 +19,7 @@ export function DocumentSection({
   menuScope,
   favoriteDocumentIds,
   selectedDocumentId,
+  showDescription = true,
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
@@ -31,6 +32,7 @@ export function DocumentSection({
   menuScope: string;
   favoriteDocumentIds: Set<string>;
   selectedDocumentId: string | null;
+  showDescription?: boolean;
   openMenuId: string | null;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
@@ -49,6 +51,7 @@ export function DocumentSection({
             document={document}
             isFavorite={favoriteDocumentIds.has(document.id)}
             selected={document.id === selectedDocumentId}
+            showDescription={showDescription}
             openMenuId={openMenuId}
             onOpenMenu={onOpenMenu}
             onToggleFavorite={onToggleFavorite}

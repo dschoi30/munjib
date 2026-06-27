@@ -1287,7 +1287,7 @@ describe("DocumentList", () => {
     });
   });
 
-  it("shows duplicate document titles with stored path context in visible rows", () => {
+  it("shows duplicate document titles as title-only normal rows while action labels keep stored path context", () => {
     renderList({
       documents: [
         {
@@ -1311,8 +1311,13 @@ describe("DocumentList", () => {
       ],
     });
 
-    expect(screen.getAllByRole("link", { name: /Runbook/ })).toHaveLength(4);
-    expect(screen.getAllByText("/operations/runbook").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Runbook")).toHaveLength(4);
+    expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", { name: "Runbook · /operations/runbook" }),
+    ).toHaveLength(2);
+    expect(screen.queryByText("/runbook")).toBeNull();
+    expect(screen.queryByText("/operations/runbook")).toBeNull();
     expect(
       screen.getAllByRole("button", {
         name: "Open actions for Runbook · /operations/runbook",
@@ -1320,7 +1325,7 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("uses display paths in normal document tree and recent rows", () => {
+  it("uses title-only normal document tree and recent rows while action labels keep path context", () => {
     const folders = [
       { ...folderFixtures[0], displayPath: "Engineering" },
       { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
@@ -1363,8 +1368,25 @@ describe("DocumentList", () => {
 
     for (const surface of [recentsSection as HTMLElement, allDocumentsNav]) {
       expect(
-        within(surface).getByText("Engineering / Runbooks / Engineering Runbook"),
+        within(surface).getByText("Engineering Runbook"),
       ).toBeTruthy();
+      expect(
+        within(surface).getByText("Operations Runbook"),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("link", {
+          name: "Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
+        }),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("link", {
+          name: "Operations Runbook · /operations/runbook",
+        }),
+      ).toBeTruthy();
+      expect(
+        within(surface).queryByText("Engineering / Runbooks / Engineering Runbook"),
+      ).toBeNull();
+      expect(within(surface).queryByText("/operations/runbook")).toBeNull();
       expect(
         within(surface).getByRole("button", {
           name: "Open actions for Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
@@ -1417,9 +1439,20 @@ describe("DocumentList", () => {
     renderList({ folders, documents, selectedDocumentId: "doc-selected" });
 
     const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
-    expect(allDocumentsNav.textContent).toContain(
-      "Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
-    );
+    expect(within(allDocumentsNav).getAllByText("Runbook")).toHaveLength(2);
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "Runbook · Engineering / Runbooks / Runbook",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+      }),
+    ).toBeTruthy();
+    expect(within(allDocumentsNav).queryByText("Engineering / Runbooks / Runbook")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/engineering/runbooks/runbook")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/engineering/runbooks/runbook-2")).toBeNull();
     expect(
       within(allDocumentsNav).getByRole("button", {
         name: "Open actions for Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
@@ -1468,8 +1501,21 @@ describe("DocumentList", () => {
     renderList({ folders, documents, selectedDocumentId: "doc-selected" });
 
     const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
-    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b-c");
-    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b/c");
+    expect(within(allDocumentsNav).getByText("B / C")).toBeTruthy();
+    expect(within(allDocumentsNav).getByText("C")).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "B / C · A / B / C · /a/b-c",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "C · A / B / C · /a/b/c",
+      }),
+    ).toBeTruthy();
+    expect(within(allDocumentsNav).queryByText("A / B / C")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/a/b-c")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/a/b/c")).toBeNull();
     expect(
       within(allDocumentsNav).getByRole("button", {
         name: "Open actions for B / C · A / B / C · /a/b-c",
@@ -1505,7 +1551,7 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("uses the selected Korean display language for blank document display paths", async () => {
+  it("uses the selected Korean display language for blank document title-only rows and search display paths", async () => {
     window.localStorage.setItem("munjib:language", "ko");
     renderList({
       folders: [
@@ -1527,9 +1573,13 @@ describe("DocumentList", () => {
       selectedDocumentId: null,
     });
 
-    expect((await screen.findAllByText("Engineering / Runbooks / 제목 없음")).length).toBeGreaterThan(
-      0,
-    );
+    expect((await screen.findAllByText("제목 없음")).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", {
+        name: "제목 없음 · Engineering / Runbooks / 제목 없음",
+      }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Engineering / Runbooks / 제목 없음")).toBeNull();
     expect(
       screen.getAllByRole("button", {
         name: "제목 없음 · Engineering / Runbooks / 제목 없음 작업 열기",
@@ -1544,6 +1594,7 @@ describe("DocumentList", () => {
 
     expect(screen.getByText("1개 결과")).toBeTruthy();
     expect(screen.getByRole("link", { name: /제목 없음/ })).toBeTruthy();
+    expect(screen.getByText("Engineering / Runbooks / 제목 없음")).toBeTruthy();
   });
 
   it("closes the workspace settings panel", () => {

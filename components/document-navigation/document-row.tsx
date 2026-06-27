@@ -24,6 +24,7 @@ export function DocumentLinkRow({
   isFavorite,
   selected,
   description,
+  showDescription = true,
   openMenuId,
   onOpenMenu,
   onToggleFavorite,
@@ -36,6 +37,7 @@ export function DocumentLinkRow({
   isFavorite: boolean;
   selected: boolean;
   description?: string;
+  showDescription?: boolean;
   openMenuId: string | null;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
@@ -47,7 +49,9 @@ export function DocumentLinkRow({
   const isMenuOpen = openMenuId === menuId;
   const fallbackLabel = t("nav.untitledDocument");
   const displayLabel = documentDisplayLabel(document, fallbackLabel);
-  const rowDescription = description ?? documentDisplayDescription(document, fallbackLabel);
+  const rowDescription = showDescription
+    ? description ?? documentDisplayDescription(document, fallbackLabel)
+    : undefined;
   const actionLabel = documentActionLabel(document, fallbackLabel);
   const rowClassName = selected
     ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
@@ -57,6 +61,7 @@ export function DocumentLinkRow({
     <div className={rowClassName} data-document-row-id={document.id}>
       <Link
         href={workspaceDocumentHref({ workspaceSlug, documentId: document.id })}
+        aria-label={showDescription ? undefined : actionLabel}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
