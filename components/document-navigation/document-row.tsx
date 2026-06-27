@@ -4,6 +4,10 @@ import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import type { DocumentListItem } from "@/components/document-list";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  actionMenuPositionClassName,
+  type ActionMenuPlacement,
+} from "@/components/document-navigation/menu-placement";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -26,6 +30,7 @@ export function DocumentLinkRow({
   description,
   showDescription = true,
   openMenuId,
+  menuPlacement = "down",
   onOpenMenu,
   onToggleFavorite,
   onOpenInNewTab,
@@ -39,6 +44,7 @@ export function DocumentLinkRow({
   description?: string;
   showDescription?: boolean;
   openMenuId: string | null;
+  menuPlacement?: ActionMenuPlacement;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onOpenInNewTab: OpenDocumentInNewTabHandler;
@@ -76,7 +82,7 @@ export function DocumentLinkRow({
         aria-expanded={isMenuOpen}
         onClick={(event) => {
           event.stopPropagation();
-          onOpenMenu(isMenuOpen ? null : menuId);
+          onOpenMenu(isMenuOpen ? null : menuId, isMenuOpen ? null : event.currentTarget);
         }}
         data-row-action-menu
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
@@ -89,7 +95,7 @@ export function DocumentLinkRow({
         <div
           role="menu"
           data-row-action-menu
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
+          className={`absolute right-0 ${actionMenuPositionClassName(menuPlacement)} z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg`}
         >
           <button
             type="button"

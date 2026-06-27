@@ -15,12 +15,17 @@ import {
   folderTrashConfirmMessage,
   hasTrashDescendants,
 } from "@/components/document-navigation/folder-trash";
+import {
+  actionMenuPositionClassName,
+  type ActionMenuPlacement,
+} from "@/components/document-navigation/menu-placement";
 
 export function FavoriteFolderRow({
   rowId,
   workspaceSlug,
   folder,
   openMenuId,
+  menuPlacement = "down",
   onOpenMenu,
   onToggleFavorite,
 }: {
@@ -28,6 +33,7 @@ export function FavoriteFolderRow({
   workspaceSlug: string;
   folder: FolderListItem;
   openMenuId: string | null;
+  menuPlacement?: ActionMenuPlacement;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteFolderHandler;
 }) {
@@ -54,7 +60,9 @@ export function FavoriteFolderRow({
         type="button"
         aria-label={t("nav.openActions", { label: displayLabel })}
         aria-expanded={isMenuOpen}
-        onClick={() => onOpenMenu(isMenuOpen ? null : rowId)}
+        onClick={(event) =>
+          onOpenMenu(isMenuOpen ? null : rowId, isMenuOpen ? null : event.currentTarget)
+        }
         data-row-action-menu
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
           isMenuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100"
@@ -66,7 +74,7 @@ export function FavoriteFolderRow({
         <div
           role="menu"
           data-row-action-menu
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
+          className={`absolute right-0 ${actionMenuPositionClassName(menuPlacement)} z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg`}
         >
           <button
             type="button"
@@ -94,6 +102,7 @@ export function FolderToggleRow({
   isRenaming,
   pendingCreateAction,
   openMenuId,
+  menuPlacement = "down",
   onOpenMenu,
   onStartRename,
   onCancelRename,
@@ -113,6 +122,7 @@ export function FolderToggleRow({
   isRenaming: boolean;
   pendingCreateAction: string | null;
   openMenuId: string | null;
+  menuPlacement?: ActionMenuPlacement;
   onOpenMenu: OpenMenuHandler;
   onStartRename: (folderId: string) => void;
   onCancelRename: () => void;
@@ -188,7 +198,9 @@ export function FolderToggleRow({
           type="button"
           aria-label={t("nav.openActions", { label: displayLabel })}
           aria-expanded={isMenuOpen}
-          onClick={() => onOpenMenu(isMenuOpen ? null : menuId)}
+          onClick={(event) =>
+            onOpenMenu(isMenuOpen ? null : menuId, isMenuOpen ? null : event.currentTarget)
+          }
           data-row-action-menu
           className="rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink"
         >
@@ -199,7 +211,7 @@ export function FolderToggleRow({
         <div
           role="menu"
           data-row-action-menu
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
+          className={`absolute right-0 ${actionMenuPositionClassName(menuPlacement)} z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg`}
         >
           <button
             type="button"

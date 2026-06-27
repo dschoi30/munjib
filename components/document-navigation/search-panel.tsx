@@ -2,6 +2,7 @@
 
 import type { DocumentListItem } from "@/components/document-list";
 import { DocumentLinkRow } from "@/components/document-navigation/document-row";
+import type { ActionMenuPlacement } from "@/components/document-navigation/menu-placement";
 import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentAction,
@@ -18,6 +19,7 @@ export function SearchPanel({
   selectedDocumentId,
   favoriteDocumentIds,
   openMenuId,
+  menuPlacements = {},
   onOpenMenu,
   onToggleFavorite,
   onOpenInNewTab,
@@ -30,6 +32,7 @@ export function SearchPanel({
   selectedDocumentId: string | null;
   favoriteDocumentIds: Set<string>;
   openMenuId: string | null;
+  menuPlacements?: Record<string, ActionMenuPlacement>;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onOpenInNewTab: OpenDocumentInNewTabHandler;
@@ -59,21 +62,26 @@ export function SearchPanel({
       </div>
       <p className="text-[0.68rem] font-medium text-slate-400">{resultLabel}</p>
       <div className="space-y-1">
-        {documents.map((document) => (
-          <SearchResultRow
-            key={`search-${document.id}`}
-            rowId={`search-document:${document.id}`}
-            workspaceSlug={workspaceSlug}
-            document={document}
-            isFavorite={favoriteDocumentIds.has(document.id)}
-            selected={document.id === selectedDocumentId}
-            openMenuId={openMenuId}
-            onOpenMenu={onOpenMenu}
-            onToggleFavorite={onToggleFavorite}
-            onOpenInNewTab={onOpenInNewTab}
-            archiveDocumentAction={archiveDocumentAction}
-          />
-        ))}
+        {documents.map((document) => {
+          const menuId = `search-document:${document.id}`;
+
+          return (
+            <SearchResultRow
+              key={`search-${document.id}`}
+              rowId={menuId}
+              workspaceSlug={workspaceSlug}
+              document={document}
+              isFavorite={favoriteDocumentIds.has(document.id)}
+              selected={document.id === selectedDocumentId}
+              openMenuId={openMenuId}
+              menuPlacement={menuPlacements[menuId] ?? "down"}
+              onOpenMenu={onOpenMenu}
+              onToggleFavorite={onToggleFavorite}
+              onOpenInNewTab={onOpenInNewTab}
+              archiveDocumentAction={archiveDocumentAction}
+            />
+          );
+        })}
         {documents.length === 0 ? (
           <p className="rounded-md border border-dashed border-border px-3 py-4 text-sm text-slate-500">
             {t("nav.noDocuments")}
@@ -91,6 +99,7 @@ function SearchResultRow({
   isFavorite,
   selected,
   openMenuId,
+  menuPlacement,
   onOpenMenu,
   onToggleFavorite,
   onOpenInNewTab,
@@ -102,6 +111,7 @@ function SearchResultRow({
   isFavorite: boolean;
   selected: boolean;
   openMenuId: string | null;
+  menuPlacement: ActionMenuPlacement;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onOpenInNewTab: OpenDocumentInNewTabHandler;
@@ -115,6 +125,7 @@ function SearchResultRow({
       isFavorite={isFavorite}
       selected={selected}
       openMenuId={openMenuId}
+      menuPlacement={menuPlacement}
       onOpenMenu={onOpenMenu}
       onToggleFavorite={onToggleFavorite}
       onOpenInNewTab={onOpenInNewTab}

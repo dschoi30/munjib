@@ -219,6 +219,73 @@ function languageOptionCard(name: RegExp) {
   return card;
 }
 
+function domRect({
+  top = 0,
+  left = 0,
+  width = 0,
+  height = 0,
+  right = left + width,
+  bottom = top + height,
+}: Partial<DOMRect> = {}) {
+  return {
+    x: left,
+    y: top,
+    top,
+    right,
+    bottom,
+    left,
+    width,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
+
+async function withActionMenuGeometry(
+  innerHeight: number,
+  callback: (
+    setRect: (element: HTMLElement, rect: Partial<DOMRect>) => void,
+  ) => void | Promise<void>,
+) {
+  const originalInnerHeightDescriptor = Object.getOwnPropertyDescriptor(window, "innerHeight");
+  const originalGetBoundingClientRectDescriptor = Object.getOwnPropertyDescriptor(
+    window.HTMLElement.prototype,
+    "getBoundingClientRect",
+  );
+  const rects = new WeakMap<HTMLElement, DOMRect>();
+
+  Object.defineProperty(window, "innerHeight", {
+    configurable: true,
+    value: innerHeight,
+  });
+  Object.defineProperty(window.HTMLElement.prototype, "getBoundingClientRect", {
+    configurable: true,
+    value(this: HTMLElement) {
+      return rects.get(this) ?? domRect();
+    },
+  });
+
+  try {
+    await callback((element, rect) => {
+      rects.set(element, domRect(rect));
+    });
+  } finally {
+    if (originalInnerHeightDescriptor) {
+      Object.defineProperty(window, "innerHeight", originalInnerHeightDescriptor);
+    } else {
+      Reflect.deleteProperty(window, "innerHeight");
+    }
+    if (originalGetBoundingClientRectDescriptor) {
+      Object.defineProperty(
+        window.HTMLElement.prototype,
+        "getBoundingClientRect",
+        originalGetBoundingClientRectDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(window.HTMLElement.prototype, "getBoundingClientRect");
+    }
+  }
+}
+
 describe("DocumentList", () => {
   it("shows a body skeleton until the stored Korean active sidebar panel hydrates", async () => {
     window.localStorage.setItem("munjib:language", "ko");
@@ -2538,6 +2605,85 @@ describe("DocumentList", () => {
     expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Move to trash" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Add to favorites" })).toBeTruthy();
+  });
+
+  it("bottom-edge document action menu opens upward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 568, bottom: 592, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
+  });
+
+  it("document action menu with room below opens downward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 64, bottom: 88, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("top-8");
+      expect(menu.className).not.toContain("bottom-8");
+    });
+  });
+
+  it("uses the sidebar scroll boundary when choosing document action menu placement", async () => {
+    await withActionMenuGeometry(800, (setRect) => {
+      renderWithI18n(
+        <div data-testid="scroll-boundary" style={{ overflowY: "auto" }}>
+          <DocumentList {...baseProps} />
+        </div>,
+      );
+
+      const scrollBoundary = screen.getByTestId("scroll-boundary");
+      setRect(scrollBoundary, { top: 0, bottom: 320, height: 320, width: 280 });
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 276, bottom: 300, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
+  });
+
+  it("bottom-edge folder action menu opens upward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      });
+      setRect(actionButton, { top: 568, bottom: 592, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
   });
 
   it("adds a child folder from the folder actions menu without direct form redirect", async () => {
