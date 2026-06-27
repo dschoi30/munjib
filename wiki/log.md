@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-27
-source_count: 296
+source_count: 297
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-27T15:34:35+0900 - design
+
+- Result: Issue #137 design records the document-list sidebar UX follow-up for smoother top-level creation, created-row scrolling, title-only normal document rows, and bottom-edge action menu placement.
+- Coverage: Top-level `New document` and `New folder` should use the existing `redirect=false` server-action return contract and client route transitions; generated rows should scroll into view after refreshed props include them. Normal Documents/Recents document rows should hide path descriptions, while Search/Favorites keep title-based display-path context from Issue #131. Row action menus should keep the current implementation and open upward when lower viewport space is insufficient.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #137, `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`.
+- Verification: spec self-review and `git diff --check` passed; wiki sync required this durable design entry before commit.
 
 ## 2026-06-27T15:08:00+0900 - review follow-up
 

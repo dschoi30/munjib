@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-22
-source_count: 108
+updated: 2026-06-27
+source_count: 109
 tags:
   - munjib
   - source
@@ -80,7 +80,7 @@ Issue #119 implements the soft-deleted document hard-delete lifecycle as a works
 
 Issue #25는 PRD의 Markdown-first 작성 경험을 Obsidian에 더 가깝게 만들기 위해 구현된 편집 구조 변경이다. 구현 범위는 markdown heading hierarchy 기준 접기/펼치기, Preview chevron UI, Edit mode CodeMirror heading folding, 문서별 browser `localStorage` 상태 저장/복원, 기존 split mode 제거다. Edit mode는 CodeMirror folded ranges를 heading body line range와 matching해 preview와 같은 raw heading key를 저장한다. Preview rendering은 heading folding을 위해 문서를 chunk로 나누더라도 문서 전체의 reference link와 continuation line을 포함한 footnote/reference definition block을 각 chunk에 공유해 whole-document Markdown reference 해석을 보존한다.
 
-Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigation을 구현했다. 구현 범위는 상단 문서 탭, 탭 하단 back/forward toolbar, 현재 document/folder path 표시다. 이 구현은 DB schema나 markdown payload를 바꾸지 않고, 기존 server-selected single document editor와 URL query routing을 유지한다. 열린 탭 목록은 workspace-scoped browser `localStorage`에 저장하는 UI state이며, 일반 문서 선택은 현재 탭을 교체하고 tab strip `+` button 또는 sidebar Open in new tab menu만 새 탭을 만든다. Tab strip은 `+` button을 마지막 tab에 붙이고, tab이 row 폭을 채우면 각 tab width를 함께 줄인다. Forward navigation은 대상 document가 있고 해당 document가 readable할 때만 활성화한다. 여러 editor instance와 unsaved buffer 보존은 후속 범위로 둔다. Issue #131 구현은 toolbar/search/sidebar/settings/folder detail path label을 stored slug path가 아니라 folder `name`과 `Document.title`에서 만든 display-only path로 바꾸며, URL routing과 stored `Document.path`/`Folder.path` identity는 유지한다.
+Issue #29는 Obsidian식 작업 흐름에 더 가까운 multi-document navigation을 구현했다. 구현 범위는 상단 문서 탭, 탭 하단 back/forward toolbar, 현재 document/folder path 표시다. 이 구현은 DB schema나 markdown payload를 바꾸지 않고, 기존 server-selected single document editor와 URL query routing을 유지한다. 열린 탭 목록은 workspace-scoped browser `localStorage`에 저장하는 UI state이며, 일반 문서 선택은 현재 탭을 교체하고 tab strip `+` button 또는 sidebar Open in new tab menu만 새 탭을 만든다. Tab strip은 `+` button을 마지막 tab에 붙이고, tab이 row 폭을 채우면 각 tab width를 함께 줄인다. Forward navigation은 대상 document가 있고 해당 document가 readable할 때만 활성화한다. 여러 editor instance와 unsaved buffer 보존은 후속 범위로 둔다. Issue #131 구현은 toolbar/search/sidebar/settings/folder detail path label을 stored slug path가 아니라 folder `name`과 `Document.title`에서 만든 display-only path로 바꾸며, URL routing과 stored `Document.path`/`Folder.path` identity는 유지한다. Issue #137 설계는 left sidebar의 일반 Documents tree/recents row만 title-only로 축소하고 Search/Favorites는 display-path context를 유지하는 UX follow-up이다. 또한 top-level 새 문서/새 폴더 생성은 기존 `redirect=false` server-action return contract를 사용해 client route transition으로 처리하고, 생성된 row로 scroll하며, 하단 action menu는 viewport collision 시 위로 열리도록 정리한다.
 
 2026-05-16 metadata panel outline 설계는 PRD의 Obsidian-style 문서 탐색 경험을 오른쪽 panel로 확장하는 계획이다. `Outline` tab은 현재 선택 문서의 `#`-`####` ATX heading을 추출해 tree로 보여주고, level별 vertical guide line과 click-to-scroll navigation을 제공한다. 설계 근거는 `docs/superpowers/specs/2026-05-16-metadata-panel-outline-design.md`이다.
 
