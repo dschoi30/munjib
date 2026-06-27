@@ -4,6 +4,7 @@ import type { DocumentListItem, FolderListItem } from "@/components/document-lis
 import { DocumentLinkRow } from "@/components/document-navigation/document-row";
 import { sectionHeadingClassName } from "@/components/document-navigation/document-section";
 import { FavoriteFolderRow } from "@/components/document-navigation/folder-row";
+import type { ActionMenuPlacement } from "@/components/document-navigation/menu-placement";
 import { useI18n } from "@/components/i18n-provider";
 import type {
   ArchiveDocumentAction,
@@ -20,6 +21,7 @@ export function FavoriteSection({
   favoriteDocumentIds,
   selectedDocumentId,
   openMenuId,
+  menuPlacements = {},
   onOpenMenu,
   onToggleFavorite,
   onToggleFavoriteFolder,
@@ -32,6 +34,7 @@ export function FavoriteSection({
   favoriteDocumentIds: Set<string>;
   selectedDocumentId: string | null;
   openMenuId: string | null;
+  menuPlacements?: Record<string, ActionMenuPlacement>;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onToggleFavoriteFolder: ToggleFavoriteFolderHandler;
@@ -49,32 +52,42 @@ export function FavoriteSection({
             {t("nav.noFavorites")}
           </p>
         ) : null}
-        {folders.map((folder) => (
-          <FavoriteFolderRow
-            key={`Favorites-folder-${folder.id}`}
-            rowId={`favorite-folder:${folder.id}`}
-            workspaceSlug={workspaceSlug}
-            folder={folder}
-            openMenuId={openMenuId}
-            onOpenMenu={onOpenMenu}
-            onToggleFavorite={onToggleFavoriteFolder}
-          />
-        ))}
-        {documents.map((document) => (
-          <DocumentLinkRow
-            key={`Favorites-${document.id}`}
-            rowId={`favorite-document:${document.id}`}
-            workspaceSlug={workspaceSlug}
-            document={document}
-            isFavorite={favoriteDocumentIds.has(document.id)}
-            selected={document.id === selectedDocumentId}
-            openMenuId={openMenuId}
-            onOpenMenu={onOpenMenu}
-            onToggleFavorite={onToggleFavorite}
-            onOpenInNewTab={onOpenInNewTab}
-            archiveDocumentAction={archiveDocumentAction}
-          />
-        ))}
+        {folders.map((folder) => {
+          const menuId = `favorite-folder:${folder.id}`;
+
+          return (
+            <FavoriteFolderRow
+              key={`Favorites-folder-${folder.id}`}
+              rowId={menuId}
+              workspaceSlug={workspaceSlug}
+              folder={folder}
+              openMenuId={openMenuId}
+              menuPlacement={menuPlacements[menuId] ?? "down"}
+              onOpenMenu={onOpenMenu}
+              onToggleFavorite={onToggleFavoriteFolder}
+            />
+          );
+        })}
+        {documents.map((document) => {
+          const menuId = `favorite-document:${document.id}`;
+
+          return (
+            <DocumentLinkRow
+              key={`Favorites-${document.id}`}
+              rowId={menuId}
+              workspaceSlug={workspaceSlug}
+              document={document}
+              isFavorite={favoriteDocumentIds.has(document.id)}
+              selected={document.id === selectedDocumentId}
+              openMenuId={openMenuId}
+              menuPlacement={menuPlacements[menuId] ?? "down"}
+              onOpenMenu={onOpenMenu}
+              onToggleFavorite={onToggleFavorite}
+              onOpenInNewTab={onOpenInNewTab}
+              archiveDocumentAction={archiveDocumentAction}
+            />
+          );
+        })}
       </div>
     </section>
   );

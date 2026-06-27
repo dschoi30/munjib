@@ -2,6 +2,7 @@
 
 import type { DocumentListItem } from "@/components/document-list";
 import { DocumentLinkRow } from "@/components/document-navigation/document-row";
+import type { ActionMenuPlacement } from "@/components/document-navigation/menu-placement";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -19,7 +20,9 @@ export function DocumentSection({
   menuScope,
   favoriteDocumentIds,
   selectedDocumentId,
+  showDescription = true,
   openMenuId,
+  menuPlacements = {},
   onOpenMenu,
   onToggleFavorite,
   onOpenInNewTab,
@@ -31,7 +34,9 @@ export function DocumentSection({
   menuScope: string;
   favoriteDocumentIds: Set<string>;
   selectedDocumentId: string | null;
+  showDescription?: boolean;
   openMenuId: string | null;
+  menuPlacements?: Record<string, ActionMenuPlacement>;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onOpenInNewTab: OpenDocumentInNewTabHandler;
@@ -41,21 +46,27 @@ export function DocumentSection({
     <section className="mb-4">
       <p className={sectionHeadingClassName}>{title}</p>
       <div className="space-y-1">
-        {documents.map((document) => (
-          <DocumentLinkRow
-            key={`${menuScope}-${document.id}`}
-            rowId={`${menuScope}:${document.id}`}
-            workspaceSlug={workspaceSlug}
-            document={document}
-            isFavorite={favoriteDocumentIds.has(document.id)}
-            selected={document.id === selectedDocumentId}
-            openMenuId={openMenuId}
-            onOpenMenu={onOpenMenu}
-            onToggleFavorite={onToggleFavorite}
-            onOpenInNewTab={onOpenInNewTab}
-            archiveDocumentAction={archiveDocumentAction}
-          />
-        ))}
+        {documents.map((document) => {
+          const menuId = `${menuScope}:${document.id}`;
+
+          return (
+            <DocumentLinkRow
+              key={`${menuScope}-${document.id}`}
+              rowId={menuId}
+              workspaceSlug={workspaceSlug}
+              document={document}
+              isFavorite={favoriteDocumentIds.has(document.id)}
+              selected={document.id === selectedDocumentId}
+              showDescription={showDescription}
+              openMenuId={openMenuId}
+              menuPlacement={menuPlacements[menuId] ?? "down"}
+              onOpenMenu={onOpenMenu}
+              onToggleFavorite={onToggleFavorite}
+              onOpenInNewTab={onOpenInNewTab}
+              archiveDocumentAction={archiveDocumentAction}
+            />
+          );
+        })}
       </div>
     </section>
   );

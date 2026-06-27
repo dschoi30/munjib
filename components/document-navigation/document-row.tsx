@@ -4,6 +4,10 @@ import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import type { DocumentListItem } from "@/components/document-list";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  actionMenuPositionClassName,
+  type ActionMenuPlacement,
+} from "@/components/document-navigation/menu-placement";
 import type {
   ArchiveDocumentAction,
   OpenDocumentInNewTabHandler,
@@ -24,7 +28,9 @@ export function DocumentLinkRow({
   isFavorite,
   selected,
   description,
+  showDescription = true,
   openMenuId,
+  menuPlacement = "down",
   onOpenMenu,
   onToggleFavorite,
   onOpenInNewTab,
@@ -36,7 +42,9 @@ export function DocumentLinkRow({
   isFavorite: boolean;
   selected: boolean;
   description?: string;
+  showDescription?: boolean;
   openMenuId: string | null;
+  menuPlacement?: ActionMenuPlacement;
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteDocumentHandler;
   onOpenInNewTab: OpenDocumentInNewTabHandler;
@@ -47,16 +55,19 @@ export function DocumentLinkRow({
   const isMenuOpen = openMenuId === menuId;
   const fallbackLabel = t("nav.untitledDocument");
   const displayLabel = documentDisplayLabel(document, fallbackLabel);
-  const rowDescription = description ?? documentDisplayDescription(document, fallbackLabel);
+  const rowDescription = showDescription
+    ? description ?? documentDisplayDescription(document, fallbackLabel)
+    : undefined;
   const actionLabel = documentActionLabel(document, fallbackLabel);
   const rowClassName = selected
     ? "group relative flex items-start gap-1 rounded-md bg-slate-200 focus-within:bg-slate-200"
     : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
 
   return (
-    <div className={rowClassName}>
+    <div className={rowClassName} data-document-row-id={document.id}>
       <Link
         href={workspaceDocumentHref({ workspaceSlug, documentId: document.id })}
+        aria-label={showDescription ? undefined : actionLabel}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >
@@ -71,7 +82,7 @@ export function DocumentLinkRow({
         aria-expanded={isMenuOpen}
         onClick={(event) => {
           event.stopPropagation();
-          onOpenMenu(isMenuOpen ? null : menuId);
+          onOpenMenu(isMenuOpen ? null : menuId, isMenuOpen ? null : event.currentTarget);
         }}
         data-row-action-menu
         className={`mt-1 rounded p-1 text-slate-500 hover:bg-white hover:text-ink focus:bg-white focus:text-ink ${
@@ -84,7 +95,7 @@ export function DocumentLinkRow({
         <div
           role="menu"
           data-row-action-menu
-          className="absolute right-0 top-8 z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg"
+          className={`absolute right-0 ${actionMenuPositionClassName(menuPlacement)} z-20 w-44 rounded-md border border-border bg-white p-1 text-[13px] shadow-lg`}
         >
           <button
             type="button"

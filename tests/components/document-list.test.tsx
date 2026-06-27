@@ -219,6 +219,73 @@ function languageOptionCard(name: RegExp) {
   return card;
 }
 
+function domRect({
+  top = 0,
+  left = 0,
+  width = 0,
+  height = 0,
+  right = left + width,
+  bottom = top + height,
+}: Partial<DOMRect> = {}) {
+  return {
+    x: left,
+    y: top,
+    top,
+    right,
+    bottom,
+    left,
+    width,
+    height,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
+
+async function withActionMenuGeometry(
+  innerHeight: number,
+  callback: (
+    setRect: (element: HTMLElement, rect: Partial<DOMRect>) => void,
+  ) => void | Promise<void>,
+) {
+  const originalInnerHeightDescriptor = Object.getOwnPropertyDescriptor(window, "innerHeight");
+  const originalGetBoundingClientRectDescriptor = Object.getOwnPropertyDescriptor(
+    window.HTMLElement.prototype,
+    "getBoundingClientRect",
+  );
+  const rects = new WeakMap<HTMLElement, DOMRect>();
+
+  Object.defineProperty(window, "innerHeight", {
+    configurable: true,
+    value: innerHeight,
+  });
+  Object.defineProperty(window.HTMLElement.prototype, "getBoundingClientRect", {
+    configurable: true,
+    value(this: HTMLElement) {
+      return rects.get(this) ?? domRect();
+    },
+  });
+
+  try {
+    await callback((element, rect) => {
+      rects.set(element, domRect(rect));
+    });
+  } finally {
+    if (originalInnerHeightDescriptor) {
+      Object.defineProperty(window, "innerHeight", originalInnerHeightDescriptor);
+    } else {
+      Reflect.deleteProperty(window, "innerHeight");
+    }
+    if (originalGetBoundingClientRectDescriptor) {
+      Object.defineProperty(
+        window.HTMLElement.prototype,
+        "getBoundingClientRect",
+        originalGetBoundingClientRectDescriptor,
+      );
+    } else {
+      Reflect.deleteProperty(window.HTMLElement.prototype, "getBoundingClientRect");
+    }
+  }
+}
+
 describe("DocumentList", () => {
   it("shows a body skeleton until the stored Korean active sidebar panel hydrates", async () => {
     window.localStorage.setItem("munjib:language", "ko");
@@ -992,20 +1059,282 @@ describe("DocumentList", () => {
     expect(rowNames).toEqual(["Alpha", "Zulu", "Alpha Doc", "Zulu Doc"]);
   });
 
-  it("keeps top-level create controls scoped to the workspace root", () => {
-    renderList({ selectedFolderId: "folder-engineering" });
+  it("creates a root document from the toolbar without direct form redirect", async () => {
+    const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+    renderList({ createAction, selectedFolderId: "folder-engineering" });
+
+    fireEvent.click(screen.getByRole("button", { name: "New document" }));
+
+    await waitFor(() => {
+      expect(createAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("folderId")).toBe("");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
+  });
+
+  it("creates a root folder from the toolbar without direct form redirect", async () => {
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createFolderAction, selectedFolderId: "folder-engineering" });
+
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+
+    await waitFor(() => {
+      expect(createFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("parentFolderId")).toBe("");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?folder=folder-created");
+  });
+
+  it("guards repeated top-level toolbar creation while pending", async () => {
+    let resolveCreateDocument: (result: { documentId: string }) => void = () => {};
+    const createAction = vi.fn(
+      () =>
+        new Promise<{ documentId: string }>((resolve) => {
+          resolveCreateDocument = resolve;
+        }),
+    );
+    renderList({ createAction });
+
+    const newDocumentButton = screen.getByRole("button", { name: "New document" });
+    fireEvent.click(newDocumentButton);
+    fireEvent.click(newDocumentButton);
+
+    expect(createAction).toHaveBeenCalledTimes(1);
+    expect(newDocumentButton).toHaveProperty("disabled", true);
+
+    resolveCreateDocument({ documentId: "doc-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?document=doc-created",
+      );
+    });
+  });
+
+  it("disables both top-level create buttons while document creation is pending", async () => {
+    let resolveCreateDocument: (result: { documentId: string }) => void = () => {};
+    const createAction = vi.fn(
+      () =>
+        new Promise<{ documentId: string }>((resolve) => {
+          resolveCreateDocument = resolve;
+        }),
+    );
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createAction, createFolderAction });
 
     const newDocumentButton = screen.getByRole("button", { name: "New document" });
     const newFolderButton = screen.getByRole("button", { name: "New folder" });
-    const documentForm = newDocumentButton.closest("form");
-    const folderForm = newFolderButton.closest("form");
 
-    expect(
-      documentForm?.querySelector<HTMLInputElement>('input[name="folderId"]')?.value,
-    ).toBe("");
-    expect(
-      folderForm?.querySelector<HTMLInputElement>('input[name="parentFolderId"]')?.value,
-    ).toBe("");
+    fireEvent.click(newDocumentButton);
+
+    expect(createAction).toHaveBeenCalledTimes(1);
+    expect(newDocumentButton).toHaveProperty("disabled", true);
+    expect(newFolderButton).toHaveProperty("disabled", true);
+
+    fireEvent.click(newFolderButton);
+    expect(createFolderAction).not.toHaveBeenCalled();
+
+    resolveCreateDocument({ documentId: "doc-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?document=doc-created",
+      );
+    });
+  });
+
+  it("shows feedback when top-level toolbar creation fails", async () => {
+    const createFolderAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createFolderAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("scrolls a newly created toolbar document or folder row into view after refresh", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      window.HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+      const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+      const view = renderWithI18n(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "New document" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?document=doc-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+          selectedDocumentId="doc-created"
+          documents={[
+            ...baseProps.documents,
+            {
+              id: "doc-created",
+              folderId: null,
+              title: "Created Document",
+              path: "/created-document",
+              contentText: "",
+              tagNames: [],
+              canWrite: true,
+            },
+          ]}
+        />,
+      );
+
+      await waitFor(() => {
+        const createdDocumentRow = document.querySelector('[data-document-row-id="doc-created"]');
+        expect(createdDocumentRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdDocumentRow);
+      });
+      scrollIntoView.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?folder=folder-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+          selectedDocumentId={null}
+          selectedFolderId="folder-created"
+          folders={[
+            ...baseProps.folders,
+            {
+              id: "folder-created",
+              parentFolderId: null,
+              name: "Created Folder",
+              path: "/created-folder",
+            },
+          ]}
+        />,
+      );
+
+      await waitFor(() => {
+        const createdFolderRow = document.querySelector('[data-folder-row-id="folder-created"]');
+        expect(createdFolderRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdFolderRow);
+      });
+    } finally {
+      if (originalScrollIntoViewDescriptor) {
+        Object.defineProperty(
+          window.HTMLElement.prototype,
+          "scrollIntoView",
+          originalScrollIntoViewDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(window.HTMLElement.prototype, "scrollIntoView");
+      }
+    }
+  });
+
+  it("scrolls a newly created toolbar row after returning to the documents panel", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      window.HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+      const view = renderWithI18n(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "Favorites" }));
+      expect(await screen.findByText("Favorites")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "New document" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?document=doc-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          selectedDocumentId="doc-created"
+          documents={[
+            ...baseProps.documents,
+            {
+              id: "doc-created",
+              folderId: null,
+              title: "Created Document",
+              path: "/created-document",
+              contentText: "",
+              tagNames: [],
+              canWrite: true,
+            },
+          ]}
+        />,
+      );
+
+      expect(document.querySelector('[data-document-row-id="doc-created"]')).toBeNull();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole("button", { name: "Documents" }));
+
+      await waitFor(() => {
+        const createdDocumentRow = document.querySelector('[data-document-row-id="doc-created"]');
+        expect(createdDocumentRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdDocumentRow);
+      });
+    } finally {
+      if (originalScrollIntoViewDescriptor) {
+        Object.defineProperty(
+          window.HTMLElement.prototype,
+          "scrollIntoView",
+          originalScrollIntoViewDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(window.HTMLElement.prototype, "scrollIntoView");
+      }
+    }
   });
 
   it("keeps recents populated when a recent document is favorited", async () => {
@@ -1098,7 +1427,7 @@ describe("DocumentList", () => {
     });
   });
 
-  it("shows duplicate document titles with stored path context in visible rows", () => {
+  it("shows duplicate document titles as title-only normal rows while action labels keep stored path context", () => {
     renderList({
       documents: [
         {
@@ -1122,8 +1451,13 @@ describe("DocumentList", () => {
       ],
     });
 
-    expect(screen.getAllByRole("link", { name: /Runbook/ })).toHaveLength(4);
-    expect(screen.getAllByText("/operations/runbook").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Runbook")).toHaveLength(4);
+    expect(screen.getAllByRole("link", { name: "Runbook" })).toHaveLength(2);
+    expect(
+      screen.getAllByRole("link", { name: "Runbook · /operations/runbook" }),
+    ).toHaveLength(2);
+    expect(screen.queryByText("/runbook")).toBeNull();
+    expect(screen.queryByText("/operations/runbook")).toBeNull();
     expect(
       screen.getAllByRole("button", {
         name: "Open actions for Runbook · /operations/runbook",
@@ -1131,7 +1465,7 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("uses display paths in normal document tree and recent rows", () => {
+  it("uses title-only normal document tree and recent rows while action labels keep path context", () => {
     const folders = [
       { ...folderFixtures[0], displayPath: "Engineering" },
       { ...folderFixtures[1], displayPath: "Engineering / Runbooks" },
@@ -1174,8 +1508,25 @@ describe("DocumentList", () => {
 
     for (const surface of [recentsSection as HTMLElement, allDocumentsNav]) {
       expect(
-        within(surface).getByText("Engineering / Runbooks / Engineering Runbook"),
+        within(surface).getByText("Engineering Runbook"),
       ).toBeTruthy();
+      expect(
+        within(surface).getByText("Operations Runbook"),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("link", {
+          name: "Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
+        }),
+      ).toBeTruthy();
+      expect(
+        within(surface).getByRole("link", {
+          name: "Operations Runbook · /operations/runbook",
+        }),
+      ).toBeTruthy();
+      expect(
+        within(surface).queryByText("Engineering / Runbooks / Engineering Runbook"),
+      ).toBeNull();
+      expect(within(surface).queryByText("/operations/runbook")).toBeNull();
       expect(
         within(surface).getByRole("button", {
           name: "Open actions for Engineering Runbook · Engineering / Runbooks / Engineering Runbook",
@@ -1228,9 +1579,20 @@ describe("DocumentList", () => {
     renderList({ folders, documents, selectedDocumentId: "doc-selected" });
 
     const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
-    expect(allDocumentsNav.textContent).toContain(
-      "Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
-    );
+    expect(within(allDocumentsNav).getAllByText("Runbook")).toHaveLength(2);
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "Runbook · Engineering / Runbooks / Runbook",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
+      }),
+    ).toBeTruthy();
+    expect(within(allDocumentsNav).queryByText("Engineering / Runbooks / Runbook")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/engineering/runbooks/runbook")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/engineering/runbooks/runbook-2")).toBeNull();
     expect(
       within(allDocumentsNav).getByRole("button", {
         name: "Open actions for Runbook · Engineering / Runbooks / Runbook · /engineering/runbooks/runbook-2",
@@ -1279,8 +1641,21 @@ describe("DocumentList", () => {
     renderList({ folders, documents, selectedDocumentId: "doc-selected" });
 
     const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
-    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b-c");
-    expect(allDocumentsNav.textContent).toContain("A / B / C · /a/b/c");
+    expect(within(allDocumentsNav).getByText("B / C")).toBeTruthy();
+    expect(within(allDocumentsNav).getByText("C")).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "B / C · A / B / C · /a/b-c",
+      }),
+    ).toBeTruthy();
+    expect(
+      within(allDocumentsNav).getByRole("link", {
+        name: "C · A / B / C · /a/b/c",
+      }),
+    ).toBeTruthy();
+    expect(within(allDocumentsNav).queryByText("A / B / C")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/a/b-c")).toBeNull();
+    expect(within(allDocumentsNav).queryByText("/a/b/c")).toBeNull();
     expect(
       within(allDocumentsNav).getByRole("button", {
         name: "Open actions for B / C · A / B / C · /a/b-c",
@@ -1316,7 +1691,7 @@ describe("DocumentList", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("uses the selected Korean display language for blank document display paths", async () => {
+  it("uses the selected Korean display language for blank document title-only rows and search display paths", async () => {
     window.localStorage.setItem("munjib:language", "ko");
     renderList({
       folders: [
@@ -1338,9 +1713,13 @@ describe("DocumentList", () => {
       selectedDocumentId: null,
     });
 
-    expect((await screen.findAllByText("Engineering / Runbooks / 제목 없음")).length).toBeGreaterThan(
-      0,
-    );
+    expect((await screen.findAllByText("제목 없음")).length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("link", {
+        name: "제목 없음 · Engineering / Runbooks / 제목 없음",
+      }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("Engineering / Runbooks / 제목 없음")).toBeNull();
     expect(
       screen.getAllByRole("button", {
         name: "제목 없음 · Engineering / Runbooks / 제목 없음 작업 열기",
@@ -1355,6 +1734,7 @@ describe("DocumentList", () => {
 
     expect(screen.getByText("1개 결과")).toBeTruthy();
     expect(screen.getByRole("link", { name: /제목 없음/ })).toBeTruthy();
+    expect(screen.getByText("Engineering / Runbooks / 제목 없음")).toBeTruthy();
   });
 
   it("closes the workspace settings panel", () => {
@@ -2298,6 +2678,85 @@ describe("DocumentList", () => {
     expect(screen.getByRole("menuitem", { name: "Rename" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Move to trash" })).toBeTruthy();
     expect(screen.getByRole("menuitem", { name: "Add to favorites" })).toBeTruthy();
+  });
+
+  it("bottom-edge document action menu opens upward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 568, bottom: 592, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
+  });
+
+  it("document action menu with room below opens downward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 64, bottom: 88, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("top-8");
+      expect(menu.className).not.toContain("bottom-8");
+    });
+  });
+
+  it("uses the sidebar scroll boundary when choosing document action menu placement", async () => {
+    await withActionMenuGeometry(800, (setRect) => {
+      renderWithI18n(
+        <div data-testid="scroll-boundary" style={{ overflowY: "auto" }}>
+          <DocumentList {...baseProps} />
+        </div>,
+      );
+
+      const scrollBoundary = screen.getByTestId("scroll-boundary");
+      setRect(scrollBoundary, { top: 0, bottom: 320, height: 320, width: 280 });
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Welcome",
+      });
+      setRect(actionButton, { top: 276, bottom: 300, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
+  });
+
+  it("bottom-edge folder action menu opens upward", async () => {
+    await withActionMenuGeometry(600, (setRect) => {
+      renderList();
+
+      const allDocumentsNav = screen.getByRole("navigation", { name: "All documents" });
+      const actionButton = within(allDocumentsNav).getByRole("button", {
+        name: "Open actions for Engineering /engineering",
+      });
+      setRect(actionButton, { top: 568, bottom: 592, height: 24, width: 24 });
+
+      fireEvent.click(actionButton);
+
+      const menu = screen.getByRole("menu");
+      expect(menu.className).toContain("bottom-8");
+      expect(menu.className).not.toContain("top-8");
+    });
   });
 
   it("adds a child folder from the folder actions menu without direct form redirect", async () => {
