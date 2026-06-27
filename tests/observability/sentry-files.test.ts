@@ -16,7 +16,7 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("Sentry.captureRequestError");
   });
 
-  test("initializes browser Sentry without PII, replay, feedback, or logs", () => {
+  test("initializes browser Sentry with privacy-safe error replay and without PII, feedback, or logs", () => {
     const source = read("instrumentation-client.ts");
 
     expect(source).toContain("getBrowserSentryConfig");
@@ -30,15 +30,26 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
     expect(source).toContain("beforeSendSpan: scrubSentrySpan");
     expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
+    expect(source).toContain("beforeSendMetric: scrubSentryMetric");
     expect(source).not.toContain("enableLogs: true");
     expect(source).toContain("captureRouterTransitionStart");
-    expect(source).not.toContain("replayIntegration");
+    expect(source).toContain("replayIntegration");
+    expect(source).toContain("maskAllText: true");
+    expect(source).toContain("maskAllInputs: true");
+    expect(source).toContain("blockAllMedia: true");
+    expect(source).toContain("replaysSessionSampleRate: config.replay?.sessionSampleRate ?? 0");
+    expect(source).toContain("replaysOnErrorSampleRate: config.replay?.onErrorSampleRate ?? 0");
     expect(source).not.toContain("feedbackIntegration");
   });
 
   test("initializes server runtimes without PII or document context", () => {
     const serverSource = read("sentry.server.config.ts");
     const edgeSource = read("sentry.edge.config.ts");
+
+    expect(serverSource).toContain("nodeRuntimeMetricsIntegration");
+    expect(serverSource).toContain("config.runtimeMetrics?.enabled");
+    expect(serverSource).toContain("collectionIntervalMs: config.runtimeMetrics.collectionIntervalMs");
+    expect(edgeSource).not.toContain("nodeRuntimeMetricsIntegration");
 
     for (const source of [serverSource, edgeSource]) {
       expect(source).toContain("getServerSentryConfig");
@@ -51,6 +62,7 @@ describe("Sentry Next.js integration files", () => {
       expect(source).toContain("beforeSendTransaction: scrubSentryEvent");
       expect(source).toContain("beforeSendSpan: scrubSentrySpan");
       expect(source).toContain("beforeBreadcrumb: scrubSentryBreadcrumb");
+      expect(source).toContain("beforeSendMetric: scrubSentryMetric");
       expect(source).not.toContain("enableLogs: true");
       expect(source).toContain("dataCollection");
       expect(source).toContain("userInfo: false");
@@ -93,6 +105,16 @@ describe("Sentry Next.js integration files", () => {
     expect(source).toContain("net.peer.ip");
     expect(source).toContain("http.client_ip");
     expect(source).toContain("url.domain");
+  });
+
+  test("scrubs metric attributes before send", () => {
+    const source = read("lib/observability/sentry-scrub-event.ts");
+
+    expect(source).toContain("scrubSentryMetric");
+    expect(source).toContain('"server.address"');
+    expect(source).toContain('"user.id"');
+    expect(source).toContain('"user.name"');
+    expect(source).toContain('"user.email"');
   });
 
   test("captures App Router global errors", () => {

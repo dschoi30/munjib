@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   scrubSentryBreadcrumb,
   scrubSentryEvent,
+  scrubSentryMetric,
   scrubSentrySpan,
 } from "@/lib/observability/sentry-scrub-event";
 
@@ -289,5 +290,47 @@ describe("scrubSentryEvent", () => {
     };
 
     expect(scrubSentryBreadcrumb(breadcrumb)).toBeNull();
+  });
+});
+
+describe("scrubSentryMetric", () => {
+  test("removes user and server address attributes from metric payloads", () => {
+    const metric = {
+      attributes: {
+        "server.address": "munjib.andrewchoi.link",
+        "user.email": "person@example.com",
+        "user.id": "user-1",
+        "user.name": "Private User",
+        environment: "production",
+        surface: "ask_document",
+      },
+      tags: {
+        "server.address": "internal-host",
+        "user.email": "person@example.com",
+        surface: "workspace_chat_stream",
+      },
+      value: 1,
+    };
+
+    const result = scrubSentryMetric(metric);
+
+    expect(result).toBe(metric);
+    expect(metric).toEqual({
+      attributes: {
+        environment: "production",
+        surface: "ask_document",
+      },
+      tags: {
+        surface: "workspace_chat_stream",
+      },
+      value: 1,
+    });
+  });
+
+  test("leaves null and primitive metric payloads unchanged", () => {
+    expect(scrubSentryMetric(null)).toBeNull();
+    expect(scrubSentryMetric(undefined)).toBeUndefined();
+    expect(scrubSentryMetric("metric-name")).toBe("metric-name");
+    expect(scrubSentryMetric(1)).toBe(1);
   });
 });

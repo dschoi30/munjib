@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { captureMetricCount } from "@/lib/observability/application-metrics";
 import { RAG_ERROR_CODES, type RagErrorCode } from "@/lib/rag/errors";
 
 export type AiUnavailableSurface =
@@ -28,6 +29,14 @@ type AiUnavailableContext = {
 };
 
 export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableInput) {
+  captureMetricCount("munjib.ai.unavailable", 1, {
+    chat_provider: input.chatProvider,
+    rag_error_code: input.ragErrorCode,
+    status: input.status,
+    stream_started: input.streamStarted,
+    surface: input.surface,
+  });
+
   try {
     Sentry.withScope((scope) => {
       const context: AiUnavailableContext = {

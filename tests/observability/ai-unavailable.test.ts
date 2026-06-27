@@ -20,6 +20,9 @@ const sentryMock = vi.hoisted(() => {
 
   return {
     captureException: vi.fn(),
+    metrics: {
+      count: vi.fn(),
+    },
     scope,
     withScope: vi.fn((callback: (activeScope: ScopeMock) => void) => callback(scope)),
   };
@@ -27,12 +30,14 @@ const sentryMock = vi.hoisted(() => {
 
 vi.mock("@sentry/nextjs", () => ({
   captureException: sentryMock.captureException,
+  metrics: sentryMock.metrics,
   withScope: sentryMock.withScope,
 }));
 
 describe("captureHandledAiUnavailable", () => {
   beforeEach(() => {
     sentryMock.captureException.mockReset();
+    sentryMock.metrics.count.mockReset();
     sentryMock.scope.setContext.mockReset();
     sentryMock.scope.setFingerprint.mockReset();
     sentryMock.scope.setLevel.mockReset();
@@ -83,6 +88,15 @@ describe("captureHandledAiUnavailable", () => {
     ]);
 
     expect(sentryMock.captureException).toHaveBeenCalledTimes(1);
+    expect(Sentry.metrics.count).toHaveBeenCalledWith("munjib.ai.unavailable", 1, {
+      attributes: {
+        chat_provider: "openai-compatible",
+        rag_error_code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+        status: 503,
+        stream_started: true,
+        surface: "ask_document",
+      },
+    });
     const capturedError = sentryMock.captureException.mock.calls[0]?.[0];
     expect(capturedError).toBeInstanceOf(Error);
     expect(capturedError.name).toBe("HandledAiUnavailableError");

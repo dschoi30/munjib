@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-23",
+  "updated": "2026-06-27",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -30,7 +30,7 @@
       "title": "CI CD And Monitoring Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.",
+      "summary": "Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.",
       "tags": [
         "munjib",
         "workflow",
@@ -46,7 +46,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 42,
+      "source_count": 49,
       "searchPriority": 50
     },
     {
@@ -162,7 +162,7 @@
       "title": "Wiki Index",
       "type": "index",
       "status": "active",
-      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, monitoring workflow navigation.",
+      "summary": "Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.",
       "tags": [
         "index",
         "munjib"
@@ -187,7 +187,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 126,
+      "source_count": 131,
       "searchPriority": 5
     },
     {
@@ -230,7 +230,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 294,
+      "source_count": 296,
       "searchPriority": 1
     },
     {
@@ -309,7 +309,7 @@
       "title": "Production Observability Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib production Docker 로그 확인, Sentry SaaS error/tracing, handled AI 503 capture 관측성 흐름.",
+      "summary": "Munjib production Docker 로그 확인, Sentry SaaS error/tracing/runtime metrics/Replay, low-cardinality app metrics 관측성 흐름.",
       "tags": [
         "munjib",
         "workflow",
@@ -323,7 +323,7 @@
         "[[Local Development Workflow]]",
         "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 34,
+      "source_count": 45,
       "searchPriority": 50
     },
     {
