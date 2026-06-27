@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-06-23
-source_count: 93
+updated: 2026-06-27
+source_count: 98
 tags:
   - munjib
   - workflow
@@ -51,6 +51,8 @@ Issue #34 workspace knowledge graph view는 sidebar `Graph` icon으로 진입한
 Tree row는 folder와 document를 `path` 기준으로 정렬한다. Tree 안의 folder row는 accordion toggle button이라 클릭해도 editor target을 바꾸지 않고 하위 row를 열고 닫는다. Favorite folder link와 folder server-action redirect는 `?folder=<id>`로 folder detail view를 열고, document row와 favorite document link는 `?document=<id>`로 editor를 연다. Document row는 hover/focus 상태에서 더 진한 `bg-slate-200` highlight를 보여주고, 선택된 document row도 같은 고정 highlight를 유지한다.
 
 Sidebar favorites는 always-visible star icon이 아니라 row-level `...` menu에서 관리한다. Document favorites와 folder favorites는 workspace-scoped localStorage에 저장된다. `Favorites` icon button은 document list 영역을 favorites-only panel로 전환하며, favorite section은 더 이상 `Recents` 위에 상시 노출되지 않는다. Favorite folder는 folder detail view를 열고, favorite document는 editor를 연다. Favorite folder row도 `...` menu에서 Remove from favorites를 제공한다. Document row `...` menu는 Add/Remove favorites와 Move to trash를 제공하되, 현재 user가 해당 document를 쓸 수 있을 때만 Move to trash를 노출한다. Row action menu는 trigger 또는 menu surface 밖을 클릭하면 닫힌다.
+
+Issue #137 updates the left sidebar document-list UX. Top-level `New document` and `New folder` toolbar actions use the existing `redirect=false` server-action return contract so the client can route without a direct server redirect flash. After refreshed props include the created document or folder, the matching sidebar row scrolls into view as soon as the Documents panel renders it. Normal Documents/Recents document rows render as title-only rows, while Search and Favorites keep title-based display-path context for disambiguation and stored-path search compatibility; title-only links keep accessible disambiguation through their link labels. Row action menus keep their existing menu implementation but open upward when the lower viewport or sidebar scroll area lacks enough space.
 
 Issue #85 이후 `Company Handbook` workspace name text는 chevron 없는 workspace menu trigger다. Trigger를 클릭하면 sidebar content width를 채우는 dropdown menu가 열리고, 현재 첫 item은 `Settings` 하나다. `Settings`는 기존 `WorkspaceSettingsPanel` modal을 열며, dialog 내부는 좌측 settings sidebar와 우측 content pane으로 구성되고 첫 slice에서는 `Import` menu가 기본 선택된 상태로 열린다. 좌측 sidebar header 오른쪽의 기존 gear slot은 right metadata panel과 같은 결의 반대 방향인 `PanelLeftClose` button으로 바뀌며, 클릭하면 `AppShell`이 left sidebar column을 접고 center content를 확장한다. 접힌 상태에서는 화면 좌측 상단의 `PanelLeftOpen` button으로 sidebar를 다시 연다. 이때 center `DocumentTabs` row는 leading reopen slot을 예약해 `PanelLeftOpen` button이 첫 tab과 겹치지 않게 한다. Workspace title row와 Documents/Graph/New document/New folder/Search/Favorites icon toolbar는 sticky sidebar chrome으로 묶여 긴 Recents, folder tree, search, favorites content를 스크롤해도 항상 보이고, document navigation body만 그 아래에서 스크롤된다.
 
@@ -192,6 +194,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `components/document-editor/wiki-link-suggestions.tsx`
 - `app/globals.css`
 - `components/document-list.tsx`
+- `components/document-create-controls.tsx`
 - `components/document-navigation.tsx`
 - `components/workspace-center-shell.tsx`
 - `components/use-document-tabs.ts`
@@ -201,6 +204,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `components/document-navigation/favorites-panel.tsx`
 - `components/document-navigation/document-row.tsx`
 - `components/document-navigation/folder-row.tsx`
+- `components/document-navigation/menu-placement.ts`
 - `components/document-navigation/document-section.tsx`
 - `components/document-navigation/favorites.ts`
 - `components/document-navigation/tree.ts`
@@ -270,3 +274,6 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - Issue #25 final review blocker fix
 - GitHub issue #119
 - `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`
+- GitHub issue #137
+- `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`
+- `docs/superpowers/plans/2026-06-27-document-list-sidebar-ux.md`

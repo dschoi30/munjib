@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-06-27
-source_count: 296
+source_count: 299
 tags:
   - log
   - munjib
@@ -18,6 +18,30 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-06-27T16:55:01+0900 - review follow-up
+
+- Result: PR #138 review feedback ensures created-row scrolling still runs after returning to the Documents panel.
+- Coverage: `DocumentList` now reruns the pending-created-row scroll effect when the active sidebar panel changes, so creating from Search/Favorites and later opening Documents scrolls the newly rendered row into view.
+- Pages: [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #138 Gemini review thread, `components/document-list.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: red focused Vitest reproduced the missing scroll after returning to Documents; green focused Vitest passed the new regression test; full focused `document-list` Vitest and `tsc --noEmit --pretty false` passed.
+
+## 2026-06-27T16:44:19+0900 - implementation
+
+- Result: Issue #137 smooths the document-list sidebar creation and row menu UX.
+- Coverage: Top-level `New document` and `New folder` now submit `redirect=false` and route on the client, created documents/folders scroll into view once the refreshed list contains them, normal Documents/Recents document rows are title-only, Search/Favorites keep title-based display-path context, title-only links preserve accessible disambiguation, and bottom-edge row action menus open upward against the viewport or sidebar scroll boundary.
+- Pages: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #137, `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`, `docs/superpowers/plans/2026-06-27-document-list-sidebar-ux.md`, `components/document-list.tsx`, `components/document-create-controls.tsx`, `components/document-navigation.tsx`, `components/document-navigation/document-row.tsx`, `components/document-navigation/folder-row.tsx`, `components/document-navigation/menu-placement.ts`, `tests/components/document-list.test.tsx`.
+- Verification: focused `document-list` Vitest run passed; `tsc --noEmit --pretty false` passed; wiki manifest/lint/sync-check passed with the known `wiki/designs/sidebar.md` pasted-image warning.
+
+## 2026-06-27T15:34:35+0900 - design
+
+- Result: Issue #137 design records the document-list sidebar UX follow-up for smoother top-level creation, created-row scrolling, title-only normal document rows, and bottom-edge action menu placement.
+- Coverage: Top-level `New document` and `New folder` should use the existing `redirect=false` server-action return contract and client route transitions; generated rows should scroll into view after refreshed props include them. Normal Documents/Recents document rows should hide path descriptions, while Search/Favorites keep title-based display-path context from Issue #131. Row action menus should keep the current implementation and open upward when lower viewport space is insufficient.
+- Pages: [[Munjib]], [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #137, `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`.
+- Verification: spec self-review and `git diff --check` passed; wiki sync required this durable design entry before commit.
 
 ## 2026-06-27T15:08:00+0900 - review follow-up
 

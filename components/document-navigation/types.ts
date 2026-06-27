@@ -16,7 +16,7 @@ export type CreateFolderMutation = (formData: FormData) => Promise<CreateFolderR
 export type CreateDocumentAction = CreateDocumentMutation;
 export type CreateFolderAction = CreateFolderMutation;
 
-export type OpenMenuHandler = (menuId: string | null) => void;
+export type OpenMenuHandler = (menuId: string | null, trigger?: HTMLElement | null) => void;
 export type ToggleFavoriteDocumentHandler = (documentId: string) => void;
 export type ToggleFavoriteFolderHandler = (folderId: string) => void;
 export type OpenDocumentInNewTabHandler = (document: DocumentListItem) => void;

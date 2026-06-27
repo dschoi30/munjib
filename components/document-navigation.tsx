@@ -21,6 +21,10 @@ import {
 import { FavoriteSection } from "@/components/document-navigation/favorites-panel";
 import { FolderToggleRow } from "@/components/document-navigation/folder-row";
 import { getFolderTrashSummary } from "@/components/document-navigation/folder-trash";
+import {
+  type ActionMenuPlacement,
+  chooseActionMenuPlacement,
+} from "@/components/document-navigation/menu-placement";
 import { SearchPanel } from "@/components/document-navigation/search-panel";
 import { buildTreeItems, hasTreeChildren } from "@/components/document-navigation/tree";
 import { useI18n } from "@/components/i18n-provider";
@@ -90,6 +94,7 @@ export function DocumentNavigation({
   const [isCreateTransitionPending, startCreateTransition] = useTransition();
   const [favorites, setFavorites] = useState<FavoriteState>(emptyFavorites);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [menuPlacements, setMenuPlacements] = useState<Record<string, ActionMenuPlacement>>({});
   const [renamingFolderId, setRenamingFolderId] = useState<string | null>(null);
   const [pendingFolderCreateAction, setPendingFolderCreateAction] = useState<string | null>(
     null,
@@ -274,6 +279,21 @@ export function DocumentNavigation({
     setOpenMenuId(null);
   }
 
+  function openActionMenu(menuId: string | null, trigger?: HTMLElement | null) {
+    setOpenMenuId(menuId);
+
+    if (!menuId) return;
+
+    setMenuPlacements((current) => ({
+      ...current,
+      [menuId]: chooseActionMenuPlacement(trigger),
+    }));
+  }
+
+  function menuPlacement(menuId: string): ActionMenuPlacement {
+    return menuPlacements[menuId] ?? "down";
+  }
+
   function openDocumentRowInNewTab(document: DocumentListItem) {
     openDocumentInNewTab(workspaceSlug, {
       id: document.id,
@@ -437,16 +457,20 @@ export function DocumentNavigation({
 
     return items.map((item) => {
       if (item.kind === "document") {
+        const menuId = `tree-document:${item.document.id}`;
+
         return (
           <DocumentLinkRow
             key={item.document.id}
-            rowId={`tree-document:${item.document.id}`}
+            rowId={menuId}
             workspaceSlug={workspaceSlug}
             document={item.document}
             isFavorite={favoriteDocumentIds.has(item.document.id)}
             selected={item.document.id === selectedDocumentId}
+            showDescription={false}
             openMenuId={openMenuId}
-            onOpenMenu={setOpenMenuId}
+            menuPlacement={menuPlacement(menuId)}
+            onOpenMenu={openActionMenu}
             onToggleFavorite={toggleFavoriteDocument}
             onOpenInNewTab={openDocumentRowInNewTab}
             archiveDocumentAction={archiveDocumentFromMenu}
@@ -455,6 +479,7 @@ export function DocumentNavigation({
       }
 
       const isExpanded = expandedFolderIds.has(item.folder.id);
+      const menuId = `folder:${item.folder.id}`;
       const hasChildren = hasTreeChildren(folders, documents, item.folder.id);
       const trashSummary = getFolderTrashSummary({
         folderId: item.folder.id,
@@ -479,7 +504,8 @@ export function DocumentNavigation({
             isRenaming={renamingFolderId === item.folder.id}
             pendingCreateAction={pendingFolderCreateAction}
             openMenuId={openMenuId}
-            onOpenMenu={setOpenMenuId}
+            menuPlacement={menuPlacement(menuId)}
+            onOpenMenu={openActionMenu}
             onStartRename={startFolderRename}
             onCancelRename={() => setRenamingFolderId(null)}
             onAddFolder={addFolderChild}
@@ -512,7 +538,8 @@ export function DocumentNavigation({
             selectedDocumentId={selectedDocumentId}
             favoriteDocumentIds={favoriteDocumentIds}
             openMenuId={openMenuId}
-            onOpenMenu={setOpenMenuId}
+            menuPlacements={menuPlacements}
+            onOpenMenu={openActionMenu}
             onToggleFavorite={toggleFavoriteDocument}
             onOpenInNewTab={openDocumentRowInNewTab}
             archiveDocumentAction={archiveDocumentFromMenu}
@@ -526,7 +553,8 @@ export function DocumentNavigation({
             favoriteDocumentIds={favoriteDocumentIds}
             selectedDocumentId={selectedDocumentId}
             openMenuId={openMenuId}
-            onOpenMenu={setOpenMenuId}
+            menuPlacements={menuPlacements}
+            onOpenMenu={openActionMenu}
             onToggleFavorite={toggleFavoriteDocument}
             onToggleFavoriteFolder={toggleFavoriteFolder}
             onOpenInNewTab={openDocumentRowInNewTab}
@@ -542,8 +570,10 @@ export function DocumentNavigation({
               menuScope="recent-document"
               favoriteDocumentIds={favoriteDocumentIds}
               selectedDocumentId={selectedDocumentId}
+              showDescription={false}
               openMenuId={openMenuId}
-              onOpenMenu={setOpenMenuId}
+              menuPlacements={menuPlacements}
+              onOpenMenu={openActionMenu}
               onToggleFavorite={toggleFavoriteDocument}
               onOpenInNewTab={openDocumentRowInNewTab}
               archiveDocumentAction={archiveDocumentFromMenu}
