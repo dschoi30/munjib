@@ -12,6 +12,10 @@ describe("Sentry observability config", () => {
       enabled: false,
       environment: "production",
       release: undefined,
+      runtimeMetrics: {
+        collectionIntervalMs: 60000,
+        enabled: false,
+      },
       tracesSampleRate: 0,
     });
   });
@@ -23,6 +27,8 @@ describe("Sentry observability config", () => {
         SENTRY_DSN: " https://public@example.ingest.sentry.io/1 ",
         SENTRY_ENVIRONMENT: " staging ",
         SENTRY_RELEASE: " image-2026-06-03 ",
+        SENTRY_RUNTIME_METRICS_ENABLED: "true",
+        SENTRY_RUNTIME_METRICS_INTERVAL_MS: "45000",
         SENTRY_TRACES_SAMPLE_RATE: "0.05",
       }),
     ).toEqual({
@@ -30,6 +36,10 @@ describe("Sentry observability config", () => {
       enabled: true,
       environment: "staging",
       release: "image-2026-06-03",
+      runtimeMetrics: {
+        collectionIntervalMs: 45000,
+        enabled: true,
+      },
       tracesSampleRate: 0.05,
     });
   });
@@ -45,6 +55,10 @@ describe("Sentry observability config", () => {
     expect(config.enabled).toBe(true);
     expect(config.dsn).toBe("https://public@example.ingest.sentry.io/2");
     expect(config.environment).toBe("production");
+    expect(config.runtimeMetrics).toEqual({
+      collectionIntervalMs: 60000,
+      enabled: false,
+    });
     expect(config.tracesSampleRate).toBe(0.01);
   });
 
@@ -59,6 +73,8 @@ describe("Sentry observability config", () => {
         NEXT_PUBLIC_SENTRY_DSN: "https://browser@example.ingest.sentry.io/1",
         NEXT_PUBLIC_SENTRY_ENVIRONMENT: "browser",
         NEXT_PUBLIC_SENTRY_RELEASE: " browser-release ",
+        NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE: "1",
+        NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE: "0.05",
         NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: "0.02",
       }),
     ).toEqual({
@@ -66,7 +82,23 @@ describe("Sentry observability config", () => {
       enabled: true,
       environment: "browser",
       release: "browser-release",
+      replay: {
+        onErrorSampleRate: 1,
+        sessionSampleRate: 0.05,
+      },
       tracesSampleRate: 0.02,
+    });
+  });
+
+  test("defaults browser replay sampling to disabled", () => {
+    expect(
+      getBrowserSentryConfig({
+        NODE_ENV: "production",
+        NEXT_PUBLIC_SENTRY_DSN: "https://browser@example.ingest.sentry.io/1",
+      }).replay,
+    ).toEqual({
+      onErrorSampleRate: 0,
+      sessionSampleRate: 0,
     });
   });
 

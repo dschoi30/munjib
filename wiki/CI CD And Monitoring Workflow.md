@@ -3,10 +3,10 @@ id: workflow-ci-cd-monitoring
 title: CI CD And Monitoring Workflow
 type: workflow
 status: active
-summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry monitoring 구성.
+summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-06-23
-source_count: 42
+updated: 2026-06-27
+source_count: 49
 tags:
   - munjib
   - workflow
@@ -44,7 +44,9 @@ Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `
 Monitoring entry point는 두 갈래다.
 
 - Docker stdout/stderr: startup, env, DB connection, PostgreSQL process log, Sentry init 이전 failure.
-- Sentry SaaS: Next.js App Router request error, global error, browser runtime error, low sample rate tracing.
+- Sentry SaaS: Next.js App Router request error, global error, browser runtime error, low sample rate tracing, opt-in Node runtime metrics, error-only Replay, low-cardinality application metrics.
+
+Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps
 
@@ -91,7 +93,7 @@ DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 server `.env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 현재 `munjib.andrewchoi.link` 초기 production 관측은 server `.env`의 `SENTRY_TRACES_SAMPLE_RATE=1.0` / `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0`으로 full tracing을 사용한다.
+Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
 
 Required GitHub secrets:
 
@@ -151,6 +153,15 @@ MUNJIB_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1
 MUNJIB_OPENAI_COMPATIBLE_API_KEY=<secret>
 ```
 
+Issue #135 low-cost observability additions for the same host-local env file:
+
+```text
+SENTRY_RUNTIME_METRICS_ENABLED=true
+SENTRY_RUNTIME_METRICS_INTERVAL_MS=60000
+NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
+NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
+```
+
 ### Docker runtime
 
 Production compose는 `postgres`, `web`, `tools` service를 가진다.
@@ -159,13 +170,13 @@ Production compose는 `postgres`, `web`, `tools` service를 가진다.
 - `web`: `runner` target 기반 production app, named volume `web_storage:/app/storage`, configurable host port `WEB_PORT`.
 - `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
 
-`web` runtime env는 DB, NextAuth, Sentry, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
+`web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
 
 Dockerfile stages:
 
 - `base`: Node.js 22 Alpine, Corepack, shared env.
 - `deps`: frozen pnpm dependency install.
-- `builder`: Sentry build args를 env로 설정한 뒤 Prisma generate와 Next build.
+- `builder`: Browser Sentry DSN/environment/release/tracing/Replay build args를 env로 설정한 뒤 Prisma generate와 Next build.
 - `tools`: maintenance command image.
 - `runner`: production runtime image.
 - `dev`: local development image.
@@ -197,16 +208,20 @@ Sentry enable 조건:
 
 Sentry environment/release/sample rate:
 
-- Browser: `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`
+- Browser: `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE`
 - Server/Edge: `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE`
+- Server only: `SENTRY_RUNTIME_METRICS_ENABLED`, `SENTRY_RUNTIME_METRICS_INTERVAL_MS`
 - Invalid trace sample rate는 startup failure가 아니라 tracing disabled 상태인 `0`으로 정규화된다.
+- Invalid Replay sample rate and runtime metrics interval are normalized to low-cost defaults and do not fail startup.
 
 Privacy contract:
 
 - `sendDefaultPii: false`를 사용한다.
 - Server/Edge `dataCollection`에서 user info, cookies, headers, bodies, query params, genAI input/output, stack frame variables, frame context lines를 끈다.
 - Shared scrubber가 request URL query/host, `query_string`, request body, cookies, headers, user IP, span URL/query/network/user-agent fields, URL-like span names/descriptions, breadcrumb URL/query/host data를 제거한다.
+- Metric scrubber가 Sentry metric attributes/tags에서 `server.address`, `user.email`, `user.id`, `user.name`을 제거한다.
 - Console breadcrumb는 Docker stdout/console log 전체 수집을 피하기 위해 drop한다.
+- Browser Replay는 켜져도 `maskAllText`, `maskAllInputs`, `blockAllMedia`를 사용한다.
 
 현재 source map upload는 꺼져 있다. `next.config.mjs`는 `withSentryConfig`를 사용하지만 `sourcemaps.disable: true`이고, `SENTRY_AUTH_TOKEN`은 `.env.example`, `.env.docker.example`, compose runtime env에 포함하지 않는다.
 
@@ -222,7 +237,7 @@ GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 과
 
 Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. Remote local health check가 실패하면 public runner health check까지 가지 않고 deploy가 실패한다. Remote local health check는 app container response를 확인하고, public runner health check는 외부 DNS/TLS/Caddy path를 확인한다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
 
-Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`가 잘못된 image를 이미 build했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다. Native OCI deploy에서는 server `.env`와 deploy job release env를 고친 뒤 새 build가 필요하다.
+Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE`가 잘못된 image를 이미 build했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다. Native OCI deploy에서는 host-local `/etc/munjib/env`와 deploy job release env를 고친 뒤 새 build가 필요하다.
 
 Sentry는 Docker log를 대체하지 않는다. Startup/env/DB/PostgreSQL 문제와 Sentry init 이전 crash는 Docker stdout/stderr를 먼저 본다.
 
@@ -232,7 +247,7 @@ Sentry는 Docker log를 대체하지 않는다. Startup/env/DB/PostgreSQL 문제
 
 ```bash
 pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.test.ts
-pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts
+pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts tests/observability/application-metrics.test.ts tests/observability/ai-unavailable.test.ts
 ```
 
 Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target build가 실행된다. `main` deploy path에서는 OCI host의 `docker compose build web tools`, Prisma migration deploy, RAG vector index setup, public HTTPS health check가 실행된다. Local wiki maintenance 후에는 `pnpm wiki:manifest`와 `pnpm wiki:lint`로 frontmatter, manifest, link 구조를 확인한다.
@@ -244,6 +259,7 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub issue #94
 - GitHub issue #96
 - GitHub issue #98
+- GitHub issue #135
 - GitHub Actions run `27016407598` deploy failure log
 - GitHub Actions run `27017475831` cancelled publish log
 - PR #99 review threads
@@ -254,10 +270,13 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - `docker-compose.dev.yml`
 - `.env.example`
 - `.env.docker.example`
+- `docs/superpowers/specs/2026-06-27-low-cost-production-observability-design.md`
+- `docs/superpowers/plans/2026-06-27-low-cost-production-observability.md`
 - `next.config.mjs`
 - `instrumentation-client.ts`
 - `sentry.server.config.ts`
 - `sentry.edge.config.ts`
+- `lib/observability/application-metrics.ts`
 - `instrumentation.ts`
 - `app/global-error.tsx`
 - `lib/observability/sentry-config.ts`
@@ -267,6 +286,8 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - `tests/observability/sentry-config.test.ts`
 - `tests/observability/sentry-scrub-event.test.ts`
 - `tests/observability/sentry-files.test.ts`
+- `tests/observability/application-metrics.test.ts`
+- `tests/observability/ai-unavailable.test.ts`
 - OCI server read-only inspection for `munjib.andrewchoi.link`
 - [[Local Development Workflow]]
 - [[Production Observability Workflow]]
