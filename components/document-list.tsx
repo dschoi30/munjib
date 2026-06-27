@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { PanelLeftClose, Settings } from "lucide-react";
 import { useLeftPanel, useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
@@ -13,9 +14,7 @@ import {
 } from "@/components/sidebar-loading-skeleton";
 import type {
   CreateDocumentAction,
-  CreateDocumentFormAction,
   CreateFolderAction,
-  CreateFolderFormAction,
 } from "@/components/document-navigation/types";
 import {
   type MarkdownImportActionResult,
@@ -37,6 +36,13 @@ import {
 import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
 import type { ClientRagChatProviderAvailability } from "@/lib/rag/client-model-settings";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
+
+const createErrorToastId = "folder-create-error";
+const createErrorToastClassName =
+  "rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 shadow-lg";
+
+type TopLevelCreateKind = "document" | "folder";
+type CreatedTarget = { kind: TopLevelCreateKind; id: string };
 
 export type DocumentListItem = {
   id: string;
@@ -105,6 +111,7 @@ export function DocumentList({
 }) {
   const { isHydrated: languageHydrated, t } = useI18n();
   const router = useRouter();
+  const [isTopLevelCreateTransitionPending, startTopLevelCreateTransition] = useTransition();
   const leftPanel = useLeftPanel();
   const tagSearch = useTagSearch();
   const [activePanel, setActivePanel] = useState<WorkspaceSidebarPanel>("documents");
@@ -115,6 +122,12 @@ export function DocumentList({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [topLevelCreatePending, setTopLevelCreatePending] = useState<TopLevelCreateKind | null>(
+    null,
+  );
+  const [clearTopLevelCreatePendingAfterTransition, setClearTopLevelCreatePendingAfterTransition] =
+    useState(false);
+  const [pendingCreatedTarget, setPendingCreatedTarget] = useState<CreatedTarget | null>(null);
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
   const handledTagSearchTokenRef = useRef<number | null>(null);
   const iconButtonClassName =
@@ -204,6 +217,80 @@ export function DocumentList({
     router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
   }, [router, selectedDocumentId, workspaceSlug]);
 
+  const showCreateFailedToast = useCallback(() => {
+    toast(t("nav.folderCreateFailed"), {
+      id: createErrorToastId,
+      className: createErrorToastClassName,
+      unstyled: true,
+    });
+  }, [t]);
+
+  const createTopLevelDocument = useCallback(async () => {
+    if (topLevelCreatePending) return;
+
+    const formData = new FormData();
+    formData.set("folderId", "");
+    formData.set("redirect", "false");
+
+    setTopLevelCreatePending("document");
+    try {
+      const result = await createAction(formData);
+      setClearTopLevelCreatePendingAfterTransition(true);
+      startTopLevelCreateTransition(() => {
+        if (result?.documentId) {
+          setPendingCreatedTarget({ kind: "document", id: result.documentId });
+          router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+          return;
+        }
+        router.refresh();
+      });
+    } catch {
+      setClearTopLevelCreatePendingAfterTransition(false);
+      setTopLevelCreatePending(null);
+      showCreateFailedToast();
+    }
+  }, [
+    createAction,
+    router,
+    showCreateFailedToast,
+    startTopLevelCreateTransition,
+    topLevelCreatePending,
+    workspaceSlug,
+  ]);
+
+  const createTopLevelFolder = useCallback(async () => {
+    if (topLevelCreatePending) return;
+
+    const formData = new FormData();
+    formData.set("parentFolderId", "");
+    formData.set("redirect", "false");
+
+    setTopLevelCreatePending("folder");
+    try {
+      const result = await createFolderAction(formData);
+      setClearTopLevelCreatePendingAfterTransition(true);
+      startTopLevelCreateTransition(() => {
+        if (result?.folderId) {
+          setPendingCreatedTarget({ kind: "folder", id: result.folderId });
+          router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+          return;
+        }
+        router.refresh();
+      });
+    } catch {
+      setClearTopLevelCreatePendingAfterTransition(false);
+      setTopLevelCreatePending(null);
+      showCreateFailedToast();
+    }
+  }, [
+    createFolderAction,
+    router,
+    showCreateFailedToast,
+    startTopLevelCreateTransition,
+    topLevelCreatePending,
+    workspaceSlug,
+  ]);
+
   useEffect(() => {
     const request = tagSearch?.latestTagSearchRequest;
     if (!request) return;
@@ -219,6 +306,26 @@ export function DocumentList({
     setActivePanel("search");
     setSearchQuery(`tag:#${tagName}`);
   }, [tagSearch?.latestTagSearchRequest]);
+
+  useEffect(() => {
+    if (!clearTopLevelCreatePendingAfterTransition || isTopLevelCreateTransitionPending) return;
+    setTopLevelCreatePending(null);
+    setClearTopLevelCreatePendingAfterTransition(false);
+  }, [clearTopLevelCreatePendingAfterTransition, isTopLevelCreateTransitionPending]);
+
+  useEffect(() => {
+    if (!pendingCreatedTarget) return;
+
+    const target =
+      pendingCreatedTarget.kind === "document"
+        ? findCreatedDocumentRow(pendingCreatedTarget.id)
+        : findCreatedFolderRow(pendingCreatedTarget.id);
+
+    if (!target) return;
+
+    target.scrollIntoView({ block: "nearest" });
+    setPendingCreatedTarget(null);
+  }, [documents, folders, pendingCreatedTarget]);
 
   useEffect(() => {
     if (!workspaceMenuOpen) return;
@@ -301,8 +408,10 @@ export function DocumentList({
         </div>
         <DocumentCreateControls
           canWrite={canWrite}
-          createAction={createAction as CreateDocumentFormAction}
-          createFolderAction={createFolderAction as CreateFolderFormAction}
+          onCreateDocument={createTopLevelDocument}
+          onCreateFolder={createTopLevelFolder}
+          isCreatingDocument={topLevelCreatePending !== null}
+          isCreatingFolder={topLevelCreatePending !== null}
           activeView={isGraphView ? "graph" : activePanel}
           onOpenDocuments={openDocuments}
           onOpenSearch={openSearch}
@@ -353,4 +462,33 @@ export function DocumentList({
       ) : null}
     </div>
   );
+}
+
+function findCreatedDocumentRow(documentId: string) {
+  return document.querySelector<HTMLElement>(
+    rowIdSelector("data-document-row-id", documentId),
+  );
+}
+
+function findCreatedFolderRow(folderId: string) {
+  return document.querySelector<HTMLElement>(
+    rowIdSelector("data-folder-row-id", folderId),
+  );
+}
+
+function rowIdSelector(attribute: "data-document-row-id" | "data-folder-row-id", value: string) {
+  return `[${attribute}="${escapeCssString(value)}"]`;
+}
+
+function escapeCssString(value: string) {
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(value);
+  }
+
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\A ")
+    .replace(/\r/g, "\\D ")
+    .replace(/\f/g, "\\C ");
 }

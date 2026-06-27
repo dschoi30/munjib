@@ -54,7 +54,7 @@ export function DocumentLinkRow({
     : "group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200";
 
   return (
-    <div className={rowClassName}>
+    <div className={rowClassName} data-document-row-id={document.id}>
       <Link
         href={workspaceDocumentHref({ workspaceSlug, documentId: document.id })}
         onClick={() => onOpenMenu(null)}

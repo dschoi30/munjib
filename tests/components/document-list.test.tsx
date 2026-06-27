@@ -992,20 +992,209 @@ describe("DocumentList", () => {
     expect(rowNames).toEqual(["Alpha", "Zulu", "Alpha Doc", "Zulu Doc"]);
   });
 
-  it("keeps top-level create controls scoped to the workspace root", () => {
-    renderList({ selectedFolderId: "folder-engineering" });
+  it("creates a root document from the toolbar without direct form redirect", async () => {
+    const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+    renderList({ createAction, selectedFolderId: "folder-engineering" });
+
+    fireEvent.click(screen.getByRole("button", { name: "New document" }));
+
+    await waitFor(() => {
+      expect(createAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("folderId")).toBe("");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?document=doc-created");
+  });
+
+  it("creates a root folder from the toolbar without direct form redirect", async () => {
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createFolderAction, selectedFolderId: "folder-engineering" });
+
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+
+    await waitFor(() => {
+      expect(createFolderAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = (createFolderAction.mock.calls as unknown as FormData[][])[0][0];
+    expect(submittedFormData.get("parentFolderId")).toBe("");
+    expect(submittedFormData.get("redirect")).toBe("false");
+    expect(router.push).toHaveBeenCalledWith("/workspaces/company-handbook?folder=folder-created");
+  });
+
+  it("guards repeated top-level toolbar creation while pending", async () => {
+    let resolveCreateDocument: (result: { documentId: string }) => void = () => {};
+    const createAction = vi.fn(
+      () =>
+        new Promise<{ documentId: string }>((resolve) => {
+          resolveCreateDocument = resolve;
+        }),
+    );
+    renderList({ createAction });
+
+    const newDocumentButton = screen.getByRole("button", { name: "New document" });
+    fireEvent.click(newDocumentButton);
+    fireEvent.click(newDocumentButton);
+
+    expect(createAction).toHaveBeenCalledTimes(1);
+    expect(newDocumentButton).toHaveProperty("disabled", true);
+
+    resolveCreateDocument({ documentId: "doc-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?document=doc-created",
+      );
+    });
+  });
+
+  it("disables both top-level create buttons while document creation is pending", async () => {
+    let resolveCreateDocument: (result: { documentId: string }) => void = () => {};
+    const createAction = vi.fn(
+      () =>
+        new Promise<{ documentId: string }>((resolve) => {
+          resolveCreateDocument = resolve;
+        }),
+    );
+    const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+    renderList({ createAction, createFolderAction });
 
     const newDocumentButton = screen.getByRole("button", { name: "New document" });
     const newFolderButton = screen.getByRole("button", { name: "New folder" });
-    const documentForm = newDocumentButton.closest("form");
-    const folderForm = newFolderButton.closest("form");
 
-    expect(
-      documentForm?.querySelector<HTMLInputElement>('input[name="folderId"]')?.value,
-    ).toBe("");
-    expect(
-      folderForm?.querySelector<HTMLInputElement>('input[name="parentFolderId"]')?.value,
-    ).toBe("");
+    fireEvent.click(newDocumentButton);
+
+    expect(createAction).toHaveBeenCalledTimes(1);
+    expect(newDocumentButton).toHaveProperty("disabled", true);
+    expect(newFolderButton).toHaveProperty("disabled", true);
+
+    fireEvent.click(newFolderButton);
+    expect(createFolderAction).not.toHaveBeenCalled();
+
+    resolveCreateDocument({ documentId: "doc-created" });
+    await waitFor(() => {
+      expect(router.push).toHaveBeenCalledWith(
+        "/workspaces/company-handbook?document=doc-created",
+      );
+    });
+  });
+
+  it("shows feedback when top-level toolbar creation fails", async () => {
+    const createFolderAction = vi.fn(async () => {
+      throw new Error("create failed");
+    });
+    renderList({ createFolderAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+
+    await waitFor(() => {
+      expect(toastMock).toHaveBeenCalledWith(
+        "Could not create the item. Try again.",
+        expect.objectContaining({ id: "folder-create-error" }),
+      );
+    });
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("scrolls a newly created toolbar document or folder row into view after refresh", async () => {
+    const scrollIntoView = vi.fn();
+    const originalScrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(
+      window.HTMLElement.prototype,
+      "scrollIntoView",
+    );
+    Object.defineProperty(window.HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView,
+    });
+    try {
+      const createAction = vi.fn(async () => ({ documentId: "doc-created" }));
+      const createFolderAction = vi.fn(async () => ({ folderId: "folder-created" }));
+      const view = renderWithI18n(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+        />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: "New document" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?document=doc-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+          selectedDocumentId="doc-created"
+          documents={[
+            ...baseProps.documents,
+            {
+              id: "doc-created",
+              folderId: null,
+              title: "Created Document",
+              path: "/created-document",
+              contentText: "",
+              tagNames: [],
+              canWrite: true,
+            },
+          ]}
+        />,
+      );
+
+      await waitFor(() => {
+        const createdDocumentRow = document.querySelector('[data-document-row-id="doc-created"]');
+        expect(createdDocumentRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdDocumentRow);
+      });
+      scrollIntoView.mockClear();
+
+      fireEvent.click(screen.getByRole("button", { name: "New folder" }));
+      await waitFor(() => {
+        expect(router.push).toHaveBeenCalledWith(
+          "/workspaces/company-handbook?folder=folder-created",
+        );
+      });
+
+      view.rerender(
+        <DocumentList
+          {...baseProps}
+          createAction={createAction}
+          createFolderAction={createFolderAction}
+          selectedDocumentId={null}
+          selectedFolderId="folder-created"
+          folders={[
+            ...baseProps.folders,
+            {
+              id: "folder-created",
+              parentFolderId: null,
+              name: "Created Folder",
+              path: "/created-folder",
+            },
+          ]}
+        />,
+      );
+
+      await waitFor(() => {
+        const createdFolderRow = document.querySelector('[data-folder-row-id="folder-created"]');
+        expect(createdFolderRow).toBeTruthy();
+        expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
+        expect(scrollIntoView.mock.contexts).toContain(createdFolderRow);
+      });
+    } finally {
+      if (originalScrollIntoViewDescriptor) {
+        Object.defineProperty(
+          window.HTMLElement.prototype,
+          "scrollIntoView",
+          originalScrollIntoViewDescriptor,
+        );
+      } else {
+        Reflect.deleteProperty(window.HTMLElement.prototype, "scrollIntoView");
+      }
+    }
   });
 
   it("keeps recents populated when a recent document is favorited", async () => {

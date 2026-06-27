@@ -36,7 +36,10 @@ export function FavoriteFolderRow({
   const displayLabel = folderDisplayLabel(folder);
 
   return (
-    <div className="group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200">
+    <div
+      className="group relative flex items-start gap-1 rounded-md hover:bg-slate-200 focus-within:bg-slate-200"
+      data-folder-row-id={folder.id}
+    >
       <Link
         href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
         onClick={() => onOpenMenu(null)}
@@ -137,6 +140,7 @@ export function FolderToggleRow({
       <form
         action={renameFolderAction}
         className={rowClassName}
+        data-folder-row-id={folder.id}
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancelRename();
         }}
@@ -165,7 +169,7 @@ export function FolderToggleRow({
   }
 
   return (
-    <div className={rowClassName}>
+    <div className={rowClassName} data-folder-row-id={folder.id}>
       <button
         type="button"
         aria-expanded={expanded}

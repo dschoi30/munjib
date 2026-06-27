@@ -1,9 +1,5 @@
 import { FilePlus2, Folder, FolderPlus, Network, Search, Star } from "lucide-react";
 import type { ReactNode } from "react";
-import type {
-  CreateDocumentFormAction,
-  CreateFolderFormAction,
-} from "@/components/document-navigation/types";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,8 +11,10 @@ import {
 
 export function DocumentCreateControls({
   canWrite,
-  createAction,
-  createFolderAction,
+  onCreateDocument,
+  onCreateFolder,
+  isCreatingDocument,
+  isCreatingFolder,
   activeView,
   onOpenDocuments,
   onOpenSearch,
@@ -24,8 +22,10 @@ export function DocumentCreateControls({
   onOpenGraph,
 }: {
   canWrite: boolean;
-  createAction: CreateDocumentFormAction;
-  createFolderAction: CreateFolderFormAction;
+  onCreateDocument: () => void;
+  onCreateFolder: () => void;
+  isCreatingDocument: boolean;
+  isCreatingFolder: boolean;
   activeView: "documents" | "search" | "favorites" | "graph";
   onOpenDocuments: () => void;
   onOpenSearch: () => void;
@@ -65,32 +65,28 @@ export function DocumentCreateControls({
             <Network className="h-4 w-4" aria-hidden="true" />
           </Button>
         </ToolbarTooltip>
-        <form action={createAction}>
-          <input type="hidden" name="folderId" value="" />
-          <ToolbarTooltip label={t("nav.newDocument")}>
-            <Button
-              type="submit"
-              disabled={!canWrite}
-              aria-label={t("nav.newDocument")}
-              className={iconButtonClassName}
-            >
-              <FilePlus2 className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </ToolbarTooltip>
-        </form>
-        <form action={createFolderAction}>
-          <input type="hidden" name="parentFolderId" value="" />
-          <ToolbarTooltip label={t("nav.newFolder")}>
-            <Button
-              type="submit"
-              disabled={!canWrite}
-              aria-label={t("nav.newFolder")}
-              className={iconButtonClassName}
-            >
-              <FolderPlus className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </ToolbarTooltip>
-        </form>
+        <ToolbarTooltip label={t("nav.newDocument")}>
+          <Button
+            type="button"
+            disabled={!canWrite || isCreatingDocument}
+            aria-label={t("nav.newDocument")}
+            onClick={onCreateDocument}
+            className={iconButtonClassName}
+          >
+            <FilePlus2 className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </ToolbarTooltip>
+        <ToolbarTooltip label={t("nav.newFolder")}>
+          <Button
+            type="button"
+            disabled={!canWrite || isCreatingFolder}
+            aria-label={t("nav.newFolder")}
+            onClick={onCreateFolder}
+            className={iconButtonClassName}
+          >
+            <FolderPlus className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </ToolbarTooltip>
         <ToolbarTooltip label={t("nav.search")}>
           <Button
             type="button"
