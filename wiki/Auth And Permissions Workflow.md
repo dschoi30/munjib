@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 개발용 로그인, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
-updated: 2026-05-04
-source_count: 9
+updated: 2026-07-03
+source_count: 11
 tags:
   - munjib
   - auth
@@ -34,6 +34,12 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 운영 환경에서는 기본적으로 secure cookie를 사용한다. HTTP-only IP 배포처럼 HTTPS가 아직 붙지 않은 임시 환경에서는 `NEXTAUTH_COOKIE_SECURE=false`로 session cookie의 secure flag를 끌 수 있다. Local HTTPS proxy 검증처럼 개발 환경에서 secure cookie를 강제해야 하면 `NEXTAUTH_COOKIE_SECURE=true`를 사용할 수 있다.
 
 관련 테스트는 cookie 이름, dev fallback secret, HTTP 배포용 secure cookie override, development secure-cookie force 동작을 검증한다.
+
+## Login redirect
+
+`LoginForm`은 `callbackUrl`이 `/workspaces/...` 같은 app-local path이면 `signIn(..., { redirect: false })`가 반환한 absolute URL의 origin을 그대로 사용하지 않고 callback path로 이동한다. NextAuth가 server-side `NEXTAUTH_URL` 기준의 `http://localhost:3000/...` URL을 반환할 수 있기 때문에, client-side 이동은 현재 browser origin을 유지하는 relative path를 우선한다.
+
+Callback sanitization은 단순 string prefix check가 아니라 `new URL(value, window.location.origin)` parsing 결과의 `origin`이 현재 browser origin과 같은지 확인한다. `/\evil.example`처럼 browser가 protocol-relative external URL로 normalize할 수 있는 malformed path는 기본 `/workspaces/company-handbook` callback으로 낮춰 `signIn()`에도 unsafe callback을 전달하지 않는다.
 
 ## Workspace role
 
@@ -84,10 +90,12 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 
 - `lib/auth/config.ts`
 - `lib/auth/session.ts`
+- `app/login/login-form.tsx`
 - `lib/permissions/workspace.ts`
 - `lib/permissions/document.ts`
 - `lib/wiki-links/service.ts`
 - `lib/attachments/service.ts`
 - `tests/auth/config.test.ts`
+- `tests/components/login-form.test.tsx`
 - `tests/permissions/document.test.ts`
 - `prisma/seed.ts`

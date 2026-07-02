@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-06-27",
+  "updated": "2026-07-02",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 9,
+      "source_count": 11,
       "searchPriority": 50
     },
     {
@@ -230,7 +230,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 299,
+      "source_count": 301,
       "searchPriority": 1
     },
     {
