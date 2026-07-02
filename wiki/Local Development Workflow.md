@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-06-23
-source_count: 60
+updated: 2026-07-03
+source_count: 61
 tags:
   - munjib
   - workflow
@@ -144,7 +144,7 @@ docker compose up --build
 
 Issue #100 이후 production-style `web` service는 RAG provider와 optional Langfuse env도 받는다. Docker 안에서 Ollama를 host에서 실행할 때 기본 `MUNJIB_OLLAMA_BASE_URL`은 `http://host.docker.internal:11434`다. Compose는 provider selection, OpenAI/OpenAI-compatible credential/base URL, Langfuse key/host/capture env를 `web` service로 전달한다.
 
-Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #98 이후 `main` push deploy는 GHCR publish/pull 없이 SSH로 production server의 `/home/deployer/munjib` checkout에서 `origin/main`을 fetch하고 workflow가 검증한 `DEPLOY_SHA=${{ github.sha }}`로 detached checkout을 고정한 뒤, OCI host에서 `WEB_IMAGE=munjib-web:latest`와 host-local `DEPLOY_ENV_FILE=/etc/munjib/env`로 `sudo env ... docker compose --env-file "$DEPLOY_ENV_FILE" build web tools`를 실행한다. Native build는 browser Sentry bundle이 유지되도록 `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy job의 `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` env를 Docker build args로 전달한다. 이후 built `tools` container에서 Prisma migration deploy와 RAG vector index setup을 실행하고, 같은 `--env-file`과 release env를 전달한 `docker compose up -d web`, remote local `http://127.0.0.1:3000` health check, dangling image prune, GitHub-hosted runner의 `https://munjib.example.invalid` public health check 순서로 배포한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.example.invalid`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`, OpenRouter/OpenAI-compatible base URL/API key를 `/etc/munjib/env`에서 제공한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
+Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #98 이후 `main` push deploy는 GHCR publish/pull 없이 SSH로 production server의 `/home/deployer/munjib` checkout에서 Actions-provided ephemeral Git token으로 repository `main`을 fetch하고 workflow가 검증한 `DEPLOY_SHA=${{ github.sha }}`로 detached checkout을 고정한 뒤, OCI host에서 `WEB_IMAGE=munjib-web:latest`와 host-local `DEPLOY_ENV_FILE=/etc/munjib/env`로 `sudo env ... docker compose --env-file "$DEPLOY_ENV_FILE" build web tools`를 실행한다. Native build는 browser Sentry bundle이 유지되도록 `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy job의 `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` env를 Docker build args로 전달한다. 이후 built `tools` container에서 Prisma migration deploy와 RAG vector index setup을 실행하고, 같은 `--env-file`과 release env를 전달한 `docker compose up -d web`, remote local `http://127.0.0.1:3000` health check, dangling image prune, GitHub-hosted runner의 `https://munjib.example.invalid` public health check 순서로 배포한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.example.invalid`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`, OpenRouter/OpenAI-compatible base URL/API key를 `/etc/munjib/env`에서 제공한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
 
 Required GitHub secrets:
 
