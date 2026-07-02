@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/app/login/login-form";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -75,5 +75,24 @@ describe("LoginForm", () => {
         "일치하는 개발 사용자를 찾을 수 없습니다. pnpm run db:seed를 실행한 뒤 목록의 계정 중 하나로 다시 시도하세요.",
       ),
     ).toBeTruthy();
+  });
+
+  it("keeps the default post-login redirect on the current browser origin", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "http://localhost:3000/workspaces/company-handbook",
+    });
+
+    renderLoginForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("credentials", {
+        email: "owner@example.com",
+        redirect: false,
+        callbackUrl: "/workspaces/company-handbook",
+      });
+    });
+    expect(window.location.assign).toHaveBeenCalledWith("/workspaces/company-handbook");
   });
 });

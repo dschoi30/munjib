@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-06-27
-source_count: 299
+updated: 2026-07-03
+source_count: 300
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-03T00:16:19+0900 - implementation
+
+- Result: Login submit no longer navigates users to `http://localhost:3000/workspaces/company-handbook` when NextAuth returns a localhost absolute URL after credentials sign-in.
+- Coverage: `LoginForm` now keeps app-local callback paths such as `/workspaces/company-handbook` as relative browser navigations, preserving the current origin even when `NEXTAUTH_URL` or NextAuth's returned result URL points at localhost.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: user bug report, `app/login/login-form.tsx`, `tests/components/login-form.test.tsx`.
+- Verification: red focused Vitest reproduced the localhost absolute URL assignment; green focused Vitest for `tests/components/login-form.test.tsx` passed; focused auth/login Vitest for `tests/auth/config.test.ts` and `tests/components/login-form.test.tsx` passed.
 
 ## 2026-06-27T16:55:01+0900 - review follow-up
 

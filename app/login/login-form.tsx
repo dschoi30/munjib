@@ -11,6 +11,16 @@ type LoginFormProps = {
   callbackUrl?: string;
 };
 
+function isInternalPath(url: string) {
+  return url.startsWith("/") && !url.startsWith("//");
+}
+
+function resolvePostSignInRedirectUrl(resultUrl: string, callbackUrl: string) {
+  // NextAuth can return an absolute URL based on NEXTAUTH_URL; keep app-local callbacks on the browser origin.
+  if (isInternalPath(callbackUrl)) return callbackUrl;
+  return resultUrl;
+}
+
 export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: LoginFormProps) {
   const { t } = useI18n();
   const [email, setEmail] = useState("owner@example.com");
@@ -28,7 +38,7 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
     });
 
     if (result?.url) {
-      window.location.assign(result.url);
+      window.location.assign(resolvePostSignInRedirectUrl(result.url, callbackUrl));
       return;
     }
 
