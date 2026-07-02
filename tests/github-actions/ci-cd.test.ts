@@ -88,16 +88,24 @@ describe("GitHub Actions CI/CD workflow", () => {
       DEPLOY_ENV_FILE: "/etc/munjib/env",
       DEPLOY_HEALTHCHECK_URL: "http://127.0.0.1:3000",
       DEPLOY_HEALTHCHECK_HOST: "munjib.andrewchoi.link",
+      DEPLOY_REPOSITORY: "${{ github.repository }}",
+      DEPLOY_GIT_TOKEN: "${{ github.token }}",
     });
     expect(deployStep?.with.host).toBe("${{ secrets.DEPLOY_HOST }}");
     expect(deployStep?.with.username).toBe("${{ secrets.DEPLOY_USER }}");
     expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
     expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
     expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST",
+      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN",
     );
     expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
-    expect(deployStep?.with.script).toContain("git fetch --force origin main");
+    expect(deployStep?.with.script).toContain(
+      'git_auth_header="$(printf \'x-access-token:%s\' "$DEPLOY_GIT_TOKEN" | base64 | tr -d \'\\n\')"',
+    );
+    expect(deployStep?.with.script).toContain(
+      'git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_header" fetch --force "https://github.com/$DEPLOY_REPOSITORY.git" main',
+    );
+    expect(deployStep?.with.script).not.toContain("git fetch --force origin main");
     expect(deployStep?.with.script).toContain('git checkout --detach "$DEPLOY_SHA"');
     expect(deployStep?.with.script).toContain('test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"');
     expect(deployStep?.with.script).not.toContain("git pull --ff-only");

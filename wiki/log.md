@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-03
-source_count: 301
+source_count: 302
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-03T01:06:24+0900 - deployment fix
+
+- Result: Main deploy failure after PR #140 merge was traced to OCI server checkout GitHub HTTPS authentication failing during `git fetch --force origin main`.
+- Coverage: The deploy workflow now passes the Actions repository and ephemeral GitHub token to the SSH step, uses a one-shot Git HTTP basic auth extraheader for the remote fetch, and avoids depending on or writing a stored token in the OCI checkout's `origin` URL.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: GitHub Actions run `28603528095`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`.
+- Verification: red focused Vitest reproduced the missing tokenized remote fetch contract; green focused Vitest for `tests/github-actions/ci-cd.test.ts` passed.
 
 ## 2026-07-03T00:27:00+0900 - review follow-up
 
