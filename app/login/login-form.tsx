@@ -6,12 +6,32 @@ import { useI18n } from "@/components/i18n-provider";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
+const defaultPostLoginCallbackUrl = "/workspaces/company-handbook";
 
 type LoginFormProps = {
   callbackUrl?: string;
 };
 
-export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: LoginFormProps) {
+function resolveAppLocalRedirectPath(url: string) {
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.origin !== window.location.origin) return null;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {
+    return null;
+  }
+}
+
+function resolvePostSignInRedirectUrl(resultUrl: string, callbackUrl: string) {
+  // NextAuth can return an absolute URL based on NEXTAUTH_URL; keep app-local callbacks on the browser origin.
+  return (
+    resolveAppLocalRedirectPath(resultUrl) ??
+    resolveAppLocalRedirectPath(callbackUrl) ??
+    defaultPostLoginCallbackUrl
+  );
+}
+
+export function LoginForm({ callbackUrl = defaultPostLoginCallbackUrl }: LoginFormProps) {
   const { t } = useI18n();
   const [email, setEmail] = useState("owner@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -21,14 +41,15 @@ export function LoginForm({ callbackUrl = "/workspaces/company-handbook" }: Logi
     event.preventDefault();
     setErrorKey(null);
     setIsSubmitting(true);
+    const safeCallbackUrl = resolveAppLocalRedirectPath(callbackUrl) ?? defaultPostLoginCallbackUrl;
     const result = await signIn("credentials", {
       email,
       redirect: false,
-      callbackUrl,
+      callbackUrl: safeCallbackUrl,
     });
 
     if (result?.url) {
-      window.location.assign(result.url);
+      window.location.assign(resolvePostSignInRedirectUrl(result.url, safeCallbackUrl));
       return;
     }
 
