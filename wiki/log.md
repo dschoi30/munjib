@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-03
-source_count: 300
+source_count: 301
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-03T00:27:00+0900 - review follow-up
+
+- Result: PR #140 review feedback hardened login callback sanitization against malformed external paths such as `/\evil.example`.
+- Coverage: `LoginForm` now parses callback/result URLs against the current browser origin, passes only safe app-local callback paths to `signIn()`, and falls back to `/workspaces/company-handbook` when callback/result URLs are external or malformed.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #140 Gemini review thread, `app/login/login-form.tsx`, `tests/components/login-form.test.tsx`.
+- Verification: red focused Vitest reproduced the unsafe callback reaching `signIn()`; green focused Vitest for `tests/components/login-form.test.tsx` passed.
 
 ## 2026-07-03T00:16:19+0900 - implementation
 

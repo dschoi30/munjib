@@ -38,7 +38,7 @@ beforeEach(() => {
 
   Object.defineProperty(window, "location", {
     configurable: true,
-    value: { assign: vi.fn() },
+    value: { assign: vi.fn(), origin: "https://munjib.example" },
   });
 });
 
@@ -47,10 +47,10 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderLoginForm() {
+function renderLoginForm(callbackUrl?: string) {
   return render(
     <I18nProvider>
-      <LoginForm />
+      <LoginForm {...(callbackUrl ? { callbackUrl } : {})} />
     </I18nProvider>,
   );
 }
@@ -83,6 +83,25 @@ describe("LoginForm", () => {
     });
 
     renderLoginForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("credentials", {
+        email: "owner@example.com",
+        redirect: false,
+        callbackUrl: "/workspaces/company-handbook",
+      });
+    });
+    expect(window.location.assign).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  it("falls back to the default post-login redirect for browser-normalized external callback paths", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "https://evil.example/phish",
+    });
+
+    renderLoginForm("/\\evil.example");
 
     fireEvent.click(await screen.findByRole("button", { name: "Sign in" }));
 
