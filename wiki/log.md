@@ -2366,18 +2366,18 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
-## 2026-07-04 - Honen design system foundation
+## 2026-07-04T15:00:00+09:00 - Honen design system foundation
 
 - Added [[Honen Design System]] as the durable project knowledge entry for the Honen token-driven content-site design system.
 - Recorded source evidence from the user-provided `design.md` brief and the implementation files `docs/design-system/honen.md`, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, and shared UI primitives in `components/ui/`.
 - Updated [[Wiki Index]] navigation so future UI work can start from the design system page before source search.
 
-## 2026-07-04 - Honen component state guidance follow-up
+## 2026-07-04T15:20:00+09:00 - Honen component state guidance follow-up
 
 - Tightened `docs/design-system/honen.md` so links, cards, navigation, and lists each document required default, hover, focus-visible, active, disabled, loading, and error states.
 - Updated [[Honen Design System]] to record the complete state-coverage contract for the first implementation slice.
 
-## 2026-07-04 - Honen design system review follow-up
+## 2026-07-04T16:55:00+09:00 - Honen design system review follow-up
 
 - Aligned typed Honen primitive color token names with the CSS semantic variable categories.
 - Added missing Tailwind semantic aliases for border, surface, and interactive radius tokens so shared primitives can use normal utilities for common variants.
