@@ -136,4 +136,35 @@ describe("WorkspaceSettingsPanel", () => {
     expect(submittedFormData.get("folderId")).toBe("folder-runbooks");
     expect(await screen.findByText("Destination: Engineering / Runbooks")).toBeTruthy();
   });
+
+  it("uses Honen surface and primary tokens across settings controls", () => {
+    renderSettingsPanel();
+
+    const dialog = screen.getByRole("dialog", { name: "Workspace settings" });
+    expect(dialog.className).toContain("border-border");
+    expect(dialog.className).toContain("bg-surface");
+    expect(dialog.className).not.toContain("border-slate-200");
+    expect(dialog.className).not.toContain("bg-white");
+
+    const importDropzone = screen.getByRole("button", { name: /Markdown files/ });
+    expect(importDropzone.className).toContain("border-primary");
+    expect(importDropzone.className).toContain("bg-primary-muted");
+    expect(importDropzone.className).not.toContain("bg-primary-muted/70");
+    expect(importDropzone.className).not.toContain("sky");
+
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    const providerSelect = screen.getByRole("combobox", { name: "AI provider" });
+    expect(providerSelect.className).toContain("border-border");
+    expect(providerSelect.className).toContain("bg-surface-control");
+    expect(providerSelect.className).toContain("focus:border-primary");
+    expect(providerSelect.className).not.toContain("sky");
+
+    fireEvent.click(screen.getByRole("button", { name: "Language" }));
+    const appliedLanguageCard = screen.getAllByText("English")[0].closest("label");
+    const currentBadge = screen.getByText("Current");
+    expect(appliedLanguageCard?.className).toContain("ring-primary-muted-hover");
+    expect(currentBadge.className).toContain("bg-primary-muted");
+    expect(currentBadge.className).toContain("text-primary");
+    expect(currentBadge.className).not.toContain("sky");
+  });
 });

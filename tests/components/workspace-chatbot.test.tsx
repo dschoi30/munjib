@@ -109,6 +109,18 @@ describe("WorkspaceChatbot", () => {
     ).toBe(threadLoadCount);
   });
 
+  it("uses the green primary token for the closed workspace AI launcher circle", () => {
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    const launcher = screen.getByRole("button", { name: "Open workspace AI chat" });
+    expect(launcher.className).toContain("bg-primary");
+    expect(launcher.className).toContain("text-primary-foreground");
+    expect(launcher.className).toContain("hover:bg-primary-hover");
+    expect(launcher.className).not.toContain("bg-surface-control");
+    expect(launcher.className).not.toContain("hover:bg-slate-200");
+    expect(launcher.className).not.toContain("text-ink");
+  });
+
   it("persists opening and closing while preserving unrelated workspace UI state", async () => {
     const storageKey = workspaceUiStateStorageKey("company-handbook");
     window.localStorage.setItem(

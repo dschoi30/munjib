@@ -557,7 +557,7 @@ export function DocumentEditor({
 
   if (!document) {
     return (
-      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border bg-white">
+      <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-border bg-surface-editor">
         <p className="text-sm text-slate-500">{t("editor.empty")}</p>
       </div>
     );
@@ -624,7 +624,7 @@ export function DocumentEditor({
       />
       <form
         action={uploadAttachmentAction}
-        className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-white px-3 py-2"
+        className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-control px-3 py-2"
       >
         <input type="hidden" name="documentId" value={document.id} />
         <Paperclip className="h-4 w-4 text-slate-500" aria-hidden="true" />
@@ -644,7 +644,7 @@ export function DocumentEditor({
           {t("editor.upload")}
         </Button>
       </form>
-      <div className="overflow-hidden rounded-md border border-border bg-white">
+      <div className="overflow-hidden rounded-md border border-border bg-surface-editor">
         {mode === "edit" && editorMarkdownReady ? (
           <div className="relative min-w-0">
             <CodeMirror

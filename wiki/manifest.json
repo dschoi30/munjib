@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-02",
+  "updated": "2026-07-04",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -157,6 +157,25 @@
       "searchPriority": 50
     },
     {
+      "id": "honen-design-system",
+      "path": "wiki/Honen Design System.md",
+      "title": "Honen Design System",
+      "type": "concept",
+      "status": "active",
+      "summary": "Honen content-site design system foundation, semantic token contract, component state rules, and accessibility acceptance criteria.",
+      "tags": [
+        "design-system",
+        "honen",
+        "accessibility"
+      ],
+      "links": [
+        "[[Wiki Index]]",
+        "[[Local Development Workflow]]"
+      ],
+      "source_count": 9,
+      "searchPriority": 50
+    },
+    {
       "id": "index-main",
       "path": "wiki/index.md",
       "title": "Wiki Index",
@@ -184,10 +203,11 @@
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]",
+        "[[Honen Design System]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 133,
+      "source_count": 135,
       "searchPriority": 5
     },
     {
@@ -230,7 +250,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 302,
+      "source_count": 309,
       "searchPriority": 1
     },
     {

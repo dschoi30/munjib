@@ -100,7 +100,8 @@ export function MarkdownPreview({
         <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</th>
       ),
       a: ({ href, children }) => {
-        const className = "text-violet-600 underline underline-offset-2 hover:text-violet-700";
+        const className =
+          "text-primary underline underline-offset-2 hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-visible)]";
         return href?.startsWith("?document=") ? (
           <Link href={href} className={className}>
             {children}
@@ -383,7 +384,7 @@ function renderTagSearchText(
         key={`${keyPrefix}-${tagName}-${tagStart}`}
         type="button"
         onClick={() => requestTagSearch?.(tagName)}
-        className="rounded px-0.5 text-violet-600 underline underline-offset-2 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+        className="rounded px-0.5 text-primary underline underline-offset-2 hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-visible)]"
         aria-label={formatTagSearchLabel?.(tagName) ?? `Search tag #${tagName}`}
       >
         #{tagName}

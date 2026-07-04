@@ -92,4 +92,33 @@ describe("wiki search", () => {
       "## 2026-04-27T10:00:00+09:00 - query\n\n- Query: llm wiki\n- Result: Found concept page.",
     ]);
   });
+
+  it("sorts recent log entries by timestamp instead of file position", async () => {
+    const tempRoot = await createTempWiki();
+    await writeFile(
+      path.join(tempRoot, "wiki", "log.md"),
+      [
+        "# Wiki Log",
+        "",
+        "## 2026-07-04T17:42:00+0900 - review follow-up",
+        "",
+        "- Result: Latest entry.",
+        "",
+        "## 2026-04-29T00:00:00+09:00 - rewrite",
+        "",
+        "- Result: Old rewrite.",
+        "",
+        "## 2026-07-03T01:06:24+0900 - deployment fix",
+        "",
+        "- Result: Previous entry.",
+      ].join("\n"),
+    );
+
+    const entries = await readRecentWikiLogEntries(tempRoot, 2);
+
+    expect(entries).toEqual([
+      "## 2026-07-04T17:42:00+0900 - review follow-up\n\n- Result: Latest entry.",
+      "## 2026-07-03T01:06:24+0900 - deployment fix\n\n- Result: Previous entry.",
+    ]);
+  });
 });

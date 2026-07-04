@@ -76,7 +76,7 @@ export function DocumentTabs({
   }, []);
 
   return (
-    <nav aria-label={t("tabs.openDocuments")} className="h-11 border-b border-border bg-muted">
+    <nav aria-label={t("tabs.openDocuments")} className="h-11 border-b border-border bg-surface-muted">
       <div ref={containerRef} className="flex h-full min-w-0 overflow-x-auto overflow-y-hidden">
         {reserveLeadingSlot ? (
           <div
@@ -98,13 +98,13 @@ export function DocumentTabs({
                 style={{ width: tabWidth }}
                 className={cn(
                   "group flex h-11 shrink-0 items-center border-r border-border",
-                  selected ? "bg-white text-ink" : "bg-muted text-slate-600 hover:bg-white/70",
+                  selected ? "bg-surface-page text-ink" : "bg-surface-muted text-ink-muted hover:bg-surface-page",
                 )}
               >
                 <button
                   type="button"
                   aria-current={selected ? "page" : undefined}
-                  className="h-full min-w-0 flex-1 truncate px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                  className="h-full min-w-0 flex-1 truncate px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
                   onClick={() => onSelect(tab.id)}
                 >
                   {title}
@@ -112,7 +112,7 @@ export function DocumentTabs({
                 <button
                   type="button"
                   aria-label={t("tabs.close", { title })}
-                  className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded text-slate-500 hover:bg-slate-200 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+                  className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted hover:bg-surface-control hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
                   onClick={() => onClose(tab.id)}
                 >
                   <X className="size-3.5" aria-hidden="true" />
@@ -124,7 +124,7 @@ export function DocumentTabs({
         <button
           type="button"
           aria-label={t("tabs.add")}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-slate-500 hover:bg-white hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-ink-muted hover:bg-surface-page hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
           onClick={onAdd}
         >
           <Plus className="size-4" aria-hidden="true" />

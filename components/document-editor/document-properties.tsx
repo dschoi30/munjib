@@ -86,7 +86,7 @@ export function DocumentProperties({
                 </span>
               </span>
             ))}
-            <form action={createCommentAction} className="flex min-w-[220px] items-center gap-2">
+            <form action={createCommentAction} className="flex w-full min-w-0 flex-wrap items-center gap-2">
               <input type="hidden" name="documentId" value={document.id} />
               <label className="sr-only" htmlFor={`comment-body-${document.id}`}>
                 {t("editor.addComment")}
@@ -96,7 +96,7 @@ export function DocumentProperties({
                 name="body"
                 disabled={!canWrite}
                 placeholder={t("editor.addComment")}
-                className="h-8 min-w-0 flex-1 rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
+                className="h-8 min-w-0 flex-[1_1_10rem] rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
               />
               <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
                 {t("editor.comment")}
@@ -121,7 +121,7 @@ function TagsPropertyRow({ tags }: { tags: string[] }) {
           key={tag}
           type="button"
           onClick={() => tagSearch?.requestTagSearch(tag)}
-          className="rounded-full bg-violet-50 px-2.5 py-1 text-violet-600 hover:bg-violet-100 hover:text-violet-700 focus:outline-none focus:ring-2 focus:ring-violet-300"
+          className="rounded-full bg-primary-muted px-2.5 py-1 text-primary hover:bg-primary-muted-hover hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-visible)]"
           aria-label={t("editor.searchTag", { tag: `#${tag}` })}
         >
           #{tag}
@@ -185,7 +185,7 @@ function LinksPropertyRow({
             <button
               type="submit"
               disabled={!canWrite}
-              className="rounded-full px-1 text-slate-400 underline decoration-slate-300 underline-offset-2 hover:text-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-full px-1 text-ink-muted underline decoration-border underline-offset-2 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
               title={t("editor.createFromBrokenLink")}
             >
               {item.label}
@@ -195,7 +195,7 @@ function LinksPropertyRow({
           <Link
             key={item.id}
             href={item.href}
-            className="rounded-full px-1 text-violet-600 underline underline-offset-2 hover:text-violet-700"
+            className="rounded-full px-1 text-primary underline underline-offset-2 hover:text-primary-hover"
           >
             {item.label}
           </Link>

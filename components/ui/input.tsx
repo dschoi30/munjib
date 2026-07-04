@@ -5,7 +5,7 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return (
     <input
       className={twMerge(
-        "h-9 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-ink",
+        "h-[var(--size-control-md)] w-full rounded-interactive border border-border bg-surface-control px-3 text-sm text-ink outline-none transition-colors duration-fast motion-reduce:transition-none placeholder:text-ink-muted focus-visible:border-border-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)] disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-border-danger",
         className,
       )}
       {...props}
