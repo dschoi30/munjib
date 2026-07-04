@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 304
+source_count: 305
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T17:54:00+0900 - Honen primary active-state review follow-up
+
+- Result: PR #142 review feedback removed primary active background leakage from custom default buttons.
+- Coverage: `Button` keeps green active chrome only for explicit `variant="primary"` calls, while custom default call sites can override background/text/hover without inheriting `active:bg-primary-active`.
+- Pages: [[Honen Design System]], [[log|Wiki Log]].
+- Source evidence: PR #142 Codex review thread, `components/ui/button.tsx`, `tests/design-system/primitives.test.tsx`.
+- Verification: red primitive test reproduced the leaked active primary class on a custom default button, then passed after the component change.
 
 ## 2026-07-04T17:42:00+0900 - Honen review contrast and log-order follow-up
 

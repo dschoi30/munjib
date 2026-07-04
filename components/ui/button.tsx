@@ -14,7 +14,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "border border-transparent bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active",
+          "border border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
         secondary:
           "border border-border bg-surface-control text-ink shadow-subtle hover:bg-muted",
         ghost:
@@ -40,9 +40,16 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
   VariantProps<typeof buttonVariants>;
 
 export function Button({ className, variant, size, ...props }: ButtonProps) {
+  const explicitPrimaryActiveClassName =
+    variant === "primary" ? "active:bg-primary-active" : undefined;
+
   return (
     <button
-      className={twMerge(buttonVariants({ variant, size }), className)}
+      className={twMerge(
+        buttonVariants({ variant, size }),
+        explicitPrimaryActiveClassName,
+        className,
+      )}
       {...props}
     />
   );

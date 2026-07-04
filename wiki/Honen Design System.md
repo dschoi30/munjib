@@ -6,7 +6,7 @@ status: active
 summary: Honen content-site design system foundation, semantic token contract, component state rules, and accessibility acceptance criteria.
 created: 2026-07-04
 updated: 2026-07-04
-source_count: 4
+source_count: 5
 tags:
   - design-system
   - honen
@@ -35,7 +35,7 @@ Foundation tokens cover Inter typography, Honen text/surface/brand/border/focus 
 
 ## Priority component coverage
 
-The first implementation slice targets shared foundations and high-reuse primitives because the brief identified cards, links, buttons, navigation, and lists as the densest page components. The current code slice establishes global tokens, Tailwind semantic aliases, typed token exports, and tokenized `Button`, `Input`, and `Textarea` primitives. Button default heights live in size variants rather than the base class so compact toolbar and icon call sites can override dimensions, and the primary default now uses Honen green brand tokens instead of inverse black chrome. ARIA-driven loading and invalid states use explicit generated variants, and shared primitive transitions are disabled for reduced-motion users. Editor and workspace center surfaces use the warm screenshot palette, including `--color-surface-editor` for multiline editing. The implementation guide now requires explicit default, hover, focus-visible, active, disabled, loading, and error state guidance for buttons, links, cards, navigation, and lists.
+The first implementation slice targets shared foundations and high-reuse primitives because the brief identified cards, links, buttons, navigation, and lists as the densest page components. The current code slice establishes global tokens, Tailwind semantic aliases, typed token exports, and tokenized `Button`, `Input`, and `Textarea` primitives. Button default heights live in size variants rather than the base class so compact toolbar and icon call sites can override dimensions, and the primary default now uses Honen green brand tokens instead of inverse black chrome. Primary active background chrome is attached only when callers explicitly request `variant="primary"` so custom default buttons can override background, text, and hover colors without inheriting a green pressed state. ARIA-driven loading and invalid states use explicit generated variants, and shared primitive transitions are disabled for reduced-motion users. Editor and workspace center surfaces use the warm screenshot palette, including `--color-surface-editor` for multiline editing. The implementation guide now requires explicit default, hover, focus-visible, active, disabled, loading, and error state guidance for buttons, links, cards, navigation, and lists.
 
 ## Accessibility contract
 

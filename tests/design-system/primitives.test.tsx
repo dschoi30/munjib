@@ -3,7 +3,7 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 afterEach(() => {
@@ -24,5 +24,25 @@ describe("Honen primitive components", () => {
     render(<Textarea data-testid="honen-editor" />);
 
     expect(screen.getByTestId("honen-editor").className).toContain("bg-surface-editor");
+  });
+
+  it("keeps primary active chrome out of custom default buttons", () => {
+    render(
+      <Button data-testid="custom-default" className="bg-white text-ink hover:bg-slate-50">
+        Custom
+      </Button>,
+    );
+
+    expect(screen.getByTestId("custom-default").className).not.toContain("active:bg-primary-active");
+  });
+
+  it("keeps pressed feedback for explicit primary buttons", () => {
+    render(
+      <Button data-testid="explicit-primary" variant="primary">
+        Primary
+      </Button>,
+    );
+
+    expect(screen.getByTestId("explicit-primary").className).toContain("active:bg-primary-active");
   });
 });
