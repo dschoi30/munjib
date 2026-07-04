@@ -47,10 +47,16 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-function renderLoginForm(callbackUrl?: string) {
+function renderLoginForm(
+  callbackUrl?: string,
+  options: { isDevLoginEnabled?: boolean } = {},
+) {
   return render(
     <I18nProvider>
-      <LoginForm {...(callbackUrl ? { callbackUrl } : {})} />
+      <LoginForm
+        {...(callbackUrl ? { callbackUrl } : {})}
+        isDevLoginEnabled={options.isDevLoginEnabled ?? true}
+      />
     </I18nProvider>,
   );
 }
@@ -75,6 +81,19 @@ describe("LoginForm", () => {
         "일치하는 개발 사용자를 찾을 수 없습니다. pnpm run db:seed를 실행한 뒤 목록의 계정 중 하나로 다시 시도하세요.",
       ),
     ).toBeTruthy();
+  });
+
+  it("disables development login controls when the server gate is off", async () => {
+    renderLoginForm(undefined, { isDevLoginEnabled: false });
+
+    expect(await screen.findByText("Development email login is disabled for this environment.")).toBeTruthy();
+    expect(screen.getByLabelText("Email")).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "owner@example.com" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Sign in" })).toHaveProperty("disabled", true);
+
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(authMock.signIn).not.toHaveBeenCalled();
   });
 
   it("keeps the default post-login redirect on the current browser origin", async () => {
