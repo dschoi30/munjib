@@ -648,12 +648,13 @@ describe("KnowledgeGraphView", () => {
 
     await waitFor(() => {
       expect(forceGraphMock.state.latestProps).toMatchObject({
-        backgroundColor: "#ffffff",
+        backgroundColor: "var(--color-surface-editor)",
         width: 720,
         height: 480,
       });
     });
     expect(screen.getByTestId("knowledge-graph-view").className).toContain("h-full min-h-0");
+    expect(screen.getByTestId("knowledge-graph-view").className).toContain("bg-surface-editor");
   });
 
   it("keeps app graph data immutable when force graph mutates rendered links", () => {
@@ -767,11 +768,29 @@ describe("KnowledgeGraphView", () => {
     expect(unfocusedDocumentNode).toBeDefined();
     expect(tagLink).toBeDefined();
     expect(unfocusedWikiLink).toBeDefined();
-    expect(nodeColor?.(selectedDocumentNode!)).toBe("#a78bfa");
+    expect(nodeColor?.(selectedDocumentNode!)).toBe("#2f7d46");
     expect(nodeColor?.(tagNode!)).toBe("#f59e0b");
     expect(nodeColor?.(unfocusedDocumentNode!)).toBe("#64748b88");
     expect(linkColor?.(tagLink!)).toBe("#64748b");
     expect(linkColor?.(unfocusedWikiLink!)).toBe("#94a3b844");
+  });
+
+  it("uses the primary green theme for rendered wiki graph nodes", () => {
+    renderGraph();
+
+    const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
+      | ((node: KnowledgeGraphData["nodes"][number]) => string)
+      | undefined;
+
+    expect(
+      nodeColor?.({
+        id: "wiki:missing",
+        kind: "wiki",
+        label: "Missing",
+        targetTitleRaw: "Missing",
+        state: "broken",
+      }),
+    ).toBe("#2f7d46");
   });
 
   it("does not dim visible wiki-linked nodes when the selected document is filtered out", () => {
@@ -1267,7 +1286,7 @@ describe("KnowledgeGraphView", () => {
       const restoredNodeColor = forceGraphMock.state.latestProps?.nodeColor as
         | ((node: KnowledgeGraphData["nodes"][number]) => string)
         | undefined;
-      expect(restoredNodeColor?.(graph.nodes[0])).toBe("#a78bfa");
+      expect(restoredNodeColor?.(graph.nodes[0])).toBe("#2f7d46");
     });
 
     const restoredNodeColor = forceGraphMock.state.latestProps?.nodeColor as
@@ -1277,7 +1296,7 @@ describe("KnowledgeGraphView", () => {
       | ((link: KnowledgeGraphData["links"][number]) => string)
       | undefined;
 
-    expect(restoredNodeColor?.(graph.nodes[0])).toBe("#a78bfa");
+    expect(restoredNodeColor?.(graph.nodes[0])).toBe("#2f7d46");
     expect(restoredLinkColor?.(graph.links[0])).toBe("#64748b");
   });
 
@@ -1301,7 +1320,7 @@ describe("KnowledgeGraphView", () => {
       const nodeColor = forceGraphMock.state.latestProps?.nodeColor as
         | ((node: KnowledgeGraphData["nodes"][number]) => string)
         | undefined;
-      expect(nodeColor?.(graph.nodes[0])).toBe("#a78bfa");
+      expect(nodeColor?.(graph.nodes[0])).toBe("#2f7d46");
     });
 
     const linkColor = forceGraphMock.state.latestProps?.linkColor as

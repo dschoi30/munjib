@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 306
+source_count: 307
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T18:29:36+0900 - Honen graph canvas and selected node color follow-up
+
+- Result: User-requested graph follow-up moved the force graph canvas background to `var(--color-surface-editor)` and replaced the selected document/wiki node violet colors with Honen primary green.
+- Coverage: `KnowledgeGraphView` now applies `bg-surface-editor` to the graph shell, passes `var(--color-surface-editor)` to the canvas background, and uses `#2f7d46` for selected document and wiki node colors.
+- Pages: [[Honen Design System]], [[log|Wiki Log]].
+- Source evidence: user follow-up messages in the 2026-07-04 task conversation, `components/knowledge-graph-view.tsx`, `tests/components/knowledge-graph-view.test.tsx`.
+- Verification: red graph component tests reproduced the old white canvas, selected node purple, and wiki node purple before the graph color migration.
 
 ## 2026-07-04T18:22:30+0900 - Honen remaining violet color alignment follow-up
 

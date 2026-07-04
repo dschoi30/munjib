@@ -74,11 +74,11 @@ const DEFAULT_FILTERS: WorkspaceUiGraphFilters = {
 
 const NODE_COLORS: Record<KnowledgeGraphNode["kind"], string> = {
   document: "#64748b",
-  wiki: "#8b5cf6",
+  wiki: "#2f7d46",
   tag: "#f59e0b",
 };
 
-const SELECTED_DOCUMENT_COLOR = "#a78bfa";
+const SELECTED_DOCUMENT_COLOR = "#2f7d46";
 const DIMMED_NODE_ALPHA = "88";
 const HOVER_DIMMED_NODE_ALPHA = "33";
 const DIMMED_LINK_ALPHA = "44";
@@ -392,7 +392,7 @@ export function KnowledgeGraphView({
     return (
       <section
         data-testid="knowledge-graph-view"
-        className="flex h-full min-h-0 items-center justify-center bg-white text-sm text-slate-500"
+        className="flex h-full min-h-0 items-center justify-center bg-surface-editor text-sm text-ink-muted"
       >
         {t("graph.empty")}
       </section>
@@ -402,7 +402,7 @@ export function KnowledgeGraphView({
   return (
     <section
       data-testid="knowledge-graph-view"
-      className="relative h-full min-h-0 overflow-hidden bg-white text-slate-900"
+      className="relative h-full min-h-0 overflow-hidden bg-surface-editor text-ink"
     >
       <div ref={graphContainerRef} className="absolute inset-0 h-full min-h-0 w-full">
         <ForceGraph2D
@@ -410,7 +410,7 @@ export function KnowledgeGraphView({
           graphData={renderedGraph}
           width={dimensions.width}
           height={dimensions.height}
-          backgroundColor="#ffffff"
+          backgroundColor="var(--color-surface-editor)"
           nodeLabel={(node: ForceGraphNode) => node.label}
           nodeRelSize={effectiveNodeSize}
           onRenderFramePost={applyInitialGraphZoom}
