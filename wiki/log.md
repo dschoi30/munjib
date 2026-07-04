@@ -2376,3 +2376,9 @@ links:
 
 - Tightened `docs/design-system/honen.md` so links, cards, navigation, and lists each document required default, hover, focus-visible, active, disabled, loading, and error states.
 - Updated [[Honen Design System]] to record the complete state-coverage contract for the first implementation slice.
+
+## 2026-07-04 - Honen design system review follow-up
+
+- Aligned typed Honen primitive color token names with the CSS semantic variable categories.
+- Added missing Tailwind semantic aliases for border, surface, and interactive radius tokens so shared primitives can use normal utilities for common variants.
+- Preserved compact button override behavior by moving default button heights into size variants instead of the base class.

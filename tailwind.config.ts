@@ -11,8 +11,14 @@ const config: Config = {
       colors: {
         border: "var(--color-border-default)",
         "border-muted": "var(--color-border-muted)",
+        "border-strong": "var(--color-border-strong)",
+        "border-danger": "var(--color-border-danger)",
+        "surface-page": "var(--color-surface-page)",
         surface: "var(--color-surface-card)",
+        "surface-inverse": "var(--color-surface-inverse)",
         muted: "var(--color-surface-muted)",
+        "surface-muted": "var(--color-surface-muted)",
+        "surface-danger": "var(--color-surface-danger)",
         ink: "var(--color-text-body)",
         "ink-muted": "var(--color-text-muted)",
         "ink-inverse": "var(--color-text-inverse)",
@@ -27,6 +33,7 @@ const config: Config = {
         xl: "var(--radius-xl)",
         "2xl": "var(--radius-2xl)",
         pill: "var(--radius-pill)",
+        interactive: "var(--radius-interactive)",
       },
       boxShadow: {
         card: "var(--shadow-card-default)",

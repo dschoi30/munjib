@@ -6,7 +6,7 @@ describe("Honen design tokens", () => {
   it("keeps the implementation-ready foundation values from the design brief", () => {
     expect(honenDesignTokens.font.family.primary).toBe("Inter");
     expect(honenDesignTokens.font.size.base).toBe("16px");
-    expect(honenDesignTokens.color.text.primary).toBe("#191818");
+    expect(honenDesignTokens.color.text.body).toBe("#191818");
     expect(honenDesignTokens.color.focus.ring).toContain("oklab");
     expect(honenDesignTokens.space[8]).toBe("13px");
     expect(honenDesignTokens.radius.step8).toBe("999px");

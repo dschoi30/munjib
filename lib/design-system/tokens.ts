@@ -29,18 +29,24 @@ export const honenDesignTokens = {
   },
   color: {
     text: {
-      primary: "#191818",
-      secondary: "#f7f6ef",
-      tertiary: "#1a1a1a",
-      inverse: "#5e5b50",
+      body: "#191818",
+      heading: "#1a1a1a",
+      muted: "#5e5b50",
+      inverse: "#f7f6ef",
+      danger: "#9f1239",
     },
     surface: {
-      base: "#000000",
-      muted: "#ffffff",
+      page: "#f7f6ef",
+      card: "#ffffff",
+      inverse: "#000000",
+      muted: "#fbfaf5",
+      danger: "#fff1f2",
     },
     border: {
       default: "#e4e2d2",
       muted: "#e2e0d8",
+      strong: "#5e5b50",
+      danger: "#fecdd3",
     },
     focus: {
       ring: "oklab(0.865461 -0.0579914 0.0780984 / 0.5)",

@@ -29,11 +29,11 @@ Honen design system work makes the content site consistent, token-driven, access
 
 ## Token contract
 
-Foundation tokens cover Inter typography, Honen text/surface/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values.
+Foundation tokens cover Inter typography, Honen text/surface/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values. The typed primitive color tokens mirror the CSS semantic categories, and Tailwind aliases expose the shared surface, border, text, and interactive radius tokens so shared primitives do not need arbitrary CSS variable classes for normal variants.
 
 ## Priority component coverage
 
-The first implementation slice targets shared foundations and high-reuse primitives because the brief identified cards, links, buttons, navigation, and lists as the densest page components. The current code slice establishes global tokens, Tailwind semantic aliases, typed token exports, and tokenized `Button`, `Input`, and `Textarea` primitives. The implementation guide now requires explicit default, hover, focus-visible, active, disabled, loading, and error state guidance for buttons, links, cards, navigation, and lists.
+The first implementation slice targets shared foundations and high-reuse primitives because the brief identified cards, links, buttons, navigation, and lists as the densest page components. The current code slice establishes global tokens, Tailwind semantic aliases, typed token exports, and tokenized `Button`, `Input`, and `Textarea` primitives. Button default heights live in size variants rather than the base class so compact toolbar and icon call sites can override dimensions. The implementation guide now requires explicit default, hover, focus-visible, active, disabled, loading, and error state guidance for buttons, links, cards, navigation, and lists.
 
 ## Accessibility contract
 
