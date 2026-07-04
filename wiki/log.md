@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-03
-source_count: 302
+updated: 2026-07-04
+source_count: 304
 tags:
   - log
   - munjib
@@ -18,6 +18,45 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T17:42:00+0900 - Honen review contrast and log-order follow-up
+
+- Result: PR #142 review feedback tightened Honen invalid field border contrast and restored reverse-chronological wiki log ordering for the Honen entries.
+- Coverage: `--color-border-danger` now uses a visible rose border on white control and warm editor surfaces, and `wiki:log` recent lookups see the July 4 Honen entries before older July 3 and June entries.
+- Pages: [[Honen Design System]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #142 Codex review threads, `app/globals.css`, `lib/design-system/tokens.ts`, `tests/design-system/tokens.test.ts`, `wiki/log.md`.
+- Verification: red design-system token test reproduced the low invalid-border contrast before the token change.
+
+## 2026-07-04T17:15:07+0900 - Honen screenshot color alignment follow-up
+
+- Matched the Honen token palette to the user-uploaded course reader screenshot: green primary actions, pale green selected states, warm page/editor surfaces, white controls, and soft warm borders.
+- Updated shared primitives and workspace editor shells so primary buttons, textarea/editor backgrounds, tabs, toolbar, and preview chrome consume the new semantic tokens.
+- Added focused design-system tests for the screenshot palette and primitive class contracts.
+- Pages: [[Honen Design System]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: uploaded Honen course reader screenshot, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, `components/ui/button.tsx`, `components/ui/textarea.tsx`, `components/document-editor.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `tests/design-system/tokens.test.ts`, `tests/design-system/primitives.test.tsx`.
+
+## 2026-07-04T16:55:00+09:00 - Honen design system review follow-up
+
+- Aligned typed Honen primitive color token names with the CSS semantic variable categories.
+- Added missing Tailwind semantic aliases for border, surface, and interactive radius tokens so shared primitives can use normal utilities for common variants.
+- Preserved compact button override behavior by moving default button heights into size variants instead of the base class.
+- Kept the primary button default flat so legacy transparent toolbar buttons do not inherit an unintended elevation shadow.
+- Removed primary default hover/active chrome from the base compatibility path so custom button call sites keep their local hover states.
+- Switched busy and invalid primitive state selectors to generated Tailwind arbitrary ARIA variants.
+- Removed transform press animations from shared button variants and added reduced-motion transition suppression.
+- Darkened the focus-visible token so keyboard focus rings remain visible on page and card surfaces.
+- Added reduced-motion transition suppression to shared field primitives.
+
+## 2026-07-04T15:20:00+09:00 - Honen component state guidance follow-up
+
+- Tightened `docs/design-system/honen.md` so links, cards, navigation, and lists each document required default, hover, focus-visible, active, disabled, loading, and error states.
+- Updated [[Honen Design System]] to record the complete state-coverage contract for the first implementation slice.
+
+## 2026-07-04T15:00:00+09:00 - Honen design system foundation
+
+- Added [[Honen Design System]] as the durable project knowledge entry for the Honen token-driven content-site design system.
+- Recorded source evidence from the user-provided `design.md` brief and the implementation files `docs/design-system/honen.md`, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, and shared UI primitives in `components/ui/`.
+- Updated [[Wiki Index]] navigation so future UI work can start from the design system page before source search.
 
 ## 2026-07-03T01:06:24+0900 - deployment fix
 
@@ -2366,33 +2405,3 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
-## 2026-07-04T15:00:00+09:00 - Honen design system foundation
-
-- Added [[Honen Design System]] as the durable project knowledge entry for the Honen token-driven content-site design system.
-- Recorded source evidence from the user-provided `design.md` brief and the implementation files `docs/design-system/honen.md`, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, and shared UI primitives in `components/ui/`.
-- Updated [[Wiki Index]] navigation so future UI work can start from the design system page before source search.
-
-## 2026-07-04T15:20:00+09:00 - Honen component state guidance follow-up
-
-- Tightened `docs/design-system/honen.md` so links, cards, navigation, and lists each document required default, hover, focus-visible, active, disabled, loading, and error states.
-- Updated [[Honen Design System]] to record the complete state-coverage contract for the first implementation slice.
-
-## 2026-07-04T16:55:00+09:00 - Honen design system review follow-up
-
-- Aligned typed Honen primitive color token names with the CSS semantic variable categories.
-- Added missing Tailwind semantic aliases for border, surface, and interactive radius tokens so shared primitives can use normal utilities for common variants.
-- Preserved compact button override behavior by moving default button heights into size variants instead of the base class.
-- Kept the primary button default flat so legacy transparent toolbar buttons do not inherit an unintended elevation shadow.
-- Removed primary default hover/active chrome from the base compatibility path so custom button call sites keep their local hover states.
-- Switched busy and invalid primitive state selectors to generated Tailwind arbitrary ARIA variants.
-- Removed transform press animations from shared button variants and added reduced-motion transition suppression.
-- Darkened the focus-visible token so keyboard focus rings remain visible on page and card surfaces.
-- Added reduced-motion transition suppression to shared field primitives.
-
-## 2026-07-04T17:15:07+0900 - Honen screenshot color alignment follow-up
-
-- Matched the Honen token palette to the user-uploaded course reader screenshot: green primary actions, pale green selected states, warm page/editor surfaces, white controls, and soft warm borders.
-- Updated shared primitives and workspace editor shells so primary buttons, textarea/editor backgrounds, tabs, toolbar, and preview chrome consume the new semantic tokens.
-- Added focused design-system tests for the screenshot palette and primitive class contracts.
-- Pages: [[Honen Design System]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: uploaded Honen course reader screenshot, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, `components/ui/button.tsx`, `components/ui/textarea.tsx`, `components/document-editor.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `tests/design-system/tokens.test.ts`, `tests/design-system/primitives.test.tsx`.

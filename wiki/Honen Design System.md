@@ -6,7 +6,7 @@ status: active
 summary: Honen content-site design system foundation, semantic token contract, component state rules, and accessibility acceptance criteria.
 created: 2026-07-04
 updated: 2026-07-04
-source_count: 3
+source_count: 4
 tags:
   - design-system
   - honen
@@ -26,6 +26,7 @@ Honen design system work makes the content site consistent, token-driven, access
 
 - User-provided `design.md` brief in the 2026-07-04 task conversation.
 - User-uploaded Honen course reader screenshot in the 2026-07-04 color alignment follow-up.
+- PR #142 review feedback on invalid field border contrast and wiki log ordering.
 - Implementation source: `docs/design-system/honen.md`, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, and shared UI primitives under `components/ui/`.
 
 ## Token contract
@@ -38,7 +39,7 @@ The first implementation slice targets shared foundations and high-reuse primiti
 
 ## Accessibility contract
 
-Interactive controls must remain keyboard reachable, show visible focus-visible styling, provide pointer and touch feedback, and expose disabled/loading/error behavior without relying on color alone. Component guidance must define default, hover, focus-visible, active, disabled, loading, and error states before a component is considered ready.
+Interactive controls must remain keyboard reachable, show visible focus-visible styling, provide pointer and touch feedback, and expose disabled/loading/error behavior without relying on color alone. Invalid field borders must stay visible against both white control surfaces and warm editor surfaces, meeting the non-text contrast target without depending on adjacent copy alone. Component guidance must define default, hover, focus-visible, active, disabled, loading, and error states before a component is considered ready.
 
 ## Open follow-ups
 

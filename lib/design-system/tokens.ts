@@ -56,7 +56,7 @@ export const honenDesignTokens = {
       default: "#e5e1d8",
       muted: "#eeeae1",
       strong: "#756f63",
-      danger: "#fecdd3",
+      danger: "#e11d48",
     },
     focus: {
       ring: "#2563eb",
