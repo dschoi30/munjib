@@ -49,7 +49,7 @@ export const honenDesignTokens = {
       danger: "#fecdd3",
     },
     focus: {
-      ring: "oklab(0.865461 -0.0579914 0.0780984 / 0.5)",
+      ring: "#2563eb",
     },
   },
   space: {

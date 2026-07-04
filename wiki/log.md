@@ -2386,3 +2386,4 @@ links:
 - Removed primary default hover/active chrome from the base compatibility path so custom button call sites keep their local hover states.
 - Switched busy and invalid primitive state selectors to generated Tailwind arbitrary ARIA variants.
 - Removed transform press animations from shared button variants and added reduced-motion transition suppression.
+- Darkened the focus-visible token so keyboard focus rings remain visible on page and card surfaces.

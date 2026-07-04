@@ -29,7 +29,7 @@ Honen design system work makes the content site consistent, token-driven, access
 
 ## Token contract
 
-Foundation tokens cover Inter typography, Honen text/surface/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values. The typed primitive color tokens mirror the CSS semantic categories, and Tailwind aliases expose the shared surface, border, text, and interactive radius tokens so shared primitives do not need arbitrary CSS variable classes for normal variants.
+Foundation tokens cover Inter typography, Honen text/surface/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values. The focus-visible token is opaque enough to remain visible on page and card surfaces. The typed primitive color tokens mirror the CSS semantic categories, and Tailwind aliases expose the shared surface, border, text, and interactive radius tokens so shared primitives do not need arbitrary CSS variable classes for normal variants.
 
 ## Priority component coverage
 

@@ -7,7 +7,7 @@ describe("Honen design tokens", () => {
     expect(honenDesignTokens.font.family.primary).toBe("Inter");
     expect(honenDesignTokens.font.size.base).toBe("16px");
     expect(honenDesignTokens.color.text.body).toBe("#191818");
-    expect(honenDesignTokens.color.focus.ring).toContain("oklab");
+    expect(honenDesignTokens.color.focus.ring).toBe("#2563eb");
     expect(honenDesignTokens.space[8]).toBe("13px");
     expect(honenDesignTokens.radius.step8).toBe("999px");
     expect(honenDesignTokens.motion.duration.step8).toBe("420ms");
