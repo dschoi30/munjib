@@ -25,7 +25,16 @@ Munjib의 현재 인증은 NextAuth 기반이며, 개발 환경에서는 credent
 
 ## Development login gate
 
-Issue #143 설계는 기존 email-only Credentials provider를 유지하되 production default를 닫는 방향이다. Local development에서는 seed user login 경험을 보존하고, production에서는 `MUNJIB_ENABLE_DEV_LOGIN=true`처럼 명시적으로 켠 경우에만 development login이 동작해야 한다.
+Issue #143 keeps the existing email-only Credentials provider for development
+but gates authentication with `MUNJIB_ENABLE_DEV_LOGIN`. Local development
+defaults to enabled so seed users can keep signing in, while production defaults
+to disabled unless an operator explicitly sets `MUNJIB_ENABLE_DEV_LOGIN=true`.
+When disabled, the provider returns `null` before querying `User`, and the login
+form renders disabled controls plus localized disabled-state copy.
+
+`/login` is forced dynamic so the disabled/enabled UI reflects the runtime env
+gate rather than a statically baked build-time value. `/` and `/login` both pass
+the server gate into `LoginForm`.
 
 이 slice는 password hash, password reset, OAuth, SSO/SAML, invitation flow, user lifecycle management를 추가하지 않는다. 목표는 지금 존재하는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다.
 
@@ -97,6 +106,9 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `lib/auth/config.ts`
 - `lib/auth/session.ts`
 - `app/login/login-form.tsx`
+- `app/login/page.tsx`
+- `app/page.tsx`
+- `lib/i18n/messages.ts`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `lib/permissions/workspace.ts`
 - `lib/permissions/document.ts`

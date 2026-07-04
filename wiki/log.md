@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-04T23:20:00+0900 - issue-143 auth launch foundation implementation
+
+- Result: Issue #143 made the existing email-only development login launch-safe by gating it behind `MUNJIB_ENABLE_DEV_LOGIN`.
+- Coverage: `resolveDevLoginEnabled()` defaults local development to enabled and production to disabled; the Credentials provider returns `null` before querying `User` when disabled; `/` and `/login` pass the server gate into `LoginForm`; `/login` is forced dynamic so disabled/enabled controls reflect the runtime env gate; the login form disables seeded-user shortcuts, email input, and submit while showing localized disabled-state copy.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #143, `lib/auth/config.ts`, `app/login/login-form.tsx`, `app/login/page.tsx`, `app/page.tsx`, `lib/i18n/messages.ts`, `tests/auth/config.test.ts`, `tests/components/login-form.test.tsx`.
+- Verification: focused auth config and login form Vitest coverage, TypeScript check, wiki manifest generation, wiki lint, staged wiki sync-plan, and staged wiki sync-check.
+
 ## 2026-07-04T22:54:19+0900 - issue-143 auth launch foundation design
 
 - Result: Issue #143 design scopes auth foundation work to launch-safe hardening of the existing email-only development login path.
