@@ -3,10 +3,10 @@ id: workflow-auth-and-permissions
 title: Auth And Permissions Workflow
 type: workflow
 status: active
-summary: Munjib의 개발용 로그인, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
+summary: Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
-updated: 2026-07-03
-source_count: 11
+updated: 2026-07-04
+source_count: 12
 tags:
   - munjib
   - auth
@@ -21,7 +21,13 @@ links:
 
 # Auth And Permissions Workflow
 
-Munjib의 현재 인증은 NextAuth 기반이며, 개발 환경에서는 credentials provider로 seed user를 선택해 로그인한다. 운영 SSO는 제품 방향에는 있지만 현재 구현의 중심은 아니다.
+Munjib의 현재 인증은 NextAuth 기반이며, 개발 환경에서는 credentials provider로 seed user를 선택해 로그인한다. Issue #143 설계는 이 email-only development login을 launch-safe하게 gate해 production에서는 명시 env 없이 사용할 수 없게 만드는 slice다. 운영 password auth, OAuth, SSO/SAML은 제품 방향에는 있지만 현재 구현의 중심은 아니다.
+
+## Development login gate
+
+Issue #143 설계는 기존 email-only Credentials provider를 유지하되 production default를 닫는 방향이다. Local development에서는 seed user login 경험을 보존하고, production에서는 `MUNJIB_ENABLE_DEV_LOGIN=true`처럼 명시적으로 켠 경우에만 development login이 동작해야 한다.
+
+이 slice는 password hash, password reset, OAuth, SSO/SAML, invitation flow, user lifecycle management를 추가하지 않는다. 목표는 지금 존재하는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다.
 
 ## Session helper
 
@@ -91,6 +97,7 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `lib/auth/config.ts`
 - `lib/auth/session.ts`
 - `app/login/login-form.tsx`
+- `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `lib/permissions/workspace.ts`
 - `lib/permissions/document.ts`
 - `lib/wiki-links/service.ts`

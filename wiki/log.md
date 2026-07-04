@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-04T22:54:19+0900 - issue-143 auth launch foundation design
+
+- Result: Issue #143 design scopes auth foundation work to launch-safe hardening of the existing email-only development login path.
+- Coverage: The design keeps local seeded-user login available by default outside production, gates production development login behind explicit env such as `MUNJIB_ENABLE_DEV_LOGIN=true`, and leaves password auth, OAuth, SSO/SAML, invitation flow, and user lifecycle management as follow-up decisions.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #143, `lib/auth/config.ts`, `app/login/login-form.tsx`, `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`.
+- Verification: design-only update; implementation tests will be added with the auth gate implementation plan.
+
 ## 2026-07-04T18:46:12+0900 - Honen neutral hover and mobile comment composer follow-up
 
 - Result: User-requested UI follow-up kept custom default button hover feedback neutral, made the closed Workspace AI launcher circle use Honen primary green, and prevented the comment composer from overflowing narrow mobile widths.
