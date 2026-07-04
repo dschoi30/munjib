@@ -44,6 +44,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
       },
       async authorize(credentials) {
+        if (!resolveDevLoginEnabled()) return null;
+
         const email = credentials?.email?.toLowerCase().trim();
         if (!email) return null;
 

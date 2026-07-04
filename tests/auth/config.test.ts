@@ -6,10 +6,38 @@ import {
   resolveDevLoginEnabled,
 } from "@/lib/auth/config";
 
+const prismaMock = vi.hoisted(() => ({
+  user: {
+    findUnique: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/db/client", () => ({
+  prisma: prismaMock,
+}));
+
 describe("authOptions", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+    prismaMock.user.findUnique.mockReset();
   });
+
+  function getCredentialsProvider() {
+    const providerFactory = authOptions.providers[0];
+    const provider =
+      typeof providerFactory === "function"
+        ? providerFactory({} as never)
+        : providerFactory;
+    const options = "options" in provider ? provider.options : provider;
+    const authorize =
+      options && typeof options === "object" && "authorize" in options
+        ? options.authorize
+        : undefined;
+    if (typeof authorize !== "function") {
+      throw new Error("Credentials provider authorize function was not found.");
+    }
+    return { authorize };
+  }
 
   it("uses a stable fallback secret outside production", () => {
     vi.stubEnv("NEXTAUTH_SECRET", "");
@@ -100,5 +128,46 @@ describe("authOptions", () => {
     vi.stubEnv("NODE_ENV", "development");
 
     expect(resolveDevLoginEnabled()).toBe(true);
+  });
+
+  it("does not query users when development login is disabled", async () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "false");
+    vi.stubEnv("NODE_ENV", "development");
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "Owner",
+      avatarUrl: null,
+    });
+
+    const provider = getCredentialsProvider();
+    const result = await provider.authorize?.({ email: "owner@example.com" }, {} as never);
+
+    expect(result).toBeNull();
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("queries users when development login is enabled", async () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "true");
+    vi.stubEnv("NODE_ENV", "production");
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "Owner",
+      avatarUrl: null,
+    });
+
+    const provider = getCredentialsProvider();
+    const result = await provider.authorize?.({ email: " OWNER@example.com " }, {} as never);
+
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+      where: { email: "owner@example.com" },
+    });
+    expect(result).toEqual({
+      id: "user-1",
+      email: "owner@example.com",
+      name: "Owner",
+      image: null,
+    });
   });
 });
