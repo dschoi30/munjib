@@ -6,6 +6,18 @@ import {
   resolveDevLoginEnabled,
 } from "@/lib/auth/config";
 
+type CredentialsAuthorizeForTest = (
+  credentials: Record<string, string> | undefined,
+  req: unknown,
+) => unknown | Promise<unknown>;
+
+type CredentialsProviderForTest = {
+  authorize?: CredentialsAuthorizeForTest;
+  options?: {
+    authorize?: CredentialsAuthorizeForTest;
+  };
+};
+
 const prismaMock = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
@@ -23,16 +35,8 @@ describe("authOptions", () => {
   });
 
   function getCredentialsProvider() {
-    const providerFactory = authOptions.providers[0];
-    const provider =
-      typeof providerFactory === "function"
-        ? providerFactory({} as never)
-        : providerFactory;
-    const options = "options" in provider ? provider.options : provider;
-    const authorize =
-      options && typeof options === "object" && "authorize" in options
-        ? options.authorize
-        : undefined;
+    const provider = authOptions.providers[0] as CredentialsProviderForTest;
+    const authorize = provider.options?.authorize ?? provider.authorize;
     if (typeof authorize !== "function") {
       throw new Error("Credentials provider authorize function was not found.");
     }
