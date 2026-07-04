@@ -221,7 +221,7 @@ function WorkspaceCenterShellContent({
     : selectedDocumentPath ?? selectedFolderPath ?? "/";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white">
+    <div className="flex h-full min-h-0 flex-col bg-surface-page">
       <DocumentTabs
         tabs={tabs}
         activeTabId={activeTabId}

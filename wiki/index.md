@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-06-27
-source_count: 133
+updated: 2026-07-04
+source_count: 135
 tags:
   - index
   - munjib
@@ -27,6 +27,7 @@ links:
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
   - "[[Wiki Maintenance Automation]]"
+  - "[[Honen Design System]]"
   - "[[designs/index|UI Design Excalidraw Index]]"
   - "[[log|Wiki Log]]"
 ---
@@ -65,6 +66,7 @@ links:
 
 ## 디자인
 
+- [[Honen Design System]] - Honen content site token foundation, component state contract, and accessibility acceptance criteria.
 - [[designs/index|UI Design Excalidraw Index]] - UI 작업이 포함된 GitHub 이슈별 Excalidraw 와이어프레임.
 - [[designs/sidebar|Sidebar Workspace Menu Draft]] - Issue #85 left sidebar workspace menu and close button Excalidraw draft.
 

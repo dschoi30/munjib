@@ -203,7 +203,7 @@ export function AppShell({
             ) : (
               <CollapsedPanelLoadingSkeleton side="left" />
             )}
-            <section className="min-h-0 min-w-0 overflow-hidden bg-white">{center}</section>
+            <section className="min-h-0 min-w-0 overflow-hidden bg-surface-page">{center}</section>
             {rightPanelOpen ? (
               <aside className="scrollbar-gutter-stable overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
                 <RightPanelContext.Provider value={rightPanelControls}>
@@ -244,7 +244,7 @@ function appShellGridClassName({
   rightPanelOpen: boolean;
 }) {
   const baseClassName =
-    "relative grid h-dvh max-h-dvh min-h-0 overflow-hidden bg-white text-ink";
+    "relative grid h-dvh max-h-dvh min-h-0 overflow-hidden bg-surface-page text-ink";
   if (leftPanelOpen && rightPanelOpen) {
     return `${baseClassName} grid-cols-[280px_minmax(0,1fr)_320px]`;
   }

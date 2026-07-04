@@ -47,7 +47,7 @@ const markdownComponents: Components = {
   ),
   a: ({ node: _node, className, href, ...props }) => (
     <a
-      className={cn("font-medium text-violet-700 underline underline-offset-2", className)}
+      className={cn("font-medium text-primary underline underline-offset-2 hover:text-primary-hover", className)}
       href={href}
       rel="noreferrer"
       target={href?.startsWith("/") || href?.startsWith("#") ? undefined : "_blank"}
@@ -80,7 +80,7 @@ export function AiCitations({ citations, workspaceSlug, className }: AiCitations
         return (
           <li key={`${citation.documentId ?? citation.documentTitle ?? citation.title ?? "citation"}-${index}`}>
             {href ? (
-              <Link className="underline underline-offset-2 hover:text-slate-700" href={href}>
+              <Link className="text-primary underline underline-offset-2 hover:text-primary-hover" href={href}>
                 {label}
               </Link>
             ) : (

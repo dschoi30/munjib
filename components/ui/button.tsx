@@ -1,14 +1,86 @@
 import { ButtonHTMLAttributes } from "react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { twMerge } from "tailwind-merge";
 
-export function Button({ className, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+export const buttonVariants = cva(
+  [
+    "inline-flex items-center justify-center gap-2 rounded-interactive font-medium",
+    "transition-[background-color,border-color,box-shadow,color] duration-fast motion-reduce:transition-none",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)]",
+    "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+    "aria-[busy=true]:cursor-progress aria-[busy=true]:opacity-80",
+  ],
+  {
+    variants: {
+      variant: {
+        primary:
+          "border border-transparent bg-primary text-primary-foreground hover:bg-primary-hover",
+        secondary:
+          "border border-border bg-surface-control text-ink shadow-subtle hover:bg-muted",
+        ghost:
+          "border border-transparent bg-transparent text-ink hover:bg-primary-muted",
+        destructive:
+          "border border-border-danger bg-surface-danger text-danger hover:border-danger",
+      },
+      size: {
+        sm: "h-[var(--size-control-sm)] px-2 text-xs",
+        md: "h-[var(--size-control-md)] px-3 text-sm",
+        lg: "h-[var(--size-control-lg)] px-4 text-base",
+        icon: "size-[var(--size-control-md)] px-0",
+      },
+    },
+    defaultVariants: {
+      variant: "primary",
+      size: "md",
+    },
+  },
+);
+
+export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>;
+
+export function Button({ className, variant, size, ...props }: ButtonProps) {
+  const explicitPrimaryActiveClassName =
+    variant === "primary" ? "active:bg-primary-active" : undefined;
+  const customDefaultNeutralHoverClassName =
+    variant == null &&
+    hasCustomBackgroundClassName(className) &&
+    !hasHoverBackgroundClassName(className)
+      ? "hover:bg-slate-200"
+      : undefined;
+
   return (
     <button
       className={twMerge(
-        "inline-flex h-9 items-center justify-center rounded-md bg-ink px-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50",
+        buttonVariants({ variant, size }),
+        customDefaultNeutralHoverClassName,
+        explicitPrimaryActiveClassName,
         className,
       )}
       {...props}
     />
   );
+}
+
+function hasCustomBackgroundClassName(className: string | undefined) {
+  return splitClassName(className).some((classToken) => {
+    const utility = getTailwindUtility(classToken);
+    return utility.startsWith("bg-") && !utility.startsWith("bg-primary");
+  });
+}
+
+function hasHoverBackgroundClassName(className: string | undefined) {
+  return splitClassName(className).some((classToken) => {
+    const utility = getTailwindUtility(classToken);
+    return classToken.includes("hover:") && utility.startsWith("bg-");
+  });
+}
+
+function splitClassName(className: string | undefined) {
+  return className?.trim().split(/\s+/).filter(Boolean) ?? [];
+}
+
+function getTailwindUtility(classToken: string) {
+  const segments = classToken.split(":");
+  return segments[segments.length - 1] ?? "";
 }

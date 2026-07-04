@@ -853,6 +853,20 @@ describe("DocumentEditor heading preview folding", () => {
     const heading = screen.getByRole("heading", { name: "Bold Target" });
     const link = within(heading).getByRole("link", { name: "Target" });
     expect(link.getAttribute("href")).toBe("?document=target-doc");
+    expect(link.className).toContain("text-primary");
+    expect(link.className).toContain("hover:text-primary-hover");
+    expect(link.className).not.toContain("violet");
+  });
+
+  it("uses the primary green theme for preview tag links", () => {
+    renderEditor("Use #planning", {
+      linkCandidates: [{ id: "target-doc", slug: "target", title: "Target", path: "Target" }],
+    });
+
+    const tagLink = screen.getByRole("button", { name: "Search tag #planning" });
+    expect(tagLink.className).toContain("text-primary");
+    expect(tagLink.className).toContain("focus:ring-[var(--color-focus-visible)]");
+    expect(tagLink.className).not.toContain("violet");
   });
 
   it("resolves reference links whose definitions appear in later sections", () => {
