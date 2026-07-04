@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 307
+source_count: 308
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T18:39:38+0900 - Honen settings dropzone emitted utility review follow-up
+
+- Result: PR #142 review feedback replaced the settings import dropzone `bg-primary-muted/70` class with emitted `bg-primary-muted`.
+- Coverage: Honen semantic color aliases backed by plain CSS variables should avoid Tailwind opacity modifiers unless the token is alpha-aware; focused settings tests now assert the dropzone does not use the missing opacity utility.
+- Pages: [[Honen Design System]], [[log|Wiki Log]].
+- Source evidence: PR #142 Codex review thread, `components/workspace-settings-panel.tsx`, `tests/components/workspace-settings-panel.test.tsx`.
+- Verification: red settings panel component test reproduced the lingering `bg-primary-muted/70` class, then passed after switching to `bg-primary-muted`.
 
 ## 2026-07-04T18:29:36+0900 - Honen graph canvas and selected node color follow-up
 

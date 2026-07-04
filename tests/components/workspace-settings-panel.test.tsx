@@ -149,6 +149,7 @@ describe("WorkspaceSettingsPanel", () => {
     const importDropzone = screen.getByRole("button", { name: /Markdown files/ });
     expect(importDropzone.className).toContain("border-primary");
     expect(importDropzone.className).toContain("bg-primary-muted");
+    expect(importDropzone.className).not.toContain("bg-primary-muted/70");
     expect(importDropzone.className).not.toContain("sky");
 
     fireEvent.click(screen.getByRole("button", { name: "AI" }));

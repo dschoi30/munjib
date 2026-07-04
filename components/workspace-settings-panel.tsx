@@ -537,7 +537,7 @@ export function WorkspaceSettingsPanel({
                     type="button"
                     onClick={handleOpenFilePicker}
                     disabled={!canWrite || importLocked}
-                    className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary bg-primary-muted/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary bg-primary-muted px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     <FileText className="h-8 w-8 text-primary" aria-hidden="true" />
                     <span className="mt-4 text-base font-semibold text-ink">
