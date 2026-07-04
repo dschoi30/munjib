@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 15
+source_count: 19
 tags:
   - munjib
   - auth
@@ -33,8 +33,14 @@ When disabled, the provider returns `null` before querying `User`, and the login
 form renders disabled controls plus localized disabled-state copy.
 
 `/login` is forced dynamic so the disabled/enabled UI reflects the runtime env
-gate rather than a statically baked build-time value. `/` and `/login` both pass
-the server gate into `LoginForm`.
+gate rather than a statically baked build-time value. `/`, `/login`, and the
+unauthenticated `/workspaces/[workspaceSlug]` entry point all pass the server
+gate into `LoginForm`.
+
+Production-style Docker also forwards `MUNJIB_ENABLE_DEV_LOGIN` into the `web`
+service environment, so a host-local `/etc/munjib/env` override can reach the
+runtime auth helper when operators intentionally enable the temporary
+development login path.
 
 이 slice는 password hash, password reset, OAuth, SSO/SAML, invitation flow, user lifecycle management를 추가하지 않는다. 목표는 지금 존재하는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다.
 
@@ -108,6 +114,8 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `app/login/login-form.tsx`
 - `app/login/page.tsx`
 - `app/page.tsx`
+- `app/workspaces/[workspaceSlug]/page.tsx`
+- `docker-compose.yml`
 - `lib/i18n/messages.ts`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `lib/permissions/workspace.ts`
@@ -115,6 +123,8 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `lib/wiki-links/service.ts`
 - `lib/attachments/service.ts`
 - `tests/auth/config.test.ts`
+- `tests/auth/login-gate-callers.test.ts`
 - `tests/components/login-form.test.tsx`
+- `tests/docker/compose.test.ts`
 - `tests/permissions/document.test.ts`
 - `prisma/seed.ts`

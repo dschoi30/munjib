@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 309
+source_count: 314
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T23:35:00+0900 - issue-143 auth launch foundation review follow-up
+
+- Result: PR #144 review feedback closed the remaining launch-gate gaps for direct workspace entry and production Docker runtime env.
+- Coverage: unauthenticated `/workspaces/[workspaceSlug]` now passes `resolveDevLoginEnabled()` into `LoginForm`, all server LoginForm callers have focused contract coverage, and `docker-compose.yml` forwards `MUNJIB_ENABLE_DEV_LOGIN` to the production-style `web` service so `/etc/munjib/env` overrides reach runtime auth.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #144 review threads, `app/workspaces/[workspaceSlug]/page.tsx`, `docker-compose.yml`, `tests/auth/login-gate-callers.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: red focused Vitest coverage reproduced the missing workspace caller gate and missing Docker env passthrough, then passed after the fixes.
 
 ## 2026-07-04T23:20:00+0900 - issue-143 auth launch foundation implementation
 
