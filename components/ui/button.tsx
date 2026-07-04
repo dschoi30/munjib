@@ -14,11 +14,11 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "border border-transparent bg-surface-inverse text-ink-inverse",
+          "border border-transparent bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-active",
         secondary:
-          "border border-border bg-surface text-ink shadow-subtle hover:bg-muted",
+          "border border-border bg-surface-control text-ink shadow-subtle hover:bg-muted",
         ghost:
-          "border border-transparent bg-transparent text-ink hover:bg-muted",
+          "border border-transparent bg-transparent text-ink hover:bg-primary-muted",
         destructive:
           "border border-border-danger bg-surface-danger text-danger hover:border-danger",
       },

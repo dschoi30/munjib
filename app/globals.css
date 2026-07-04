@@ -18,19 +18,27 @@
     --font-weight-base: 400;
     --line-height-base: 24px;
 
+    --color-brand-primary: #2f7d46;
+    --color-brand-primary-hover: #286d3d;
+    --color-brand-primary-active: #225f35;
+    --color-brand-primary-foreground: #ffffff;
+    --color-brand-primary-muted: #edf4ee;
+    --color-brand-primary-muted-hover: #e4eee5;
     --color-text-body: #191818;
     --color-text-heading: #1a1a1a;
     --color-text-muted: #5e5b50;
-    --color-text-inverse: #f7f6ef;
+    --color-text-inverse: #ffffff;
     --color-text-danger: #9f1239;
-    --color-surface-page: #f7f6ef;
+    --color-surface-page: #f7f6f1;
     --color-surface-card: #ffffff;
+    --color-surface-control: #ffffff;
+    --color-surface-editor: #fbfaf6;
     --color-surface-inverse: #000000;
-    --color-surface-muted: #fbfaf5;
+    --color-surface-muted: #f2f1ec;
     --color-surface-danger: #fff1f2;
-    --color-border-default: #e4e2d2;
-    --color-border-muted: #e2e0d8;
-    --color-border-strong: #5e5b50;
+    --color-border-default: #e5e1d8;
+    --color-border-muted: #eeeae1;
+    --color-border-strong: #756f63;
     --color-border-danger: #fecdd3;
     --color-focus-visible: #2563eb;
 
@@ -94,7 +102,7 @@
 
 
 .markdown-preview {
-  color: #1c2230;
+  color: var(--color-text-body);
   line-height: 1.65;
 }
 
@@ -140,7 +148,7 @@
 
 .markdown-preview code {
   border-radius: 4px;
-  background: #eef2f7;
+  background: var(--color-surface-muted);
   padding: 0.1rem 0.25rem;
   font-size: 0.9em;
 }
@@ -167,21 +175,32 @@
 
 .markdown-preview th,
 .markdown-preview td {
-  border: 1px solid #d6dce5;
+  border: 1px solid var(--color-border-default);
   padding: 0.45rem 0.6rem;
   text-align: left;
 }
 
 .markdown-preview blockquote {
-  border-left: 3px solid #94a3b8;
+  border-left: 3px solid var(--color-border-strong);
   padding-left: 0.9rem;
-  color: #475569;
+  color: var(--color-text-muted);
+}
+
+.cm-editor {
+  background: var(--color-surface-editor);
+  color: var(--color-text-body);
+}
+
+.cm-editor .cm-gutters {
+  background: var(--color-surface-muted);
+  border-right-color: var(--color-border-default);
+  color: var(--color-text-muted);
 }
 
 .munjib-skeleton {
   position: relative;
   overflow: hidden;
-  background: #e5e9ef;
+  background: var(--color-border-muted);
 }
 
 .scrollbar-gutter-stable {

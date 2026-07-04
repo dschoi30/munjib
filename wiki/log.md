@@ -2388,3 +2388,11 @@ links:
 - Removed transform press animations from shared button variants and added reduced-motion transition suppression.
 - Darkened the focus-visible token so keyboard focus rings remain visible on page and card surfaces.
 - Added reduced-motion transition suppression to shared field primitives.
+
+## 2026-07-04T17:15:07+0900 - Honen screenshot color alignment follow-up
+
+- Matched the Honen token palette to the user-uploaded course reader screenshot: green primary actions, pale green selected states, warm page/editor surfaces, white controls, and soft warm borders.
+- Updated shared primitives and workspace editor shells so primary buttons, textarea/editor backgrounds, tabs, toolbar, and preview chrome consume the new semantic tokens.
+- Added focused design-system tests for the screenshot palette and primitive class contracts.
+- Pages: [[Honen Design System]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: uploaded Honen course reader screenshot, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, `components/ui/button.tsx`, `components/ui/textarea.tsx`, `components/document-editor.tsx`, `components/document-tabs.tsx`, `components/document-toolbar.tsx`, `tests/design-system/tokens.test.ts`, `tests/design-system/primitives.test.tsx`.

@@ -9,12 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        primary: "var(--color-brand-primary)",
+        "primary-hover": "var(--color-brand-primary-hover)",
+        "primary-active": "var(--color-brand-primary-active)",
+        "primary-foreground": "var(--color-brand-primary-foreground)",
+        "primary-muted": "var(--color-brand-primary-muted)",
+        "primary-muted-hover": "var(--color-brand-primary-muted-hover)",
         border: "var(--color-border-default)",
         "border-muted": "var(--color-border-muted)",
         "border-strong": "var(--color-border-strong)",
         "border-danger": "var(--color-border-danger)",
         "surface-page": "var(--color-surface-page)",
         surface: "var(--color-surface-card)",
+        "surface-control": "var(--color-surface-control)",
+        "surface-editor": "var(--color-surface-editor)",
         "surface-inverse": "var(--color-surface-inverse)",
         muted: "var(--color-surface-muted)",
         "surface-muted": "var(--color-surface-muted)",

@@ -28,24 +28,34 @@ export const honenDesignTokens = {
     },
   },
   color: {
+    brand: {
+      primary: "#2f7d46",
+      primaryHover: "#286d3d",
+      primaryActive: "#225f35",
+      primaryForeground: "#ffffff",
+      primaryMuted: "#edf4ee",
+      primaryMutedHover: "#e4eee5",
+    },
     text: {
       body: "#191818",
       heading: "#1a1a1a",
       muted: "#5e5b50",
-      inverse: "#f7f6ef",
+      inverse: "#ffffff",
       danger: "#9f1239",
     },
     surface: {
-      page: "#f7f6ef",
+      page: "#f7f6f1",
       card: "#ffffff",
+      control: "#ffffff",
+      editor: "#fbfaf6",
       inverse: "#000000",
-      muted: "#fbfaf5",
+      muted: "#f2f1ec",
       danger: "#fff1f2",
     },
     border: {
-      default: "#e4e2d2",
-      muted: "#e2e0d8",
-      strong: "#5e5b50",
+      default: "#e5e1d8",
+      muted: "#eeeae1",
+      strong: "#756f63",
       danger: "#fecdd3",
     },
     focus: {
@@ -94,6 +104,14 @@ export const honenDesignTokens = {
 
 export const honenSemanticTokens = {
   color: {
+    brand: {
+      primary: "var(--color-brand-primary)",
+      primaryHover: "var(--color-brand-primary-hover)",
+      primaryActive: "var(--color-brand-primary-active)",
+      primaryForeground: "var(--color-brand-primary-foreground)",
+      primaryMuted: "var(--color-brand-primary-muted)",
+      primaryMutedHover: "var(--color-brand-primary-muted-hover)",
+    },
     text: {
       body: "var(--color-text-body)",
       heading: "var(--color-text-heading)",
@@ -104,6 +122,8 @@ export const honenSemanticTokens = {
     surface: {
       page: "var(--color-surface-page)",
       card: "var(--color-surface-card)",
+      control: "var(--color-surface-control)",
+      editor: "var(--color-surface-editor)",
       inverse: "var(--color-surface-inverse)",
       muted: "var(--color-surface-muted)",
       danger: "var(--color-surface-danger)",

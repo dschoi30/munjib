@@ -22,6 +22,9 @@ Honen is a content-first reading surface for readers and knowledge seekers. The 
 
 - Text must use semantic text tokens such as `--color-text-body`, `--color-text-muted`, or `--color-text-inverse`.
 - Surfaces must use semantic surface tokens such as `--color-surface-page`, `--color-surface-card`, or `--color-surface-inverse`.
+- Reader and editor shells should follow the uploaded Honen reference palette: warm page background `--color-surface-page`, slightly lifted editor background `--color-surface-editor`, white control surface `--color-surface-control`, and soft warm borders.
+- Primary actions must use the Honen green brand tokens (`--color-brand-primary`, hover, active, foreground) instead of the inverse surface token.
+- Selected or active low-emphasis controls should use the pale green brand-muted tokens rather than a generic gray fill.
 - Borders must use semantic border tokens.
 - Focus indicators must use `--color-focus-visible`.
 
