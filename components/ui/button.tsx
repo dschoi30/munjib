@@ -8,7 +8,7 @@ export const buttonVariants = cva(
     "transition-[background-color,border-color,box-shadow,color,transform] duration-fast",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)]",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
-    "aria-busy:cursor-progress aria-busy:opacity-80",
+    "aria-[busy=true]:cursor-progress aria-[busy=true]:opacity-80",
   ],
   {
     variants: {
