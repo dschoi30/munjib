@@ -14,7 +14,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "border border-transparent bg-surface-inverse text-ink-inverse shadow-subtle hover:bg-ink-muted active:translate-y-px active:shadow-none",
+          "border border-transparent bg-surface-inverse text-ink-inverse hover:bg-ink-muted active:translate-y-px",
         secondary:
           "border border-border bg-surface text-ink shadow-subtle hover:bg-muted active:translate-y-px active:shadow-none",
         ghost:
