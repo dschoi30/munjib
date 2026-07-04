@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { authOptions, resolveAuthCookieSecure, resolveAuthSecret } from "@/lib/auth/config";
+import {
+  authOptions,
+  resolveAuthCookieSecure,
+  resolveAuthSecret,
+  resolveDevLoginEnabled,
+} from "@/lib/auth/config";
 
 describe("authOptions", () => {
   afterEach(() => {
@@ -43,5 +48,57 @@ describe("authOptions", () => {
     vi.stubEnv("NEXTAUTH_COOKIE_SECURE", "");
 
     expect(resolveAuthCookieSecure()).toBe(true);
+  });
+
+  it("enables development login by default outside production", () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "");
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(resolveDevLoginEnabled()).toBe(true);
+  });
+
+  it("disables development login by default in production", () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "");
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(resolveDevLoginEnabled()).toBe(false);
+  });
+
+  it.each([
+    ["true"],
+    [" TRUE "],
+    ["1"],
+    ["yes"],
+  ])("enables development login with %s", (value) => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", value);
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(resolveDevLoginEnabled()).toBe(true);
+  });
+
+  it.each([
+    ["false"],
+    [" FALSE "],
+    ["0"],
+    ["no"],
+  ])("disables development login with %s", (value) => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", value);
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(resolveDevLoginEnabled()).toBe(false);
+  });
+
+  it("fails closed for invalid development login flags in production", () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "sometimes");
+    vi.stubEnv("NODE_ENV", "production");
+
+    expect(resolveDevLoginEnabled()).toBe(false);
+  });
+
+  it("keeps invalid development login flags local-friendly outside production", () => {
+    vi.stubEnv("MUNJIB_ENABLE_DEV_LOGIN", "sometimes");
+    vi.stubEnv("NODE_ENV", "development");
+
+    expect(resolveDevLoginEnabled()).toBe(true);
   });
 });
