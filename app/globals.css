@@ -2,11 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-  background: #f6f7f9;
-  color: #1c2230;
+@layer base {
+  :root {
+    color-scheme: light;
+    --font-family-primary: Inter, "Helvetica Neue", system-ui, sans-serif;
+    --font-size-xs: 7.5px;
+    --font-size-sm: 9.5px;
+    --font-size-md: 11.5px;
+    --font-size-lg: 12px;
+    --font-size-xl: 12.48px;
+    --font-size-2xl: 12.5px;
+    --font-size-3xl: 13px;
+    --font-size-4xl: 13.5px;
+    --font-size-base: 16px;
+    --font-weight-base: 400;
+    --line-height-base: 24px;
+
+    --color-text-body: #191818;
+    --color-text-heading: #1a1a1a;
+    --color-text-muted: #5e5b50;
+    --color-text-inverse: #f7f6ef;
+    --color-text-danger: #9f1239;
+    --color-surface-page: #f7f6ef;
+    --color-surface-card: #ffffff;
+    --color-surface-inverse: #000000;
+    --color-surface-muted: #fbfaf5;
+    --color-surface-danger: #fff1f2;
+    --color-border-default: #e4e2d2;
+    --color-border-muted: #e2e0d8;
+    --color-border-strong: #5e5b50;
+    --color-border-danger: #fecdd3;
+    --color-focus-visible: oklab(0.865461 -0.0579914 0.0780984 / 0.5);
+
+    --space-1: 2px;
+    --space-2: 6px;
+    --space-3: 7px;
+    --space-4: 8px;
+    --space-5: 9px;
+    --space-6: 10px;
+    --space-7: 12px;
+    --space-8: 13px;
+
+    --radius-xs: 4px;
+    --radius-sm: 7px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+    --radius-2xl: 20px;
+    --radius-step7: 50px;
+    --radius-pill: 999px;
+    --radius-interactive: var(--radius-sm);
+    --radius-card: var(--radius-lg);
+
+    --shadow-card-default: rgba(0, 0, 0, 0.03) 0px 1px 2px 0px, rgba(0, 0, 0, 0.06) 0px 8px 22px 0px;
+    --shadow-interactive: rgba(25, 24, 24, 0.18) 0px 1px 2px 0px, rgba(25, 24, 24, 0.14) 0px 8px 20px 0px;
+    --shadow-subtle: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px;
+
+    --motion-duration-instant: 120ms;
+    --motion-duration-fast: 140ms;
+    --motion-duration-normal: 150ms;
+    --motion-duration-slow: 160ms;
+    --motion-duration-slower: 180ms;
+    --motion-duration-step6: 200ms;
+    --motion-duration-step7: 240ms;
+    --motion-duration-step8: 420ms;
+
+    --size-control-sm: 32px;
+    --size-control-md: 36px;
+    --size-control-lg: 40px;
+  }
+
+  html {
+    background: var(--color-surface-page);
+    color: var(--color-text-body);
+    font-family: var(--font-family-primary);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+
+  body {
+    background: var(--color-surface-page);
+    color: var(--color-text-body);
+    font-family: var(--font-family-primary);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus-visible);
+    outline-offset: 2px;
+  }
 }
+
 
 .markdown-preview {
   color: #1c2230;
