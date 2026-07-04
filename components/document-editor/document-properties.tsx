@@ -86,7 +86,7 @@ export function DocumentProperties({
                 </span>
               </span>
             ))}
-            <form action={createCommentAction} className="flex min-w-[220px] items-center gap-2">
+            <form action={createCommentAction} className="flex w-full min-w-0 flex-wrap items-center gap-2">
               <input type="hidden" name="documentId" value={document.id} />
               <label className="sr-only" htmlFor={`comment-body-${document.id}`}>
                 {t("editor.addComment")}
@@ -96,7 +96,7 @@ export function DocumentProperties({
                 name="body"
                 disabled={!canWrite}
                 placeholder={t("editor.addComment")}
-                className="h-8 min-w-0 flex-1 rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
+                className="h-8 min-w-0 flex-[1_1_10rem] rounded-md border border-border px-2 text-sm outline-none focus:border-ink"
               />
               <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
                 {t("editor.comment")}

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 308
+source_count: 309
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T18:46:12+0900 - Honen neutral hover and mobile comment composer follow-up
+
+- Result: User-requested UI follow-up kept custom default button hover feedback neutral, made the closed Workspace AI launcher circle use Honen primary green, and prevented the comment composer from overflowing narrow mobile widths.
+- Coverage: `Button` now supplies `hover:bg-slate-200` for non-primary custom default background buttons that do not declare their own hover background; the Workspace AI launcher uses `bg-primary` for the circular button and `hover:bg-primary-hover` for button-like darker hover feedback; the document comments form uses `w-full min-w-0 flex-wrap` with a shrinkable input.
+- Pages: [[Honen Design System]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: user follow-up messages in the 2026-07-04 task conversation, `components/ui/button.tsx`, `components/workspace-chatbot.tsx`, `components/document-editor/document-properties.tsx`, `tests/design-system/primitives.test.tsx`, `tests/components/workspace-chatbot.test.tsx`, `tests/components/document-properties.test.tsx`.
+- Verification: red primitive, workspace chatbot, and document properties component tests reproduced the lingering primary hover, black launcher icon, and fixed-width comment form before the responsive/color fixes.
 
 ## 2026-07-04T18:39:38+0900 - Honen settings dropzone emitted utility review follow-up
 

@@ -365,7 +365,7 @@ export function WorkspaceChatbot({
       <button
         type="button"
         aria-label={t("ai.workspace.open")}
-        className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-ink text-white shadow-lg transition hover:bg-slate-800"
+        className="fixed bottom-4 right-4 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-transparent bg-primary text-primary-foreground shadow-lg transition hover:bg-primary-hover"
         onClick={() => setWorkspaceChatOpen(true)}
       >
         <Bot className="h-5 w-5" aria-hidden="true" />

@@ -42,15 +42,45 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
 export function Button({ className, variant, size, ...props }: ButtonProps) {
   const explicitPrimaryActiveClassName =
     variant === "primary" ? "active:bg-primary-active" : undefined;
+  const customDefaultNeutralHoverClassName =
+    variant == null &&
+    hasCustomBackgroundClassName(className) &&
+    !hasHoverBackgroundClassName(className)
+      ? "hover:bg-slate-200"
+      : undefined;
 
   return (
     <button
       className={twMerge(
         buttonVariants({ variant, size }),
+        customDefaultNeutralHoverClassName,
         explicitPrimaryActiveClassName,
         className,
       )}
       {...props}
     />
   );
+}
+
+function hasCustomBackgroundClassName(className: string | undefined) {
+  return splitClassName(className).some((classToken) => {
+    const utility = getTailwindUtility(classToken);
+    return utility.startsWith("bg-") && !utility.startsWith("bg-primary");
+  });
+}
+
+function hasHoverBackgroundClassName(className: string | undefined) {
+  return splitClassName(className).some((classToken) => {
+    const utility = getTailwindUtility(classToken);
+    return classToken.includes("hover:") && utility.startsWith("bg-");
+  });
+}
+
+function splitClassName(className: string | undefined) {
+  return className?.trim().split(/\s+/).filter(Boolean) ?? [];
+}
+
+function getTailwindUtility(classToken: string) {
+  const segments = classToken.split(":");
+  return segments[segments.length - 1] ?? "";
 }

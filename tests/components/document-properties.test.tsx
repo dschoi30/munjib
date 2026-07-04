@@ -70,4 +70,17 @@ describe("DocumentProperties", () => {
     expect(brokenLinkButton.className).toContain("hover:text-primary");
     expect(brokenLinkButton.className).not.toContain("violet");
   });
+
+  it("keeps the comment composer within narrow mobile widths", () => {
+    renderDocumentProperties();
+
+    const commentInput = screen.getByLabelText("Add comment");
+    const commentForm = commentInput.closest("form");
+
+    expect(commentForm?.className).toContain("w-full");
+    expect(commentForm?.className).toContain("min-w-0");
+    expect(commentForm?.className).toContain("flex-wrap");
+    expect(commentForm?.className).not.toContain("min-w-[220px]");
+    expect(commentInput.className).toContain("min-w-0");
+  });
 });

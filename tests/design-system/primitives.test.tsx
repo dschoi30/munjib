@@ -36,6 +36,18 @@ describe("Honen primitive components", () => {
     expect(screen.getByTestId("custom-default").className).not.toContain("active:bg-primary-active");
   });
 
+  it("uses neutral hover chrome for custom default buttons without an explicit hover", () => {
+    render(
+      <Button data-testid="custom-default" className="bg-white text-ink">
+        Custom
+      </Button>,
+    );
+
+    const className = screen.getByTestId("custom-default").className;
+    expect(className).toContain("hover:bg-slate-200");
+    expect(className).not.toContain("hover:bg-primary-hover");
+  });
+
   it("keeps pressed feedback for explicit primary buttons", () => {
     render(
       <Button data-testid="explicit-primary" variant="primary">
