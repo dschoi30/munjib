@@ -2383,3 +2383,4 @@ links:
 - Added missing Tailwind semantic aliases for border, surface, and interactive radius tokens so shared primitives can use normal utilities for common variants.
 - Preserved compact button override behavior by moving default button heights into size variants instead of the base class.
 - Kept the primary button default flat so legacy transparent toolbar buttons do not inherit an unintended elevation shadow.
+- Removed primary default hover/active chrome from the base compatibility path so custom button call sites keep their local hover states.
