@@ -5,7 +5,7 @@ import { twMerge } from "tailwind-merge";
 export const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 rounded-interactive font-medium",
-    "transition-[background-color,border-color,box-shadow,color,transform] duration-fast",
+    "transition-[background-color,border-color,box-shadow,color] duration-fast motion-reduce:transition-none",
     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)]",
     "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
     "aria-[busy=true]:cursor-progress aria-[busy=true]:opacity-80",
@@ -16,11 +16,11 @@ export const buttonVariants = cva(
         primary:
           "border border-transparent bg-surface-inverse text-ink-inverse",
         secondary:
-          "border border-border bg-surface text-ink shadow-subtle hover:bg-muted active:translate-y-px active:shadow-none",
+          "border border-border bg-surface text-ink shadow-subtle hover:bg-muted",
         ghost:
-          "border border-transparent bg-transparent text-ink hover:bg-muted active:translate-y-px",
+          "border border-transparent bg-transparent text-ink hover:bg-muted",
         destructive:
-          "border border-border-danger bg-surface-danger text-danger hover:border-danger active:translate-y-px",
+          "border border-border-danger bg-surface-danger text-danger hover:border-danger",
       },
       size: {
         sm: "h-[var(--size-control-sm)] px-2 text-xs",
