@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 12
+source_count: 15
 tags:
   - munjib
   - auth
