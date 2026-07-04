@@ -98,7 +98,7 @@ export function DocumentTabs({
                 style={{ width: tabWidth }}
                 className={cn(
                   "group flex h-11 shrink-0 items-center border-r border-border",
-                  selected ? "bg-primary-muted text-primary" : "bg-surface-muted text-ink-muted hover:bg-primary-muted-hover",
+                  selected ? "bg-surface-page text-ink" : "bg-surface-muted text-ink-muted hover:bg-surface-page",
                 )}
               >
                 <button
@@ -112,7 +112,7 @@ export function DocumentTabs({
                 <button
                   type="button"
                   aria-label={t("tabs.close", { title })}
-                  className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted hover:bg-primary-muted-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
+                  className="mr-2 inline-flex size-6 shrink-0 items-center justify-center rounded text-ink-muted hover:bg-surface-control hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
                   onClick={() => onClose(tab.id)}
                 >
                   <X className="size-3.5" aria-hidden="true" />
@@ -124,7 +124,7 @@ export function DocumentTabs({
         <button
           type="button"
           aria-label={t("tabs.add")}
-          className="inline-flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-ink-muted hover:bg-primary-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
+          className="inline-flex h-11 w-11 shrink-0 items-center justify-center border-l border-border text-ink-muted hover:bg-surface-page hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
           onClick={onAdd}
         >
           <Plus className="size-4" aria-hidden="true" />

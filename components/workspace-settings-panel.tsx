@@ -433,9 +433,9 @@ export function WorkspaceSettingsPanel({
         role="dialog"
         aria-modal="true"
         aria-label={t("settings.dialogLabel")}
-        className="grid h-[80vh] max-h-[80vh] w-full max-w-4xl grid-cols-[13rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl"
+        className="grid h-[80vh] max-h-[80vh] w-full max-w-4xl grid-cols-[13rem_minmax(0,1fr)] overflow-hidden rounded-lg border border-border bg-surface shadow-2xl"
       >
-        <aside className="border-r border-slate-200 bg-slate-50 p-4">
+        <aside className="border-r border-border bg-surface-page p-4">
           <div className="mb-4 flex h-9 items-center">
             <h2 className="text-sm font-semibold text-ink">{t("settings.title")}</h2>
           </div>
@@ -487,13 +487,13 @@ export function WorkspaceSettingsPanel({
             <>
               <div className="mb-8 flex items-start gap-4">
                 <div>
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-xs font-medium text-ink-muted">
                     {t("settings.workspaceEyebrow")}
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
                     {t("settings.import.title")}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {t("settings.import.description")}
                   </p>
                 </div>
@@ -504,7 +504,7 @@ export function WorkspaceSettingsPanel({
                     if (!isImportActive) onClose();
                   }}
                   disabled={isImportActive}
-                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -537,13 +537,13 @@ export function WorkspaceSettingsPanel({
                     type="button"
                     onClick={handleOpenFilePicker}
                     disabled={!canWrite || importLocked}
-                    className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-sky-400 bg-sky-50/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
+                    className="flex min-h-64 w-full cursor-pointer flex-col items-center justify-center rounded-md border border-dashed border-primary bg-primary-muted/70 px-6 py-8 text-center disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    <FileText className="h-8 w-8 text-sky-400" aria-hidden="true" />
+                    <FileText className="h-8 w-8 text-primary" aria-hidden="true" />
                     <span className="mt-4 text-base font-semibold text-ink">
                       {t("settings.import.fileInput")}
                     </span>
-                    <span className="mt-2 text-sm leading-6 text-slate-600">
+                    <span className="mt-2 text-sm leading-6 text-ink-muted">
                       {selectedFiles.length > 0
                         ? t("settings.import.selectedFiles", { count: selectedFiles.length })
                         : t("settings.import.fileTypes")}
@@ -557,12 +557,12 @@ export function WorkspaceSettingsPanel({
                         aria-expanded={destinationPickerOpen}
                         onClick={() => setDestinationPickerOpen((open) => !open)}
                         disabled={!canWrite || importLocked}
-                        className="h-10 w-full truncate rounded-md border border-slate-300 bg-white px-3 text-left text-sm font-medium text-ink shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                        className="h-10 w-full truncate rounded-md border border-border bg-surface-control px-3 text-left text-sm font-medium text-ink shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {destinationPath}
                       </button>
                       {destinationPickerOpen ? (
-                        <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-slate-200 bg-white p-1 shadow-lg">
+                        <div className="absolute bottom-12 left-0 z-10 max-h-72 w-full overflow-y-auto rounded-md border border-border bg-surface p-1 shadow-lg">
                           <div
                             role="tree"
                             aria-label={t("settings.import.destinationFolders")}
@@ -573,7 +573,7 @@ export function WorkspaceSettingsPanel({
                               role="treeitem"
                               aria-selected={destinationFolderId === null}
                               onClick={() => handleSelectDestination(null)}
-                              className="block w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                              className="block w-full rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-surface-muted aria-selected:bg-primary-muted aria-selected:text-primary"
                             >
                               /
                             </button>
@@ -584,7 +584,7 @@ export function WorkspaceSettingsPanel({
                                 role="treeitem"
                                 aria-selected={destinationFolderId === folder.id}
                                 onClick={() => handleSelectDestination(folder.id)}
-                                className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-slate-100 aria-selected:bg-slate-200"
+                                className="block w-full truncate rounded px-2 py-1.5 text-left text-sm text-ink hover:bg-surface-muted aria-selected:bg-primary-muted aria-selected:text-primary"
                               >
                                 {folder.displayPath ?? folder.path}
                               </button>
@@ -604,13 +604,13 @@ export function WorkspaceSettingsPanel({
             <section aria-label={t("settings.ai.title")} className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-xs font-medium text-ink-muted">
                     {t("settings.workspaceEyebrow")}
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
                     {t("settings.ai.title")}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {t("settings.ai.description")}
                   </p>
                 </div>
@@ -621,19 +621,19 @@ export function WorkspaceSettingsPanel({
                     if (!isImportActive) onClose();
                   }}
                   disabled={isImportActive}
-                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
 
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
-                <p className="text-[0.68rem] font-medium uppercase tracking-wide text-slate-500">
+              <div className="rounded-md border border-border bg-surface-page px-4 py-3">
+                <p className="text-[0.68rem] font-medium uppercase tracking-wide text-ink-muted">
                   {storedChatModel
                     ? t("settings.ai.browserOverride")
                     : t("settings.ai.serverDefault")}
                 </p>
-                <p className="mt-2 text-xs font-medium text-slate-500">
+                <p className="mt-2 text-xs font-medium text-ink-muted">
                   {providerLabel(effectiveChatProvider)}
                 </p>
                 <p className="mt-2 break-all text-sm font-semibold text-ink">
@@ -655,7 +655,7 @@ export function WorkspaceSettingsPanel({
                   onChange={(event) =>
                     setSelectedChatProvider(event.target.value as ClientRagChatProvider)
                   }
-                  className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                  className="mt-3 h-10 w-full rounded-md border border-border bg-surface-control px-3 text-sm text-ink shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-[var(--color-focus-visible)]"
                 >
                   {availableProviderOptions.map((provider) => (
                     <option key={provider.id} value={provider.id}>
@@ -680,11 +680,11 @@ export function WorkspaceSettingsPanel({
                             chatModel: preset.id,
                           })
                         }
-                        className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                        className="h-auto justify-start border border-border bg-surface-control px-3 py-2 text-left text-ink hover:bg-surface-muted"
                       >
                         <span className="min-w-0">
                           <span className="block text-sm font-semibold">{preset.label}</span>
-                          <span className="mt-1 block break-all text-xs font-normal text-slate-500">
+                          <span className="mt-1 block break-all text-xs font-normal text-ink-muted">
                             {preset.id}
                           </span>
                         </span>
@@ -706,7 +706,7 @@ export function WorkspaceSettingsPanel({
                     id="customChatModel"
                     value={customModel}
                     onChange={(event) => setCustomModel(event.target.value)}
-                    className="h-10 min-w-0 rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+                    className="h-10 min-w-0 rounded-md border border-border bg-surface-control px-3 text-sm text-ink shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-[var(--color-focus-visible)]"
                   />
                   <Button type="button" onClick={handleSaveCustomModel} className="h-10">
                     {t("settings.ai.saveCustomModel")}
@@ -728,13 +728,13 @@ export function WorkspaceSettingsPanel({
                           model: setting.chatModel,
                         })}
                         onClick={() => handleSavePresetModel(setting)}
-                        className="h-auto justify-start border border-slate-200 bg-white px-3 py-2 text-left text-ink hover:bg-slate-50"
+                        className="h-auto justify-start border border-border bg-surface-control px-3 py-2 text-left text-ink hover:bg-surface-muted"
                       >
                         <span className="min-w-0">
                           <span className="block break-all text-sm font-semibold">
                             {setting.chatModel}
                           </span>
-                          <span className="mt-1 block text-xs font-normal text-slate-500">
+                          <span className="mt-1 block text-xs font-normal text-ink-muted">
                             {providerLabel(setting.chatProvider)}
                           </span>
                         </span>
@@ -748,12 +748,12 @@ export function WorkspaceSettingsPanel({
                 <Button
                   type="button"
                   onClick={handleResetModel}
-                  className="h-10 border border-slate-200 bg-white text-ink hover:bg-slate-50"
+                  className="h-10 border border-border bg-surface-control text-ink hover:bg-surface-muted"
                 >
                   {t("settings.ai.resetModel")}
                 </Button>
                 {modelStatus ? (
-                  <p role="status" className="text-sm font-medium text-slate-700">
+                  <p role="status" className="text-sm font-medium text-ink-muted">
                     {statusMessageText(modelStatus, t)}
                   </p>
                 ) : null}
@@ -766,13 +766,13 @@ export function WorkspaceSettingsPanel({
             >
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-xs font-medium text-ink-muted">
                     {t("settings.language.eyebrow")}
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
                     {t("settings.language.title")}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {t("settings.language.description")}
                   </p>
                 </div>
@@ -783,7 +783,7 @@ export function WorkspaceSettingsPanel({
                     if (!isImportActive) onClose();
                   }}
                   disabled={isImportActive}
-                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -813,11 +813,11 @@ export function WorkspaceSettingsPanel({
                         htmlFor={inputId}
                         className={[
                           "block min-h-24 cursor-pointer rounded-md border px-4 py-3 text-left shadow-sm outline-none",
-                          "peer-focus-visible:ring-2 peer-focus-visible:ring-ink peer-focus-visible:ring-offset-2",
+                          "peer-focus-visible:ring-2 peer-focus-visible:ring-[var(--color-focus-visible)] peer-focus-visible:ring-offset-2",
                           isSelected
-                            ? "border-ink bg-slate-50"
-                            : "border-slate-200 bg-white hover:bg-slate-50",
-                          isApplied ? "ring-2 ring-sky-200" : "",
+                            ? "border-primary bg-primary-muted"
+                            : "border-border bg-surface-control hover:bg-surface-muted",
+                          isApplied ? "ring-2 ring-primary-muted-hover" : "",
                         ].join(" ")}
                       >
                         <span className="flex items-center justify-between gap-3">
@@ -825,12 +825,12 @@ export function WorkspaceSettingsPanel({
                             {languageLabel(option.value, language)}
                           </span>
                           {isApplied ? (
-                            <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[0.68rem] font-semibold text-sky-800">
+                            <span className="rounded-full bg-primary-muted px-2 py-0.5 text-[0.68rem] font-semibold text-primary">
                               {t("settings.language.currentBadge")}
                             </span>
                           ) : null}
                         </span>
-                        <span className="mt-2 block text-xs text-slate-500">
+                        <span className="mt-2 block text-xs text-ink-muted">
                           {option.nativeName}
                         </span>
                       </label>
@@ -839,7 +839,7 @@ export function WorkspaceSettingsPanel({
                 })}
               </fieldset>
 
-              <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
+              <div className="mt-auto flex flex-wrap items-center gap-3 border-t border-border pt-4">
                 <Button
                   type="button"
                   disabled={!hasLanguageDraftChange}
@@ -852,11 +852,11 @@ export function WorkspaceSettingsPanel({
                   type="button"
                   disabled={!hasLanguageDraftChange}
                   onClick={handleCancelLanguage}
-                  className="h-10 border border-slate-200 bg-white text-ink hover:bg-slate-50"
+                  className="h-10 border border-border bg-surface-control text-ink hover:bg-surface-muted"
                 >
                   {t("settings.language.cancel")}
                 </Button>
-                <div role="status" className="min-w-0 text-sm font-medium text-slate-700">
+                <div role="status" className="min-w-0 text-sm font-medium text-ink-muted">
                   <p>
                     {hasLanguageDraftChange
                       ? t("settings.language.pending", {
@@ -882,13 +882,13 @@ export function WorkspaceSettingsPanel({
             <section aria-label={t("settings.retention.title")} className="space-y-6">
               <div className="flex items-start gap-4">
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-slate-500">
+                  <p className="text-xs font-medium text-ink-muted">
                     {t("settings.workspaceEyebrow")}
                   </p>
                   <h3 className="mt-2 text-2xl font-semibold text-ink">
                     {t("settings.retention.title")}
                   </h3>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                  <p className="mt-2 text-sm leading-6 text-ink-muted">
                     {t("settings.retention.description")}
                   </p>
                 </div>
@@ -899,7 +899,7 @@ export function WorkspaceSettingsPanel({
                     if (!isImportActive) onClose();
                   }}
                   disabled={isImportActive}
-                  className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <X className="h-4 w-4" aria-hidden="true" />
                 </Button>
@@ -924,7 +924,7 @@ export function WorkspaceSettingsPanel({
                       )
                     }
                     disabled={!canWrite || isRetentionPending}
-                    className="mt-3 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-ink shadow-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="mt-3 h-10 w-full rounded-md border border-border bg-surface-control px-3 text-sm text-ink shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-[var(--color-focus-visible)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {ARCHIVED_DOCUMENT_RETENTION_POLICIES.map((policy) => (
                       <option key={policy.value} value={policy.value}>
@@ -943,7 +943,7 @@ export function WorkspaceSettingsPanel({
                     {t("settings.retention.save")}
                   </Button>
                   {retentionStatus ? (
-                    <p role="status" className="text-sm font-medium text-slate-700">
+                    <p role="status" className="text-sm font-medium text-ink-muted">
                       {statusMessageText(retentionStatus, t)}
                     </p>
                   ) : null}
@@ -961,8 +961,8 @@ function settingsNavButtonClassName(isActive: boolean) {
   return [
     "h-9 w-full justify-start gap-2 px-2 text-sm",
     isActive
-      ? "bg-slate-200 text-ink"
-      : "bg-transparent text-slate-600 hover:bg-slate-100 hover:text-ink",
+      ? "bg-surface-control text-ink shadow-subtle hover:bg-surface-control"
+      : "bg-transparent text-ink-muted hover:bg-surface-muted hover:text-ink",
   ].join(" ");
 }
 
@@ -1014,13 +1014,13 @@ function MarkdownImportProgressPanel({
     >
       <div className="flex items-start gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-slate-500">
+          <p className="text-xs font-medium text-ink-muted">
             {t("settings.import.progress.eyebrow")}
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-ink">
             {t("settings.import.progress.title")}
           </h3>
-          <p className="mt-2 truncate text-sm text-slate-600">
+          <p className="mt-2 truncate text-sm text-ink-muted">
             {t("settings.import.progress.destination", { path: run.destinationPath })}
           </p>
         </div>
@@ -1029,37 +1029,37 @@ function MarkdownImportProgressPanel({
           aria-label={t("settings.import.progress.close")}
           onClick={onClose}
           disabled={!canClose}
-          className="ml-auto h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-100 hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+          className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </Button>
       </div>
 
-      <div className="rounded-md border border-slate-200 bg-slate-50 px-4 py-3">
+      <div className="rounded-md border border-border bg-surface-page px-4 py-3">
         <div className="flex items-center justify-between gap-3 text-sm font-medium text-ink">
           <span role="status">{statusText}</span>
-          <span className="text-slate-500">{progressPercent}%</span>
+          <span className="text-ink-muted">{progressPercent}%</span>
         </div>
-        <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200">
+        <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-muted">
           <div
-            className="h-full rounded-full bg-sky-500 transition-[width]"
+            className="h-full rounded-full bg-primary transition-[width]"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
         {run.currentFileName ? (
-          <p className="mt-3 truncate text-sm text-slate-600">
+          <p className="mt-3 truncate text-sm text-ink-muted">
             {t("settings.import.progress.current", { fileName: run.currentFileName })}
           </p>
         ) : null}
       </div>
 
-      <div className="min-h-0 overflow-hidden rounded-md border border-slate-200">
+      <div className="min-h-0 overflow-hidden rounded-md border border-border">
         <div className="max-h-[min(22rem,calc(100vh-24rem))] overflow-y-auto">
           <table
             aria-label={t("settings.import.progress.files")}
             className="w-full table-fixed text-left text-sm"
           >
-            <thead className="bg-slate-50 text-xs font-medium text-slate-500">
+            <thead className="bg-surface-page text-xs font-medium text-ink-muted">
               <tr>
                 <th scope="col" className="w-[60%] px-3 py-2">
                   {t("settings.import.progress.fileName")}
@@ -1072,7 +1072,7 @@ function MarkdownImportProgressPanel({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-700">
+            <tbody className="divide-y divide-border-muted text-ink-muted">
               {run.files.map((selectedFile) => (
                 <tr key={selectedFile.id}>
                   <td className="px-3 py-2 font-medium text-ink">

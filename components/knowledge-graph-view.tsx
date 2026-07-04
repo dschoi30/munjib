@@ -499,7 +499,7 @@ export function KnowledgeGraphView({
                 <Button
                   type="button"
                   aria-label={t("graph.settings.close")}
-                  className="size-7 bg-transparent p-0 text-slate-500 hover:bg-slate-200 hover:text-ink"
+                  className="size-7 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink"
                   onClick={() => setSettingsOpen(false)}
                 >
                   <X className="size-4" aria-hidden="true" />
@@ -517,7 +517,7 @@ export function KnowledgeGraphView({
                   >
                     <input
                       type="checkbox"
-                      className="h-4 w-4 accent-violet-500"
+                      className="h-4 w-4 accent-primary"
                       checked={filters[option.key]}
                       onChange={() => toggleFilter(option.key)}
                     />
@@ -538,7 +538,7 @@ export function KnowledgeGraphView({
                 <span>{t("graph.display.arrows")}</span>
                 <input
                   type="checkbox"
-                  className="h-4 w-4 accent-violet-500"
+                  className="h-4 w-4 accent-primary"
                   checked={display.arrows}
                   onChange={(event) => updateDisplay("arrows", event.currentTarget.checked)}
                 />
@@ -614,7 +614,7 @@ export function KnowledgeGraphView({
           <Button
             type="button"
             aria-label={t("graph.settings.open")}
-            className="pointer-events-auto absolute right-4 top-4 size-9 bg-muted p-0 text-slate-600 shadow-lg hover:bg-slate-200 hover:text-ink"
+            className="pointer-events-auto absolute right-4 top-4 size-9 bg-surface-muted p-0 text-ink-muted shadow-lg hover:bg-surface-page hover:text-ink"
             onClick={() => setSettingsOpen(true)}
           >
             <Settings2 className="size-4" aria-hidden="true" />
@@ -736,7 +736,7 @@ function RangeControl({
       <input
         type="range"
         aria-label={label}
-        className="mt-2 h-1 w-full accent-violet-500"
+        className="mt-2 h-1 w-full accent-primary"
         max={max}
         min={min}
         step={step}

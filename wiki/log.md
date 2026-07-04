@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 305
+source_count: 306
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T18:22:30+0900 - Honen remaining violet color alignment follow-up
+
+- Result: User-requested Honen color follow-up replaced remaining violet/sky accents on wiki links, tag links, AI answer links, settings controls, and graph filters with semantic green primary and surface tokens.
+- Coverage: Active document tabs now use `bg-surface-page text-ink` instead of `bg-primary-muted text-primary`; selected icon-style controls keep neutral surface hover states; settings panel dropzone, provider/model controls, language cards, retention select, and import progress bar consume Honen border/surface/primary classes.
+- Pages: [[Honen Design System]], [[log|Wiki Log]].
+- Source evidence: user follow-up list in the 2026-07-04 task conversation, `components/document-editor/markdown-preview.tsx`, `components/document-editor/document-properties.tsx`, `components/ai/answer.tsx`, `components/document-tabs.tsx`, `components/workspace-settings-panel.tsx`, `components/knowledge-graph-view.tsx`, and focused component tests.
+- Verification: red component tests reproduced the old violet/sky/primary-muted classes before the theme cleanup, then passed after the class migration.
 
 ## 2026-07-04T17:54:00+0900 - Honen primary active-state review follow-up
 

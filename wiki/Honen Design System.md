@@ -6,7 +6,7 @@ status: active
 summary: Honen content-site design system foundation, semantic token contract, component state rules, and accessibility acceptance criteria.
 created: 2026-07-04
 updated: 2026-07-04
-source_count: 5
+source_count: 6
 tags:
   - design-system
   - honen
@@ -26,12 +26,13 @@ Honen design system work makes the content site consistent, token-driven, access
 
 - User-provided `design.md` brief in the 2026-07-04 task conversation.
 - User-uploaded Honen course reader screenshot in the 2026-07-04 color alignment follow-up.
+- User-requested 2026-07-04 targeted follow-up on wiki links, active tabs, settings panel, and graph filter colors.
 - PR #142 review feedback on invalid field border contrast and wiki log ordering.
 - Implementation source: `docs/design-system/honen.md`, `lib/design-system/tokens.ts`, `app/globals.css`, `tailwind.config.ts`, and shared UI primitives under `components/ui/`.
 
 ## Token contract
 
-Foundation tokens cover Inter typography, Honen text/surface/brand/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-brand-primary`, `--color-surface-editor`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values. The uploaded Honen course reader screenshot anchors the active palette: warm page shell, slightly lifted editor surface, white control surface, green primary actions, pale green selected states, and soft warm borders. The focus-visible token is opaque enough to remain visible on page and card surfaces. The typed primitive color tokens mirror the CSS semantic categories, and Tailwind aliases expose the shared brand, surface, border, text, and interactive radius tokens so shared primitives do not need arbitrary CSS variable classes for normal variants.
+Foundation tokens cover Inter typography, Honen text/surface/brand/border/focus colors, compact spacing, radius, shadow, and motion duration scales. Component implementation must use semantic CSS variables such as `--color-text-body`, `--color-brand-primary`, `--color-surface-editor`, `--color-surface-card`, `--color-border-default`, `--color-focus-visible`, `--radius-interactive`, and `--size-control-md` instead of raw values. The uploaded Honen course reader screenshot anchors the active palette: warm page shell, slightly lifted editor surface, white control surface, green primary actions, pale green selected states, and soft warm borders. Legacy violet and sky highlights should not remain on Honen product surfaces; wiki links, tag links, AI answer links, graph checkboxes/range controls, and settings affordances use the green primary token family instead. Active tabs use the page surface and normal ink text instead of pale primary selected chrome, and selected icon-style controls keep neutral surface hover states so selected and hover feedback do not stack green treatments. The focus-visible token is opaque enough to remain visible on page and card surfaces. The typed primitive color tokens mirror the CSS semantic categories, and Tailwind aliases expose the shared brand, surface, border, text, and interactive radius tokens so shared primitives do not need arbitrary CSS variable classes for normal variants.
 
 ## Priority component coverage
 

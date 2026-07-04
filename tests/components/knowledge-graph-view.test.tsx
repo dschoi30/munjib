@@ -365,6 +365,19 @@ describe("KnowledgeGraphView", () => {
     });
   });
 
+  it("uses the primary green theme for graph filter toggles and gauge controls", () => {
+    renderGraph();
+
+    const tagsFilter = getInput("Tags");
+    expect(tagsFilter.className).toContain("accent-primary");
+    expect(tagsFilter.className).not.toContain("violet");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand display" }));
+    const nodeSizeGauge = getInput("Node size");
+    expect(nodeSizeGauge.className).toContain("accent-primary");
+    expect(nodeSizeGauge.className).not.toContain("violet");
+  });
+
   it("uses the selected Korean display language for graph controls", async () => {
     window.localStorage.setItem("munjib:language", "ko");
 
