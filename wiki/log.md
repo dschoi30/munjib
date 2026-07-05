@@ -19,6 +19,21 @@ links:
 
 # Wiki Log
 
+## 2026-07-05T14:55:00+00:00 - maintenance
+
+- Result: Issue #145 launch-auth-accounts-foundation adds account-ready schema, password hashing helpers, seeded launch accounts, and idempotent global workspace membership bootstrap.
+- Coverage: `User.passwordHash`, NextAuth-compatible `User.emailVerified`, Prisma `User.image` mapped to the existing `avatarUrl` column, `Account`/`Session`/`VerificationToken` adapter tables, `scrypt` password verification, `mjadmin@munjib.com` ADMIN and `mjtrial@munjib.com` VIEWER seed/backfill behavior, owner-role preservation when the owner is also a launch account, and focused tests for password and membership bootstrap logic.
+- Pages: [[Document Knowledge Model]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #145 plan in `docs/superpowers/plans/2026-07-05-post-143-production-launch-auth-workspace.md`, `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`, `docs/superpowers/plans/2026-07-06-launch-auth-accounts-foundation-completion.md`, `prisma/schema.prisma`, `prisma/migrations/20260705090000_add_auth_accounts_foundation/migration.sql`, `lib/auth/passwords.ts`, `lib/workspaces/membership-bootstrap.ts`, `prisma/seed.ts`, `tests/auth/passwords.test.ts`, `tests/workspaces/membership-bootstrap.test.ts`.
+- Verification: local-binary `prisma validate`, `prisma generate`, `tsc --noEmit`, `vitest run tests/auth/passwords.test.ts tests/workspaces/membership-bootstrap.test.ts tests/auth/config.test.ts tests/permissions/workspace.test.ts`, `git diff --check`, and fresh migration/seed verification in a temporary local database. `pnpm` wrappers remain blocked by the ignored-builds guard, and `next lint` remains blocked by the noninteractive ESLint setup prompt.
+
+## 2026-07-05T00:00:00+0000 - post-issue-143 production launch planning
+
+- Coverage: Captured the follow-up plan after Issue #143 for production account entry and workspace management. The plan splits work into account foundation, signup/login, and workspace-management branches.
+- Result: Confirmed `mjadmin@munjib.com` / `mjadmin` as global workspace `ADMIN`, `mjtrial@munjib.com` / `mjtrial` as global workspace `VIEWER`, normal signup users as `OWNER` of their own default workspace, Google login without separate Munjib email verification, localized default workspace names, trial login, and soft archive workspace deletion.
+- Updated pages: `wiki/index.md`, `wiki/log.md`.
+- Source evidence: Prior user decisions in the Issue #143 follow-up planning conversation and `docs/superpowers/plans/2026-07-05-post-143-production-launch-auth-workspace.md`.
+
 ## 2026-07-04T23:35:00+0900 - issue-143 auth launch foundation review follow-up
 
 - Result: PR #144 review feedback closed the remaining launch-gate gaps for direct workspace entry and production Docker runtime env.

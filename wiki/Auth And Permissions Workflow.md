@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
 created: 2026-04-29
-updated: 2026-07-04
-source_count: 19
+updated: 2026-07-05
+source_count: 27
 tags:
   - munjib
   - auth
@@ -96,16 +96,26 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 
 `restoreDocumentVersion()`, attachment upload, comment creation도 document-level permission을 확인한다. Attachment download는 document read permission을 요구하고, upload/comment는 write 가능한 사용자만 수행한다.
 
+## Launch account foundation
+
+Issue #145 adds durable account columns and OAuth-ready NextAuth adapter tables without changing the production login UX yet. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by later email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows in a later slice.
+
+`lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
+
+`lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `mjadmin@munjib.com` as `ADMIN` plus `mjtrial@munjib.com` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. The backfill helper applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
+
 ## Seed 사용자
 
 `prisma/seed.ts`는 다음 사용자와 workspace를 만든다.
 
+- `mjadmin@munjib.com` / password seed constant `mjadmin` / global `ADMIN` membership
+- `mjtrial@munjib.com` / password seed constant `mjtrial` / global `VIEWER` membership
 - `owner@example.com`
 - `editor@example.com`
 - `viewer@example.com`
 - workspace: `company-handbook`
 
-테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
+Seed reruns preserve existing launch account hashes, update email verification timestamps, preserve the local development fixture users, and upsert launch memberships so each existing workspace has one admin launch row and one trial viewer row. 테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
 
 ## 근거
 
@@ -118,6 +128,8 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `docker-compose.yml`
 - `lib/i18n/messages.ts`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
+- `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`
+- `docs/superpowers/plans/2026-07-06-launch-auth-accounts-foundation-completion.md`
 - `lib/permissions/workspace.ts`
 - `lib/permissions/document.ts`
 - `lib/wiki-links/service.ts`
@@ -128,3 +140,8 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 - `tests/docker/compose.test.ts`
 - `tests/permissions/document.test.ts`
 - `prisma/seed.ts`
+- `prisma/migrations/20260705090000_add_auth_accounts_foundation/migration.sql`
+- `lib/auth/passwords.ts`
+- `lib/workspaces/membership-bootstrap.ts`
+- `tests/auth/passwords.test.ts`
+- `tests/workspaces/membership-bootstrap.test.ts`
