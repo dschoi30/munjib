@@ -141,7 +141,7 @@ describe("authOptions", () => {
       id: "user-1",
       email: "owner@example.com",
       name: "Owner",
-      avatarUrl: null,
+      image: null,
     });
 
     const provider = getCredentialsProvider();
@@ -158,7 +158,7 @@ describe("authOptions", () => {
       id: "user-1",
       email: "owner@example.com",
       name: "Owner",
-      avatarUrl: null,
+      image: null,
     });
 
     const provider = getCredentialsProvider();
