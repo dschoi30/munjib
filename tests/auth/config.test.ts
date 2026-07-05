@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   authOptions,
   resolveAuthCookieSecure,
+  resolveGoogleAuthCredentials,
   resolveAuthSecret,
   resolveDevLoginEnabled,
 } from "@/lib/auth/config";
@@ -24,21 +25,35 @@ const prismaMock = vi.hoisted(() => ({
   },
 }));
 
+const passwordMock = vi.hoisted(() => ({
+  verifyPassword: vi.fn(),
+}));
+
 vi.mock("@/lib/db/client", () => ({
   prisma: prismaMock,
+}));
+
+vi.mock("@/lib/auth/passwords", () => ({
+  verifyPassword: passwordMock.verifyPassword,
 }));
 
 describe("authOptions", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     prismaMock.user.findUnique.mockReset();
+    passwordMock.verifyPassword.mockReset();
   });
 
-  function getCredentialsProvider() {
-    const provider = authOptions.providers[0] as CredentialsProviderForTest;
+  function getCredentialsProvider(providerId: string) {
+    const provider = authOptions.providers.find((candidate) => candidate.id === providerId) as
+      | CredentialsProviderForTest
+      | undefined;
+    if (!provider) {
+      throw new Error(`Credentials provider ${providerId} was not found.`);
+    }
     const authorize = provider.options?.authorize ?? provider.authorize;
     if (typeof authorize !== "function") {
-      throw new Error("Credentials provider authorize function was not found.");
+      throw new Error(`Credentials provider ${providerId} authorize function was not found.`);
     }
     return { authorize };
   }
@@ -144,7 +159,7 @@ describe("authOptions", () => {
       image: null,
     });
 
-    const provider = getCredentialsProvider();
+    const provider = getCredentialsProvider("development-login");
     const result = await provider.authorize?.({ email: "owner@example.com" }, {} as never);
 
     expect(result).toBeNull();
@@ -161,7 +176,7 @@ describe("authOptions", () => {
       image: null,
     });
 
-    const provider = getCredentialsProvider();
+    const provider = getCredentialsProvider("development-login");
     const result = await provider.authorize?.({ email: " OWNER@example.com " }, {} as never);
 
     expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
@@ -173,5 +188,127 @@ describe("authOptions", () => {
       name: "Owner",
       image: null,
     });
+  });
+
+  it("authenticates password credentials with the stored password hash", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "member@example.com",
+      name: "Member",
+      image: null,
+      passwordHash: "scrypt:salt:key",
+    });
+    passwordMock.verifyPassword.mockResolvedValue(true);
+
+    const provider = getCredentialsProvider("password");
+    const result = await provider.authorize?.(
+      { email: " MEMBER@example.com ", password: "correct horse" },
+      {} as never,
+    );
+
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+      where: { email: "member@example.com" },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        image: true,
+        passwordHash: true,
+      },
+    });
+    expect(passwordMock.verifyPassword).toHaveBeenCalledWith("correct horse", "scrypt:salt:key");
+    expect(result).toEqual({
+      id: "user-1",
+      email: "member@example.com",
+      name: "Member",
+      image: null,
+    });
+  });
+
+  it("rejects password credentials when the user has no password hash", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "member@example.com",
+      name: "Member",
+      image: null,
+      passwordHash: null,
+    });
+
+    const provider = getCredentialsProvider("password");
+    const result = await provider.authorize?.(
+      { email: "member@example.com", password: "correct horse" },
+      {} as never,
+    );
+
+    expect(result).toBeNull();
+    expect(passwordMock.verifyPassword).not.toHaveBeenCalled();
+  });
+
+  it("rejects password credentials when the password does not verify", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      email: "member@example.com",
+      name: "Member",
+      image: null,
+      passwordHash: "scrypt:salt:key",
+    });
+    passwordMock.verifyPassword.mockResolvedValue(false);
+
+    const provider = getCredentialsProvider("password");
+    const result = await provider.authorize?.(
+      { email: "member@example.com", password: "wrong" },
+      {} as never,
+    );
+
+    expect(result).toBeNull();
+  });
+
+  it("signs in the seeded trial user without browser-visible secrets", async () => {
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "trial-user",
+      email: "legacy-account-2@example.invalid",
+      name: "Munjib Trial",
+      image: null,
+    });
+
+    const provider = getCredentialsProvider("trial");
+    const result = await provider.authorize?.({}, {} as never);
+
+    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+      where: { email: "legacy-account-2@example.invalid" },
+      select: { id: true, email: true, name: true, image: true },
+    });
+    expect(result).toEqual({
+      id: "trial-user",
+      email: "legacy-account-2@example.invalid",
+      name: "Munjib Trial",
+      image: null,
+    });
+  });
+
+  it("resolves Google auth credentials only when both env values are present", () => {
+    vi.stubEnv("GOOGLE_CLIENT_ID", " google-client ");
+    vi.stubEnv("GOOGLE_CLIENT_SECRET", " google-secret ");
+
+    expect(resolveGoogleAuthCredentials()).toEqual({
+      clientId: "google-client",
+      clientSecret: "google-secret",
+    });
+
+    vi.stubEnv("GOOGLE_CLIENT_SECRET", "");
+
+    expect(resolveGoogleAuthCredentials()).toBeNull();
+  });
+
+  it("rejects Google sign-ins when Google did not verify the email", async () => {
+    const result = await authOptions.callbacks?.signIn?.({
+      account: { provider: "google", type: "oauth", providerAccountId: "google-1" },
+      profile: { email_verified: false } as never,
+      user: { id: "user-1", email: "member@example.com", name: "Member" },
+      credentials: undefined,
+      email: undefined,
+    });
+
+    expect(result).toBe(false);
   });
 });

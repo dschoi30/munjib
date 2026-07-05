@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-07-05
-source_count: 36
+updated: 2026-07-06
+source_count: 38
 tags:
   - munjib
   - data-model
@@ -360,13 +360,17 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 
 ## Account identity
 
-Issue #145 extends `User` with nullable `passwordHash` and `emailVerified` fields. Password hashes are stored as server-generated `scrypt` records, while existing development fixture users may remain passwordless until a real password/signup path sets a hash. The `Account`, `Session`, and `VerificationToken` tables follow the NextAuth Prisma Adapter shape so later Google OAuth and account-linking work can persist provider identities without overloading email-only assumptions.
+Issue #145 extends `User` with nullable `passwordHash` and `emailVerified` fields. Password hashes are stored as server-generated `scrypt` records, while existing development fixture users may remain passwordless until a real password/signup path sets a hash. Issue #146 uses the same field for the `password` Credentials provider and `/api/auth/signup` account creation.
+
+The `Account`, `Session`, and `VerificationToken` tables follow the NextAuth Prisma Adapter shape. Issue #146 enables the Prisma Adapter in `authOptions`, so Google OAuth identities can persist in `Account` rows instead of relying on email-only assumptions. New password signups also create a personal organization and localized default workspace through `lib/auth/provisioning.ts`; that workspace receives the new user as `OWNER` plus launch admin/trial membership rows from the shared bootstrap helper.
 
 ## 근거
 
 - `prisma/schema.prisma`
 - `prisma/migrations/20260705090000_add_auth_accounts_foundation/migration.sql`
 - `lib/auth/passwords.ts`
+- `lib/auth/config.ts`
+- `lib/auth/provisioning.ts`
 - `prisma/migrations/20260505001000_add_folder_hierarchy/migration.sql`
 - `lib/documents/service.ts`
 - `lib/document-metadata/parser.ts`
