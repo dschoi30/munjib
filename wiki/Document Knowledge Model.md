@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 33
+updated: 2026-07-05
+source_count: 36
 tags:
   - munjib
   - data-model
@@ -21,7 +21,7 @@ links:
 
 # Document Knowledge Model
 
-Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 조직/사용자 membership, workspace, folder hierarchy, documents, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
+Munjib의 core domain은 Prisma schema에 정의되어 있다. 가장 중요한 축은 account identity, 조직/사용자 membership, workspace, folder hierarchy, documents, document versions, document links, tags/properties, attachments, comments, permissions, audit logs다.
 
 ## Mermaid ERD
 
@@ -31,9 +31,29 @@ erDiagram
     String id PK
     String email UK
     String name
-    String avatarUrl
+    String image
+    String passwordHash
+    DateTime emailVerified
     DateTime createdAt
     DateTime updatedAt
+  }
+  Account {
+    String id PK
+    String userId FK
+    String type
+    String provider
+    String providerAccountId
+  }
+  Session {
+    String id PK
+    String sessionToken UK
+    String userId FK
+    DateTime expires
+  }
+  VerificationToken {
+    String identifier
+    String token UK
+    DateTime expires
   }
   Organization {
     String id PK
@@ -338,9 +358,15 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 - `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다.
 - `AuditLog`: 문서 생성, 수정, 아카이브, version restore, broken link 기반 생성, attachment upload, comment 생성 같은 mutation 기록을 남긴다.
 
+## Account identity
+
+Issue #145 extends `User` with nullable `passwordHash` and `emailVerified` fields. Password hashes are stored as server-generated `scrypt` records, while existing development fixture users may remain passwordless until a real password/signup path sets a hash. The `Account`, `Session`, and `VerificationToken` tables follow the NextAuth Prisma Adapter shape so later Google OAuth and account-linking work can persist provider identities without overloading email-only assumptions.
+
 ## 근거
 
 - `prisma/schema.prisma`
+- `prisma/migrations/20260705090000_add_auth_accounts_foundation/migration.sql`
+- `lib/auth/passwords.ts`
 - `prisma/migrations/20260505001000_add_folder_hierarchy/migration.sql`
 - `lib/documents/service.ts`
 - `lib/document-metadata/parser.ts`

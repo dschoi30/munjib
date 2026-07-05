@@ -1,9 +1,45 @@
 import { PrismaClient, WorkspaceRole } from "@prisma/client";
+import { hashPassword } from "../lib/auth/passwords";
+import {
+  backfillLaunchMembershipsForAllWorkspaces,
+  ensureWorkspaceLaunchMemberships,
+  launchAccountSeeds,
+} from "../lib/workspaces/membership-bootstrap";
 import { reconcileDocumentLinks } from "../lib/wiki-links/reconcile";
 
 const prisma = new PrismaClient();
 
+const launchAccountPasswords = {
+  "legacy-account-1@example.invalid": "local-only-fixture-1",
+  "legacy-account-2@example.invalid": "local-only-fixture-2",
+} as const satisfies Record<(typeof launchAccountSeeds)[number]["email"], string>;
+
 async function main() {
+  for (const account of launchAccountSeeds) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: account.email },
+      select: { passwordHash: true, emailVerified: true },
+    });
+    const passwordHash =
+      existingUser?.passwordHash ?? (await hashPassword(launchAccountPasswords[account.email]));
+    const emailVerified = existingUser?.emailVerified ?? new Date();
+
+    await prisma.user.upsert({
+      where: { email: account.email },
+      update: {
+        name: account.name,
+        emailVerified,
+        ...(existingUser?.passwordHash ? {} : { passwordHash }),
+      },
+      create: {
+        email: account.email,
+        name: account.name,
+        passwordHash,
+        emailVerified,
+      },
+    });
+  }
+
   const owner = await prisma.user.upsert({
     where: { email: "owner@example.com" },
     update: {},
@@ -45,7 +81,6 @@ async function main() {
   });
 
   for (const [user, role] of [
-    [owner, WorkspaceRole.OWNER],
     [editor, WorkspaceRole.EDITOR],
     [viewer, WorkspaceRole.VIEWER],
   ] as const) {
@@ -55,6 +90,12 @@ async function main() {
       create: { workspaceId: workspace.id, userId: user.id, role },
     });
   }
+
+  await ensureWorkspaceLaunchMemberships(prisma, workspace.id, {
+    userId: owner.id,
+    role: WorkspaceRole.OWNER,
+  });
+  await backfillLaunchMembershipsForAllWorkspaces(prisma);
 
   const welcome = await prisma.document.upsert({
     where: { workspaceId_path: { workspaceId: workspace.id, path: "/welcome" } },

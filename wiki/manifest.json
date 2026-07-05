@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-04",
+  "updated": "2026-07-05",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 19,
+      "source_count": 27,
       "searchPriority": 50
     },
     {
@@ -131,7 +131,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 33,
+      "source_count": 36,
       "searchPriority": 50
     },
     {
@@ -207,7 +207,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 137,
+      "source_count": 145,
       "searchPriority": 5
     },
     {
