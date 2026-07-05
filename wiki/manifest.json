@@ -8,7 +8,7 @@
       "title": "Auth And Permissions Workflow",
       "type": "workflow",
       "status": "active",
-      "summary": "Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.",
+      "summary": "Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.",
       "tags": [
         "munjib",
         "auth",
@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 27,
+      "source_count": 34,
       "searchPriority": 50
     },
     {
@@ -131,7 +131,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 36,
+      "source_count": 38,
       "searchPriority": 50
     },
     {
@@ -207,7 +207,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 145,
+      "source_count": 151,
       "searchPriority": 5
     },
     {
@@ -250,7 +250,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 314,
+      "source_count": 330,
       "searchPriority": 1
     },
     {
