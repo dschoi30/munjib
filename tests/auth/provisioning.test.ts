@@ -15,13 +15,13 @@ function createProvisioningTxMock() {
       ]),
     },
     organization: {
-      create: vi.fn().mockResolvedValue({ id: "org-1", slug: "personal-user-12345678" }),
+      upsert: vi.fn().mockResolvedValue({ id: "org-1", slug: "personal-user-12345678" }),
     },
     organizationMember: {
-      create: vi.fn().mockResolvedValue(undefined),
+      upsert: vi.fn().mockResolvedValue(undefined),
     },
     workspace: {
-      create: vi.fn().mockResolvedValue({
+      upsert: vi.fn().mockResolvedValue({
         id: "workspace-1",
         slug: "my-workspace-user-12345678",
       }),
@@ -50,23 +50,39 @@ describe("auth provisioning", () => {
       language: "ko",
     });
 
-    expect(tx.organization.create).toHaveBeenCalledWith({
-      data: {
+    expect(tx.organization.upsert).toHaveBeenCalledWith({
+      where: { slug: "personal-user-12345678" },
+      update: {},
+      create: {
         name: "Member",
         slug: "personal-user-12345678",
       },
       select: { id: true, slug: true },
     });
-    expect(tx.workspace.create).toHaveBeenCalledWith({
-      data: {
+    expect(tx.workspace.upsert).toHaveBeenCalledWith({
+      where: {
+        organizationId_slug: {
+          organizationId: "org-1",
+          slug: "my-workspace-user-12345678",
+        },
+      },
+      update: {},
+      create: {
         organizationId: "org-1",
         name: "내 워크스페이스",
         slug: "my-workspace-user-12345678",
       },
       select: { id: true, slug: true },
     });
-    expect(tx.organizationMember.create).toHaveBeenCalledWith({
-      data: { organizationId: "org-1", userId: "user-12345678", role: "OWNER" },
+    expect(tx.organizationMember.upsert).toHaveBeenCalledWith({
+      where: {
+        organizationId_userId: {
+          organizationId: "org-1",
+          userId: "user-12345678",
+        },
+      },
+      update: { role: "OWNER" },
+      create: { organizationId: "org-1", userId: "user-12345678", role: "OWNER" },
     });
     expect(tx.workspaceMember.upsert).toHaveBeenCalledWith({
       where: { workspaceId_userId: { workspaceId: "workspace-1", userId: "user-12345678" } },
@@ -102,8 +118,8 @@ describe("auth provisioning", () => {
       language: "en",
     });
 
-    expect(tx.organization.create).not.toHaveBeenCalled();
-    expect(tx.workspace.create).not.toHaveBeenCalled();
+    expect(tx.organization.upsert).not.toHaveBeenCalled();
+    expect(tx.workspace.upsert).not.toHaveBeenCalled();
     expect(result).toEqual({
       workspaceId: "workspace-existing",
       workspaceSlug: "existing-workspace",

@@ -194,7 +194,7 @@ export function LoginForm({
           </p>
         </div>
 
-        {!isSignupMode ? (
+        {!isSignupMode && isGoogleLoginEnabled ? (
           <>
             <Button
               type="button"

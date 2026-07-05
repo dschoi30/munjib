@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-06
-source_count: 328
+source_count: 330
 tags:
   - log
   - munjib
@@ -22,10 +22,10 @@ links:
 ## 2026-07-06T02:10:00+09:00 - issue-146 PR review follow-up
 
 - Result: PR #149 review feedback hardened the launch signup/login flow while preserving the language-first auth text rendering behavior.
-- Coverage: Email/password submission now locks Google, email, password, password reveal, forgot-password, mode toggle, demo, and dev-login controls until the active auth action settles. Post-login workspace provisioning now runs the default-workspace creation path inside a Prisma transaction before resolving the user-visible landing redirect.
+- Coverage: Email/password submission now locks Google, email, password, password reveal, forgot-password, mode toggle, demo, and dev-login controls until the active auth action settles. The Google CTA is hidden when the provider is not configured. Post-login workspace provisioning now runs the default-workspace path inside a Prisma transaction and uses deterministic `upsert` calls for organization, organization membership, and workspace rows before resolving the user-visible landing redirect.
 - Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
 - Source evidence: PR #149 review threads, `app/login/login-form.tsx`, `lib/auth/provisioning.ts`, `tests/auth/provisioning-current-user.test.ts`, `tests/components/login-form.test.tsx`.
-- Verification: `./node_modules/.bin/vitest run tests/auth/config.test.ts tests/auth/provisioning-current-user.test.ts tests/auth/provisioning.test.ts tests/components/login-form.test.tsx`, `./node_modules/.bin/tsc --noEmit`.
+- Verification: `./node_modules/.bin/vitest run tests/auth/config.test.ts tests/auth/provisioning-current-user.test.ts tests/auth/provisioning.test.ts tests/components/login-form.test.tsx` passed with 43 tests, `./node_modules/.bin/tsc --noEmit` passed.
 
 ## 2026-07-06T01:52:00+09:00 - issue-146 launch signup/login implementation
 

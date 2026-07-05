@@ -21,19 +21,25 @@ type ProvisioningTx = {
     create?: (args: unknown) => Promise<unknown>;
   };
   organization: {
-    create(args: {
-      data: { name: string; slug: string };
+    upsert(args: {
+      where: { slug: string };
+      update: Record<string, never>;
+      create: { name: string; slug: string };
       select: { id: true; slug: true };
     }): Promise<{ id: string; slug: string }>;
   };
   organizationMember: {
-    create(args: {
-      data: { organizationId: string; userId: string; role: "OWNER" };
+    upsert(args: {
+      where: { organizationId_userId: { organizationId: string; userId: string } };
+      update: { role: "OWNER" };
+      create: { organizationId: string; userId: string; role: "OWNER" };
     }): Promise<unknown>;
   };
   workspace: {
-    create(args: {
-      data: { organizationId: string; name: string; slug: string };
+    upsert(args: {
+      where: { organizationId_slug: { organizationId: string; slug: string } };
+      update: Record<string, never>;
+      create: { organizationId: string; name: string; slug: string };
       select: { id: true; slug: true };
     }): Promise<{ id: string; slug: string }>;
   };
@@ -118,21 +124,39 @@ export async function ensureDefaultWorkspaceForUser(
   }
 
   const suffix = slugSuffixForUser(input.userId);
-  const organization = await tx.organization.create({
-    data: {
+  const organizationSlug = `personal-${suffix}`;
+  const workspaceSlug = `my-workspace-${suffix}`;
+  const organization = await tx.organization.upsert({
+    where: { slug: organizationSlug },
+    update: {},
+    create: {
       name: input.name?.trim() || deriveNameFromEmail(input.email),
-      slug: `personal-${suffix}`,
+      slug: organizationSlug,
     },
     select: { id: true, slug: true },
   });
-  await tx.organizationMember.create({
-    data: { organizationId: organization.id, userId: input.userId, role: "OWNER" },
+  await tx.organizationMember.upsert({
+    where: {
+      organizationId_userId: {
+        organizationId: organization.id,
+        userId: input.userId,
+      },
+    },
+    update: { role: "OWNER" },
+    create: { organizationId: organization.id, userId: input.userId, role: "OWNER" },
   });
-  const workspace = await tx.workspace.create({
-    data: {
+  const workspace = await tx.workspace.upsert({
+    where: {
+      organizationId_slug: {
+        organizationId: organization.id,
+        slug: workspaceSlug,
+      },
+    },
+    update: {},
+    create: {
       organizationId: organization.id,
       name: defaultWorkspaceNameForLanguage(input.language),
-      slug: `my-workspace-${suffix}`,
+      slug: workspaceSlug,
     },
     select: { id: true, slug: true },
   });

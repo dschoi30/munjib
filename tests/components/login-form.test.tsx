@@ -57,13 +57,14 @@ afterEach(() => {
 
 function renderLoginForm(
   callbackUrl?: string,
-  options: { isDevLoginEnabled?: boolean } = {},
+  options: { isDevLoginEnabled?: boolean; isGoogleLoginEnabled?: boolean } = {},
 ) {
   return render(
     <I18nProvider>
       <LoginForm
         {...(callbackUrl ? { callbackUrl } : {})}
         isDevLoginEnabled={options.isDevLoginEnabled ?? true}
+        isGoogleLoginEnabled={options.isGoogleLoginEnabled ?? true}
       />
     </I18nProvider>,
   );
@@ -99,6 +100,15 @@ describe("LoginForm", () => {
     expect(screen.getByText("Don't have an account?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create one" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Explore demo (read-only) No signup" })).toBeTruthy();
+  });
+
+  it("hides the Google provider block when Google login is not configured", async () => {
+    renderLoginForm(undefined, { isGoogleLoginEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
+    expect(screen.queryByText("or")).toBeNull();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
   });
 
   it("submits email and password through the password provider", async () => {

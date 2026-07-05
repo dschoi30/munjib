@@ -24,13 +24,13 @@ function createProvisioningTxMock() {
       ]),
     },
     organization: {
-      create: vi.fn().mockResolvedValue({ id: "org-1", slug: "personal-user-12345678" }),
+      upsert: vi.fn().mockResolvedValue({ id: "org-1", slug: "personal-user-12345678" }),
     },
     organizationMember: {
-      create: vi.fn().mockResolvedValue(undefined),
+      upsert: vi.fn().mockResolvedValue(undefined),
     },
     workspace: {
-      create: vi.fn().mockResolvedValue({
+      upsert: vi.fn().mockResolvedValue({
         id: "workspace-1",
         slug: "my-workspace-user-12345678",
       }),
@@ -73,8 +73,15 @@ describe("current user auth provisioning", () => {
     ).resolves.toBe("/workspaces/my-workspace-user-12345678");
 
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
-    expect(tx.workspace.create).toHaveBeenCalledWith({
-      data: {
+    expect(tx.workspace.upsert).toHaveBeenCalledWith({
+      where: {
+        organizationId_slug: {
+          organizationId: "org-1",
+          slug: "my-workspace-user-12345678",
+        },
+      },
+      update: {},
+      create: {
         organizationId: "org-1",
         name: "내 워크스페이스",
         slug: "my-workspace-user-12345678",
