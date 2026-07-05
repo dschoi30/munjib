@@ -10,6 +10,7 @@ const defaultPostLoginCallbackUrl = "/workspaces/company-handbook";
 
 type LoginFormProps = {
   callbackUrl?: string;
+  isDevLoginEnabled?: boolean;
 };
 
 function resolveAppLocalRedirectPath(url: string) {
@@ -31,7 +32,10 @@ function resolvePostSignInRedirectUrl(resultUrl: string, callbackUrl: string) {
   );
 }
 
-export function LoginForm({ callbackUrl = defaultPostLoginCallbackUrl }: LoginFormProps) {
+export function LoginForm({
+  callbackUrl = defaultPostLoginCallbackUrl,
+  isDevLoginEnabled = true,
+}: LoginFormProps) {
   const { t } = useI18n();
   const [email, setEmail] = useState("owner@example.com");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +43,8 @@ export function LoginForm({ callbackUrl = defaultPostLoginCallbackUrl }: LoginFo
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isDevLoginEnabled) return;
+
     setErrorKey(null);
     setIsSubmitting(true);
     const safeCallbackUrl = resolveAppLocalRedirectPath(callbackUrl) ?? defaultPostLoginCallbackUrl;
@@ -81,7 +87,8 @@ export function LoginForm({ callbackUrl = defaultPostLoginCallbackUrl }: LoginFo
             key={userEmail}
             type="button"
             onClick={() => setEmail(userEmail)}
-            className="rounded-md border border-border px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted"
+            disabled={!isDevLoginEnabled}
+            className="rounded-md border border-border px-3 py-2 text-left text-sm text-slate-700 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
           >
             {userEmail}
           </button>
@@ -96,15 +103,22 @@ export function LoginForm({ callbackUrl = defaultPostLoginCallbackUrl }: LoginFo
         type="email"
         value={email}
         onChange={(event) => setEmail(event.target.value)}
+        disabled={!isDevLoginEnabled}
         className="mt-2 w-full rounded-md border border-border px-3 py-2 text-sm"
       />
       <button
         type="submit"
-        disabled={isSubmitting}
+        disabled={isSubmitting || !isDevLoginEnabled}
         className="mt-4 w-full rounded-md bg-ink px-3 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
         {isSubmitting ? t("login.signingIn") : t("login.signIn")}
       </button>
+      {!isDevLoginEnabled ? (
+        <div className="mt-3 text-sm text-slate-600">
+          <p>{t("login.disabled")}</p>
+          <p>{t("login.disabledHint")}</p>
+        </div>
+      ) : null}
       <button
         type="button"
         onClick={clearSession}

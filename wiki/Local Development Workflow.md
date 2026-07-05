@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-03
-source_count: 61
+updated: 2026-07-04
+source_count: 65
 tags:
   - munjib
   - workflow
@@ -83,7 +83,7 @@ Prisma는 `DATABASE_URL`을 요구한다. 이전 로컬 검증에서는 PostgreS
 postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public
 ```
 
-NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다.
+NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다. Issue #143 이후 email-only development login은 `MUNJIB_ENABLE_DEV_LOGIN`으로 gate된다. Local development는 unset 상태에서도 seed user 로그인이 가능하지만, production은 `MUNJIB_ENABLE_DEV_LOGIN=true`를 명시한 경우에만 이 임시 login path를 연다.
 
 Issue #100 이후 Ask AI RAG provider는 server-wide env로 고른다. 기본값은 기존 local Ollama 경로와 같은 chat provider `ollama`, embedding provider `ollama`, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimensions `1024`, local base URL `http://localhost:11434`다. Official OpenAI는 `MUNJIB_RAG_CHAT_PROVIDER=openai` 또는 `MUNJIB_RAG_EMBED_PROVIDER=openai`와 `OPENAI_API_KEY`를 사용하고, OpenAI-compatible endpoint는 `openai-compatible`과 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 사용한다. `MUNJIB_OPENAI_COMPATIBLE_API_KEY`는 endpoint가 인증을 요구할 때만 설정하며, LM Studio, LocalAI, vLLM 같은 local unauthenticated endpoint에서는 비워둘 수 있다. 현재 DB vector index identity는 Ollama `bge-m3` 1024라 다른 embedding identity는 live Ask AI에서 fail-fast하며, reindex workflow는 별도 follow-up이다.
 
@@ -121,7 +121,7 @@ Docker network 안의 web container는 PostgreSQL에 `postgres:5432`로 접속�
 
 Compose는 database row와 uploaded attachment file이 함께 남도록 named volume을 둘 다 둔다. `postgres_data`는 PostgreSQL data directory를 유지하고, `web_storage`는 web container의 `/app/storage`를 유지해 container 재생성 뒤에도 `storage/attachments` 파일을 보존한다.
 
-기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다. Production container를 HTTPS 없이 외부 HTTP IP로 임시 노출할 때는 browser가 session cookie를 저장할 수 있도록 `NEXTAUTH_COOKIE_SECURE=false`도 함께 둔다. Compose는 이 값을 `web`과 `tools` container environment에 명시적으로 전달한다.
+기존 local DB container가 이미 `55432`를 사용 중이면 host port만 바꿔서 별도 compose project를 띄울 수 있다. Web container는 internal `postgres:5432`를 계속 쓰므로 app 설정은 바뀌지 않는다. 기존 local app이 `3000`을 사용 중이면 `WEB_PORT`와 `NEXTAUTH_URL`을 함께 바꿔 auth callback origin을 맞춘다. Production container를 HTTPS 없이 외부 HTTP IP로 임시 노출할 때는 browser가 session cookie를 저장할 수 있도록 `NEXTAUTH_COOKIE_SECURE=false`도 함께 둔다. Compose는 이 값을 `web`과 `tools` container environment에 명시적으로 전달한다. Production-style `web` service는 `MUNJIB_ENABLE_DEV_LOGIN`도 전달하므로, unset이면 production login gate가 닫히고 `true`일 때만 임시 development login을 열 수 있다.
 
 ```bash
 POSTGRES_PORT=55433 docker compose up --build
@@ -254,6 +254,10 @@ PR merge 이후에는 관련 GitHub issue가 닫혔는지 반드시 확인한다
 - `lib/wiki/feature-start.ts`
 - `lib/service-errors.ts`
 - `.githooks/pre-commit`
+- GitHub issue #143
+- `lib/auth/config.ts`
+- `app/workspaces/[workspaceSlug]/page.tsx`
+- `tests/auth/login-gate-callers.test.ts`
 - GitHub issue #25 branch separation recovery
 - User workflow decision on automatic draft PR creation after every task
 - User workflow decision to wait 5 minutes after PR review request and inspect review feedback

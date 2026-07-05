@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-03
-source_count: 50
+updated: 2026-07-04
+source_count: 53
 tags:
   - munjib
   - workflow
@@ -144,6 +144,8 @@ sudo docker image prune -f
 
 OCI server production env는 repository checkout 안의 `.env`나 `.env.docker`가 아니라 host-local secret file `/etc/munjib/env`가 기준이다. Deploy workflow는 모든 remote Compose 명령에 `docker compose --env-file "$DEPLOY_ENV_FILE"`를 명시하고, 실제 compose interpolation은 이 파일과 workflow가 넘기는 release env를 함께 사용한다. `docker-compose.yml`의 `environment:` 항목은 `${VAR:-}` 형태라서 service-level `env_file`만 추가하면 빈 문자열이 우선되어 provider credentials가 계속 비는 문제가 생길 수 있다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
 
+Issue #143의 email-only development login은 production에서 기본 disabled다. Controlled temporary access가 필요할 때만 `/etc/munjib/env`에 `MUNJIB_ENABLE_DEV_LOGIN=true`를 명시하며, `docker-compose.yml`은 이 값을 `web` service runtime env로 전달한다.
+
 ```text
 NEXTAUTH_URL="https://munjib.example.invalid"
 NEXTAUTH_COOKIE_SECURE=true
@@ -174,6 +176,7 @@ Production compose는 `postgres`, `web`, `tools` service를 가진다.
 - `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
 
 `web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
+`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate이므로 production-style `web` runtime env에만 전달한다.
 
 Dockerfile stages:
 
@@ -263,9 +266,11 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - GitHub issue #96
 - GitHub issue #98
 - GitHub issue #135
+- GitHub issue #143
 - GitHub Actions run `27016407598` deploy failure log
 - GitHub Actions run `27017475831` cancelled publish log
 - PR #99 review threads
+- PR #144 review threads
 - GitHub issue #133
 - `.github/workflows/ci-cd.yml`
 - `Dockerfile`
@@ -285,6 +290,7 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - `lib/observability/sentry-config.ts`
 - `lib/observability/sentry-scrub-event.ts`
 - `tests/github-actions/ci-cd.test.ts`
+- `tests/auth/login-gate-callers.test.ts`
 - `tests/docker/compose.test.ts`
 - `tests/observability/sentry-config.test.ts`
 - `tests/observability/sentry-scrub-event.test.ts`

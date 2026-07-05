@@ -1,4 +1,5 @@
 import { LoginForm } from "@/app/login/login-form";
+import { resolveDevLoginEnabled } from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
@@ -10,7 +11,7 @@ export default async function HomePage() {
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted px-6">
-      <LoginForm />
+      <LoginForm isDevLoginEnabled={resolveDevLoginEnabled()} />
     </main>
   );
 }

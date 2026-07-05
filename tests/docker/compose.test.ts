@@ -36,6 +36,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("localhost:3000");
     expect(compose).toContain("NEXTAUTH_SECRET");
     expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
+    expect(compose).toContain("MUNJIB_ENABLE_DEV_LOGIN");
     expect(web.build?.args).toMatchObject({
       NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
       NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
@@ -49,6 +50,7 @@ describe("Docker web service configuration", () => {
       SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
     });
     expect(web.environment).toMatchObject({
+      MUNJIB_ENABLE_DEV_LOGIN: "${MUNJIB_ENABLE_DEV_LOGIN:-}",
       SENTRY_DSN: "${SENTRY_DSN:-}",
       SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}",
       SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
