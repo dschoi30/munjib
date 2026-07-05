@@ -15,6 +15,13 @@ export function resolveAuthCookieSecure() {
   return process.env.NODE_ENV === "production";
 }
 
+export function resolveDevLoginEnabled() {
+  const override = process.env.MUNJIB_ENABLE_DEV_LOGIN?.trim().toLowerCase();
+  if (override === "true" || override === "1" || override === "yes") return true;
+  if (override === "false" || override === "0" || override === "no") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 export const authOptions: NextAuthOptions = {
   secret: resolveAuthSecret(),
   session: { strategy: "jwt" },
@@ -37,6 +44,8 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
       },
       async authorize(credentials) {
+        if (!resolveDevLoginEnabled()) return null;
+
         const email = credentials?.email?.toLowerCase().trim();
         if (!email) return null;
 

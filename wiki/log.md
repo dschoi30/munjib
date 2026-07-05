@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-04
-source_count: 309
+source_count: 314
 tags:
   - log
   - munjib
@@ -18,6 +18,30 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-04T23:35:00+0900 - issue-143 auth launch foundation review follow-up
+
+- Result: PR #144 review feedback closed the remaining launch-gate gaps for direct workspace entry and production Docker runtime env.
+- Coverage: unauthenticated `/workspaces/[workspaceSlug]` now passes `resolveDevLoginEnabled()` into `LoginForm`, all server LoginForm callers have focused contract coverage, and `docker-compose.yml` forwards `MUNJIB_ENABLE_DEV_LOGIN` to the production-style `web` service so `/etc/munjib/env` overrides reach runtime auth.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #144 review threads, `app/workspaces/[workspaceSlug]/page.tsx`, `docker-compose.yml`, `tests/auth/login-gate-callers.test.ts`, `tests/docker/compose.test.ts`.
+- Verification: red focused Vitest coverage reproduced the missing workspace caller gate and missing Docker env passthrough, then passed after the fixes.
+
+## 2026-07-04T23:20:00+0900 - issue-143 auth launch foundation implementation
+
+- Result: Issue #143 made the existing email-only development login launch-safe by gating it behind `MUNJIB_ENABLE_DEV_LOGIN`.
+- Coverage: `resolveDevLoginEnabled()` defaults local development to enabled and production to disabled; the Credentials provider returns `null` before querying `User` when disabled; `/` and `/login` pass the server gate into `LoginForm`; `/login` is forced dynamic so disabled/enabled controls reflect the runtime env gate; the login form disables seeded-user shortcuts, email input, and submit while showing localized disabled-state copy.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #143, `lib/auth/config.ts`, `app/login/login-form.tsx`, `app/login/page.tsx`, `app/page.tsx`, `lib/i18n/messages.ts`, `tests/auth/config.test.ts`, `tests/components/login-form.test.tsx`.
+- Verification: focused auth config and login form Vitest coverage, TypeScript check, wiki manifest generation, wiki lint, staged wiki sync-plan, and staged wiki sync-check.
+
+## 2026-07-04T22:54:19+0900 - issue-143 auth launch foundation design
+
+- Result: Issue #143 design scopes auth foundation work to launch-safe hardening of the existing email-only development login path.
+- Coverage: The design keeps local seeded-user login available by default outside production, gates production development login behind explicit env such as `MUNJIB_ENABLE_DEV_LOGIN=true`, and leaves password auth, OAuth, SSO/SAML, invitation flow, and user lifecycle management as follow-up decisions.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #143, `lib/auth/config.ts`, `app/login/login-form.tsx`, `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`.
+- Verification: design-only update; implementation tests will be added with the auth gate implementation plan.
 
 ## 2026-07-04T18:46:12+0900 - Honen neutral hover and mobile comment composer follow-up
 
