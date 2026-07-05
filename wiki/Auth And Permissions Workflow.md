@@ -3,10 +3,10 @@ id: workflow-auth-and-permissions
 title: Auth And Permissions Workflow
 type: workflow
 status: active
-summary: Munjib의 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission, folder 관리 권한 흐름.
+summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-05
-source_count: 27
+updated: 2026-07-06
+source_count: 34
 tags:
   - munjib
   - auth
@@ -21,16 +21,16 @@ links:
 
 # Auth And Permissions Workflow
 
-Munjib의 현재 인증은 NextAuth 기반이며, 개발 환경에서는 credentials provider로 seed user를 선택해 로그인한다. Issue #143 설계는 이 email-only development login을 launch-safe하게 gate해 production에서는 명시 env 없이 사용할 수 없게 만드는 slice다. 운영 password auth, OAuth, SSO/SAML은 제품 방향에는 있지만 현재 구현의 중심은 아니다.
+Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 계속 gate되어 production에서는 명시 env 없이 열리지 않는다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
 
 ## Development login gate
 
-Issue #143 keeps the existing email-only Credentials provider for development
-but gates authentication with `MUNJIB_ENABLE_DEV_LOGIN`. Local development
+Issue #143 keeps the email-only `development-login` Credentials provider for
+development but gates authentication with `MUNJIB_ENABLE_DEV_LOGIN`. Local development
 defaults to enabled so seed users can keep signing in, while production defaults
 to disabled unless an operator explicitly sets `MUNJIB_ENABLE_DEV_LOGIN=true`.
 When disabled, the provider returns `null` before querying `User`, and the login
-form renders disabled controls plus localized disabled-state copy.
+form does not render the development shortcut section.
 
 `/login` is forced dynamic so the disabled/enabled UI reflects the runtime env
 gate rather than a statically baked build-time value. `/`, `/login`, and the
@@ -42,7 +42,7 @@ service environment, so a host-local `/etc/munjib/env` override can reach the
 runtime auth helper when operators intentionally enable the temporary
 development login path.
 
-이 slice는 password hash, password reset, OAuth, SSO/SAML, invitation flow, user lifecycle management를 추가하지 않는다. 목표는 지금 존재하는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다.
+이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
 
 ## Session helper
 
@@ -61,6 +61,40 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 `LoginForm`은 `callbackUrl`이 `/workspaces/...` 같은 app-local path이면 `signIn(..., { redirect: false })`가 반환한 absolute URL의 origin을 그대로 사용하지 않고 callback path로 이동한다. NextAuth가 server-side `NEXTAUTH_URL` 기준의 `http://localhost:3000/...` URL을 반환할 수 있기 때문에, client-side 이동은 현재 browser origin을 유지하는 relative path를 우선한다.
 
 Callback sanitization은 단순 string prefix check가 아니라 `new URL(value, window.location.origin)` parsing 결과의 `origin`이 현재 browser origin과 같은지 확인한다. `/\evil.example`처럼 browser가 protocol-relative external URL로 normalize할 수 있는 malformed path는 기본 `/workspaces/company-handbook` callback으로 낮춰 `signIn()`에도 unsafe callback을 전달하지 않는다.
+
+Issue #146 adds a post-auth landing step. The login form sends NextAuth to
+`/login/redirect?callbackUrl=<workspace-path>` after Google, password, signup,
+trial, or development shortcut sign-in. The client redirect page waits for the
+hydrated display language, then POSTs that language and callback to
+`/api/auth/landing`. The landing route ensures the current user has a workspace
+and returns either an accessible sanitized callback workspace, the first
+accessible workspace, or `/login`.
+
+## Launch signup/login stack
+
+Issue #146 implements the Real Auth Stack variant from the Lazyweb report. The
+login UI waits for `useI18n().isHydrated` before rendering auth text, so a saved
+Korean display language does not flash English copy first. The hydrated form
+renders the report hierarchy: `Welcome back`, Google button, `or` divider,
+email field, password field with forgot-password action and reveal icon, dark
+primary sign-in button, create-account toggle, and read-only demo row. English
+and Korean strings live in `lib/i18n/messages.ts`.
+
+`lib/auth/config.ts` now exposes distinct NextAuth providers:
+
+- `password`: credentials provider that finds `User.passwordHash` by normalized email and verifies it with `verifyPassword()`.
+- `trial`: credentials provider with no browser-visible secret; it signs in the seeded `mjtrial@munjib.com` account.
+- `development-login`: gated seed-user shortcut controlled by `MUNJIB_ENABLE_DEV_LOGIN`.
+- `google`: OAuth provider added only when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present. The `signIn` callback rejects Google profiles whose email is not verified.
+
+`/api/auth/signup` creates email/password accounts through
+`createPasswordSignup()`. It normalizes email, enforces an 8-character minimum
+password, hashes the password with the existing `scrypt` helper, creates the
+`User`, and provisions a personal organization plus default workspace. The
+workspace name is localized from the hydrated UI language: `My Workspace` for
+English and `내 워크스페이스` for Korean. Workspace creation also calls the
+launch membership bootstrap so the new user is `OWNER`, `mjadmin@munjib.com`
+is `ADMIN`, and `mjtrial@munjib.com` is `VIEWER`.
 
 ## Workspace role
 
@@ -98,7 +132,7 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 
 ## Launch account foundation
 
-Issue #145 adds durable account columns and OAuth-ready NextAuth adapter tables without changing the production login UX yet. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by later email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows in a later slice.
+Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
 
 `lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
 
@@ -123,10 +157,16 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `lib/auth/session.ts`
 - `app/login/login-form.tsx`
 - `app/login/page.tsx`
+- `app/login/redirect/page.tsx`
 - `app/page.tsx`
 - `app/workspaces/[workspaceSlug]/page.tsx`
+- `app/api/auth/signup/route.ts`
+- `app/api/auth/landing/route.ts`
+- `lib/auth/provisioning.ts`
 - `docker-compose.yml`
 - `lib/i18n/messages.ts`
+- `docs/superpowers/specs/2026-07-06-launch-signup-login-real-auth-stack-design.md`
+- `docs/superpowers/plans/2026-07-06-launch-signup-login-real-auth-stack.md`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`
 - `docs/superpowers/plans/2026-07-06-launch-auth-accounts-foundation-completion.md`
@@ -135,6 +175,7 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `lib/wiki-links/service.ts`
 - `lib/attachments/service.ts`
 - `tests/auth/config.test.ts`
+- `tests/auth/provisioning.test.ts`
 - `tests/auth/login-gate-callers.test.ts`
 - `tests/components/login-form.test.tsx`
 - `tests/docker/compose.test.ts`

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-04
-source_count: 314
+updated: 2026-07-06
+source_count: 322
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-06T01:52:00+09:00 - issue-146 launch signup/login implementation
+
+- Result: Issue #146 implements the Lazyweb Hypothesis #3 Real Auth Stack variant for launch signup/login.
+- Coverage: `LoginForm` waits for hydrated browser language before rendering auth text, matches the Lazyweb mockup hierarchy for Google, email/password, create-account, and read-only demo entry, and sends all auth providers through `/login/redirect` so `/api/auth/landing` can provision/resolve an accessible workspace. `authOptions` now has distinct `password`, `trial`, gated `development-login`, and optional `google` providers; Google sign-in rejects unverified email profiles. `/api/auth/signup` creates password users, hashes credentials, provisions localized default workspaces, and applies launch admin/trial membership bootstrap rows.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #146, Lazyweb report `https://www.lazyweb.com/report/lazyweb/3d6366ab-9fe9-4a97-84c1-e3a4a70a9695/?source=create`, `app/login/login-form.tsx`, `app/login/redirect/page.tsx`, `app/api/auth/signup/route.ts`, `app/api/auth/landing/route.ts`, `lib/auth/config.ts`, `lib/auth/provisioning.ts`, `lib/i18n/messages.ts`, `tests/auth/config.test.ts`, `tests/auth/provisioning.test.ts`, `tests/components/login-form.test.tsx`.
+- Verification: focused auth/login/provisioning Vitest coverage passed, related auth/i18n/workspace permission regressions passed, `tsc --noEmit` passed via local binary, Prisma schema validation passed, full Vitest passed against a fresh migrated local Postgres on port 55435 (87 files / 941 tests), `git diff --check` passed, and Playwright screenshot comparison against the Hypothesis #3 mockup passed after spacing/icon/layout iteration. `pnpm` wrappers remain blocked by the ignored-builds guard.
 
 ## 2026-07-05T14:55:00+00:00 - maintenance
 

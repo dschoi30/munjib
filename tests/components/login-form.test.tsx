@@ -19,6 +19,13 @@ beforeEach(() => {
   let store: Record<string, string> = {};
   authMock.signIn.mockReset();
   authMock.signOut.mockReset();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ redirectPath: "/workspaces/company-handbook" }),
+    }),
+  );
 
   Object.defineProperty(window, "localStorage", {
     configurable: true,
@@ -44,6 +51,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -62,43 +70,153 @@ function renderLoginForm(
 }
 
 describe("LoginForm", () => {
-  it("uses the selected Korean display language for login chrome and errors", async () => {
+  it("waits for the stored Korean display language before rendering auth text", async () => {
     window.localStorage.setItem("munjib:language", "ko");
-    authMock.signIn.mockResolvedValue({ error: "CredentialsSignin" });
 
     renderLoginForm();
 
-    expect(await screen.findByRole("heading", { name: "개발 로그인" })).toBeTruthy();
-    expect(screen.getByText("owner@example.com, editor@example.com, viewer@example.com 중 하나를 사용하세요.")).toBeTruthy();
-    expect(screen.getByLabelText("이메일")).toHaveProperty("value", "owner@example.com");
+    expect(screen.queryByRole("heading", { name: "Welcome back" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "다시 오신 것을 환영합니다" })).toBeTruthy();
+    expect(screen.getByText("문집을 계속 사용하려면 로그인하세요.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Google로 계속하기" })).toBeTruthy();
+    expect(screen.getByLabelText("이메일")).toBeTruthy();
+    expect(screen.getByLabelText("비밀번호")).toBeTruthy();
     expect(screen.getByRole("button", { name: "로그인" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "로컬 세션 지우기" })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole("button", { name: "로그인" }));
-
-    expect(
-      await screen.findByText(
-        "일치하는 개발 사용자를 찾을 수 없습니다. pnpm run db:seed를 실행한 뒤 목록의 계정 중 하나로 다시 시도하세요.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "데모 둘러보기(읽기 전용) 가입 없이" })).toBeTruthy();
   });
 
-  it("disables development login controls when the server gate is off", async () => {
-    renderLoginForm(undefined, { isDevLoginEnabled: false });
+  it("renders the Hypothesis #3 Real Auth Stack hierarchy in English", async () => {
+    renderLoginForm();
 
-    expect(await screen.findByText("Development email login is disabled for this environment.")).toBeTruthy();
-    expect(screen.getByLabelText("Email")).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "owner@example.com" })).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Sign in" })).toHaveProperty("disabled", true);
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.getByText("Sign in to continue to Munjib.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeTruthy();
+    expect(screen.getByText("or")).toBeTruthy();
+    expect(screen.getByLabelText("Email")).toBeTruthy();
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByText("Don't have an account?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Create one" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Explore demo (read-only) No signup" })).toBeTruthy();
+  });
 
+  it("submits email and password through the password provider", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "http://localhost:3000/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    });
+
+    renderLoginForm();
+
+    fireEvent.change(await screen.findByLabelText("Email"), {
+      target: { value: "member@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
 
-    expect(authMock.signIn).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("password", {
+        email: "member@example.com",
+        password: "correct horse",
+        redirect: false,
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+      });
+    });
+    expect(window.location.assign).toHaveBeenCalledWith(
+      "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    );
+  });
+
+  it("starts Google sign-in with the hydrated post-auth redirect", async () => {
+    authMock.signIn.mockResolvedValue(undefined);
+
+    renderLoginForm("/workspaces/team-handbook");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
+
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("google", {
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fteam-handbook",
+      });
+    });
+  });
+
+  it("creates an email account with the hydrated language before signing in", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    authMock.signIn.mockResolvedValue({
+      url: "http://localhost:3000/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    });
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ok: true,
+        email: "new-member@example.com",
+        redirectPath: "/workspaces/my-workspace-user-1",
+      }),
+    } as Response);
+
+    renderLoginForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: "만들기" }));
+    fireEvent.change(screen.getByLabelText("이메일"), {
+      target: { value: "new-member@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("비밀번호"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "계정 만들기" }));
+
+    await waitFor(() => {
+      expect(fetch).toHaveBeenCalledWith("/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: "new-member@example.com",
+          password: "correct horse",
+          language: "ko",
+        }),
+      });
+    });
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("password", {
+        email: "new-member@example.com",
+        password: "correct horse",
+        redirect: false,
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+      });
+    });
+  });
+
+  it("starts the trial provider without sending a password", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "http://localhost:3000/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    });
+
+    renderLoginForm();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("trial", {
+        redirect: false,
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+      });
+    });
+  });
+
+  it("keeps development login shortcuts hidden when the server gate is off", async () => {
+    renderLoginForm(undefined, { isDevLoginEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "owner@example.com" })).toBeNull();
+    expect(screen.queryByText("Development email login")).toBeNull();
   });
 
   it("keeps the default post-login redirect on the current browser origin", async () => {
     authMock.signIn.mockResolvedValue({
-      url: "http://localhost:3000/workspaces/company-handbook",
+      url: "http://localhost:3000/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
     });
 
     renderLoginForm();
@@ -106,13 +224,16 @@ describe("LoginForm", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(authMock.signIn).toHaveBeenCalledWith("credentials", {
-        email: "owner@example.com",
+      expect(authMock.signIn).toHaveBeenCalledWith("password", {
+        email: "",
+        password: "",
         redirect: false,
-        callbackUrl: "/workspaces/company-handbook",
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
       });
     });
-    expect(window.location.assign).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(window.location.assign).toHaveBeenCalledWith(
+      "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    );
   });
 
   it("falls back to the default post-login redirect for browser-normalized external callback paths", async () => {
@@ -125,12 +246,15 @@ describe("LoginForm", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Sign in" }));
 
     await waitFor(() => {
-      expect(authMock.signIn).toHaveBeenCalledWith("credentials", {
-        email: "owner@example.com",
+      expect(authMock.signIn).toHaveBeenCalledWith("password", {
+        email: "",
+        password: "",
         redirect: false,
-        callbackUrl: "/workspaces/company-handbook",
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
       });
     });
-    expect(window.location.assign).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(window.location.assign).toHaveBeenCalledWith(
+      "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    );
   });
 });
