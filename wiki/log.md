@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-06
-source_count: 322
+source_count: 328
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-06T02:10:00+09:00 - issue-146 PR review follow-up
+
+- Result: PR #149 review feedback hardened the launch signup/login flow while preserving the language-first auth text rendering behavior.
+- Coverage: Email/password submission now locks Google, email, password, password reveal, forgot-password, mode toggle, demo, and dev-login controls until the active auth action settles. Post-login workspace provisioning now runs the default-workspace creation path inside a Prisma transaction before resolving the user-visible landing redirect.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #149 review threads, `app/login/login-form.tsx`, `lib/auth/provisioning.ts`, `tests/auth/provisioning-current-user.test.ts`, `tests/components/login-form.test.tsx`.
+- Verification: `./node_modules/.bin/vitest run tests/auth/config.test.ts tests/auth/provisioning-current-user.test.ts tests/auth/provisioning.test.ts tests/components/login-form.test.tsx`, `./node_modules/.bin/tsc --noEmit`.
 
 ## 2026-07-06T01:52:00+09:00 - issue-146 launch signup/login implementation
 

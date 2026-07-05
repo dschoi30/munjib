@@ -202,7 +202,7 @@ export function LoginForm({
               size="lg"
               onClick={onGoogleSignIn}
               aria-busy={activeAction === "google"}
-              disabled={isSubmitting && activeAction !== "google"}
+              disabled={isSubmitting}
               className="mt-5 h-10 w-full border-border bg-surface text-sm font-medium text-ink shadow-none hover:bg-surface-muted"
             >
               <GoogleMark />
@@ -228,6 +228,7 @@ export function LoginForm({
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
+              disabled={isSubmitting}
               autoComplete="email"
               placeholder="owner@example.com"
               className="mt-2 h-10 rounded-md text-sm"
@@ -241,12 +242,13 @@ export function LoginForm({
               </label>
               {!isSignupMode ? (
                 <button
-                  type="button"
-                  onClick={() => {
-                    setErrorKey(null);
-                  setStatusKey("login.passwordResetUnavailable");
-                }}
-                  className="text-sm font-medium text-[#174a76] hover:text-[#123a5e]"
+	                  type="button"
+	                  onClick={() => {
+	                    setErrorKey(null);
+	                    setStatusKey("login.passwordResetUnavailable");
+	                  }}
+                  disabled={isSubmitting}
+                  className="text-sm font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {t("login.forgotPassword")}
                 </button>
@@ -259,6 +261,7 @@ export function LoginForm({
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
+                disabled={isSubmitting}
                 autoComplete={isSignupMode ? "new-password" : "current-password"}
                 placeholder="••••••••••"
                 className="h-10 rounded-md pr-11 text-sm"
@@ -266,8 +269,9 @@ export function LoginForm({
               <button
                 type="button"
                 onClick={() => setShowPassword((current) => !current)}
+                disabled={isSubmitting}
                 aria-label={showPassword ? t("login.hidePassword") : t("login.showPassword")}
-            className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink"
+                className="absolute right-2 top-1/2 inline-flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
@@ -278,7 +282,7 @@ export function LoginForm({
             type="submit"
             size="lg"
             aria-busy={activeAction === "password" || activeAction === "signup"}
-            disabled={isSubmitting && activeAction !== "password" && activeAction !== "signup"}
+            disabled={isSubmitting}
             className="h-10 w-full rounded-md bg-[#161616] text-sm font-semibold text-white hover:bg-black"
           >
             {buttonLabel({
@@ -296,12 +300,13 @@ export function LoginForm({
           <span>{isSignupMode ? t("login.hasAccount") : t("login.noAccount")}</span>
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => {
               setMode((current) => (current === "signin" ? "signup" : "signin"));
               setErrorKey(null);
               setStatusKey(null);
             }}
-            className="font-medium text-[#174a76] hover:text-[#123a5e]"
+            className="font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isSignupMode ? t("login.backToSignIn") : t("login.createOne")}
           </button>
@@ -312,7 +317,7 @@ export function LoginForm({
         <button
           type="button"
           onClick={onTrialSignIn}
-          disabled={isSubmitting && activeAction !== "trial"}
+          disabled={isSubmitting}
           aria-busy={activeAction === "trial"}
           aria-label={`${t("login.trial")} ${t("login.noSignup")}`}
           className="flex w-full items-center gap-3 rounded-md px-7 py-1 text-left transition-colors duration-fast hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
@@ -356,6 +361,7 @@ export function LoginForm({
             variant="ghost"
             size="sm"
             onClick={clearSession}
+            disabled={isSubmitting}
             className="mt-2 w-full text-xs"
           >
             {t("login.clearSession")}

@@ -129,6 +129,47 @@ describe("LoginForm", () => {
     );
   });
 
+  it("locks auth controls while password submission is in flight", async () => {
+    authMock.signIn.mockReturnValue(new Promise(() => {}));
+
+    renderLoginForm();
+
+    fireEvent.change(await screen.findByLabelText("Email"), {
+      target: { value: "member@example.com" },
+    });
+    fireEvent.change(screen.getByLabelText("Password"), {
+      target: { value: "correct horse" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => {
+      expect(authMock.signIn).toHaveBeenCalledWith("password", {
+        email: "member@example.com",
+        password: "correct horse",
+        redirect: false,
+        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+      });
+    });
+
+    expect(screen.getByLabelText("Email")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("Password")).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Show password" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Forgot password?" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+    expect(screen.getByRole("button", { name: "Signing in..." })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Create one" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Explore demo (read-only) No signup" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
   it("starts Google sign-in with the hydrated post-auth redirect", async () => {
     authMock.signIn.mockResolvedValue(undefined);
 

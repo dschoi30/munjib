@@ -197,11 +197,13 @@ export async function ensureCurrentUserWorkspaceAndRedirect(input: {
     select: { id: true, email: true, name: true },
   });
   if (!user) return "/login";
-  await ensureDefaultWorkspaceForUser(prisma as unknown as ProvisioningTx, {
-    userId: user.id,
-    email: user.email,
-    name: user.name,
-    language: input.language,
+  await prisma.$transaction(async (tx) => {
+    await ensureDefaultWorkspaceForUser(tx as unknown as ProvisioningTx, {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      language: input.language,
+    });
   });
   return resolveAccessibleWorkspaceRedirect(prisma as unknown as RedirectTx, {
     userId: user.id,
