@@ -84,14 +84,16 @@ constants and membership helpers. `ensureWorkspaceLaunchMemberships()` accepts a
 Prisma transaction-like client, a workspace id, and an optional owner
 membership. It looks up the launch users by email and upserts one membership row
 per owner, admin seed, and trial seed. If the owner is also a launch account,
-the explicit owner role wins. `backfillLaunchMembershipsForAllWorkspaces()`
-loops over existing workspaces and applies the same helper.
+the explicit owner role wins. Existing launch-account `OWNER` rows also stay
+`OWNER` during backfill. `backfillLaunchMembershipsForAllWorkspaces()` fetches
+the launch users once, loops over existing workspaces, and applies the same
+helper.
 
 `prisma/seed.ts` creates the launch users with password hashes and
-`emailVerified` timestamps, preserves existing launch password hashes on rerun,
-preserves the existing development fixture users, seeds the handbook workspace,
-then ensures owner/admin/trial memberships and backfills launch memberships
-across any other existing workspace.
+`emailVerified` timestamps, preserves existing launch password hashes and
+verification timestamps on rerun, preserves the existing development fixture
+users, seeds the handbook workspace, then ensures owner/admin/trial memberships
+and backfills launch memberships across any other existing workspace.
 
 ## Error Handling And Data Safety
 

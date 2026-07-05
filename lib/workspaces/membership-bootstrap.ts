@@ -28,6 +28,10 @@ type WorkspaceMembershipBootstrapTx = {
     findMany(args: { select: { id: true } }): Promise<Array<{ id: string }>>;
   };
   workspaceMember: {
+    findMany(args: {
+      where: { workspaceId: string; userId: { in: string[] } };
+      select: { userId: true; role: true };
+    }): Promise<Array<{ userId: string; role: WorkspaceRole }>>;
     upsert(args: {
       where: { workspaceId_userId: { workspaceId: string; userId: string } };
       update: { role: WorkspaceRole };
@@ -40,11 +44,24 @@ export async function ensureWorkspaceLaunchMemberships(
   tx: WorkspaceMembershipBootstrapTx,
   workspaceId: string,
   ownerMembership?: { userId: string; role?: WorkspaceRole },
+  prefetchedLaunchUsers?: Array<{ id: string; email: string }>,
 ) {
-  const launchUsers = await tx.user.findMany({
-    where: { email: { in: launchAccountSeeds.map((account) => account.email) } },
-    select: { id: true, email: true },
-  });
+  const launchUsers =
+    prefetchedLaunchUsers ??
+    (await tx.user.findMany({
+      where: { email: { in: launchAccountSeeds.map((account) => account.email) } },
+      select: { id: true, email: true },
+    }));
+  const existingLaunchOwners = new Set(
+    (
+      await tx.workspaceMember.findMany({
+        where: { workspaceId, userId: { in: launchUsers.map((user) => user.id) } },
+        select: { userId: true, role: true },
+      })
+    )
+      .filter((membership) => membership.role === "OWNER")
+      .map((membership) => membership.userId),
+  );
 
   const membershipsByUserId = new Map<string, WorkspaceRole>();
   if (ownerMembership) {
@@ -55,8 +72,10 @@ export async function ensureWorkspaceLaunchMemberships(
     if (membershipsByUserId.has(user.id)) continue;
 
     const role =
-      launchAccountSeeds.find((account) => account.email === user.email)?.workspaceRole ??
-      "VIEWER";
+      existingLaunchOwners.has(user.id)
+        ? "OWNER"
+        : launchAccountSeeds.find((account) => account.email === user.email)?.workspaceRole ??
+          "VIEWER";
     membershipsByUserId.set(user.id, role);
   }
 
@@ -75,7 +94,11 @@ export async function ensureWorkspaceLaunchMemberships(
 
 export async function backfillLaunchMembershipsForAllWorkspaces(tx: WorkspaceMembershipBootstrapTx) {
   const workspaces = await tx.workspace.findMany({ select: { id: true } });
+  const launchUsers = await tx.user.findMany({
+    where: { email: { in: launchAccountSeeds.map((account) => account.email) } },
+    select: { id: true, email: true },
+  });
   for (const workspace of workspaces) {
-    await ensureWorkspaceLaunchMemberships(tx, workspace.id);
+    await ensureWorkspaceLaunchMemberships(tx, workspace.id, undefined, launchUsers);
   }
 }

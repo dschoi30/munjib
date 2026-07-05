@@ -18,11 +18,11 @@ async function main() {
   for (const account of launchAccountSeeds) {
     const existingUser = await prisma.user.findUnique({
       where: { email: account.email },
-      select: { passwordHash: true },
+      select: { passwordHash: true, emailVerified: true },
     });
     const passwordHash =
       existingUser?.passwordHash ?? (await hashPassword(launchAccountPasswords[account.email]));
-    const emailVerified = new Date();
+    const emailVerified = existingUser?.emailVerified ?? new Date();
 
     await prisma.user.upsert({
       where: { email: account.email },

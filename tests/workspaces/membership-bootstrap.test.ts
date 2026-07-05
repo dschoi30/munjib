@@ -5,7 +5,9 @@ import {
   launchAccountSeeds,
 } from "@/lib/workspaces/membership-bootstrap";
 
-function createTxMock() {
+function createTxMock(
+  existingMemberships: Array<{ workspaceId: string; userId: string; role: string }> = [],
+) {
   return {
     user: {
       findMany: vi.fn().mockResolvedValue([
@@ -17,6 +19,17 @@ function createTxMock() {
       findMany: vi.fn().mockResolvedValue([{ id: "workspace-1" }, { id: "workspace-2" }]),
     },
     workspaceMember: {
+      findMany: vi.fn().mockImplementation(({ where }) =>
+        Promise.resolve(
+          existingMemberships
+            .filter(
+              (membership) =>
+                membership.workspaceId === where.workspaceId &&
+                where.userId.in.includes(membership.userId),
+            )
+            .map(({ userId, role }) => ({ userId, role })),
+        ),
+      ),
       upsert: vi.fn().mockResolvedValue(undefined),
     },
   };
@@ -70,6 +83,7 @@ describe("workspace membership bootstrap", () => {
     await backfillLaunchMembershipsForAllWorkspaces(tx);
 
     expect(tx.workspace.findMany).toHaveBeenCalledWith({ select: { id: true } });
+    expect(tx.user.findMany).toHaveBeenCalledTimes(1);
     expect(tx.workspaceMember.upsert).toHaveBeenCalledTimes(4);
     expect(tx.workspaceMember.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -77,6 +91,23 @@ describe("workspace membership bootstrap", () => {
         update: { role: "VIEWER" },
       }),
     );
+  });
+
+  it("preserves existing launch account owners during backfill", async () => {
+    const tx = createTxMock([{ workspaceId: "workspace-1", userId: "admin-user", role: "OWNER" }]);
+
+    await backfillLaunchMembershipsForAllWorkspaces(tx);
+
+    expect(tx.workspaceMember.upsert).toHaveBeenCalledWith({
+      where: { workspaceId_userId: { workspaceId: "workspace-1", userId: "admin-user" } },
+      update: { role: "OWNER" },
+      create: { workspaceId: "workspace-1", userId: "admin-user", role: "OWNER" },
+    });
+    expect(tx.workspaceMember.upsert).toHaveBeenCalledWith({
+      where: { workspaceId_userId: { workspaceId: "workspace-2", userId: "admin-user" } },
+      update: { role: "ADMIN" },
+      create: { workspaceId: "workspace-2", userId: "admin-user", role: "ADMIN" },
+    });
   });
 
   it("preserves an explicit owner role when the owner is a launch account", async () => {

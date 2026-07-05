@@ -102,7 +102,7 @@ Issue #145 adds durable account columns and OAuth-ready NextAuth adapter tables 
 
 `lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
 
-`lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `mjadmin@munjib.com` as `ADMIN` plus `mjtrial@munjib.com` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. The backfill helper applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
+`lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `mjadmin@munjib.com` as `ADMIN` plus `mjtrial@munjib.com` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. Existing launch-account `OWNER` rows also stay `OWNER` during backfill. The backfill helper fetches launch users once and applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
 
 ## Seed 사용자
 
@@ -115,7 +115,7 @@ Issue #145 adds durable account columns and OAuth-ready NextAuth adapter tables 
 - `viewer@example.com`
 - workspace: `company-handbook`
 
-Seed reruns preserve existing launch account hashes, update email verification timestamps, preserve the local development fixture users, and upsert launch memberships so each existing workspace has one admin launch row and one trial viewer row. 테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
+Seed reruns preserve existing launch account hashes and email verification timestamps, preserve the local development fixture users, and upsert launch memberships so each existing workspace has one admin launch row and one trial viewer row unless a launch account is already an explicit `OWNER`. 테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
 
 ## 근거
 
