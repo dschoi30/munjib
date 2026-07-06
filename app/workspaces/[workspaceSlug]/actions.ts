@@ -12,6 +12,9 @@ import {
   uploadPastedDocumentImageAttachment,
 } from "@/lib/attachments/service";
 import { requireCurrentUser } from "@/lib/auth/session";
+import {
+  defaultWorkspaceNameForLanguage,
+} from "@/lib/auth/provisioning";
 import { createComment } from "@/lib/comments/service";
 import { archiveFolder, createFolder, renameFolder } from "@/lib/folders/service";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -28,6 +31,12 @@ import {
 } from "@/lib/documents/service";
 import { updateWorkspaceArchivedDocumentRetentionPolicy } from "@/lib/workspaces/retention-service";
 import { parseArchivedDocumentRetentionPolicy } from "@/lib/workspaces/retention-policy";
+import { parseLanguage } from "@/lib/i18n/language";
+import {
+  archiveWorkspace,
+  createWorkspace,
+  renameWorkspace,
+} from "@/lib/workspaces/management-service";
 
 const maxPastedImageBytes = 5 * 1024 * 1024;
 const pastedImageMimeTypes = new Set(["image/png", "image/jpeg", "image/gif", "image/webp"]);
@@ -145,6 +154,84 @@ export async function updateWorkspaceRetentionPolicyAction(
     };
   }
 }
+
+export async function createWorkspaceAction(currentWorkspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const language = parseLanguage(formData.get("language")) ?? "en";
+  const name =
+    String(formData.get("name") ?? "").trim() || defaultWorkspaceNameForLanguage(language);
+
+  try {
+    const workspace = await createWorkspace({
+      actorId: user.id,
+      currentWorkspaceSlug,
+      name,
+      language,
+    });
+    revalidatePath(`/workspaces/${currentWorkspaceSlug}`);
+    redirect(`/workspaces/${workspace.slug}`);
+  } catch (error) {
+    if (isWorkspaceManagementActionError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function renameWorkspaceAction(workspaceSlug: string, formData: FormData) {
+  const user = await requireCurrentUser();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) {
+    return { error: SERVICE_ERROR_CODES.WORKSPACE_NAME_REQUIRED };
+  }
+
+  try {
+    const workspace = await renameWorkspace({
+      actorId: user.id,
+      workspaceSlug,
+      name,
+    });
+    revalidatePath(`/workspaces/${workspaceSlug}`);
+    return { workspaceName: workspace.name };
+  } catch (error) {
+    if (isWorkspaceManagementActionError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
+
+export async function archiveWorkspaceAction(workspaceSlug: string, _formData: FormData) {
+  const user = await requireCurrentUser();
+
+  try {
+    const result = await archiveWorkspace({
+      actorId: user.id,
+      workspaceSlug,
+    });
+    revalidatePath(`/workspaces/${workspaceSlug}`);
+    redirect(`/workspaces/${result.fallbackWorkspaceSlug}`);
+  } catch (error) {
+    if (isWorkspaceManagementActionError(error)) {
+      return { error: error.message };
+    }
+    throw error;
+  }
+}
+
+function isWorkspaceManagementActionError(error: unknown): error is Error {
+  if (!(error instanceof Error)) return false;
+  return workspaceManagementActionErrorCodes.has(error.message);
+}
+
+const workspaceManagementActionErrorCodes = new Set<string>([
+  SERVICE_ERROR_CODES.WORKSPACE_ARCHIVE_LAST_ACTIVE,
+  SERVICE_ERROR_CODES.WORKSPACE_CREATE_FORBIDDEN,
+  SERVICE_ERROR_CODES.WORKSPACE_MANAGE_FORBIDDEN,
+  SERVICE_ERROR_CODES.WORKSPACE_NAME_REQUIRED,
+  SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND,
+  SERVICE_ERROR_CODES.WORKSPACE_SLUG_AMBIGUOUS,
+]);
 
 function markdownImportFilesFromFormData(formData: FormData) {
   const batchFiles = formData

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-06-23
-source_count: 111
+updated: 2026-07-07
+source_count: 115
 tags:
   - munjib
   - workflow
@@ -39,7 +39,7 @@ flowchart TD
     User["User asks in editor"] --> Panel["AI assistant panel<br/>question + optional provider/model"]
     Panel --> AskRoute["Ask route<br/>parse JSON and validate input"]
     AskRoute --> AskService["askDocumentQuestion()"]
-    AskService --> AskPermission["Load workspace membership<br/>and selected active document"]
+    AskService --> AskPermission["Load active workspace membership<br/>and selected active document"]
     AskPermission --> AskReadable{"Selected document readable?"}
     AskReadable -- "No" --> AskNotFound["DOCUMENT_NOT_FOUND"]
     AskReadable -- "Yes" --> AskContext["buildCurrentDocumentContext()<br/>full doc, heading-aware pack,<br/>or no-heading paragraph chunks"]
@@ -70,7 +70,7 @@ flowchart TD
 | --- | --- | --- | --- |
 | UI request | `components/document-editor/ai-assistant-panel.tsx` | Saved document id, trimmed question, optional browser/workspace `chatModel` | Ask route payload; unsaved draft stays out of RAG |
 | Route validation | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts` | JSON body | Normalized `question`, validated optional provider+model pair, or stable 400 error |
-| Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Workspace role, selected active document, explicit document permissions | Permission-safe selected document |
+| Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Active workspace membership, selected active document, explicit document permissions | Permission-safe selected document |
 | Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and provider/model override | Server env plus optional `chatProvider` + `chatModel` | Effective chat provider/model; complete provider overrides do not require the default provider config; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
 | Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown, heading-aware section subset, no-heading paragraph chunk subset, or oversized-heading paragraph chunk subset with inline citation labels |
 | Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
@@ -101,16 +101,16 @@ Legacy/vector maintenance phases still exist for saved document indexing and fut
 
 Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`, optional provider+model pair, optional valid `uiLanguage`만 읽고, malformed JSON 또는 `null`/array JSON body는 missing question과 같은 `QUESTION_REQUIRED` 400 흐름으로 정규화한다. Invalid `uiLanguage`는 request rejection이 아니라 no UI language hint로 무시한다. Missing 또는 `null` `chatModel`은 no override로 처리하지만, `chatProvider`가 있으면 matching `chatModel`도 있어야 하며 provider-only override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. String override는 shared provider/model validators를 통과해야 한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
 
-Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다.
+Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 active workspace membership check, permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다. Issue #147 review follow-up 이후 archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 Ask AI context를 읽지 않는다.
 
-Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
+Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
 ## Steps
 
 Ask AI direct-context request:
 
 1. `askDocumentQuestion()`은 question을 trim하고 빈 질문이면 `QUESTION_REQUIRED`를 던진다.
-2. Workspace membership과 selected active document만 load한 뒤, workspace role과 explicit document permissions를 `filterReadableDocuments()`로 계산한다.
+2. Requested slug가 현재 actor membership이 있는 active workspace인지 확인하고 selected active document만 load한 뒤, workspace role과 explicit document permissions를 `filterReadableDocuments()`로 계산한다. Archived workspace는 `WORKSPACE_NOT_FOUND`로 중단한다.
 3. Selected document가 readable set에 없으면 `DOCUMENT_NOT_FOUND`로 중단한다.
 4. `askDocumentQuestion()`은 service boundary에서도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL만 사용해 generation config를 만든다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Embedding provider/model/dimension은 request에서 받지 않는다.
 5. `buildCurrentDocumentContext()`가 selected saved markdown을 context budget에 맞게 pack한다. 문서가 budget 안에 들어가면 전체 saved markdown을 사용하고, 너무 길면 frontmatter/fenced-code heading을 고려한 heading-aware section subset을 만든다. Heading이 없는 긴 문서와 하나의 headed section이 budget보다 큰 문서는 paragraph/chunk fallback으로 쪼갠 뒤 질문 keyword score로 관련 chunk를 고른다.
@@ -126,7 +126,7 @@ Workspace chatbot UI/API/service request:
 2. Panel submit은 trimmed message, 현재 selected document id, current display language의 `uiLanguage`, browser/workspace-scoped optional `chatProvider`/`chatModel` override를 `/assistant/messages`에 POST한다. Message fetch는 `AbortController.signal`을 사용하며, reset과 workspace change cleanup은 active send를 abort한다. Blank message, active send, pending answer, pending reset 중에는 submit handler가 새 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다. Workspace AI launcher/panel/reset/close/send labels, empty state, placeholder, generic unavailable error, model label, and thinking text are catalog-backed; persisted user/assistant message content and citations stay unchanged.
 3. Message route는 malformed JSON을 `INVALID_JSON`, blank message를 `MESSAGE_REQUIRED`, invalid `selectedDocumentId`를 `INVALID_SELECTED_DOCUMENT_ID`, invalid provider/model override를 `INVALID_CHAT_MODEL`로 service 호출 전에 정규화한다. Invalid `uiLanguage`는 request rejection이 아니라 no UI language hint로 무시한다. `chatProvider`가 있으면 matching `chatModel`도 필요하므로 provider-only payload는 service에 전달하지 않는다.
 4. `prepareWorkspaceChatMessageStream()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
-5. Workspace membership과 active documents를 load하고, workspace role과 explicit document permissions로 readable active document ids를 계산한다.
+5. Requested slug가 현재 actor membership이 있는 active workspace인지 확인하고 active documents를 load한 뒤, workspace role과 explicit document permissions로 readable active document ids를 계산한다. Archived workspace는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 chat thread나 message를 만들지 않는다.
 6. `getOrCreateActiveThread()`는 `(workspaceId, userId)`의 active thread를 재사용하거나 생성한다. Concurrent create race는 PostgreSQL partial unique index의 `P2002`를 잡고 active thread를 다시 읽어 처리한다.
 7. 기존 thread history는 display order로 정렬해 prompt와 UI에 사용한다. DB timestamp가 같은 성공 turn도 `USER`가 `ASSISTANT`보다 먼저 오도록 role order로 tie-break한다. Thread에 `memorySummary`가 있으면 retrieval query와 answer prompt의 conversation context 앞쪽에 포함한다.
 8. Workspace chat preparation도 provider-only override를 `INVALID_CHAT_MODEL`로 거부한다. Validated `chatProvider` + `chatModel` override가 있으면 default chat provider env를 먼저 읽지 않고 override provider의 server-side credential/base URL과 fixed embedding config를 함께 읽는다. Model-only legacy override는 default provider를 읽어 compatibility를 판단한다. Provider credential, base URL, embedding provider/model/dimension은 request에서 받지 않는다.

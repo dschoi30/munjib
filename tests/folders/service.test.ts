@@ -49,6 +49,23 @@ describe("folder service", () => {
     ).rejects.toThrow(SERVICE_ERROR_CODES.PARENT_FOLDER_NOT_FOUND);
   });
 
+  it("rejects creating folders in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      createFolder({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        parentFolderId: null,
+        name: "Archived Workspace Folder",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  });
+
   it("renames a folder and recalculates descendant document paths", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const operations = await createFolder({
@@ -73,6 +90,28 @@ describe("folder service", () => {
 
     const updated = await prisma.document.findUniqueOrThrow({ where: { id: document.id } });
     expect(updated.path).toBe("/people-ops/onboarding");
+  });
+
+  it("rejects renaming folders in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const operations = await createFolder({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      parentFolderId: null,
+      name: "Operations",
+    });
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      renameFolder({
+        folderId: operations.id,
+        actorId: fixture.user.id,
+        name: "People Ops",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   });
 
   it("rejects archiving non-empty folders", async () => {

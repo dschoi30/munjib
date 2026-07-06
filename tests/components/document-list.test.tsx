@@ -5,11 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
 import { I18nProvider, useI18n } from "@/components/i18n-provider";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 const router = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 const toastMock = vi.hoisted(() => vi.fn());
+const signOutMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => router,
@@ -17,6 +19,10 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("sonner", () => ({
   toast: toastMock,
+}));
+
+vi.mock("next-auth/react", () => ({
+  signOut: signOutMock,
 }));
 
 const folderFixtures = [
@@ -36,6 +42,12 @@ const folderFixtures = [
 
 const baseProps = {
   workspaceSlug: "company-handbook",
+  workspaceName: "Company Handbook",
+  currentUser: { name: "Noura", email: "noura@example.com" },
+  readableWorkspaces: [
+    { id: "workspace-current", name: "Company Handbook", slug: "company-handbook", role: "OWNER" as const },
+    { id: "workspace-eng", name: "Engineering", slug: "engineering", role: "EDITOR" as const },
+  ],
   defaultChatModel: "gemma4:e4b",
   defaultChatProvider: "openai-compatible" as const,
   availableChatProviders: {
@@ -65,8 +77,12 @@ const baseProps = {
     },
   ],
   canWrite: true,
+  canManageWorkspace: true,
   createAction: async () => {},
   createFolderAction: async () => {},
+  createWorkspaceAction: async () => ({ error: undefined }),
+  renameWorkspaceAction: async () => ({ workspaceName: "Company Handbook" }),
+  archiveWorkspaceAction: async () => ({ error: undefined }),
   importMarkdownAction: async () => ({
     documentIds: ["doc-imported"],
     imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
@@ -96,6 +112,7 @@ beforeEach(() => {
   router.push.mockReset();
   router.refresh.mockReset();
   toastMock.mockReset();
+  signOutMock.mockReset();
 
   let store: Record<string, string> = {};
 
@@ -219,6 +236,19 @@ function languageOptionCard(name: RegExp) {
   return card;
 }
 
+function openWorkspaceSettingsFromAccountDrawer() {
+  fireEvent.click(screen.getByRole("button", { name: /Account menu|계정 메뉴/ }));
+  const drawer = screen.getByRole("menu", { name: /Account menu|계정 메뉴/ });
+  fireEvent.click(
+    within(drawer).getByRole("menuitem", { name: /Workspace settings|워크스페이스 설정/ }),
+  );
+}
+
+function openImportSettingsFromAccountDrawer() {
+  openWorkspaceSettingsFromAccountDrawer();
+  fireEvent.click(screen.getByRole("button", { name: /Import|가져오기/ }));
+}
+
 function domRect({
   top = 0,
   left = 0,
@@ -334,18 +364,17 @@ describe("DocumentList", () => {
     expect(firstCommits[0]).not.toContain("Recents");
     expect(firstCommits[0]).not.toContain("Documents");
 
-    expect(await screen.findByRole("button", { name: "워크스페이스 메뉴" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "계정 메뉴" })).toBeTruthy();
     expect(screen.getByText("최근")).toBeTruthy();
   });
 
-  it("shows the workspace title inline with icon-only create controls", () => {
+  it("shows the workspace title inline without a top settings menu", () => {
     renderList();
 
     expect(screen.queryByText("Workspace")).toBeNull();
-    const workspaceMenuButton = screen.getByRole("button", { name: "Workspace menu" });
-    expect(workspaceMenuButton.textContent).toBe("Company Handbook");
-    expect(workspaceMenuButton.getAttribute("aria-expanded")).toBe("false");
-    expect(workspaceMenuButton.getAttribute("aria-haspopup")).toBe("menu");
+    expect(screen.getByText("Company Handbook")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Workspace settings" })).toBeNull();
     expect(screen.getByRole("button", { name: "Close sidebar" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "New document" }).textContent).toBe("");
@@ -357,10 +386,8 @@ describe("DocumentList", () => {
     window.localStorage.setItem("munjib:language", "ko");
     renderList();
 
-    const workspaceMenuButton = await screen.findByRole("button", {
-      name: "워크스페이스 메뉴",
-    });
-    expect(workspaceMenuButton.textContent).toBe("Company Handbook");
+    expect(await screen.findByText("Company Handbook")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "워크스페이스 메뉴" })).toBeNull();
     expect(screen.getByRole("button", { name: "사이드바 닫기" })).toBeTruthy();
 
     const toolbar = screen.getByTestId("document-create-toolbar");
@@ -378,9 +405,12 @@ describe("DocumentList", () => {
     expect(screen.getByRole("navigation", { name: "모든 문서" })).toBeTruthy();
     expect(screen.getByText("문서")).toBeTruthy();
 
-    fireEvent.click(workspaceMenuButton);
-    const workspaceMenu = screen.getByRole("menu", { name: "워크스페이스 메뉴" });
-    expect(within(workspaceMenu).getByRole("menuitem", { name: "설정" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "계정 메뉴" }));
+    const accountDrawer = screen.getByRole("menu", { name: "계정 메뉴" });
+    expect(within(accountDrawer).getByText("noura@example.com로 로그인됨")).toBeTruthy();
+    expect(
+      within(accountDrawer).getByRole("menuitem", { name: "워크스페이스 설정" }),
+    ).toBeTruthy();
 
     fireEvent.click(within(toolbar).getByRole("button", { name: "검색" }));
     expect(screen.getByLabelText("문서 검색")).toBeTruthy();
@@ -409,13 +439,13 @@ describe("DocumentList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
 
-    expect(screen.queryByRole("button", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Account menu" })).toBeNull();
     const openSidebarButton = screen.getByRole("button", { name: "Open sidebar" });
     expect(openSidebarButton).toBeTruthy();
 
     fireEvent.click(openSidebarButton);
 
-    expect(screen.getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
     expect(screen.getByText("Recents")).toBeTruthy();
   });
 
@@ -443,7 +473,8 @@ describe("DocumentList", () => {
     expect(stickyChrome.className).toContain("top-0");
     expect(stickyChrome.className).toContain("z-20");
     expect(stickyChrome.className).toContain("bg-muted");
-    expect(within(stickyChrome).getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(within(stickyChrome).getByText("Company Handbook")).toBeTruthy();
+    expect(within(stickyChrome).queryByRole("button", { name: "Workspace menu" })).toBeNull();
     expect(within(stickyChrome).getByTestId("document-create-toolbar")).toBeTruthy();
 
     const navigationBody = screen.getByTestId("document-list-navigation-body");
@@ -452,26 +483,107 @@ describe("DocumentList", () => {
     expect(within(navigationBody).getByRole("navigation", { name: "All documents" })).toBeTruthy();
   });
 
-  it("opens the workspace settings panel with import selected by default", () => {
+  it("opens the lower account drawer without repeating the current workspace", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
 
-    const workspaceMenu = screen.getByRole("menu", { name: "Workspace menu" });
-    expect(workspaceMenu.className).toContain("left-0");
-    expect(workspaceMenu.className).toContain("right-0");
-    expect(within(workspaceMenu).getByRole("menuitem", { name: "Settings" })).toBeTruthy();
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    expect(within(drawer).getByText("Signed in as noura@example.com")).toBeTruthy();
+    expect(within(drawer).getByText("Switch workspace")).toBeTruthy();
+    expect(within(drawer).getByRole("menuitem", { name: "Engineering" })).toBeTruthy();
+    expect(within(drawer).queryByText("Company Handbook")).toBeNull();
+    expect(within(drawer).queryByText("Current workspace:")).toBeNull();
+    expect(within(drawer).getByRole("menuitem", { name: "Add workspace" })).toBeTruthy();
+    expect(within(drawer).getByRole("menuitem", { name: "Workspace settings" })).toBeTruthy();
+    expect(within(drawer).getByRole("menuitem", { name: "Log out" })).toBeTruthy();
+  });
 
-    fireEvent.click(within(workspaceMenu).getByRole("menuitem", { name: "Settings" }));
+  it("keeps workspace settings reachable for writers who cannot manage workspace identity", () => {
+    renderList({
+      canManageWorkspace: false,
+      canWrite: true,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    fireEvent.click(within(drawer).getByRole("menuitem", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save workspace name" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("shows a toast when adding a workspace fails", async () => {
+    const createWorkspaceAction = vi.fn(async () => ({
+      error: SERVICE_ERROR_CODES.WORKSPACE_CREATE_FORBIDDEN,
+    }));
+    renderList({ createWorkspaceAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    fireEvent.click(within(drawer).getByRole("menuitem", { name: "Add workspace" }));
+
+    await waitFor(() => {
+      expect(createWorkspaceAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    expect(toastMock).toHaveBeenCalledWith("Workspace settings could not be saved.");
+  });
+
+  it("keeps the lower account drawer bounded when many workspaces are readable", () => {
+    renderList({
+      readableWorkspaces: [
+        baseProps.readableWorkspaces[0],
+        ...Array.from({ length: 24 }, (_, index) => ({
+          id: `workspace-${index}`,
+          name: `Workspace ${index + 1}`,
+          slug: `workspace-${index + 1}`,
+          role: "EDITOR" as const,
+        })),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    expect(drawer.className).toContain("max-h-[min(28rem,calc(100vh-7rem))]");
+    expect(drawer.className).toContain("overflow-hidden");
+    const workspaceList = screen.getByTestId("account-workspace-switch-list");
+    expect(workspaceList.className).toContain("overflow-y-auto");
+    expect(within(drawer).getByRole("menuitem", { name: "Add workspace" })).toBeTruthy();
+  });
+
+  it("switches workspace and logs out from the lower account drawer", () => {
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+
+    fireEvent.click(within(drawer).getByRole("menuitem", { name: "Engineering" }));
+    expect(router.push).toHaveBeenCalledWith("/workspaces/engineering");
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Log out" }));
+    expect(signOutMock).toHaveBeenCalledWith({ callbackUrl: "/login" });
+  });
+
+  it("opens the workspace settings panel with Workspace selected by default", () => {
+    renderList();
+
+    openWorkspaceSettingsFromAccountDrawer();
 
     const dialog = screen.getByRole("dialog", { name: "Workspace settings" });
     expect(dialog).toBeTruthy();
     expect(dialog.className).toContain("h-[80vh]");
     expect(dialog.className).toContain("max-h-[80vh]");
     expect(screen.getByRole("heading", { name: "Settings" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Import" }).getAttribute("aria-pressed")).toBe(
+    expect(screen.getByRole("button", { name: "Workspace" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
     expect(screen.getByRole("heading", { name: "Import your contents" })).toBeTruthy();
     const fileInput = screen.getByLabelText("Markdown files");
     expect(fileInput.getAttribute("accept")).toBe(
@@ -487,9 +599,7 @@ describe("DocumentList", () => {
 
   it("opens the AI settings tab and shows the server default model", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
     expect(screen.getByRole("button", { name: "AI" }).getAttribute("aria-pressed")).toBe(
@@ -505,9 +615,7 @@ describe("DocumentList", () => {
 
   it("opens the Retention settings tab with 30 days selected by default", () => {
     renderList();
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Retention" }));
 
     expect(screen.getByRole("button", { name: "Retention" }).getAttribute("aria-pressed")).toBe(
@@ -525,9 +633,7 @@ describe("DocumentList", () => {
     it("opens the Language settings tab and highlights the current language", () => {
       window.localStorage.setItem("munjib:language", "en");
       renderList();
-
-      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
       fireEvent.click(screen.getByRole("button", { name: "Language" }));
 
       expect(screen.getByRole("heading", { name: "Language" })).toBeTruthy();
@@ -541,9 +647,7 @@ describe("DocumentList", () => {
     it("keeps the current language highlighted until Save", () => {
       window.localStorage.setItem("munjib:language", "en");
       renderList();
-
-      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
       fireEvent.click(screen.getByRole("button", { name: "Language" }));
       fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
 
@@ -563,9 +667,7 @@ describe("DocumentList", () => {
     it("discards a draft language on Cancel", () => {
       window.localStorage.setItem("munjib:language", "en");
       renderList();
-
-      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
       fireEvent.click(screen.getByRole("button", { name: "Language" }));
       fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
@@ -585,9 +687,7 @@ describe("DocumentList", () => {
         originalSetItem(key, value);
       });
       renderList();
-
-      fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-      fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
       fireEvent.click(screen.getByRole("button", { name: "Language" }));
       fireEvent.click(screen.getByRole("radio", { name: /Korean/ }));
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -609,9 +709,7 @@ describe("DocumentList", () => {
       ) as ArchivedDocumentRetentionPolicyValue,
     }));
     renderList({ updateRetentionPolicyAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Retention" }));
     fireEvent.change(screen.getByLabelText("Deleted document retention"), {
       target: { value: "DAYS_90" },
@@ -634,9 +732,7 @@ describe("DocumentList", () => {
       ) as ArchivedDocumentRetentionPolicyValue,
     }));
     renderList({ updateRetentionPolicyAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "워크스페이스 메뉴" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "설정" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "보존" }));
 
     expect(screen.getByRole("option", { name: "없음" })).toBeTruthy();
@@ -658,9 +754,7 @@ describe("DocumentList", () => {
       ) as ArchivedDocumentRetentionPolicyValue,
     }));
     renderList({ updateRetentionPolicyAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Retention" }));
     fireEvent.change(screen.getByLabelText("Deleted document retention"), {
       target: { value: "DAYS_90" },
@@ -679,9 +773,7 @@ describe("DocumentList", () => {
 
   it("disables retention saving for read-only users", () => {
     renderList({ canWrite: false });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Retention" }));
 
     expect(screen.getByLabelText("Deleted document retention")).toHaveProperty("disabled", true);
@@ -697,9 +789,7 @@ describe("DocumentList", () => {
         error: "ARCHIVED_DOCUMENT_RETENTION_POLICY_INVALID",
       }),
     });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Retention" }));
     fireEvent.click(screen.getByRole("button", { name: "Save retention" }));
 
@@ -708,9 +798,7 @@ describe("DocumentList", () => {
 
   it("shows presets for the selected AI provider while keeping custom input", () => {
     renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
     expect(screen.getByText("Presets")).toBeTruthy();
@@ -730,9 +818,7 @@ describe("DocumentList", () => {
 
   it("saves a preset chat model override in workspace-scoped storage", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
 
@@ -745,9 +831,7 @@ describe("DocumentList", () => {
 
   it("saves a custom chat model override and can reset to the provider default", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
     fireEvent.change(screen.getByLabelText("Custom model id"), {
@@ -778,9 +862,7 @@ describe("DocumentList", () => {
 
   it("saves custom OpenRouter models after changing the AI provider", () => {
     renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.change(screen.getByLabelText("AI provider"), {
       target: { value: "openai-compatible" },
@@ -806,9 +888,7 @@ describe("DocumentList", () => {
       ]),
     );
     renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
 
     expect(screen.getByRole("button", { name: "Use custom myuser/mymodel" })).toBeTruthy();
@@ -826,9 +906,7 @@ describe("DocumentList", () => {
 
   it("rejects invalid custom chat model ids in settings", () => {
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.change(screen.getByLabelText("Custom model id"), {
       target: { value: "bad model" },
@@ -841,9 +919,7 @@ describe("DocumentList", () => {
 
   it("explains provider-incompatible custom chat model ids in settings", () => {
     renderList({ defaultChatModel: "gemma4:e4b", defaultChatProvider: "ollama" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.change(screen.getByLabelText("Custom model id"), {
       target: { value: "google/gemma-4-31b-it:free" },
@@ -866,9 +942,7 @@ describe("DocumentList", () => {
     });
 
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Use Kimi K2.7 Code" }));
 
@@ -893,9 +967,7 @@ describe("DocumentList", () => {
     });
 
     renderList({ defaultChatModel: "openrouter/fusion" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "AI" }));
     fireEvent.click(screen.getByRole("button", { name: "Reset model" }));
 
@@ -908,9 +980,7 @@ describe("DocumentList", () => {
 
   it("keeps the document list visible behind the workspace settings dialog", () => {
     renderList();
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
 
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
     expect(screen.getByText("Recents")).toBeTruthy();
@@ -918,23 +988,23 @@ describe("DocumentList", () => {
     expect(screen.getAllByRole("link", { name: /Welcome/ }).length).toBeGreaterThan(0);
   });
 
-  it("closes the workspace menu when switching sidebar views", () => {
+  it("closes the account drawer when switching sidebar views", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account menu" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Account menu" })).toBeNull();
     expect(screen.getByLabelText("Search documents")).toBeTruthy();
   });
 
-  it("closes the workspace menu on Escape", () => {
+  it("closes the account drawer on Escape", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account menu" })).toBeTruthy();
 
     const event = new KeyboardEvent("keydown", {
       bubbles: true,
@@ -946,40 +1016,40 @@ describe("DocumentList", () => {
 
     fireEvent(window, event);
 
-    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Account menu" })).toBeNull();
     expect(event.defaultPrevented).toBe(false);
     expect(preventDefault).not.toHaveBeenCalled();
     expect(stopPropagation).not.toHaveBeenCalled();
   });
 
-  it("closes only the workspace menu on Escape while a replacement sidebar view is active", () => {
+  it("closes only the account drawer on Escape while a replacement sidebar view is active", () => {
     renderList();
 
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     expect(screen.getByLabelText("Search documents")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account menu" })).toBeTruthy();
 
     fireEvent.keyDown(window, { key: "Escape" });
 
-    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Account menu" })).toBeNull();
     expect(screen.getByLabelText("Search documents")).toBeTruthy();
     expect(screen.queryByText("Recents")).toBeNull();
   });
 
-  it("closes the workspace menu on outside click", () => {
+  it("closes the account drawer on outside click", () => {
     renderList();
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account menu" })).toBeTruthy();
 
     fireEvent.mouseDown(document.body);
 
-    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Account menu" })).toBeNull();
   });
 
-  it("closes the workspace menu when an AppShell tag search request opens search", () => {
+  it("closes the account drawer when an AppShell tag search request opens search", () => {
     renderWithI18n(
       <AppShell
         left={<DocumentList {...baseProps} />}
@@ -988,12 +1058,12 @@ describe("DocumentList", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    expect(screen.getByRole("menu", { name: "Workspace menu" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    expect(screen.getByRole("menu", { name: "Account menu" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
 
-    expect(screen.queryByRole("menu", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("menu", { name: "Account menu" })).toBeNull();
     expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
       "tag:#LangChain",
     );
@@ -1010,12 +1080,12 @@ describe("DocumentList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Close sidebar" }));
 
-    expect(screen.queryByRole("button", { name: "Workspace menu" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Account menu" })).toBeNull();
     expect(screen.getByRole("button", { name: "Open sidebar" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Search tag" }));
 
-    expect(screen.getByRole("button", { name: "Workspace menu" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Open sidebar" })).toBeNull();
     expect((screen.getByLabelText("Search documents") as HTMLInputElement).value).toBe(
       "tag:#LangChain",
@@ -1739,9 +1809,7 @@ describe("DocumentList", () => {
 
   it("closes the workspace settings panel", () => {
     renderList();
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: "Close settings" }));
 
     expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
@@ -1750,9 +1818,7 @@ describe("DocumentList", () => {
 
   it("closes the workspace settings panel from the backdrop without closing on dialog clicks", () => {
     renderList();
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openWorkspaceSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("dialog", { name: "Workspace settings" }));
 
     expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
@@ -1765,9 +1831,7 @@ describe("DocumentList", () => {
 
   it("disables markdown import when the workspace is read-only", () => {
     renderList({ canWrite: false });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
 
     expect(screen.getByRole("button", { name: "Import Markdown" })).toHaveProperty(
       "disabled",
@@ -1788,11 +1852,9 @@ describe("DocumentList", () => {
         documentIds: ["doc-second"],
         imported: [{ fileName: "second.markdown", documentId: "doc-second" }],
         failed: [],
-      });
+    });
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     const importedFile = new File(["# Imported"], "imported.md", { type: "text/markdown" });
     const secondFile = new File(["# Second"], "second.markdown", { type: "text/markdown" });
     fireEvent.change(screen.getByLabelText("Markdown files"), {
@@ -1838,9 +1900,7 @@ describe("DocumentList", () => {
       failed: [],
     }));
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.click(screen.getByRole("button", { name: /Import destination: \// }));
 
     expect(
@@ -1884,9 +1944,7 @@ describe("DocumentList", () => {
       failed: [],
     }));
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     expect(screen.getByRole("button", { name: /Import destination: \// }).textContent).toBe(
       "/",
     );
@@ -1930,9 +1988,7 @@ describe("DocumentList", () => {
         failed: [],
       });
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -1969,9 +2025,7 @@ describe("DocumentList", () => {
         failed: [],
       });
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -2009,9 +2063,7 @@ describe("DocumentList", () => {
         failed: [{ fileName: "duplicate.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
       });
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [
@@ -2044,9 +2096,7 @@ describe("DocumentList", () => {
       failed: [],
     }));
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["# Imported"], "imported.md", { type: "text/markdown" })],
@@ -2075,9 +2125,7 @@ describe("DocumentList", () => {
     );
     const importMarkdownAction = vi.fn(() => importPromise);
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["# Slow"], "slow.md", { type: "text/markdown" })],
@@ -2129,9 +2177,7 @@ describe("DocumentList", () => {
       failed: [{ fileName: "failed.md", error: "MARKDOWN_IMPORT_UNSUPPORTED_FILE" }],
     }));
     renderList({ importMarkdownAction });
-
-    fireEvent.click(screen.getByRole("button", { name: "Workspace menu" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Settings" }));
+    openImportSettingsFromAccountDrawer();
     fireEvent.change(screen.getByLabelText("Markdown files"), {
       target: {
         files: [new File(["nope"], "failed.md", { type: "text/markdown" })],

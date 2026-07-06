@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
 import { WorkspaceSettingsPanel } from "@/components/workspace-settings-panel";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
 const router = vi.hoisted(() => ({ refresh: vi.fn() }));
@@ -45,6 +46,12 @@ function renderSettingsPanel(
         displayPath: "Engineering / Runbooks",
       },
     ],
+    canManageWorkspace: true,
+    workspaceName: "Company Handbook",
+    renameWorkspaceAction: async (formData: FormData) => ({
+      workspaceName: String(formData.get("name") ?? ""),
+    }),
+    archiveWorkspaceAction: async () => ({ error: undefined }),
     importMarkdownAction: async () => ({
       documentIds: ["doc-imported"],
       imported: [{ fileName: "imported.md", documentId: "doc-imported" }],
@@ -68,6 +75,66 @@ function renderSettingsPanel(
 }
 
 describe("WorkspaceSettingsPanel", () => {
+  it("opens to workspace management before import settings", () => {
+    renderSettingsPanel();
+
+    expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
+    const nameInput = screen.getByRole("textbox", {
+      name: "Workspace name",
+    }) as HTMLInputElement;
+    expect(nameInput.value).toBe("Company Handbook");
+
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
+
+    expect(screen.getByRole("heading", { name: "Import your contents" })).toBeTruthy();
+  });
+
+  it("submits workspace rename from the workspace section", async () => {
+    const renameWorkspaceAction = vi.fn(async (formData: FormData) => ({
+      workspaceName: String(formData.get("name") ?? ""),
+    }));
+    renderSettingsPanel({ renameWorkspaceAction });
+
+    fireEvent.change(screen.getByRole("textbox", { name: "Workspace name" }), {
+      target: { value: "Launch HQ" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save workspace name" }));
+
+    await waitFor(() => {
+      expect(renameWorkspaceAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    const submittedFormData = renameWorkspaceAction.mock.calls[0][0];
+    expect(submittedFormData.get("name")).toBe("Launch HQ");
+  });
+
+  it("shows the last-workspace archive guard in the workspace section", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const archiveWorkspaceAction = vi.fn(async () => ({
+      error: SERVICE_ERROR_CODES.WORKSPACE_ARCHIVE_LAST_ACTIVE,
+    }));
+    renderSettingsPanel({ archiveWorkspaceAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Archive workspace" }));
+
+    await waitFor(() => {
+      expect(archiveWorkspaceAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    expect(
+      await screen.findByText("You need another active workspace before archiving this one."),
+    ).toBeTruthy();
+  });
+
+  it("does not archive the workspace when confirmation is cancelled", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const archiveWorkspaceAction = vi.fn(async () => ({ error: undefined }));
+    renderSettingsPanel({ archiveWorkspaceAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Archive workspace" }));
+
+    expect(confirm).toHaveBeenCalledWith("Archive this workspace?");
+    expect(archiveWorkspaceAction).not.toHaveBeenCalled();
+  });
+
   it("hides chat providers that are unavailable in server env", () => {
     window.localStorage.setItem(
       "munjib:rag-chat-model:company-handbook",
@@ -109,6 +176,7 @@ describe("WorkspaceSettingsPanel", () => {
     }));
     renderSettingsPanel({ importMarkdownAction });
 
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
     fireEvent.click(screen.getByRole("button", { name: "Import destination: /" }));
 
     expect(screen.getByRole("treeitem", { name: "Engineering" })).toBeTruthy();
@@ -146,6 +214,7 @@ describe("WorkspaceSettingsPanel", () => {
     expect(dialog.className).not.toContain("border-slate-200");
     expect(dialog.className).not.toContain("bg-white");
 
+    fireEvent.click(screen.getByRole("button", { name: "Import" }));
     const importDropzone = screen.getByRole("button", { name: /Markdown files/ });
     expect(importDropzone.className).toContain("border-primary");
     expect(importDropzone.className).toContain("bg-primary-muted");

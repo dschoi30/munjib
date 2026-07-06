@@ -1188,6 +1188,27 @@ describe("workspace chat service", () => {
     ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   });
 
+  it("rejects archived workspaces without creating a chat thread", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      sendWorkspaceChatMessage({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        message: "Can I still chat?",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+    await expect(
+      prisma.aiChatThread.count({
+        where: { workspaceId: fixture.workspace.id, userId: fixture.user.id },
+      }),
+    ).resolves.toBe(0);
+  });
+
   it("archives the active thread on reset", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const created = await getOrCreateWorkspaceChatThread({

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-06
-source_count: 34
+updated: 2026-07-07
+source_count: 53
 tags:
   - munjib
   - auth
@@ -95,6 +95,56 @@ workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
 launch membership bootstrap so the new user is `OWNER`, `legacy-account-1@example.invalid`
 is `ADMIN`, and `legacy-account-2@example.invalid` is `VIEWER`.
+For returning users whose only memberships are archived, default provisioning
+ignores archived memberships and reactivates the deterministic personal default
+workspace row by clearing `archivedAt` when that row already exists.
+
+## Launch workspace management
+
+Issue #147 implements the Lazyweb Hypothesis #3 Account Drawer direction with
+two product adjustments: the upper sidebar Settings-only menu is removed, and
+the lower account drawer does not repeat either `Current workspace:` or the
+current workspace name because the workspace title is already prominent at the
+top of the sidebar.
+
+`DocumentList` now renders the top workspace name as static chrome and owns a
+lower account/workspace drawer for workspace switch, add workspace, workspace
+settings, and log out. The drawer gets localized text from `useI18n()`, lists
+readable non-archived workspaces other than the current workspace, creates a
+workspace using the hydrated language default name, shows localized failure
+feedback when creation is rejected, and logs out through
+`signOut({ callbackUrl: "/login" })`. The settings entry stays reachable from
+the lower drawer for all signed-in workspace members; manager-only identity
+controls are disabled inside the settings panel when the actor cannot manage the
+workspace.
+
+`WorkspaceSettingsPanel` now opens to a `Workspace` section by default. Workspace
+managers can rename the workspace and soft archive it there; Import, AI,
+Retention, and Language remain settings nav sections. Rename updates only
+`Workspace.name`, preserving `Workspace.slug`.
+
+`Workspace.archivedAt` is the launch soft-archive flag.
+`app/workspaces/[workspaceSlug]/page.tsx` uses `buildWorkspacePageWhere()` so a
+direct workspace route must match the requested slug, `archivedAt: null`, and a
+membership for the current actor. This avoids false 404s when different
+organizations reuse the same workspace slug. `resolveAccessibleWorkspaceRedirect()`
+and `ensureDefaultWorkspaceForUser()` ignore archived memberships for landing
+fallback/provisioning, and `listReadableWorkspacesForUser()` excludes archived
+workspaces from the drawer. Archive is blocked when the actor has no other
+readable active workspace to land in. Browser-tab write paths also reject
+archived workspaces in document and folder services, including document version
+restore and broken-link document creation, so a tab opened before archive cannot
+keep creating or editing workspace data after archive. Ask AI and Workspace AI
+service loaders also require active workspace membership; archived workspace
+slugs return `WORKSPACE_NOT_FOUND` before Ask AI reads saved context or Workspace
+AI creates/persists chat threads and messages.
+
+`lib/workspaces/management-service.ts` owns the focused workspace operations.
+Workspace creation requires writer-or-better permission on the current
+workspace, creates a new organization/workspace pair, makes the actor `OWNER`,
+and reuses the launch membership bootstrap for `legacy-account-1@example.invalid` as `ADMIN`
+and `legacy-account-2@example.invalid` as `VIEWER`. Workspace rename/archive require
+`OWNER` or `ADMIN` via `assertCanManageWorkspace()`.
 
 ## Workspace role
 
@@ -163,9 +213,22 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `app/api/auth/signup/route.ts`
 - `app/api/auth/landing/route.ts`
 - `lib/auth/provisioning.ts`
+- `lib/workspaces/management-service.ts`
+- `lib/workspaces/page-query.ts`
+- `lib/documents/service.ts`
+- `lib/folders/service.ts`
+- `lib/rag/ask.ts`
+- `lib/rag/workspace-chat.ts`
+- `components/document-list.tsx`
+- `components/workspace-settings-panel.tsx`
+- `tests/rag/ask.test.ts`
+- `tests/rag/workspace-chat.test.ts`
+- `tests/workspaces/management-service.test.ts`
 - `docker-compose.yml`
 - `lib/i18n/messages.ts`
 - `docs/superpowers/specs/2026-07-06-launch-signup-login-real-auth-stack-design.md`
+- `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`
+- `docs/superpowers/plans/2026-07-07-launch-workspace-management.md`
 - `docs/superpowers/plans/2026-07-06-launch-signup-login-real-auth-stack.md`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`

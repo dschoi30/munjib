@@ -80,7 +80,7 @@ describe("current user auth provisioning", () => {
           slug: "my-workspace-user-12345678",
         },
       },
-      update: {},
+      update: { archivedAt: null },
       create: {
         organizationId: "org-1",
         name: "내 워크스페이스",

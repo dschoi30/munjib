@@ -27,3 +27,9 @@ export function assertCanWriteWorkspace(role: WorkspaceRole | null | undefined) 
     throw new Error("WORKSPACE_WRITE_FORBIDDEN");
   }
 }
+
+export function assertCanManageWorkspace(role: WorkspaceRole | null | undefined) {
+  if (!canManageWorkspace(role)) {
+    throw new Error("WORKSPACE_MANAGE_FORBIDDEN");
+  }
+}

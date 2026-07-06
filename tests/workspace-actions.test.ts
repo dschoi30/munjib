@@ -7,11 +7,14 @@ const mocks = vi.hoisted(() => ({
   createComment: vi.fn(),
   createDocument: vi.fn(),
   createDocumentFromBrokenLink: vi.fn(),
+  createWorkspace: vi.fn(),
   createFolder: vi.fn(),
   deriveMarkdownImportTitle: vi.fn(),
   isSupportedMarkdownImportFile: vi.fn(),
+  archiveWorkspace: vi.fn(),
   pasteDocumentImageAttachment: vi.fn(),
   redirect: vi.fn(),
+  renameWorkspace: vi.fn(),
   renameFolder: vi.fn(),
   requireCurrentUser: vi.fn(),
   restoreDocumentVersion: vi.fn(),
@@ -79,6 +82,12 @@ vi.mock("@/lib/documents/service", () => ({
 vi.mock("@/lib/workspaces/retention-service", () => ({
   updateWorkspaceArchivedDocumentRetentionPolicy:
     mocks.updateWorkspaceArchivedDocumentRetentionPolicy,
+}));
+
+vi.mock("@/lib/workspaces/management-service", () => ({
+  archiveWorkspace: mocks.archiveWorkspace,
+  createWorkspace: mocks.createWorkspace,
+  renameWorkspace: mocks.renameWorkspace,
 }));
 
 describe("workspace document actions", () => {
@@ -452,6 +461,100 @@ describe("workspace document actions", () => {
 
     expect(result).toEqual({ error: "WORKSPACE_WRITE_FORBIDDEN" });
     expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("createWorkspaceAction creates and redirects to the new workspace", async () => {
+    mocks.createWorkspace.mockResolvedValue({
+      id: "workspace-new",
+      name: "Growth Docs",
+      slug: "growth-docs-abcd1234",
+    });
+    const { createWorkspaceAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("name", "Growth Docs");
+    formData.set("language", "ko");
+
+    await createWorkspaceAction("company-handbook", formData);
+
+    expect(mocks.createWorkspace).toHaveBeenCalledWith({
+      actorId: "user-1",
+      currentWorkspaceSlug: "company-handbook",
+      name: "Growth Docs",
+      language: "ko",
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(mocks.redirect).toHaveBeenCalledWith("/workspaces/growth-docs-abcd1234");
+  });
+
+  test("createWorkspaceAction uses the localized default workspace name", async () => {
+    mocks.createWorkspace.mockResolvedValue({
+      id: "workspace-new",
+      name: "내 워크스페이스",
+      slug: "my-workspace-abcd1234",
+    });
+    const { createWorkspaceAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("language", "ko");
+
+    await createWorkspaceAction("company-handbook", formData);
+
+    expect(mocks.createWorkspace).toHaveBeenCalledWith(expect.objectContaining({
+      name: "내 워크스페이스",
+      language: "ko",
+    }));
+  });
+
+  test("renameWorkspaceAction returns typed errors for invalid names", async () => {
+    const { renameWorkspaceAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("name", "   ");
+
+    const result = await renameWorkspaceAction("company-handbook", formData);
+
+    expect(result).toEqual({
+      error: SERVICE_ERROR_CODES.WORKSPACE_NAME_REQUIRED,
+    });
+    expect(mocks.renameWorkspace).not.toHaveBeenCalled();
+    expect(mocks.revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("renameWorkspaceAction returns the updated workspace name", async () => {
+    mocks.renameWorkspace.mockResolvedValue({
+      id: "workspace-1",
+      name: "Renamed Handbook",
+      slug: "company-handbook",
+    });
+    const { renameWorkspaceAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+    formData.set("name", "Renamed Handbook");
+
+    const result = await renameWorkspaceAction("company-handbook", formData);
+
+    expect(mocks.renameWorkspace).toHaveBeenCalledWith({
+      actorId: "user-1",
+      workspaceSlug: "company-handbook",
+      name: "Renamed Handbook",
+    });
+    expect(result).toEqual({ workspaceName: "Renamed Handbook" });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+  });
+
+  test("archiveWorkspaceAction redirects to the fallback workspace", async () => {
+    mocks.archiveWorkspace.mockResolvedValue({
+      archivedWorkspaceSlug: "company-handbook",
+      fallbackWorkspaceSlug: "engineering",
+    });
+    const { archiveWorkspaceAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+    const formData = new FormData();
+
+    await archiveWorkspaceAction("company-handbook", formData);
+
+    expect(mocks.archiveWorkspace).toHaveBeenCalledWith({
+      actorId: "user-1",
+      workspaceSlug: "company-handbook",
+    });
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/workspaces/company-handbook");
+    expect(mocks.redirect).toHaveBeenCalledWith("/workspaces/engineering");
   });
 
   test("pasteDocumentImageAttachmentAction uploads an image and returns markdown without redirect", async () => {
