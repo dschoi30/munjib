@@ -129,8 +129,9 @@ and `ensureDefaultWorkspaceForUser()` ignore archived memberships for landing
 fallback/provisioning, and `listReadableWorkspacesForUser()` excludes archived
 workspaces from the drawer. Archive is blocked when the actor has no other
 readable active workspace to land in. Browser-tab write paths also reject
-archived workspaces in document and folder services, so a tab opened before
-archive cannot keep creating or editing workspace data after archive.
+archived workspaces in document and folder services, including document version
+restore and broken-link document creation, so a tab opened before archive cannot
+keep creating or editing workspace data after archive.
 
 `lib/workspaces/management-service.ts` owns the focused workspace operations.
 Workspace creation requires writer-or-better permission on the current

@@ -385,6 +385,30 @@ Track #review work.`,
     );
   });
 
+  it("rejects restoring document versions in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Archived Restore Target",
+      contentMarkdown: "# Version 1",
+    });
+    const firstVersion = await prisma.documentVersion.findFirstOrThrow({
+      where: { documentId: document.id, versionNumber: 1 },
+    });
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      restoreDocumentVersion({
+        versionId: firstVersion.id,
+        actorId: fixture.user.id,
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  });
+
   it("creates a missing target document from a broken link and refreshes its RAG index", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const source = await createDocument({
@@ -414,5 +438,36 @@ links:
     expect(scheduleSavedDocumentIndex).toHaveBeenCalledWith(
       expect.objectContaining({ documentId: created.id }),
     );
+  });
+
+  it("rejects creating documents from broken links in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const source = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Archived Source",
+      contentMarkdown: `---
+links:
+  - "[[Archived Missing Target]]"
+---`,
+    });
+    const broken = await prisma.documentLink.findFirstOrThrow({
+      where: {
+        sourceDocumentId: source.id,
+        targetTitleRaw: "Archived Missing Target",
+        isBroken: true,
+      },
+    });
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      createDocumentFromBrokenLink({
+        linkId: broken.id,
+        actorId: fixture.user.id,
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   });
 });

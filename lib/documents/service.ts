@@ -71,7 +71,7 @@ async function getDocumentMembership(documentId: string, actorId: string) {
   });
 
   if (!document) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
-  if (document.workspace.archivedAt) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  assertWorkspaceIsActive(document.workspace);
   const role = document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   const access = await getUserDocumentAccess(document.id, actorId);
@@ -82,6 +82,10 @@ async function getDocumentMembership(documentId: string, actorId: string) {
   });
 
   return { document, workspace: document.workspace, role, access };
+}
+
+function assertWorkspaceIsActive(workspace: { archivedAt: Date | null }) {
+  if (workspace.archivedAt) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
 }
 
 async function getUserDocumentAccess(documentId: string, actorId: string) {
@@ -410,6 +414,7 @@ export async function restoreDocumentVersion(input: RestoreDocumentVersionInput)
 
   if (!version) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_VERSION_NOT_FOUND);
 
+  assertWorkspaceIsActive(version.document.workspace);
   const role = version.document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   const access = await getUserDocumentAccess(version.document.id, input.actorId);
@@ -507,6 +512,7 @@ export async function createDocumentFromBrokenLink(input: CreateDocumentFromBrok
   });
 
   if (!link) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_LINK_NOT_FOUND);
+  assertWorkspaceIsActive(link.workspace);
   const role = link.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);
