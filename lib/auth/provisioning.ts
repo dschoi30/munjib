@@ -196,7 +196,10 @@ export async function resolveAccessibleWorkspaceRedirect(
     const membership = await tx.workspaceMember.findFirst({
       where: {
         userId: input.userId,
-        workspace: { slug: decodeURIComponent(callbackWorkspaceSlug) },
+        workspace: {
+          slug: decodeURIComponent(callbackWorkspaceSlug),
+          archivedAt: null,
+        },
       },
       select: { workspace: { select: { slug: true } } },
     });
@@ -204,7 +207,10 @@ export async function resolveAccessibleWorkspaceRedirect(
   }
 
   const firstMembership = await tx.workspaceMember.findFirst({
-    where: { userId: input.userId },
+    where: {
+      userId: input.userId,
+      workspace: { archivedAt: null },
+    },
     orderBy: { createdAt: "asc" },
     select: { workspace: { select: { slug: true } } },
   });

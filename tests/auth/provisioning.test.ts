@@ -160,4 +160,40 @@ describe("auth provisioning", () => {
       }),
     ).resolves.toBe("/workspaces/fallback");
   });
+
+  it("ignores archived workspace callbacks and falls back to an active workspace", async () => {
+    const tx = {
+      workspaceMember: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ workspace: { slug: "active-workspace" } }),
+      },
+    };
+
+    await expect(
+      resolveAccessibleWorkspaceRedirect(tx, {
+        userId: "user-1",
+        callbackPath: "/workspaces/archived-workspace?document=doc-1",
+      }),
+    ).resolves.toBe("/workspaces/active-workspace");
+    expect(tx.workspaceMember.findFirst).toHaveBeenNthCalledWith(1, {
+      where: {
+        userId: "user-1",
+        workspace: {
+          slug: "archived-workspace",
+          archivedAt: null,
+        },
+      },
+      select: { workspace: { select: { slug: true } } },
+    });
+    expect(tx.workspaceMember.findFirst).toHaveBeenNthCalledWith(2, {
+      where: {
+        userId: "user-1",
+        workspace: { archivedAt: null },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { workspace: { select: { slug: true } } },
+    });
+  });
 });

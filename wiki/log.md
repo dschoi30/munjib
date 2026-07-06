@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-07
-source_count: 331
+source_count: 332
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-07T00:40:00+09:00 - issue-147 launch workspace management implementation
+
+- Result: Issue #147 implements launch workspace management on the authenticated workspace shell.
+- Coverage: The top sidebar workspace title is static chrome with no upper Settings menu; the lower account drawer owns switch workspace, add workspace, workspace settings, and log out, while omitting both `Current workspace:` and the current workspace name. `WorkspaceSettingsPanel` now opens to a Workspace section for slug-stable rename and soft archive. `Workspace.archivedAt` hides archived workspaces from normal navigation, direct workspace-page lookup, and auth landing fallback redirects. `lib/workspaces/management-service.ts` lists readable non-archived workspaces, creates new owner workspaces with launch admin/trial memberships, renames `Workspace.name` without changing `slug`, and blocks archive when no readable active fallback exists.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #147, `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`, `docs/superpowers/plans/2026-07-07-launch-workspace-management.md`, `prisma/schema.prisma`, `prisma/migrations/20260707013000_add_workspace_archive/migration.sql`, `lib/workspaces/management-service.ts`, `components/document-list.tsx`, `components/workspace-settings-panel.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `lib/auth/provisioning.ts`.
+- Verification: focused Vitest coverage for i18n, auth provisioning, workspace actions, workspace permissions, settings panel, and document list passed; DB-backed workspace management tests passed against local Postgres; `tsc --noEmit`, `prisma validate`, and `git diff --check` passed.
 
 ## 2026-07-07T00:00:00+09:00 - issue-147 launch workspace management design
 

@@ -36,7 +36,7 @@ The sidebar footer gains an account button showing the signed-in user's compact 
 
 The drawer intentionally does not show `Current workspace:` and does not repeat the current workspace name. Users already see the workspace name at the top of the sidebar.
 
-Switch workspace expands to the readable, non-archived workspace list. Selecting a workspace navigates to `/workspaces/{slug}`. The current workspace can be indicated by a subtle check icon in the list without printing a separate current-workspace summary line.
+Switch workspace expands to the readable, non-archived workspace list, excluding the current workspace. Selecting a workspace navigates to `/workspaces/{slug}`. If there are no other readable workspaces, the drawer shows a localized empty state instead of repeating the current workspace name.
 
 Workspace settings opens the existing settings dialog with a new Workspace section for rename and soft archive. Workspace-level management controls are visible only for manageable roles. Import and document-retention controls keep their existing writer checks.
 
@@ -112,7 +112,7 @@ Component tests:
 - upper workspace title no longer exposes a Settings menu item
 - lower account drawer contains Switch workspace, Add workspace, Workspace settings, and Log out
 - lower drawer does not render `Current workspace:` or the current workspace name
-- workspace switch list renders readable active workspaces
+- workspace switch list renders other readable active workspaces and omits the current workspace
 - VIEWER cannot execute restricted actions
 - UI labels render in Korean after language selection
 

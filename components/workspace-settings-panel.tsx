@@ -11,11 +11,12 @@ import {
   useState,
   useTransition,
 } from "react";
-import { Bot, Clock3, FileText, Languages, Upload, X } from "lucide-react";
+import { Archive, Bot, Building2, Clock3, FileText, Languages, Upload, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { LANGUAGE_OPTIONS, languageLabel } from "@/lib/i18n/language";
 import type { MessageKey } from "@/lib/i18n/messages";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import {
   ARCHIVED_DOCUMENT_RETENTION_POLICIES,
   type ArchivedDocumentRetentionPolicyValue,
@@ -87,7 +88,12 @@ type ImportRun = {
   currentFileName: string | null;
 };
 
-type SettingsSection = "import" | "ai" | "retention" | "language";
+type WorkspaceActionResult = {
+  workspaceName?: string;
+  error?: string;
+};
+
+type SettingsSection = "workspace" | "import" | "ai" | "retention" | "language";
 
 const retentionPolicyMessageKeys = {
   NEVER: "settings.retention.policy.NEVER",
@@ -98,10 +104,14 @@ const retentionPolicyMessageKeys = {
 
 export function WorkspaceSettingsPanel({
   canWrite,
+  canManageWorkspace,
+  workspaceName,
   defaultChatModel,
   defaultChatProvider,
   availableChatProviders,
   folders,
+  renameWorkspaceAction,
+  archiveWorkspaceAction,
   importMarkdownAction,
   archivedDocumentRetentionPolicy,
   updateRetentionPolicyAction,
@@ -109,10 +119,14 @@ export function WorkspaceSettingsPanel({
   workspaceSlug,
 }: {
   canWrite: boolean;
+  canManageWorkspace: boolean;
+  workspaceName: string;
   defaultChatModel: string;
   defaultChatProvider: ClientRagChatProvider;
   availableChatProviders: ClientRagChatProviderAvailability;
   folders: WorkspaceSettingsFolder[];
+  renameWorkspaceAction: (formData: FormData) => Promise<WorkspaceActionResult | void>;
+  archiveWorkspaceAction: (formData: FormData) => Promise<WorkspaceActionResult | void>;
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   archivedDocumentRetentionPolicy: ArchivedDocumentRetentionPolicyValue;
   updateRetentionPolicyAction: (formData: FormData) => Promise<RetentionPolicyActionResult>;
@@ -122,7 +136,9 @@ export function WorkspaceSettingsPanel({
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [activeSection, setActiveSection] = useState<SettingsSection>("import");
+  const [activeSection, setActiveSection] = useState<SettingsSection>("workspace");
+  const [draftWorkspaceName, setDraftWorkspaceName] = useState(workspaceName);
+  const [workspaceStatus, setWorkspaceStatus] = useState<MessageKey | null>(null);
   const [draftLanguage, setDraftLanguage] = useState(language);
   const [languageStatus, setLanguageStatus] = useState<"saved" | "storageFailed" | null>(null);
   const [customModel, setCustomModel] = useState("");
@@ -149,6 +165,8 @@ export function WorkspaceSettingsPanel({
   const [importRun, setImportRun] = useState<ImportRun | null>(null);
   const [destinationFolderId, setDestinationFolderId] = useState<string | null>(null);
   const [destinationPickerOpen, setDestinationPickerOpen] = useState(false);
+  const [isWorkspaceRenamePending, startWorkspaceRenameTransition] = useTransition();
+  const [isWorkspaceArchivePending, startWorkspaceArchiveTransition] = useTransition();
   const [isRetentionPending, startRetentionTransition] = useTransition();
   const fallbackChatProvider = useMemo(
     () => firstAvailableChatProvider(availableChatProviders, defaultChatProvider),
@@ -202,6 +220,10 @@ export function WorkspaceSettingsPanel({
     setDraftLanguage(language);
   }, [language]);
 
+  useEffect(() => {
+    setDraftWorkspaceName(workspaceName);
+  }, [workspaceName]);
+
   const handleOpenFilePicker = useCallback(() => {
     if (!canWrite || importLocked) return;
     fileInputRef.current?.click();
@@ -234,6 +256,43 @@ export function WorkspaceSettingsPanel({
     setDraftLanguage(language);
     setLanguageStatus(null);
   }, [language]);
+
+  const handleRenameWorkspace = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canManageWorkspace || isWorkspaceRenamePending) return;
+
+    const formData = new FormData(event.currentTarget);
+    startWorkspaceRenameTransition(async () => {
+      const result = await renameWorkspaceAction(formData);
+      if (result?.error) {
+        setWorkspaceStatus(workspaceErrorMessage(result.error));
+        return;
+      }
+
+      if (result?.workspaceName) {
+        setDraftWorkspaceName(result.workspaceName);
+      }
+      setWorkspaceStatus(null);
+      router.refresh();
+    });
+  }, [canManageWorkspace, isWorkspaceRenamePending, renameWorkspaceAction, router]);
+
+  const handleArchiveWorkspace = useCallback((event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!canManageWorkspace || isWorkspaceArchivePending) return;
+
+    const formData = new FormData(event.currentTarget);
+    startWorkspaceArchiveTransition(async () => {
+      const result = await archiveWorkspaceAction(formData);
+      if (result?.error) {
+        setWorkspaceStatus(workspaceErrorMessage(result.error));
+        return;
+      }
+
+      setWorkspaceStatus(null);
+      router.refresh();
+    });
+  }, [archiveWorkspaceAction, canManageWorkspace, isWorkspaceArchivePending, router]);
 
   const handleSavePresetModel = useCallback(
     (setting: ChatModelSetting) => {
@@ -442,6 +501,16 @@ export function WorkspaceSettingsPanel({
           <nav aria-label={t("settings.menu")} className="space-y-1">
             <Button
               type="button"
+              aria-label={t("settings.workspace.nav")}
+              aria-pressed={activeSection === "workspace"}
+              onClick={() => setActiveSection("workspace")}
+              className={settingsNavButtonClassName(activeSection === "workspace")}
+            >
+              <Building2 className="h-4 w-4" aria-hidden="true" />
+              {t("settings.workspace.nav")}
+            </Button>
+            <Button
+              type="button"
               aria-label={t("settings.import.nav")}
               aria-pressed={activeSection === "import"}
               onClick={() => setActiveSection("import")}
@@ -483,7 +552,80 @@ export function WorkspaceSettingsPanel({
           </nav>
         </aside>
         <div className="min-w-0 overflow-y-auto p-8">
-          {activeSection === "import" ? (
+          {activeSection === "workspace" ? (
+            <section aria-label={t("settings.workspace.title")} className="space-y-6">
+              <div className="flex items-start gap-4">
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-ink-muted">
+                    {t("settings.workspaceEyebrow")}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold text-ink">
+                    {t("settings.workspace.title")}
+                  </h3>
+                </div>
+                <Button
+                  type="button"
+                  aria-label={t("settings.close")}
+                  onClick={() => {
+                    if (!isImportActive) onClose();
+                  }}
+                  disabled={isImportActive}
+                  className="ml-auto h-8 w-8 bg-transparent p-0 text-ink-muted hover:bg-surface-muted hover:text-ink disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </Button>
+              </div>
+
+              <form onSubmit={handleRenameWorkspace} className="space-y-4">
+                <div>
+                  <label htmlFor="workspaceName" className="text-sm font-semibold text-ink">
+                    {t("settings.workspace.renameLabel")}
+                  </label>
+                  <input
+                    id="workspaceName"
+                    name="name"
+                    value={draftWorkspaceName}
+                    onChange={(event) => {
+                      setDraftWorkspaceName(event.target.value);
+                      setWorkspaceStatus(null);
+                    }}
+                    disabled={!canManageWorkspace || isWorkspaceRenamePending}
+                    className="mt-3 h-10 w-full rounded-md border border-border bg-surface-control px-3 text-sm text-ink shadow-sm outline-none focus:border-primary focus:ring-2 focus:ring-[var(--color-focus-visible)] disabled:cursor-not-allowed disabled:opacity-60"
+                  />
+                </div>
+                <Button
+                  type="submit"
+                  disabled={!canManageWorkspace || isWorkspaceRenamePending}
+                  className="h-10"
+                >
+                  {t("settings.workspace.renameSave")}
+                </Button>
+              </form>
+
+              <form
+                onSubmit={handleArchiveWorkspace}
+                className="rounded-md border border-border bg-surface-page px-4 py-4"
+              >
+                <h4 className="text-sm font-semibold text-ink">
+                  {t("settings.workspace.archiveTitle")}
+                </h4>
+                <Button
+                  type="submit"
+                  disabled={!canManageWorkspace || isWorkspaceArchivePending}
+                  className="mt-3 h-10 border border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <Archive className="h-4 w-4" aria-hidden="true" />
+                  {t("settings.workspace.archiveAction")}
+                </Button>
+              </form>
+
+              {workspaceStatus ? (
+                <p role="status" className="text-sm font-medium text-ink-muted">
+                  {t(workspaceStatus)}
+                </p>
+              ) : null}
+            </section>
+          ) : activeSection === "import" ? (
             <>
               <div className="mb-8 flex items-start gap-4">
                 <div>
@@ -964,6 +1106,17 @@ function settingsNavButtonClassName(isActive: boolean) {
       ? "bg-surface-control text-ink shadow-subtle hover:bg-surface-control"
       : "bg-transparent text-ink-muted hover:bg-surface-muted hover:text-ink",
   ].join(" ");
+}
+
+function workspaceErrorMessage(error: string): MessageKey {
+  if (error === SERVICE_ERROR_CODES.WORKSPACE_ARCHIVE_LAST_ACTIVE) {
+    return "settings.workspace.archiveLastWorkspace";
+  }
+  if (error === SERVICE_ERROR_CODES.WORKSPACE_NAME_REQUIRED) {
+    return "settings.workspace.nameRequired";
+  }
+
+  return "settings.workspace.actionFailed";
 }
 
 function chatModelErrorMessage(error: ChatModelValidationError): StatusMessage {
