@@ -66,7 +66,7 @@ describe("auth provisioning", () => {
           slug: "my-workspace-user-12345678",
         },
       },
-      update: {},
+      update: { archivedAt: null },
       create: {
         organizationId: "org-1",
         name: "내 워크스페이스",
@@ -149,6 +149,27 @@ describe("auth provisioning", () => {
       workspaceId: "workspace-1",
       workspaceSlug: "my-workspace-user-12345678",
     });
+  });
+
+  it("reactivates the deterministic default workspace when the existing row was archived", async () => {
+    const tx = createProvisioningTxMock();
+
+    await ensureDefaultWorkspaceForUser(tx, {
+      userId: "user-12345678",
+      email: "member@example.com",
+      name: "Member",
+      language: "en",
+    });
+
+    expect(tx.workspace.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        organizationId_slug: {
+          organizationId: "org-1",
+          slug: "my-workspace-user-12345678",
+        },
+      },
+      update: { archivedAt: null },
+    }));
   });
 
   it("keeps post-auth callbacks app-local and workspace-scoped", () => {

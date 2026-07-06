@@ -38,7 +38,7 @@ type ProvisioningTx = {
   workspace: {
     upsert(args: {
       where: { organizationId_slug: { organizationId: string; slug: string } };
-      update: Record<string, never>;
+      update: { archivedAt: null };
       create: { organizationId: string; name: string; slug: string };
       select: { id: true; slug: true };
     }): Promise<{ id: string; slug: string }>;
@@ -155,7 +155,7 @@ export async function ensureDefaultWorkspaceForUser(
         slug: workspaceSlug,
       },
     },
-    update: {},
+    update: { archivedAt: null },
     create: {
       organizationId: organization.id,
       name: defaultWorkspaceNameForLanguage(input.language),

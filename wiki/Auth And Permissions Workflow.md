@@ -95,6 +95,9 @@ workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
 launch membership bootstrap so the new user is `OWNER`, `mjadmin@munjib.com`
 is `ADMIN`, and `mjtrial@munjib.com` is `VIEWER`.
+For returning users whose only memberships are archived, default provisioning
+ignores archived memberships and reactivates the deterministic personal default
+workspace row by clearing `archivedAt` when that row already exists.
 
 ## Launch workspace management
 
