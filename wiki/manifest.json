@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 49,
+      "source_count": 53,
       "searchPriority": 50
     },
     {
@@ -207,7 +207,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 153,
+      "source_count": 155,
       "searchPriority": 5
     },
     {
@@ -250,7 +250,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 332,
+      "source_count": 333,
       "searchPriority": 1
     },
     {
@@ -369,7 +369,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 111,
+      "source_count": 113,
       "searchPriority": 30
     },
     {
@@ -425,7 +425,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 111,
+      "source_count": 115,
       "searchPriority": 50
     },
     {

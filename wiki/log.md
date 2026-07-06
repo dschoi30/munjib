@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-07
-source_count: 332
+source_count: 333
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-07T01:40:00+09:00 - issue-147 RAG archived workspace review follow-up
+
+- Result: PR #150 review feedback now blocks archived workspaces in RAG POST loaders.
+- Coverage: `askDocumentQuestion()` and `loadWorkspaceForChat()` resolve workspace slugs with `archivedAt: null` plus actor membership. Ask AI returns `WORKSPACE_NOT_FOUND` before current-document context generation, and Workspace AI returns `WORKSPACE_NOT_FOUND` before creating chat threads or persisting messages from stale tabs.
+- Pages: [[RAG Process Workflow]], [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #150 review thread, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `./node_modules/.bin/vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`.
 
 ## 2026-07-07T01:10:00+09:00 - issue-147 review follow-up
 

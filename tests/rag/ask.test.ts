@@ -209,6 +209,30 @@ describe("RAG ask service", () => {
     ).rejects.toThrow(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
   });
 
+  it("throws WORKSPACE_NOT_FOUND for archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Archived Workspace Doc",
+      contentMarkdown: "# Archived\n\nHidden content",
+    });
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      askDocumentQuestion({
+        workspaceSlug: fixture.workspace.slug,
+        documentId: selected.id,
+        actorId: fixture.user.id,
+        question: "Can I still ask?",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+    expect(invokeAnswerChain).not.toHaveBeenCalled();
+  });
+
   it("throws QUESTION_REQUIRED for blank questions", async () => {
     await expect(
       askDocumentQuestion({

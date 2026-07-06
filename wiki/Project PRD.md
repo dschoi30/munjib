@@ -6,7 +6,7 @@ status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
 updated: 2026-07-07
-source_count: 111
+source_count: 113
 tags:
   - munjib
   - source
@@ -70,7 +70,7 @@ links:
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
 
-Issue #147 설계는 launch workspace management의 첫 범위를 계획한다. 하단 account/workspace drawer가 workspace switching, workspace creation, workspace settings, logout의 단일 진입점이 되고, 상단 workspace title은 현재 workspace 이름만 크게 보여준다. 하단 drawer는 현재 workspace label/name을 반복하지 않으며, rename은 `Workspace.name`만 바꾸고 slug는 안정적으로 유지한다. Soft archive는 `Workspace.archivedAt`로 계획하고, archived workspace는 navigation과 direct access에서 제외한다. 설계 근거는 `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`이다.
+Issue #147은 launch workspace management의 첫 범위를 구현한다. 하단 account/workspace drawer가 workspace switching, workspace creation, workspace settings, logout의 단일 진입점이 되고, 상단 workspace title은 현재 workspace 이름만 크게 보여준다. 하단 drawer는 현재 workspace label/name을 반복하지 않으며, rename은 `Workspace.name`만 바꾸고 slug는 안정적으로 유지한다. Soft archive는 `Workspace.archivedAt`를 사용하며, archived workspace는 navigation, direct access, auth fallback, stale-tab document/folder writes, Ask AI, and Workspace AI service loaders에서 제외된다. 설계 근거는 `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`이고 RAG guard 세부 동작은 [[RAG Process Workflow]]에 둔다.
 
 ## 최근 구현된 구조 변경
 

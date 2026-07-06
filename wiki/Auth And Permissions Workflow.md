@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-07
-source_count: 49
+source_count: 53
 tags:
   - munjib
   - auth
@@ -134,7 +134,10 @@ workspaces from the drawer. Archive is blocked when the actor has no other
 readable active workspace to land in. Browser-tab write paths also reject
 archived workspaces in document and folder services, including document version
 restore and broken-link document creation, so a tab opened before archive cannot
-keep creating or editing workspace data after archive.
+keep creating or editing workspace data after archive. Ask AI and Workspace AI
+service loaders also require active workspace membership; archived workspace
+slugs return `WORKSPACE_NOT_FOUND` before Ask AI reads saved context or Workspace
+AI creates/persists chat threads and messages.
 
 `lib/workspaces/management-service.ts` owns the focused workspace operations.
 Workspace creation requires writer-or-better permission on the current
@@ -214,8 +217,12 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `lib/workspaces/page-query.ts`
 - `lib/documents/service.ts`
 - `lib/folders/service.ts`
+- `lib/rag/ask.ts`
+- `lib/rag/workspace-chat.ts`
 - `components/document-list.tsx`
 - `components/workspace-settings-panel.tsx`
+- `tests/rag/ask.test.ts`
+- `tests/rag/workspace-chat.test.ts`
 - `tests/workspaces/management-service.test.ts`
 - `docker-compose.yml`
 - `lib/i18n/messages.ts`
