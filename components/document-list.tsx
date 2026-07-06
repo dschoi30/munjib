@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { PanelLeftClose, Settings } from "lucide-react";
+import { LogOut, PanelLeftClose, Plus, Settings, UserCircle } from "lucide-react";
 import { useLeftPanel, useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
 import { DocumentCreateControls } from "@/components/document-create-controls";
@@ -44,6 +45,18 @@ const createErrorToastClassName =
 type TopLevelCreateKind = "document" | "folder";
 type CreatedTarget = { kind: TopLevelCreateKind; id: string };
 
+type WorkspaceSwitcherItem = {
+  id: string;
+  name: string;
+  slug: string;
+  role: "OWNER" | "ADMIN" | "EDITOR" | "VIEWER";
+};
+
+type CurrentUserSummary = {
+  name: string | null;
+  email: string;
+};
+
 export type DocumentListItem = {
   id: string;
   folderId: string | null;
@@ -68,12 +81,19 @@ export type FolderDocumentCounts = Record<string, number>;
 
 export function DocumentList({
   workspaceSlug,
+  workspaceName,
+  currentUser,
+  readableWorkspaces,
   folders,
   documents,
   folderDocumentCounts,
   canWrite,
+  canManageWorkspace,
   createAction,
   createFolderAction,
+  createWorkspaceAction,
+  renameWorkspaceAction,
+  archiveWorkspaceAction,
   importMarkdownAction,
   renameFolderAction,
   archiveFolderAction,
@@ -89,12 +109,19 @@ export function DocumentList({
   isGraphView = false,
 }: {
   workspaceSlug: string;
+  workspaceName: string;
+  currentUser: CurrentUserSummary;
+  readableWorkspaces: WorkspaceSwitcherItem[];
   folders: FolderListItem[];
   documents: DocumentListItem[];
   folderDocumentCounts?: FolderDocumentCounts;
   canWrite: boolean;
+  canManageWorkspace: boolean;
   createAction: CreateDocumentAction;
   createFolderAction: CreateFolderAction;
+  createWorkspaceAction: (formData: FormData) => Promise<{ error?: string } | void>;
+  renameWorkspaceAction: (formData: FormData) => Promise<{ workspaceName?: string; error?: string }>;
+  archiveWorkspaceAction: (formData: FormData) => Promise<{ error?: string } | void>;
   importMarkdownAction: (formData: FormData) => Promise<MarkdownImportActionResult>;
   renameFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
   archiveFolderAction: (formData: FormData) => Promise<{ folderId: string; error?: string }>;
@@ -109,7 +136,7 @@ export function DocumentList({
   availableChatProviders: ClientRagChatProviderAvailability;
   isGraphView?: boolean;
 }) {
-  const { isHydrated: languageHydrated, t } = useI18n();
+  const { isHydrated: languageHydrated, language, t } = useI18n();
   const router = useRouter();
   const [isTopLevelCreateTransitionPending, startTopLevelCreateTransition] = useTransition();
   const leftPanel = useLeftPanel();
@@ -120,7 +147,7 @@ export function DocumentList({
   );
   const [hasActivePanelInteraction, setHasActivePanelInteraction] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [accountDrawerOpen, setAccountDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [topLevelCreatePending, setTopLevelCreatePending] = useState<TopLevelCreateKind | null>(
     null,
@@ -128,7 +155,7 @@ export function DocumentList({
   const [clearTopLevelCreatePendingAfterTransition, setClearTopLevelCreatePendingAfterTransition] =
     useState(false);
   const [pendingCreatedTarget, setPendingCreatedTarget] = useState<CreatedTarget | null>(null);
-  const workspaceMenuRef = useRef<HTMLDivElement>(null);
+  const accountDrawerRef = useRef<HTMLDivElement>(null);
   const handledTagSearchTokenRef = useRef<number | null>(null);
   const iconButtonClassName =
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
@@ -170,23 +197,23 @@ export function DocumentList({
     );
   }, [isGraphView, router, selectedDocumentId, workspaceSlug]);
 
-  const closeWorkspaceMenu = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+  const closeAccountDrawer = useCallback(() => {
+    setAccountDrawerOpen(false);
   }, []);
 
   const openWorkspaceSettings = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(true);
   }, []);
 
   const closeSidebar = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     leftPanel?.collapse();
   }, [leftPanel]);
 
   const openSearch = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     setHasActivePanelInteraction(true);
     setActivePanel("search");
@@ -194,7 +221,7 @@ export function DocumentList({
   }, [clearGraphRoute]);
 
   const openDocuments = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     setHasActivePanelInteraction(true);
     setActivePanel("documents");
@@ -202,7 +229,7 @@ export function DocumentList({
   }, [clearGraphRoute]);
 
   const openFavorites = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     setHasActivePanelInteraction(true);
     setActivePanel((current) =>
@@ -212,7 +239,7 @@ export function DocumentList({
   }, [clearGraphRoute, isGraphView]);
 
   const openGraph = useCallback(() => {
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
   }, [router, selectedDocumentId, workspaceSlug]);
@@ -300,7 +327,7 @@ export function DocumentList({
     if (!tagName) return;
 
     handledTagSearchTokenRef.current = request.token;
-    setWorkspaceMenuOpen(false);
+    setAccountDrawerOpen(false);
     setSettingsOpen(false);
     setHasActivePanelInteraction(true);
     setActivePanel("search");
@@ -328,17 +355,17 @@ export function DocumentList({
   }, [activePanel, documents, folders, pendingCreatedTarget]);
 
   useEffect(() => {
-    if (!workspaceMenuOpen) return;
+    if (!accountDrawerOpen) return;
 
     function handleMouseDown(event: MouseEvent) {
       if (!event.target) return;
-      if (workspaceMenuRef.current?.contains(event.target as Node)) return;
-      closeWorkspaceMenu();
+      if (accountDrawerRef.current?.contains(event.target as Node)) return;
+      closeAccountDrawer();
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        closeWorkspaceMenu();
+        closeAccountDrawer();
       }
     }
 
@@ -349,7 +376,33 @@ export function DocumentList({
       document.removeEventListener("mousedown", handleMouseDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [closeWorkspaceMenu, workspaceMenuOpen]);
+  }, [accountDrawerOpen, closeAccountDrawer]);
+
+  const switchWorkspace = useCallback(
+    (slug: string) => {
+      setAccountDrawerOpen(false);
+      router.push(`/workspaces/${slug}`);
+    },
+    [router],
+  );
+
+  const addWorkspace = useCallback(() => {
+    if (!canWrite) return;
+    const formData = new FormData();
+    formData.set("language", language);
+    setAccountDrawerOpen(false);
+    startTopLevelCreateTransition(async () => {
+      const result = await createWorkspaceAction(formData);
+      if (result?.error) {
+        toast(t("settings.workspace.actionFailed"));
+      }
+    });
+  }, [canWrite, createWorkspaceAction, language, startTopLevelCreateTransition, t]);
+
+  const logOut = useCallback(() => {
+    setAccountDrawerOpen(false);
+    void signOut({ callbackUrl: "/login" });
+  }, []);
 
   const activePanelHydrated = activePanelHydratedWorkspace === workspaceSlug;
 
@@ -360,19 +413,12 @@ export function DocumentList({
   return (
     <div>
       <div data-testid="document-list-sticky-chrome" className="sticky top-0 z-20 bg-muted pb-1">
-        <div ref={workspaceMenuRef} className="relative">
+        <div className="relative">
           <TooltipProvider delayDuration={0}>
             <div className="flex h-11 items-center gap-2">
-              <Button
-                type="button"
-                aria-label={t("app.workspaceMenu")}
-                aria-expanded={workspaceMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => setWorkspaceMenuOpen((open) => !open)}
-                className="min-w-0 flex-1 justify-start bg-transparent p-0 text-left text-sm font-medium text-ink hover:bg-transparent hover:text-ink"
-              >
-                <span className="truncate">Company Handbook</span>
-              </Button>
+              <div className="min-w-0 flex-1 text-left text-sm font-medium text-ink">
+                <span className="block truncate">{workspaceName}</span>
+              </div>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -388,23 +434,6 @@ export function DocumentList({
               </Tooltip>
             </div>
           </TooltipProvider>
-          {workspaceMenuOpen ? (
-            <div
-              role="menu"
-              aria-label={t("app.workspaceMenu")}
-              className="absolute left-0 right-0 top-11 z-30 rounded-md border border-slate-200 bg-white p-1 text-sm shadow-lg"
-            >
-              <button
-                type="button"
-                role="menuitem"
-                onClick={openWorkspaceSettings}
-                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-muted"
-              >
-                <Settings className="h-4 w-4" aria-hidden="true" />
-                {t("settings.title")}
-              </button>
-            </div>
-          ) : null}
         </div>
         <DocumentCreateControls
           canWrite={canWrite}
@@ -427,7 +456,7 @@ export function DocumentList({
             documents={documents}
             folderDocumentCounts={folderDocumentCounts}
             activePanel={activePanel}
-            isWorkspaceMenuOpen={workspaceMenuOpen}
+            isWorkspaceMenuOpen={accountDrawerOpen}
             searchQuery={searchQuery}
             onOpenSearch={openSearch}
             onOpenDocuments={openDocuments}
@@ -446,12 +475,99 @@ export function DocumentList({
           <DocumentNavigationBodySkeleton />
         )}
       </div>
+      <div ref={accountDrawerRef} className="sticky bottom-0 z-20 mt-4 border-t border-border bg-muted pt-3">
+        <Button
+          type="button"
+          aria-label={t("account.menu")}
+          aria-expanded={accountDrawerOpen}
+          aria-haspopup="menu"
+          onClick={() => setAccountDrawerOpen((open) => !open)}
+          className="h-10 w-full justify-start gap-2 border border-border bg-surface-control px-2 text-left text-sm text-ink hover:bg-surface-muted"
+        >
+          <UserCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span className="min-w-0 truncate">{currentUser.email}</span>
+        </Button>
+        {accountDrawerOpen ? (
+          <div
+            role="menu"
+            aria-label={t("account.menu")}
+            className="absolute bottom-14 left-0 right-0 z-30 flex max-h-[min(28rem,calc(100vh-7rem))] flex-col overflow-hidden rounded-md border border-border bg-surface p-2 text-sm shadow-lg"
+          >
+            <p className="shrink-0 px-2 py-1.5 text-xs font-medium text-ink-muted">
+              {t("account.signedInAs", { email: currentUser.email })}
+            </p>
+            <div className="mt-1 min-h-0 border-t border-border pt-1">
+              <p className="px-2 py-1 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted">
+                {t("account.switchWorkspace")}
+              </p>
+              <div
+                data-testid="account-workspace-switch-list"
+                className="max-h-64 overflow-y-auto"
+              >
+                {readableWorkspaces.filter((workspace) => workspace.slug !== workspaceSlug).length > 0 ? (
+                  readableWorkspaces
+                    .filter((workspace) => workspace.slug !== workspaceSlug)
+                    .map((workspace) => (
+                      <button
+                        key={workspace.id}
+                        type="button"
+                        role="menuitem"
+                        onClick={() => switchWorkspace(workspace.slug)}
+                        className="flex w-full items-center rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted"
+                      >
+                        <span className="truncate">{workspace.name}</span>
+                      </button>
+                    ))
+                ) : (
+                  <p className="px-2 py-1.5 text-xs text-ink-muted">
+                    {t("account.noOtherWorkspaces")}
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="mt-1 shrink-0 border-t border-border pt-1">
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!canWrite || isTopLevelCreateTransitionPending}
+                onClick={addWorkspace}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                {t("account.addWorkspace")}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={openWorkspaceSettings}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                {t("account.workspaceSettings")}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                onClick={logOut}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                {t("account.logOut")}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
       {settingsOpen ? (
         <WorkspaceSettingsPanel
           canWrite={canWrite}
+          canManageWorkspace={canManageWorkspace}
           workspaceSlug={workspaceSlug}
+          workspaceName={workspaceName}
           folders={folders}
           importMarkdownAction={importMarkdownAction}
+          renameWorkspaceAction={renameWorkspaceAction}
+          archiveWorkspaceAction={archiveWorkspaceAction}
           archivedDocumentRetentionPolicy={archivedDocumentRetentionPolicy}
           updateRetentionPolicyAction={updateRetentionPolicyAction}
           defaultChatModel={defaultChatModel}

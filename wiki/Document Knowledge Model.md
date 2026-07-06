@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-07-06
-source_count: 38
+updated: 2026-07-07
+source_count: 41
 tags:
   - munjib
   - data-model
@@ -76,6 +76,7 @@ erDiagram
     String slug
     String visibility
     ArchivedDocumentRetentionPolicy archivedDocumentRetentionPolicy
+    DateTime archivedAt
     DateTime createdAt
     DateTime updatedAt
   }
@@ -277,7 +278,7 @@ erDiagram
 - `User`: 로그인 사용자. 조직 membership, workspace membership, 생성/수정 문서, 버전, 감사 로그와 연결된다.
 - `Organization`: 여러 workspace를 포함하는 상위 tenant 단위다.
 - `OrganizationMember`: 사용자를 조직에 연결하고 `OWNER`, `ADMIN`, `MEMBER` role을 부여한다.
-- `Workspace`: 조직 아래 문서 집합이다. `slug`는 조직 안에서 unique하고, `archivedDocumentRetentionPolicy`로 soft-deleted 문서의 hard-delete retention policy를 저장한다.
+- `Workspace`: 조직 아래 문서 집합이다. `slug`는 조직 안에서 unique하고, `archivedDocumentRetentionPolicy`로 soft-deleted 문서의 hard-delete retention policy를 저장한다. Issue #147 adds nullable `archivedAt` as the workspace-level soft archive flag; archived workspaces keep their documents, folders, members, and slug but are excluded from normal navigation, auth landing fallback, and direct workspace page lookup. Workspace routes scope slug lookup to the current actor's active membership because the `slug` uniqueness constraint is organization-scoped rather than global. Document/folder write services also reject archived workspaces so existing browser tabs cannot mutate hidden archived workspace data.
 - `WorkspaceMember`: 사용자를 workspace에 연결하고 `OWNER`, `ADMIN`, `EDITOR`, `VIEWER` role을 부여한다.
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.

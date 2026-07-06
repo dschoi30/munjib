@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-06
-source_count: 330
+updated: 2026-07-07
+source_count: 333
 tags:
   - log
   - munjib
@@ -18,6 +18,38 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-07T01:40:00+09:00 - issue-147 RAG archived workspace review follow-up
+
+- Result: PR #150 review feedback now blocks archived workspaces in RAG POST loaders.
+- Coverage: `askDocumentQuestion()` and `loadWorkspaceForChat()` resolve workspace slugs with `archivedAt: null` plus actor membership. Ask AI returns `WORKSPACE_NOT_FOUND` before current-document context generation, and Workspace AI returns `WORKSPACE_NOT_FOUND` before creating chat threads or persisting messages from stale tabs.
+- Pages: [[RAG Process Workflow]], [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: PR #150 review thread, `lib/rag/ask.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/ask.test.ts`, `tests/rag/workspace-chat.test.ts`.
+- Verification: `./node_modules/.bin/vitest run tests/rag/ask.test.ts tests/rag/workspace-chat.test.ts`.
+
+## 2026-07-07T01:10:00+09:00 - issue-147 review follow-up
+
+- Result: PR #150 review feedback tightened the workspace management implementation before merge.
+- Coverage: Workspace page lookup now uses an actor-membership-scoped active workspace predicate so organization-scoped duplicate slugs cannot resolve the wrong workspace. Auth provisioning treats archived-only memberships as no active workspace and reactivates the deterministic personal default workspace row by clearing `archivedAt` when needed instead of redirecting back to login. Document and folder write services reject archived workspaces, including document version restore and broken-link document creation, preventing stale browser tabs from mutating hidden archived workspace data. The lower account drawer keeps Workspace settings reachable while creation failures show localized feedback, and workspace archive requires confirmation.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #150 review threads, `lib/workspaces/page-query.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `lib/auth/provisioning.ts`, `lib/documents/service.ts`, `lib/folders/service.ts`, `components/document-list.tsx`, `components/workspace-settings-panel.tsx`, `lib/i18n/messages.ts`.
+- Verification: `./node_modules/.bin/vitest run tests/i18n/messages.test.ts tests/auth/provisioning.test.ts tests/auth/provisioning-current-user.test.ts tests/workspace-actions.test.ts tests/permissions/workspace.test.ts tests/components/workspace-settings-panel.test.tsx tests/components/document-list.test.tsx tests/workspaces/page-query.test.ts`; `./node_modules/.bin/vitest run tests/workspaces/management-service.test.ts tests/workspaces/membership-bootstrap.test.ts tests/permissions/workspace.test.ts tests/documents/service.test.ts tests/folders/service.test.ts`; `./node_modules/.bin/tsc --noEmit`.
+
+## 2026-07-07T00:40:00+09:00 - issue-147 launch workspace management implementation
+
+- Result: Issue #147 implements launch workspace management on the authenticated workspace shell.
+- Coverage: The top sidebar workspace title is static chrome with no upper Settings menu; the lower account drawer owns switch workspace, add workspace, workspace settings, and log out, while omitting both `Current workspace:` and the current workspace name. `WorkspaceSettingsPanel` now opens to a Workspace section for slug-stable rename and soft archive. `Workspace.archivedAt` hides archived workspaces from normal navigation, direct workspace-page lookup, and auth landing fallback redirects. `lib/workspaces/management-service.ts` lists readable non-archived workspaces, creates new owner workspaces with launch admin/trial memberships, renames `Workspace.name` without changing `slug`, and blocks archive when no readable active fallback exists.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #147, `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`, `docs/superpowers/plans/2026-07-07-launch-workspace-management.md`, `prisma/schema.prisma`, `prisma/migrations/20260707013000_add_workspace_archive/migration.sql`, `lib/workspaces/management-service.ts`, `components/document-list.tsx`, `components/workspace-settings-panel.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `app/workspaces/[workspaceSlug]/actions.ts`, `lib/auth/provisioning.ts`.
+- Verification: focused Vitest coverage for i18n, auth provisioning, workspace actions, workspace permissions, settings panel, and document list passed; DB-backed workspace management tests passed against local Postgres; `tsc --noEmit`, `prisma validate`, and `git diff --check` passed.
+
+## 2026-07-07T00:00:00+09:00 - issue-147 launch workspace management design
+
+- Result: Issue #147 workspace management design records the Lazyweb Hypothesis #3 Account Drawer direction before implementation.
+- Coverage: The design removes the upper Settings-only menu, keeps the top sidebar workspace title as the only large current-workspace name display, moves workspace switch/create/settings/logout into the lower account/workspace drawer, and requires the lower drawer not to render `Current workspace:` or repeat the current workspace name. It also plans slug-stable rename, `Workspace.archivedAt` soft archive, archived-workspace navigation guards, launch membership bootstrap on created workspaces, and English/Korean i18n coverage.
+- Pages: [[Munjib]], [[Project PRD]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #147, Lazyweb report `https://www.lazyweb.com/report/lazyweb/36982f10-0f6b-4dfa-8c84-3a039c876e9a/?source=create`, `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`.
+- Verification: Design-only wiki sync checks pending implementation planning.
 
 ## 2026-07-06T02:10:00+09:00 - issue-146 PR review follow-up
 

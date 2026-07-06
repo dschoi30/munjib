@@ -391,7 +391,13 @@ export async function resetWorkspaceChatThread(input: WorkspaceChatInput) {
 
 async function loadWorkspaceForChat(input: WorkspaceChatInput) {
   const workspace = await prisma.workspace.findFirst({
-    where: { slug: input.workspaceSlug },
+    where: {
+      slug: input.workspaceSlug,
+      archivedAt: null,
+      members: {
+        some: { userId: input.actorId },
+      },
+    },
     include: {
       members: { where: { userId: input.actorId }, take: 1 },
       documents: {

@@ -66,7 +66,7 @@ describe("auth provisioning", () => {
           slug: "my-workspace-user-12345678",
         },
       },
-      update: {},
+      update: { archivedAt: null },
       create: {
         organizationId: "org-1",
         name: "내 워크스페이스",
@@ -126,6 +126,52 @@ describe("auth provisioning", () => {
     });
   });
 
+  it("treats archived-only memberships as no active workspace during provisioning", async () => {
+    const tx = createProvisioningTxMock();
+
+    const result = await ensureDefaultWorkspaceForUser(tx, {
+      userId: "user-12345678",
+      email: "member@example.com",
+      name: "Member",
+      language: "en",
+    });
+
+    expect(tx.workspaceMember.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "user-12345678",
+        workspace: { archivedAt: null },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { workspace: { select: { id: true, slug: true } } },
+    });
+    expect(tx.workspace.upsert).toHaveBeenCalled();
+    expect(result).toEqual({
+      workspaceId: "workspace-1",
+      workspaceSlug: "my-workspace-user-12345678",
+    });
+  });
+
+  it("reactivates the deterministic default workspace when the existing row was archived", async () => {
+    const tx = createProvisioningTxMock();
+
+    await ensureDefaultWorkspaceForUser(tx, {
+      userId: "user-12345678",
+      email: "member@example.com",
+      name: "Member",
+      language: "en",
+    });
+
+    expect(tx.workspace.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: {
+        organizationId_slug: {
+          organizationId: "org-1",
+          slug: "my-workspace-user-12345678",
+        },
+      },
+      update: { archivedAt: null },
+    }));
+  });
+
   it("keeps post-auth callbacks app-local and workspace-scoped", () => {
     expect(sanitizePostAuthCallbackPath("/workspaces/company-handbook?document=doc-1")).toBe(
       "/workspaces/company-handbook?document=doc-1",
@@ -159,5 +205,41 @@ describe("auth provisioning", () => {
         callbackPath: "/workspaces/missing",
       }),
     ).resolves.toBe("/workspaces/fallback");
+  });
+
+  it("ignores archived workspace callbacks and falls back to an active workspace", async () => {
+    const tx = {
+      workspaceMember: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ workspace: { slug: "active-workspace" } }),
+      },
+    };
+
+    await expect(
+      resolveAccessibleWorkspaceRedirect(tx, {
+        userId: "user-1",
+        callbackPath: "/workspaces/archived-workspace?document=doc-1",
+      }),
+    ).resolves.toBe("/workspaces/active-workspace");
+    expect(tx.workspaceMember.findFirst).toHaveBeenNthCalledWith(1, {
+      where: {
+        userId: "user-1",
+        workspace: {
+          slug: "archived-workspace",
+          archivedAt: null,
+        },
+      },
+      select: { workspace: { select: { slug: true } } },
+    });
+    expect(tx.workspaceMember.findFirst).toHaveBeenNthCalledWith(2, {
+      where: {
+        userId: "user-1",
+        workspace: { archivedAt: null },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { workspace: { select: { slug: true } } },
+    });
   });
 });

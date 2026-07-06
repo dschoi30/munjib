@@ -22,7 +22,9 @@ import {
   canWriteDocument,
   highestPermissionLevel,
 } from "@/lib/permissions/document";
-import { canWriteWorkspace } from "@/lib/permissions/workspace";
+import { canManageWorkspace, canWriteWorkspace } from "@/lib/permissions/workspace";
+import { listReadableWorkspacesForUser } from "@/lib/workspaces/management-service";
+import { buildWorkspacePageWhere } from "@/lib/workspaces/page-query";
 import {
   buildDocumentDisplayPathMap,
   buildFolderDisplayPathMap,
@@ -32,14 +34,17 @@ import {
 } from "@/lib/workspace-tree";
 import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
 import {
+  archiveWorkspaceAction,
   createFolderAction,
   archiveDocumentAction,
   archiveFolderAction,
+  createWorkspaceAction,
   createDocumentAction,
   createCommentAction,
   createDocumentFromBrokenLinkAction,
   importMarkdownDocumentAction,
   pasteDocumentImageAttachmentAction,
+  renameWorkspaceAction,
   renameFolderAction,
   restoreDocumentVersionAction,
   updateDocumentAction,
@@ -83,7 +88,7 @@ export default async function WorkspacePage({
   const hasRequestedFolder = typeof selectedFolderIdParam === "string";
 
   const workspace = await prisma.workspace.findFirst({
-    where: { slug: workspaceSlug },
+    where: buildWorkspacePageWhere({ workspaceSlug, actorId: user.id }),
     include: {
       members: { where: { userId: user.id }, take: 1 },
       documents: {
@@ -100,6 +105,7 @@ export default async function WorkspacePage({
   if (!workspace || !workspace.members[0]) notFound();
 
   const role = workspace.members[0].role;
+  const readableWorkspaces = await listReadableWorkspacesForUser(user.id);
   const documentIds = workspace.documents.map((document) => document.id);
   const [documentsWithExplicitPermissions, userDocumentPermissions] =
     documentIds.length > 0
@@ -277,6 +283,9 @@ export default async function WorkspacePage({
   const uploadAttachmentAction = uploadDocumentAttachmentAction.bind(null, workspaceSlug);
   const pasteImageAttachmentAction = pasteDocumentImageAttachmentAction.bind(null, workspaceSlug);
   const updateRetentionPolicy = updateWorkspaceRetentionPolicyAction.bind(null, workspaceSlug);
+  const createWorkspace = createWorkspaceAction.bind(null, workspaceSlug);
+  const renameWorkspace = renameWorkspaceAction.bind(null, workspaceSlug);
+  const archiveWorkspace = archiveWorkspaceAction.bind(null, workspaceSlug);
   const commentAction = createCommentAction.bind(null, workspaceSlug);
   const defaultChatModel = getDefaultRagChatModel();
   const defaultChatProvider = getDefaultRagChatProvider();
@@ -310,6 +319,9 @@ export default async function WorkspacePage({
         left={
           <DocumentList
             workspaceSlug={workspaceSlug}
+            workspaceName={workspace.name}
+            currentUser={{ name: user.name ?? null, email: user.email ?? "" }}
+            readableWorkspaces={readableWorkspaces}
             folders={workspace.folders.map((folder) => ({
               id: folder.id,
               parentFolderId: folder.parentFolderId,
@@ -333,8 +345,12 @@ export default async function WorkspacePage({
             }))}
             folderDocumentCounts={activeDocumentCountsByFolderId}
             canWrite={canWrite}
+            canManageWorkspace={canManageWorkspace(role)}
             createAction={createAction}
             createFolderAction={createFolder}
+            createWorkspaceAction={createWorkspace}
+            renameWorkspaceAction={renameWorkspace}
+            archiveWorkspaceAction={archiveWorkspace}
             importMarkdownAction={importMarkdown}
             renameFolderAction={renameFolder}
             archiveFolderAction={archiveFolder}

@@ -38,7 +38,7 @@ type ProvisioningTx = {
   workspace: {
     upsert(args: {
       where: { organizationId_slug: { organizationId: string; slug: string } };
-      update: Record<string, never>;
+      update: { archivedAt: null };
       create: { organizationId: string; name: string; slug: string };
       select: { id: true; slug: true };
     }): Promise<{ id: string; slug: string }>;
@@ -112,7 +112,10 @@ export async function ensureDefaultWorkspaceForUser(
   input: { userId: string; email: string; name: string | null; language: Language },
 ): Promise<WorkspaceRef> {
   const existingMembership = await tx.workspaceMember.findFirst({
-    where: { userId: input.userId },
+    where: {
+      userId: input.userId,
+      workspace: { archivedAt: null },
+    },
     orderBy: { createdAt: "asc" },
     select: { workspace: { select: { id: true, slug: true } } },
   });
@@ -152,7 +155,7 @@ export async function ensureDefaultWorkspaceForUser(
         slug: workspaceSlug,
       },
     },
-    update: {},
+    update: { archivedAt: null },
     create: {
       organizationId: organization.id,
       name: defaultWorkspaceNameForLanguage(input.language),
@@ -196,7 +199,10 @@ export async function resolveAccessibleWorkspaceRedirect(
     const membership = await tx.workspaceMember.findFirst({
       where: {
         userId: input.userId,
-        workspace: { slug: decodeURIComponent(callbackWorkspaceSlug) },
+        workspace: {
+          slug: decodeURIComponent(callbackWorkspaceSlug),
+          archivedAt: null,
+        },
       },
       select: { workspace: { select: { slug: true } } },
     });
@@ -204,7 +210,10 @@ export async function resolveAccessibleWorkspaceRedirect(
   }
 
   const firstMembership = await tx.workspaceMember.findFirst({
-    where: { userId: input.userId },
+    where: {
+      userId: input.userId,
+      workspace: { archivedAt: null },
+    },
     orderBy: { createdAt: "asc" },
     select: { workspace: { select: { slug: true } } },
   });

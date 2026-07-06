@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-06-27
-source_count: 110
+updated: 2026-07-07
+source_count: 113
 tags:
   - munjib
   - source
@@ -69,6 +69,8 @@ links:
 - review approval workflow, comment resolve UX, notification.
 - document/folder/team 단위 권한 관리 UI.
 - export/publish, SSO, production deployment hardening.
+
+Issue #147은 launch workspace management의 첫 범위를 구현한다. 하단 account/workspace drawer가 workspace switching, workspace creation, workspace settings, logout의 단일 진입점이 되고, 상단 workspace title은 현재 workspace 이름만 크게 보여준다. 하단 drawer는 현재 workspace label/name을 반복하지 않으며, rename은 `Workspace.name`만 바꾸고 slug는 안정적으로 유지한다. Soft archive는 `Workspace.archivedAt`를 사용하며, archived workspace는 navigation, direct access, auth fallback, stale-tab document/folder writes, Ask AI, and Workspace AI service loaders에서 제외된다. 설계 근거는 `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`이고 RAG guard 세부 동작은 [[RAG Process Workflow]]에 둔다.
 
 ## 최근 구현된 구조 변경
 
@@ -176,6 +178,7 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 - GitHub issue #67와 `docs/superpowers/specs/2026-05-25-knowledge-graph-zoom-and-session-display-controls-design.md`: knowledge graph zoom, label, session display controls 설계.
 - GitHub issue #122와 `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`: workspace UI chrome state persistence 설계와 구현 범위.
 - GitHub issue #126와 `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`: browser-global 영어/한국어 product language setting 설계와 user-facing translation 범위.
+- GitHub issue #147와 `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`: launch workspace management, 하단 account drawer, workspace switch/create/settings/logout, soft archive 설계.
 - GitHub issue #71와 `docs/superpowers/specs/2026-05-27-tag-click-search-design.md`: tag click search 설계와 구현.
 - GitHub issue #73와 `docs/superpowers/specs/2026-05-30-document-ai-rag-assistant-design.md`: saved-content-only document AI RAG assistant 설계.
 - GitHub issue #100와 `docs/superpowers/specs/2026-06-06-langchain-langfuse-rag-provider-abstraction-design.md`: LangChain provider abstraction과 Langfuse RAG observability 설계.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assertCanManageWorkspace,
   canManageWorkspace,
   canReadWorkspace,
   canWriteWorkspace,
@@ -28,4 +29,15 @@ describe("workspace permissions", () => {
   it.each(["EDITOR", "VIEWER"] as const)("does not allow %s to manage", (role) => {
     expect(canManageWorkspace(role)).toBe(false);
   });
+
+  it.each(["OWNER", "ADMIN"] as const)("does not throw when %s manages", (role) => {
+    expect(() => assertCanManageWorkspace(role)).not.toThrow();
+  });
+
+  it.each(["EDITOR", "VIEWER", null, undefined] as const)(
+    "throws when %s manages",
+    (role) => {
+      expect(() => assertCanManageWorkspace(role)).toThrow("WORKSPACE_MANAGE_FORBIDDEN");
+    },
+  );
 });
