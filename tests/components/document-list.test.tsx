@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
 import { DocumentList } from "@/components/document-list";
 import { I18nProvider, useI18n } from "@/components/i18n-provider";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { workspaceUiStateStorageKey } from "@/lib/workspace-ui-state";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
 
@@ -496,6 +497,40 @@ describe("DocumentList", () => {
     expect(within(drawer).getByRole("menuitem", { name: "Add workspace" })).toBeTruthy();
     expect(within(drawer).getByRole("menuitem", { name: "Workspace settings" })).toBeTruthy();
     expect(within(drawer).getByRole("menuitem", { name: "Log out" })).toBeTruthy();
+  });
+
+  it("keeps workspace settings reachable for writers who cannot manage workspace identity", () => {
+    renderList({
+      canManageWorkspace: false,
+      canWrite: true,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    fireEvent.click(within(drawer).getByRole("menuitem", { name: "Workspace settings" }));
+
+    expect(screen.getByRole("dialog", { name: "Workspace settings" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Import" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Save workspace name" })).toHaveProperty(
+      "disabled",
+      true,
+    );
+  });
+
+  it("shows a toast when adding a workspace fails", async () => {
+    const createWorkspaceAction = vi.fn(async () => ({
+      error: SERVICE_ERROR_CODES.WORKSPACE_CREATE_FORBIDDEN,
+    }));
+    renderList({ createWorkspaceAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const drawer = screen.getByRole("menu", { name: "Account menu" });
+    fireEvent.click(within(drawer).getByRole("menuitem", { name: "Add workspace" }));
+
+    await waitFor(() => {
+      expect(createWorkspaceAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+    expect(toastMock).toHaveBeenCalledWith("Workspace settings could not be saved.");
   });
 
   it("keeps the lower account drawer bounded when many workspaces are readable", () => {

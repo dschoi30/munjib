@@ -108,6 +108,7 @@ describe("WorkspaceSettingsPanel", () => {
   });
 
   it("shows the last-workspace archive guard in the workspace section", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     const archiveWorkspaceAction = vi.fn(async () => ({
       error: SERVICE_ERROR_CODES.WORKSPACE_ARCHIVE_LAST_ACTIVE,
     }));
@@ -121,6 +122,17 @@ describe("WorkspaceSettingsPanel", () => {
     expect(
       await screen.findByText("You need another active workspace before archiving this one."),
     ).toBeTruthy();
+  });
+
+  it("does not archive the workspace when confirmation is cancelled", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const archiveWorkspaceAction = vi.fn(async () => ({ error: undefined }));
+    renderSettingsPanel({ archiveWorkspaceAction });
+
+    fireEvent.click(screen.getByRole("button", { name: "Archive workspace" }));
+
+    expect(confirm).toHaveBeenCalledWith("Archive this workspace?");
+    expect(archiveWorkspaceAction).not.toHaveBeenCalled();
   });
 
   it("hides chat providers that are unavailable in server env", () => {

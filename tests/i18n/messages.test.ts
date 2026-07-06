@@ -55,6 +55,8 @@ describe("i18n message catalog", () => {
     expect(getMessage("ko", "settings.workspace.archiveTitle")).toBe("워크스페이스 보관");
     expect(getMessage("en", "settings.workspace.archiveAction")).toBe("Archive workspace");
     expect(getMessage("ko", "settings.workspace.archiveAction")).toBe("워크스페이스 보관");
+    expect(getMessage("en", "settings.workspace.archiveConfirm")).toBe("Archive this workspace?");
+    expect(getMessage("ko", "settings.workspace.archiveConfirm")).toBe("이 워크스페이스를 보관할까요?");
     expect(getMessage("en", "settings.workspace.archiveLastWorkspace")).toBe(
       "You need another active workspace before archiving this one.",
     );

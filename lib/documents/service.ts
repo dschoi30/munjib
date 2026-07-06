@@ -31,7 +31,13 @@ import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 
 async function getWorkspaceMembership(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
-    where: { slug: workspaceSlug },
+    where: {
+      slug: workspaceSlug,
+      archivedAt: null,
+      members: {
+        some: { userId: actorId },
+      },
+    },
     include: {
       organization: true,
       members: {
@@ -65,6 +71,7 @@ async function getDocumentMembership(documentId: string, actorId: string) {
   });
 
   if (!document) throw new Error(SERVICE_ERROR_CODES.DOCUMENT_NOT_FOUND);
+  if (document.workspace.archivedAt) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   const role = document.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   const access = await getUserDocumentAccess(document.id, actorId);

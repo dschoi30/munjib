@@ -112,7 +112,10 @@ export async function ensureDefaultWorkspaceForUser(
   input: { userId: string; email: string; name: string | null; language: Language },
 ): Promise<WorkspaceRef> {
   const existingMembership = await tx.workspaceMember.findFirst({
-    where: { userId: input.userId },
+    where: {
+      userId: input.userId,
+      workspace: { archivedAt: null },
+    },
     orderBy: { createdAt: "asc" },
     select: { workspace: { select: { id: true, slug: true } } },
   });

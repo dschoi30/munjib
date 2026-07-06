@@ -392,9 +392,12 @@ export function DocumentList({
     formData.set("language", language);
     setAccountDrawerOpen(false);
     startTopLevelCreateTransition(async () => {
-      await createWorkspaceAction(formData);
+      const result = await createWorkspaceAction(formData);
+      if (result?.error) {
+        toast(t("settings.workspace.actionFailed"));
+      }
     });
-  }, [canWrite, createWorkspaceAction, language, startTopLevelCreateTransition]);
+  }, [canWrite, createWorkspaceAction, language, startTopLevelCreateTransition, t]);
 
   const logOut = useCallback(() => {
     setAccountDrawerOpen(false);
@@ -533,17 +536,15 @@ export function DocumentList({
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {t("account.addWorkspace")}
               </button>
-              {canManageWorkspace ? (
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={openWorkspaceSettings}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted"
-                >
-                  <Settings className="h-4 w-4" aria-hidden="true" />
-                  {t("account.workspaceSettings")}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                role="menuitem"
+                onClick={openWorkspaceSettings}
+                className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left font-medium text-ink hover:bg-surface-muted"
+              >
+                <Settings className="h-4 w-4" aria-hidden="true" />
+                {t("account.workspaceSettings")}
+              </button>
               <button
                 type="button"
                 role="menuitem"

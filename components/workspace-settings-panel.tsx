@@ -280,6 +280,7 @@ export function WorkspaceSettingsPanel({
   const handleArchiveWorkspace = useCallback((event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!canManageWorkspace || isWorkspaceArchivePending) return;
+    if (!window.confirm(t("settings.workspace.archiveConfirm"))) return;
 
     const formData = new FormData(event.currentTarget);
     startWorkspaceArchiveTransition(async () => {
@@ -292,7 +293,7 @@ export function WorkspaceSettingsPanel({
       setWorkspaceStatus(null);
       router.refresh();
     });
-  }, [archiveWorkspaceAction, canManageWorkspace, isWorkspaceArchivePending, router]);
+  }, [archiveWorkspaceAction, canManageWorkspace, isWorkspaceArchivePending, router, t]);
 
   const handleSavePresetModel = useCallback(
     (setting: ChatModelSetting) => {

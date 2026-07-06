@@ -16,7 +16,13 @@ import { repairResolvableBrokenLinksForTargets } from "@/lib/wiki-links/reconcil
 
 async function getWorkspaceForWrite(workspaceSlug: string, actorId: string) {
   const workspace = await prisma.workspace.findFirst({
-    where: { slug: workspaceSlug },
+    where: {
+      slug: workspaceSlug,
+      archivedAt: null,
+      members: {
+        some: { userId: actorId },
+      },
+    },
     include: {
       organization: true,
       members: { where: { userId: actorId }, take: 1 },
@@ -44,6 +50,7 @@ async function getFolderForWrite(folderId: string, actorId: string) {
   });
 
   if (!folder) throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
+  if (folder.workspace.archivedAt) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   const role = folder.workspace.members[0]?.role;
   assertCanReadWorkspace(role);
   assertCanWriteWorkspace(role);

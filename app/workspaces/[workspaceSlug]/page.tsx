@@ -24,6 +24,7 @@ import {
 } from "@/lib/permissions/document";
 import { canManageWorkspace, canWriteWorkspace } from "@/lib/permissions/workspace";
 import { listReadableWorkspacesForUser } from "@/lib/workspaces/management-service";
+import { buildWorkspacePageWhere } from "@/lib/workspaces/page-query";
 import {
   buildDocumentDisplayPathMap,
   buildFolderDisplayPathMap,
@@ -87,7 +88,7 @@ export default async function WorkspacePage({
   const hasRequestedFolder = typeof selectedFolderIdParam === "string";
 
   const workspace = await prisma.workspace.findFirst({
-    where: { slug: workspaceSlug, archivedAt: null },
+    where: buildWorkspacePageWhere({ workspaceSlug, actorId: user.id }),
     include: {
       members: { where: { userId: user.id }, take: 1 },
       documents: {

@@ -17,6 +17,7 @@ import {
 import { prisma } from "@/lib/db/client";
 import { createFolder } from "@/lib/folders/service";
 import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
+import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 describe("document service", () => {
@@ -243,6 +244,46 @@ Track #review work.`,
         contentMarkdown: "Denied",
       }),
     ).rejects.toThrow("WORKSPACE_WRITE_FORBIDDEN");
+  });
+
+  it("rejects creating documents in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      createDocument({
+        workspaceSlug: fixture.workspace.slug,
+        actorId: fixture.user.id,
+        title: "Archived Workspace Doc",
+        contentMarkdown: "Denied",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  });
+
+  it("rejects updating documents in archived workspaces", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Active Doc",
+      contentMarkdown: "Before archive",
+    });
+    await prisma.workspace.update({
+      where: { id: fixture.workspace.id },
+      data: { archivedAt: new Date("2026-07-07T00:00:00.000Z") },
+    });
+
+    await expect(
+      updateDocument({
+        documentId: document.id,
+        actorId: fixture.user.id,
+        title: "Updated After Archive",
+        contentMarkdown: "Denied",
+      }),
+    ).rejects.toThrow(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   });
 
   it("prevents editors without explicit document permission from updating restricted documents", async () => {

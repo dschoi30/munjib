@@ -126,6 +126,31 @@ describe("auth provisioning", () => {
     });
   });
 
+  it("treats archived-only memberships as no active workspace during provisioning", async () => {
+    const tx = createProvisioningTxMock();
+
+    const result = await ensureDefaultWorkspaceForUser(tx, {
+      userId: "user-12345678",
+      email: "member@example.com",
+      name: "Member",
+      language: "en",
+    });
+
+    expect(tx.workspaceMember.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: "user-12345678",
+        workspace: { archivedAt: null },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { workspace: { select: { id: true, slug: true } } },
+    });
+    expect(tx.workspace.upsert).toHaveBeenCalled();
+    expect(result).toEqual({
+      workspaceId: "workspace-1",
+      workspaceSlug: "my-workspace-user-12345678",
+    });
+  });
+
   it("keeps post-auth callbacks app-local and workspace-scoped", () => {
     expect(sanitizePostAuthCallbackPath("/workspaces/company-handbook?document=doc-1")).toBe(
       "/workspaces/company-handbook?document=doc-1",
