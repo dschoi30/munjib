@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-06
-source_count: 34
+updated: 2026-07-07
+source_count: 35
 tags:
   - munjib
   - auth
@@ -96,6 +96,23 @@ English and `내 워크스페이스` for Korean. Workspace creation also calls t
 launch membership bootstrap so the new user is `OWNER`, `mjadmin@munjib.com`
 is `ADMIN`, and `mjtrial@munjib.com` is `VIEWER`.
 
+## Launch workspace management plan
+
+Issue #147 plans the launch workspace-management surface. The chosen Lazyweb
+variant is Hypothesis #3 Account Drawer, but with two explicit product
+adjustments: the upper sidebar Settings-only menu is removed, and the lower
+drawer does not repeat either `Current workspace:` or the current workspace
+name because the workspace title is already prominent at the top of the
+sidebar.
+
+The lower account/workspace drawer is planned to own workspace switch, add
+workspace, workspace settings, and log out actions. Workspace creation should
+make the actor `OWNER` of the new workspace and reuse the launch membership
+bootstrap for `mjadmin@munjib.com` as `ADMIN` and `mjtrial@munjib.com` as
+`VIEWER`. Rename changes `Workspace.name` only, preserving `Workspace.slug`.
+Soft archive is planned as `Workspace.archivedAt`, with archived workspaces
+excluded from normal navigation and direct workspace-page access.
+
 ## Workspace role
 
 현재 runtime 권한의 기본값은 `WorkspaceMember.role`이다.
@@ -169,6 +186,7 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `docs/superpowers/plans/2026-07-06-launch-signup-login-real-auth-stack.md`
 - `docs/superpowers/specs/2026-07-04-launch-auth-foundation-design.md`
 - `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`
+- `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`
 - `docs/superpowers/plans/2026-07-06-launch-auth-accounts-foundation-completion.md`
 - `lib/permissions/workspace.ts`
 - `lib/permissions/document.ts`

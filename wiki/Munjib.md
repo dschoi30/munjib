@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Markdown-first 문서 작성과 wiki link 기반 탐색을 제공하는 Obsidian형 기업 문서 위키.
 created: 2026-04-29
-updated: 2026-06-27
-source_count: 65
+updated: 2026-07-07
+source_count: 66
 tags:
   - munjib
   - product
@@ -61,6 +61,8 @@ Issue #20 구현으로 `New folder`는 빈 document가 아니라 실제 `Folder`
 Issue #119 implements workspace-level retention policy for trashed documents and a CLI/tools hard-delete purge command. The default policy is 30 days, writers can choose `Never`, `7 days`, `30 days`, or `90 days` in workspace settings, and actual hard delete targets archived documents only. Archived folder hard delete, attachment storage file cleanup, and production scheduling remain follow-up scope. 설계 근거는 `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`이다.
 
 Issue #126 설계는 제품 표시 언어를 영어/한국어로 전환하는 browser-global app setting을 계획한다. Settings panel에 `Language` section을 추가해 Save 클릭 후 사용자-facing product chrome, login, document UI, settings, Ask AI/Workspace AI default messages, placeholders, thinking/error/empty states를 즉시 전환한다. 저장값이 없으면 최초 client hydration 때 `navigator.languages`/`navigator.language`의 `ko`/`ko-*` 여부로 한국어를 추론하고, 그 외는 영어로 시작한다. 현재 구현은 login, workspace sidebar/navigation, document tabs/toolbar, folder detail, metadata panel, editor/properties/preview/wiki-link suggestions, and knowledge graph controls까지 shared English/Korean catalog를 사용한다. Empty document/tab fallback labels are rendered from the current language at display time, while saved document titles, paths, provider/model ids, arbitrary frontmatter keys, and developer/admin-only error identifiers remain unlocalized data/internal strings. 실제 AI answer body는 계속 질문 언어를 우선하고, 관리자/개발자용 내부 error code/log/telemetry identifier는 번역하지 않는다. 설계 근거는 `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`이다.
+
+Issue #147 설계는 launch workspace management를 아직 구현 전 계획으로 정리한다. Lazyweb Hypothesis #3 Account Drawer를 따르되, 상단 workspace title은 현재 workspace 이름의 유일한 큰 표시 지점으로 두고 상단 Settings-only menu는 제거한다. Workspace switch, Add workspace, Workspace settings, Log out은 하단 account/workspace drawer에서 관리하며, 하단 drawer는 `Current workspace:` 문구나 현재 workspace 이름을 반복하지 않는다. Soft archive는 `Workspace.archivedAt`로 계획하고, archived workspace는 일반 navigation과 직접 workspace page 접근에서 제외한다. 설계 근거는 `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`이다.
 
 ## 편집 경험 개선
 
@@ -155,6 +157,8 @@ Issue #29 구현으로 workspace center 상단에 Obsidian 참고 이미지 `wik
 - `docs/superpowers/specs/2026-06-20-archived-document-retention-purge-settings-design.md`
 - GitHub issue #126
 - `docs/superpowers/specs/2026-06-21-product-language-internationalization-settings-design.md`
+- GitHub issue #147
+- `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`
 - GitHub issue #122
 - `docs/superpowers/specs/2026-06-21-workspace-ui-state-persistence-design.md`
 - `docs/superpowers/plans/2026-06-15-ai-assistant-accuracy-and-workspace-chatbot.md`

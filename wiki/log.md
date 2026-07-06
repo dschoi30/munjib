@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-06
-source_count: 330
+updated: 2026-07-07
+source_count: 331
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-07T00:00:00+09:00 - issue-147 launch workspace management design
+
+- Result: Issue #147 workspace management design records the Lazyweb Hypothesis #3 Account Drawer direction before implementation.
+- Coverage: The design removes the upper Settings-only menu, keeps the top sidebar workspace title as the only large current-workspace name display, moves workspace switch/create/settings/logout into the lower account/workspace drawer, and requires the lower drawer not to render `Current workspace:` or repeat the current workspace name. It also plans slug-stable rename, `Workspace.archivedAt` soft archive, archived-workspace navigation guards, launch membership bootstrap on created workspaces, and English/Korean i18n coverage.
+- Pages: [[Munjib]], [[Project PRD]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub issue #147, Lazyweb report `https://www.lazyweb.com/report/lazyweb/36982f10-0f6b-4dfa-8c84-3a039c876e9a/?source=create`, `docs/superpowers/specs/2026-07-07-launch-workspace-management-design.md`.
+- Verification: Design-only wiki sync checks pending implementation planning.
 
 ## 2026-07-06T02:10:00+09:00 - issue-146 PR review follow-up
 
