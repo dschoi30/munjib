@@ -20,10 +20,13 @@ Logout should use the same browser-origin app-local redirect contract as sign-in
   origin returned by NextAuth
 
 The URL parsing helper should be shared by login and logout so future auth entry
-points do not reimplement the origin check differently.
+points do not reimplement the origin check differently. The browser-origin read
+should be guarded so importing or evaluating the helper without `window` does
+not throw.
 
 ## Testing
 
 Add a component regression test for the lower account drawer: if mocked NextAuth
 returns `http://localhost:3000/login` from `signOut({ redirect: false })`, the
-browser should navigate to `/login`.
+browser should navigate to `/login`. Add a small helper test that confirms the
+browser-origin reader is safe when `window` is absent.

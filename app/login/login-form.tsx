@@ -7,6 +7,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
+  readBrowserOrigin,
   resolveAppLocalRedirectPath,
   resolveAuthClientRedirectPath,
 } from "@/lib/auth/client-redirects";
@@ -25,16 +26,18 @@ type AuthMode = "signin" | "signup";
 type AuthAction = "password" | "signup" | "google" | "trial" | "dev" | null;
 
 function buildPostAuthCallbackUrl(callbackUrl: string) {
+  const origin = readBrowserOrigin();
   const safeCallbackUrl =
-    resolveAppLocalRedirectPath(callbackUrl, window.location.origin) ??
+    (origin ? resolveAppLocalRedirectPath(callbackUrl, origin) : null) ??
     defaultPostLoginCallbackUrl;
   return `/login/redirect?callbackUrl=${encodeURIComponent(safeCallbackUrl)}`;
 }
 
 function resolvePostSignInRedirectUrl(resultUrl: string, callbackUrl: string) {
   // NextAuth can return an absolute URL based on NEXTAUTH_URL; keep app-local callbacks on the browser origin.
+  const origin = readBrowserOrigin();
   return (
-    resolveAuthClientRedirectPath(resultUrl, callbackUrl, window.location.origin) ??
+    (origin ? resolveAuthClientRedirectPath(resultUrl, callbackUrl, origin) : null) ??
     buildPostAuthCallbackUrl(defaultPostLoginCallbackUrl)
   );
 }

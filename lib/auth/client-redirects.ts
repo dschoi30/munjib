@@ -1,3 +1,7 @@
+export function readBrowserOrigin() {
+  return typeof window === "undefined" ? null : window.location.origin;
+}
+
 export function resolveAppLocalRedirectPath(url: string, origin: string) {
   try {
     const parsed = new URL(url, origin);
