@@ -34,6 +34,7 @@ import {
   updateStoredWorkspaceUiState,
   type WorkspaceSidebarPanel,
 } from "@/lib/workspace-ui-state";
+import { resolveAuthClientRedirectPath } from "@/lib/auth/client-redirects";
 import { workspaceDocumentHref, workspaceGraphHref } from "@/lib/workspace-routes";
 import type { ClientRagChatProviderAvailability } from "@/lib/rag/client-model-settings";
 import type { ArchivedDocumentRetentionPolicyValue } from "@/lib/workspaces/retention-policy";
@@ -401,7 +402,11 @@ export function DocumentList({
 
   const logOut = useCallback(() => {
     setAccountDrawerOpen(false);
-    void signOut({ callbackUrl: "/login" });
+    void signOut({ redirect: false, callbackUrl: "/login" }).then((result) => {
+      window.location.assign(
+        resolveAuthClientRedirectPath(result?.url, "/login", window.location.origin) ?? "/login",
+      );
+    });
   }, []);
 
   const activePanelHydrated = activePanelHydratedWorkspace === workspaceSlug;

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-07
-source_count: 53
+updated: 2026-07-08
+source_count: 58
 tags:
   - munjib
   - auth
@@ -61,6 +61,8 @@ NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 �
 `LoginForm`은 `callbackUrl`이 `/workspaces/...` 같은 app-local path이면 `signIn(..., { redirect: false })`가 반환한 absolute URL의 origin을 그대로 사용하지 않고 callback path로 이동한다. NextAuth가 server-side `NEXTAUTH_URL` 기준의 `http://localhost:3000/...` URL을 반환할 수 있기 때문에, client-side 이동은 현재 browser origin을 유지하는 relative path를 우선한다.
 
 Callback sanitization은 단순 string prefix check가 아니라 `new URL(value, window.location.origin)` parsing 결과의 `origin`이 현재 browser origin과 같은지 확인한다. `/\evil.example`처럼 browser가 protocol-relative external URL로 normalize할 수 있는 malformed path는 기본 `/workspaces/company-handbook` callback으로 낮춰 `signIn()`에도 unsafe callback을 전달하지 않는다.
+
+Logout도 같은 client-side redirect helper를 사용한다. Lower account drawer는 `signOut({ redirect: false, callbackUrl: "/login" })`로 세션 종료 결과를 받은 뒤, NextAuth가 `NEXTAUTH_URL`에서 만든 `http://localhost:3000/login` 같은 absolute URL을 그대로 따르지 않고 현재 browser origin 기준 app-local `/login` path로 이동한다. Shared helper의 browser-origin read는 `window`가 없는 환경에서도 throw하지 않도록 guard한다.
 
 Issue #146 adds a post-auth landing step. The login form sends NextAuth to
 `/login/redirect?callbackUrl=<workspace-path>` after Google, password, signup,
@@ -204,6 +206,7 @@ Seed reruns preserve existing launch account hashes and email verification times
 ## 근거
 
 - `lib/auth/config.ts`
+- `lib/auth/client-redirects.ts`
 - `lib/auth/session.ts`
 - `app/login/login-form.tsx`
 - `app/login/page.tsx`
@@ -240,7 +243,9 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `tests/auth/config.test.ts`
 - `tests/auth/provisioning.test.ts`
 - `tests/auth/login-gate-callers.test.ts`
+- `tests/auth/client-redirects.test.ts`
 - `tests/components/login-form.test.tsx`
+- `tests/components/document-list.test.tsx`
 - `tests/docker/compose.test.ts`
 - `tests/permissions/document.test.ts`
 - `prisma/seed.ts`
@@ -249,3 +254,4 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `lib/workspaces/membership-bootstrap.ts`
 - `tests/auth/passwords.test.ts`
 - `tests/workspaces/membership-bootstrap.test.ts`
+- `docs/superpowers/specs/2026-07-08-logout-redirect-normalization-design.md`

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-07
-source_count: 333
+updated: 2026-07-08
+source_count: 334
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-08T00:25:00+09:00 - logout redirect normalization
+
+- Result: Lower account drawer logout now preserves the current browser origin instead of following a NextAuth absolute URL derived from `NEXTAUTH_URL`.
+- Coverage: `signOut()` runs with `redirect: false`, then shared client redirect parsing accepts only app-local paths for the current browser origin and navigates to `/login`. This mirrors the existing sign-in redirect normalization that avoids `http://localhost:3000/...` escapes, and the browser-origin helper is guarded so it does not throw when `window` is absent.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: user bug report, PR #151 review thread, `docs/superpowers/specs/2026-07-08-logout-redirect-normalization-design.md`, `lib/auth/client-redirects.ts`, `app/login/login-form.tsx`, `components/document-list.tsx`, `tests/auth/client-redirects.test.ts`, `tests/components/login-form.test.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `./node_modules/.bin/vitest run tests/auth/client-redirects.test.ts tests/components/login-form.test.tsx tests/components/document-list.test.tsx`; `./node_modules/.bin/tsc --noEmit`.
 
 ## 2026-07-07T01:40:00+09:00 - issue-147 RAG archived workspace review follow-up
 

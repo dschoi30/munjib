@@ -6,6 +6,11 @@ import { useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  readBrowserOrigin,
+  resolveAppLocalRedirectPath,
+  resolveAuthClientRedirectPath,
+} from "@/lib/auth/client-redirects";
 import type { MessageKey } from "@/lib/i18n/messages";
 
 const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
@@ -20,26 +25,19 @@ type LoginFormProps = {
 type AuthMode = "signin" | "signup";
 type AuthAction = "password" | "signup" | "google" | "trial" | "dev" | null;
 
-function resolveAppLocalRedirectPath(url: string) {
-  try {
-    const parsed = new URL(url, window.location.origin);
-    if (parsed.origin !== window.location.origin) return null;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return null;
-  }
-}
-
 function buildPostAuthCallbackUrl(callbackUrl: string) {
-  const safeCallbackUrl = resolveAppLocalRedirectPath(callbackUrl) ?? defaultPostLoginCallbackUrl;
+  const origin = readBrowserOrigin();
+  const safeCallbackUrl =
+    (origin ? resolveAppLocalRedirectPath(callbackUrl, origin) : null) ??
+    defaultPostLoginCallbackUrl;
   return `/login/redirect?callbackUrl=${encodeURIComponent(safeCallbackUrl)}`;
 }
 
 function resolvePostSignInRedirectUrl(resultUrl: string, callbackUrl: string) {
   // NextAuth can return an absolute URL based on NEXTAUTH_URL; keep app-local callbacks on the browser origin.
+  const origin = readBrowserOrigin();
   return (
-    resolveAppLocalRedirectPath(resultUrl) ??
-    resolveAppLocalRedirectPath(callbackUrl) ??
+    (origin ? resolveAuthClientRedirectPath(resultUrl, callbackUrl, origin) : null) ??
     buildPostAuthCallbackUrl(defaultPostLoginCallbackUrl)
   );
 }
