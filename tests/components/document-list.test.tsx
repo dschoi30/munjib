@@ -113,6 +113,7 @@ beforeEach(() => {
   router.refresh.mockReset();
   toastMock.mockReset();
   signOutMock.mockReset();
+  signOutMock.mockResolvedValue({ url: "/login" });
 
   let store: Record<string, string> = {};
 
@@ -130,6 +131,11 @@ beforeEach(() => {
         store[key] = value;
       },
     },
+  });
+
+  Object.defineProperty(window, "location", {
+    configurable: true,
+    value: { assign: vi.fn(), origin: "https://munjib.example" },
   });
 });
 
@@ -567,7 +573,21 @@ describe("DocumentList", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Log out" }));
-    expect(signOutMock).toHaveBeenCalledWith({ callbackUrl: "/login" });
+    expect(signOutMock).toHaveBeenCalledWith({ redirect: false, callbackUrl: "/login" });
+  });
+
+  it("normalizes absolute sign-out redirects to the app-local login path", async () => {
+    signOutMock.mockResolvedValue({ url: "http://localhost:3000/login" });
+
+    renderList();
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Log out" }));
+
+    await waitFor(() => {
+      expect(signOutMock).toHaveBeenCalledWith({ redirect: false, callbackUrl: "/login" });
+    });
+    expect(window.location.assign).toHaveBeenCalledWith("/login");
   });
 
   it("opens the workspace settings panel with Workspace selected by default", () => {
