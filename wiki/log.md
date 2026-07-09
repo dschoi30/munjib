@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-09
-source_count: 336
+source_count: 338
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
+
+- Result: Local `legacy-account-2@example.invalid` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.
+- Coverage: DB inspection showed the `company-handbook` `/raw/ai-iclr` document referenced `/api/attachments/cmr5...` ids that no longer exist in `Attachment`. `WorkspacePage` now passes the selected document's attachment ids into `DocumentEditor`, and `DocumentEditor` also tracks attachment ids returned by successful image paste uploads until the next route refresh. `MarkdownPreview` renders `/api/attachments/<id>` images only when the id is in that combined allow-list. Stale internal image links preserve alt text without creating an `<img>` request, while valid attached images, freshly pasted images, and external image URLs keep rendering.
+- Pages: [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
+- Source evidence: user bug report, local read-only Prisma inspection, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor.tsx`, `components/document-editor/markdown-preview.tsx`, `components/document-editor/types.ts`, `tests/components/document-editor-preview.test.tsx`.
+- Verification: `./node_modules/.bin/vitest run tests/components/document-editor-preview.test.tsx -t "stale internal attachment"` failed before the fix and passed after the fix; PR #153 review follow-up test `./node_modules/.bin/vitest run tests/components/document-editor-preview.test.tsx -t "newly pasted attachment"` failed before the follow-up and passed after it; `./node_modules/.bin/vitest run tests/components/document-editor-preview.test.tsx`; `./node_modules/.bin/tsc --noEmit`.
 
 ## 2026-07-09T22:04:00+09:00 - editor paste and account drawer layout fix
 
