@@ -89,6 +89,7 @@ const baseProps = {
   action: async () => {},
   uploadAttachmentAction: async () => {},
   pasteImageAttachmentAction: async () => ({ markdown: "![clipboard.png](/api/attachments/attachment-1)" }),
+  attachmentIds: [],
   linkCandidates: [],
   tags: [],
   properties: [],
@@ -952,6 +953,26 @@ describe("DocumentEditor heading preview folding", () => {
     expect(paragraph?.querySelector("br")).toBeTruthy();
   });
 
+  it("does not request stale internal attachment images that are not attached to the document", () => {
+    renderEditor(
+      [
+        "Known: ![Known attachment](/api/attachments/known-attachment)",
+        "Missing: ![Missing attachment](/api/attachments/missing-attachment)",
+        "Remote: ![Remote image](https://example.com/remote.png)",
+      ].join("\n\n"),
+      { attachmentIds: ["known-attachment"] },
+    );
+
+    expect(screen.getByRole("img", { name: "Known attachment" }).getAttribute("src")).toBe(
+      "/api/attachments/known-attachment",
+    );
+    expect(screen.queryByRole("img", { name: "Missing attachment" })).toBeNull();
+    expect(screen.getByText("Missing attachment")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Remote image" }).getAttribute("src")).toBe(
+      "https://example.com/remote.png",
+    );
+  });
+
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
     const markdown = "# A\nLine\n# B\nOther";
     renderEditor(markdown);
@@ -1177,6 +1198,59 @@ describe("DocumentEditor heading preview folding", () => {
         ],
       });
     });
+  });
+
+  it("renders newly pasted attachment images in preview before a route refresh", async () => {
+    const upload = createDeferred<{ markdown: string }>();
+    const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);
+    renderEditor("Intro", { attachmentIds: [], pasteImageAttachmentAction });
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const image = new File(["image"], "clipboard.png", { type: "image/png" });
+    const event = {
+      preventDefault: vi.fn(),
+      clipboardData: {
+        files: [image],
+        items: [],
+        getData: () => "",
+      },
+    } as unknown as ClipboardEvent;
+    let currentMarkdown = "Intro";
+    const dispatch = vi.fn((transaction: { changes?: { insert?: string } }) => {
+      if (typeof transaction.changes?.insert === "string") {
+        currentMarkdown = `Intro ${transaction.changes.insert}`;
+      }
+    });
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: {
+        replaceSelection: vi.fn((text: string) => ({ changes: { from: 5, to: 5, insert: text } })),
+        doc: { toString: () => currentMarkdown },
+        selection: { ranges: [{ from: 5, to: 5 }] },
+        sliceDoc: () => "",
+      },
+      dispatch,
+    })).toBe(true);
+
+    await vi.waitFor(() => {
+      expect(pasteImageAttachmentAction).toHaveBeenCalledWith(expect.any(FormData));
+    });
+
+    upload.resolve({ markdown: "![clipboard.png](/api/attachments/new-attachment)" });
+
+    await vi.waitFor(() => {
+      expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
+        "Intro ![clipboard.png](/api/attachments/new-attachment)",
+      );
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /preview/i }));
+
+    expect(screen.getByRole("img", { name: "clipboard.png" }).getAttribute("src")).toBe(
+      "/api/attachments/new-attachment",
+    );
   });
 
   it("blocks document save while pasted image upload is pending", async () => {

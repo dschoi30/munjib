@@ -416,6 +416,7 @@ export default async function WorkspacePage({
                 action={updateAction}
                 uploadAttachmentAction={uploadAttachmentAction}
                 pasteImageAttachmentAction={pasteImageAttachmentAction}
+                attachmentIds={attachments.map((attachment) => attachment.id)}
                 linkCandidates={readableDocuments.map((document) => ({
                   id: document.id,
                   slug: document.slug,

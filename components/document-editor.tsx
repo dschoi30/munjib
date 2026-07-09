@@ -110,6 +110,10 @@ function getSelectedTexts(view: EditorView) {
   return view.state.selection.ranges.map((range) => view.state.sliceDoc(range.from, range.to));
 }
 
+function getInternalAttachmentIds(markdown: string) {
+  return [...markdown.matchAll(/\/api\/attachments\/([A-Za-z0-9_-]+)/g)].map((match) => match[1]);
+}
+
 function htmlToMarkdownWithImagePlaceholders(html: string) {
   if (typeof DOMParser === "undefined" || html.trim().length === 0) {
     return { markdown: "", images: [] as HtmlImagePaste[] };
@@ -229,6 +233,7 @@ export function DocumentEditor({
   action,
   uploadAttachmentAction,
   pasteImageAttachmentAction,
+  attachmentIds,
   linkCandidates,
   tags,
   properties,
@@ -259,9 +264,30 @@ export function DocumentEditor({
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const [pendingImagePasteCounts, setPendingImagePasteCounts] = useState<Record<string, number>>({});
+  const [localAttachmentIdsByDocumentId, setLocalAttachmentIdsByDocumentId] = useState<Record<string, string[]>>({});
   const hasPendingImagePaste = document?.id ? (pendingImagePasteCounts[document.id] ?? 0) > 0 : false;
   activeDocumentIdRef.current = document?.id ?? null;
   pendingImagePasteCountsRef.current = pendingImagePasteCounts;
+  const rememberLocalAttachmentIds = useCallback((documentId: string, markdown: string) => {
+    const nextIds = getInternalAttachmentIds(markdown);
+    if (!documentId || nextIds.length === 0) {
+      return;
+    }
+
+    setLocalAttachmentIdsByDocumentId((current) => {
+      const ids = new Set(current[documentId] ?? []);
+      let changed = false;
+
+      for (const id of nextIds) {
+        if (!ids.has(id)) {
+          ids.add(id);
+          changed = true;
+        }
+      }
+
+      return changed ? { ...current, [documentId]: Array.from(ids) } : current;
+    });
+  }, []);
   const extensions = useMemo(
     () => [
       markdown(),
@@ -312,6 +338,7 @@ export function DocumentEditor({
                 const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
                 const nextDraft = replacePlaceholdersInMarkdown(currentDraft, placeholder, markdown);
                 pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                rememberLocalAttachmentIds(pasteDocumentId, markdown);
                 replaceCurrentPlaceholder(view, placeholder, markdown);
                 if (activeDocumentIdRef.current === pasteDocumentId) {
                   setContentMarkdown(nextDraft);
@@ -383,6 +410,7 @@ export function DocumentEditor({
                   const currentDraft = pendingImagePasteDraftsRef.current[pasteDocumentId] ?? view.state.doc.toString();
                   const nextDraft = replacePlaceholdersInMarkdown(currentDraft, image.placeholder, markdown);
                   pendingImagePasteDraftsRef.current[pasteDocumentId] = nextDraft;
+                  rememberLocalAttachmentIds(pasteDocumentId, markdown);
                   replaceCurrentPlaceholder(view, image.placeholder, markdown);
                   if (activeDocumentIdRef.current === pasteDocumentId) {
                     setContentMarkdown(nextDraft);
@@ -422,7 +450,7 @@ export function DocumentEditor({
         },
       }),
     ],
-    [canWrite, document?.id, pasteImageAttachmentAction, t],
+    [canWrite, document?.id, pasteImageAttachmentAction, rememberLocalAttachmentIds, t],
   );
   const suggestions = useMemo(() => {
     if (!activeCompletion) return [];
@@ -578,6 +606,13 @@ export function DocumentEditor({
   const hasUnsavedChanges = document
     ? title !== document.title || contentMarkdown !== document.contentMarkdown || hasPendingImagePaste
     : false;
+  const previewAttachmentIds = useMemo(() => {
+    const localAttachmentIds = document?.id ? (localAttachmentIdsByDocumentId[document.id] ?? []) : [];
+
+    return localAttachmentIds.length > 0
+      ? Array.from(new Set([...attachmentIds, ...localAttachmentIds]))
+      : attachmentIds;
+  }, [attachmentIds, document?.id, localAttachmentIdsByDocumentId]);
 
   if (!document) {
     return (
@@ -697,6 +732,7 @@ export function DocumentEditor({
           <MarkdownPreview
             markdown={contentMarkdown}
             documentId={document.id}
+            attachmentIds={previewAttachmentIds}
             linkCandidates={linkCandidates}
             registerHeadingExpander={(expander) => {
               previewHeadingExpanderRef.current = expander;
