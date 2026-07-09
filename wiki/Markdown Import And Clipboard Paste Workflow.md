@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Markdown file import와 editor clipboard paste가 문서, attachment, draft, version 흐름에 반영되는 방식.
 created: 2026-05-21
-updated: 2026-06-20
-source_count: 19
+updated: 2026-07-09
+source_count: 20
 tags:
   - munjib
   - workflow
@@ -94,10 +94,11 @@ Implemented behavior:
 
 1. `DataTransfer.items` 또는 `DataTransfer.files`에서 `image/png`, `image/jpeg`, `image/gif`, `image/webp` file을 찾는다.
 2. image file이 있으면 rich HTML 변환보다 먼저 paste-only attachment upload 경로를 탄다.
-3. image file이 없으면 clipboard `text/html`을 읽고 HTML-to-Markdown 변환을 수행한다.
-4. HTML 안의 `<img>`는 Markdown 변환 전에 upload placeholder로 치환한다.
-5. 이미지가 없는 HTML은 rich text paste로 처리한다.
-6. HTML 변환 결과가 없으면 browser/CodeMirror 기본 plain text paste에 맡긴다.
+3. image file이 없고 clipboard가 `text/plain` 원문과 VS Code/Monaco 같은 code-editor syntax-highlight HTML을 같이 제공하면 plain text를 직접 삽입한다. 이 경로는 `white-space: pre`/code-editor hint가 있지만 semantic rich tags나 `<img>`가 없는 HTML에만 적용해, Markdown 원문의 공백과 개행을 그대로 보존하고 줄마다 빈 줄이 끼는 변환을 피한다.
+4. 그 외 image file이 없으면 clipboard `text/html`을 읽고 HTML-to-Markdown 변환을 수행한다.
+5. HTML 안의 `<img>`는 Markdown 변환 전에 upload placeholder로 치환한다.
+6. 이미지가 없는 HTML은 rich text paste로 처리한다.
+7. HTML 변환 결과가 없으면 browser/CodeMirror 기본 plain text paste에 맡긴다.
 
 이 순서 때문에 source app이 clipboard에 실제 image file을 제공하는 경우와 `<img src>` HTML만 제공하는 경우가 서로 다른 하위 경로를 탄다.
 

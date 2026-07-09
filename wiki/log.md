@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-08
-source_count: 334
+updated: 2026-07-09
+source_count: 336
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-09T22:04:00+09:00 - editor paste and account drawer layout fix
+
+- Result: Editor paste now preserves Markdown copied from VS Code/Monaco-style code editors, and the lower account drawer button stays pinned to the bottom of the left sidebar when the document list is short.
+- Coverage: `DocumentEditor` detects code-editor syntax-highlight HTML that accompanies `text/plain` and inserts the plain Markdown source instead of treating each highlighted line wrapper as a rich HTML block. The PR #152 review follow-up keeps `<b>`/`<i>` rich HTML on the Markdown conversion path and detects quoted `font-family` values plus generic `monospace` fallbacks. Rich semantic HTML and HTML image paste keep their existing conversion/upload paths. `DocumentList` now renders as a full-height flex column, and the account drawer footer uses `mt-auto` with `sticky bottom-0`.
+- Pages: [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: user bug report, PR #152 review threads, `components/document-editor.tsx`, `components/document-list.tsx`, `tests/components/document-editor-preview.test.tsx`, `tests/components/document-list.test.tsx`.
+- Verification: `./node_modules/.bin/vitest run tests/components/document-editor-preview.test.tsx tests/components/document-list.test.tsx --pool forks`; `./node_modules/.bin/vitest run tests/components/document-editor-preview.test.tsx --pool forks`; `./node_modules/.bin/tsc --noEmit`.
 
 ## 2026-07-08T00:25:00+09:00 - logout redirect normalization
 

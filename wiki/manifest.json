@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-07",
+  "updated": "2026-07-09",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -109,7 +109,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]"
       ],
-      "source_count": 98,
+      "source_count": 99,
       "searchPriority": 50
     },
     {
@@ -207,7 +207,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 156,
+      "source_count": 157,
       "searchPriority": 5
     },
     {
@@ -250,7 +250,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 334,
+      "source_count": 336,
       "searchPriority": 1
     },
     {
@@ -274,7 +274,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 19,
+      "source_count": 20,
       "searchPriority": 50
     },
     {

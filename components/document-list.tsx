@@ -416,7 +416,7 @@ export function DocumentList({
   }
 
   return (
-    <div>
+    <div data-testid="document-list-root" className="flex min-h-full flex-col">
       <div data-testid="document-list-sticky-chrome" className="sticky top-0 z-20 bg-muted pb-1">
         <div className="relative">
           <TooltipProvider delayDuration={0}>
@@ -480,7 +480,11 @@ export function DocumentList({
           <DocumentNavigationBodySkeleton />
         )}
       </div>
-      <div ref={accountDrawerRef} className="sticky bottom-0 z-20 mt-4 border-t border-border bg-muted pt-3">
+      <div
+        ref={accountDrawerRef}
+        data-testid="account-drawer-footer"
+        className="sticky bottom-0 z-20 mt-auto border-t border-border bg-muted pt-3"
+      >
         <Button
           type="button"
           aria-label={t("account.menu")}
