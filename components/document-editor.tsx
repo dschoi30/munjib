@@ -146,6 +146,23 @@ function htmlToMarkdownWithImagePlaceholders(html: string) {
   };
 }
 
+function shouldPastePlainTextFromCodeEditor(html: string, plainText: string) {
+  if (!html.trim() || !plainText || /<img[\s>]/i.test(html)) {
+    return false;
+  }
+
+  if (/<(?:a|b|blockquote|code|em|h[1-6]|i|li|ol|pre|strong|table|td|th|tr|ul)\b/i.test(html)) {
+    return false;
+  }
+
+  return (
+    /monaco-editor/i.test(html) ||
+    /\bvscode\b/i.test(html) ||
+    /white-space\s*:\s*pre/i.test(html) ||
+    /font-family\s*:[^;]*(?:Menlo|Monaco|Consolas|Courier New|monospace)/i.test(html)
+  );
+}
+
 function isImageOnlyLink(link: HTMLAnchorElement, image: HTMLImageElement) {
   return Array.from(link.childNodes).every((child) => {
     if (child === image) return true;
@@ -332,6 +349,13 @@ export function DocumentEditor({
           }
 
           const html = event.clipboardData?.getData("text/html") ?? "";
+          const plainText = event.clipboardData?.getData("text/plain") ?? "";
+          if (shouldPastePlainTextFromCodeEditor(html, plainText)) {
+            event.preventDefault();
+            view.dispatch(view.state.replaceSelection(plainText));
+            return true;
+          }
+
           const { markdown, images } = htmlToMarkdownWithImagePlaceholders(html);
 
           if (!markdown) {
