@@ -44,11 +44,13 @@ const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
 export function MarkdownPreview({
   markdown,
   documentId,
+  attachmentIds,
   linkCandidates,
   registerHeadingExpander,
 }: {
   markdown: string;
   documentId: string;
+  attachmentIds: string[];
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
@@ -62,6 +64,7 @@ export function MarkdownPreview({
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
+  const attachmentIdSet = useMemo(() => new Set(attachmentIds), [attachmentIds]);
   const markdownComponents = useMemo<Components>(
     () => ({
       p: ({ children }) => (
@@ -112,8 +115,17 @@ export function MarkdownPreview({
           </a>
         );
       },
+      img: ({ node: _node, src, alt, ...props }) => {
+        const attachmentId = getInternalAttachmentId(typeof src === "string" ? src : undefined);
+
+        if (attachmentId && !attachmentIdSet.has(attachmentId)) {
+          return alt ? <span>{alt}</span> : null;
+        }
+
+        return <img {...props} src={src} alt={alt ?? ""} />;
+      },
     }),
-    [tagSearch?.requestTagSearch, tagSearchLabel],
+    [attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
@@ -215,6 +227,14 @@ export function MarkdownPreview({
       )}
     </div>
   );
+}
+
+function getInternalAttachmentId(src: string | undefined) {
+  if (!src?.startsWith("/api/attachments/")) {
+    return null;
+  }
+
+  return src.slice("/api/attachments/".length).split(/[/?#]/, 1)[0] || null;
 }
 
 function getAncestorOutlineHeadingIds(id: string) {
