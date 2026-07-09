@@ -1010,6 +1010,101 @@ describe("DocumentEditor heading preview folding", () => {
     expect(dispatch).toHaveBeenCalledWith({ changes: "# Pasted Title\n\n**Styled** text" });
   });
 
+  it("pastes code-editor clipboard HTML as the original plain markdown text", async () => {
+    renderEditor("Intro");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const plainText = "# Munjib\n\n- First\n- Second";
+    const preventDefault = vi.fn();
+    const dispatch = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: text }));
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? `<meta charset="utf-8"><div style="font-family: Menlo, Monaco, 'Courier New', monospace; white-space: pre;"><div><span># Munjib</span></div><div><br></div><div><span>- First</span></div><div><span>- Second</span></div></div>`
+            : plainText,
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: { replaceSelection },
+      dispatch,
+    })).toBe(true);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(replaceSelection).toHaveBeenCalledWith(plainText);
+    expect(dispatch).toHaveBeenCalledWith({ changes: plainText });
+  });
+
+  it("detects quoted monospace font-family clipboard HTML as code-editor plain text", async () => {
+    renderEditor("Intro");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const plainText = "# Munjib\n\n- First\n- Second";
+    const preventDefault = vi.fn();
+    const dispatch = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: text }));
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? `<div style="font-family: 'Courier New', monospace;"><div><span># Munjib</span></div><div><br></div><div><span>- First</span></div><div><span>- Second</span></div></div>`
+            : plainText,
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: { replaceSelection },
+      dispatch,
+    })).toBe(true);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(replaceSelection).toHaveBeenCalledWith(plainText);
+    expect(dispatch).toHaveBeenCalledWith({ changes: plainText });
+  });
+
+  it("keeps bold and italic HTML on the rich markdown conversion path", async () => {
+    renderEditor("Intro");
+
+    fireEvent.click(screen.getByRole("button", { name: /edit/i }));
+    await screen.findByLabelText("Markdown editor");
+
+    const preventDefault = vi.fn();
+    const dispatch = vi.fn();
+    const replaceSelection = vi.fn((text: string) => ({ changes: text }));
+    const event = {
+      preventDefault,
+      clipboardData: {
+        files: [],
+        items: [],
+        getData: (type: string) =>
+          type === "text/html"
+            ? `<div style="white-space: pre;"><b>Bold</b> and <i>italic</i></div>`
+            : "Bold and italic",
+      },
+    } as unknown as ClipboardEvent;
+
+    expect(codeMirrorHarness.pasteHandlers[0](event, {
+      state: { replaceSelection },
+      dispatch,
+    })).toBe(true);
+
+    expect(preventDefault).toHaveBeenCalled();
+    expect(replaceSelection).toHaveBeenCalledWith("**Bold** and _italic_");
+    expect(dispatch).toHaveBeenCalledWith({ changes: "**Bold** and _italic_" });
+  });
+
   it("uploads clipboard image files and replaces the current placeholder with returned markdown", async () => {
     const upload = createDeferred<{ markdown: string }>();
     const pasteImageAttachmentAction = vi.fn((_formData: FormData) => upload.promise);

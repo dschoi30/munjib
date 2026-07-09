@@ -474,6 +474,11 @@ describe("DocumentList", () => {
   it("keeps the workspace header and icon toolbar in sticky sidebar chrome", () => {
     renderList();
 
+    const root = screen.getByTestId("document-list-root");
+    expect(root.className).toContain("min-h-full");
+    expect(root.className).toContain("flex");
+    expect(root.className).toContain("flex-col");
+
     const stickyChrome = screen.getByTestId("document-list-sticky-chrome");
     expect(stickyChrome.className).toContain("sticky");
     expect(stickyChrome.className).toContain("top-0");
@@ -487,6 +492,11 @@ describe("DocumentList", () => {
     expect(navigationBody.className).toContain("pt-3");
     expect(within(navigationBody).getByText("Recents")).toBeTruthy();
     expect(within(navigationBody).getByRole("navigation", { name: "All documents" })).toBeTruthy();
+
+    const accountDrawerFooter = screen.getByTestId("account-drawer-footer");
+    expect(accountDrawerFooter.className).toContain("sticky");
+    expect(accountDrawerFooter.className).toContain("bottom-0");
+    expect(accountDrawerFooter.className).toContain("mt-auto");
   });
 
   it("opens the lower account drawer without repeating the current workspace", () => {
