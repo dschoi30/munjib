@@ -44,6 +44,18 @@ development login path.
 
 이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
 
+### Fail-closed auth runtime
+
+`MUNJIB_DEPLOYMENT_ENV` selects one strict runtime contract. Staging and production
+load `NEXTAUTH_SECRET_FILE` and optional `GOOGLE_CLIENT_SECRET_FILE` through the
+same no-follow, same-FD, owner/mode/size-bounded reader; direct secret environment
+values are forbidden. The runtime also requires one canonical origin, Secure cookies,
+disabled development login, and closed password/OAuth signup.
+The reader also compares the pre-open path identity with the opened descriptor to
+reject a path swap before consuming the bounded secret bytes, and treats Unicode
+line separators as content violations alongside ASCII controls/newlines. The
+descriptor also uses close-on-exec semantics on Linux and Darwin.
+
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.

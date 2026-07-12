@@ -19,6 +19,10 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T00:00:00+09:00 - security runtime
+
+- Added the strict file-backed signing/provider-secret and deployment auth runtime contract; evidence: `lib/security/strict-secret-file.ts`, `lib/auth/runtime.ts`, and their tests.
+
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
 - Result: Local `mjtrial@munjib.com` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.
