@@ -16,6 +16,7 @@ describe("database authority separation", () => {
     expect(sql).toContain("SET ROLE munjib_schema_owner");
     expect(sql).toContain("pg_catalog,public,munjib_extensions");
     expect(sql).toContain("ALTER SCHEMA public OWNER TO munjib_schema_owner");
+    expect(sql).toContain("ALTER SCHEMA munjib_extensions OWNER TO munjib_schema_owner");
     expect(sql).toContain("GRANT USAGE, CREATE ON SCHEMA public TO munjib_schema_owner");
     expect(sql).toMatch(/ALTER ROLE\s+munjib_migrator\s+LOGIN[\s\S]*NOINHERIT[\s\S]*NOBYPASSRLS/i);
     expect(sql).toMatch(/ALTER ROLE\s+munjib_web\s+LOGIN[\s\S]*NOINHERIT[\s\S]*NOBYPASSRLS/i);

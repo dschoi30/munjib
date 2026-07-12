@@ -18,6 +18,26 @@ export interface MigrationHistoryResult {
   pending: string[];
 }
 
+/** Normalize a Prisma `_prisma_migrations` export without accepting partial rows. */
+export function normalizeMigrationHistoryRow(input: unknown): MigrationHistoryRow {
+  if (!input || typeof input !== "object") throw new Error("invalid migration history row");
+  const value = input as Record<string, unknown>;
+  const migrationName = value.migrationName ?? value.migration_name;
+  const checksum = value.checksum;
+  const finishedAt = value.finishedAt ?? value.finished_at;
+  const rolledBackAt = value.rolledBackAt ?? value.rolled_back_at;
+  const appliedStepsCount = value.appliedStepsCount ?? value.applied_steps_count;
+  if (typeof migrationName !== "string" || typeof checksum !== "string") throw new Error("migration history name/checksum missing");
+  if (!(typeof finishedAt === "string" || finishedAt === null)) throw new Error("migration history finished_at missing");
+  if (!(typeof rolledBackAt === "string" || rolledBackAt === null)) throw new Error("migration history rolled_back_at missing");
+  if (typeof appliedStepsCount !== "number" || !Number.isInteger(appliedStepsCount) || appliedStepsCount < 0) {
+    throw new Error("migration history applied_steps_count missing");
+  }
+  const logs = value.logs;
+  if (!(logs === undefined || logs === null || typeof logs === "string")) throw new Error("migration history logs invalid");
+  return { migrationName, checksum, finishedAt, rolledBackAt, appliedStepsCount, logs: logs ?? null };
+}
+
 /** Prisma stores the SHA-256 of the exact migration.sql bytes. */
 export function computeMigrationChecksum(sql: string | Uint8Array): string {
   return createHash("sha256").update(sql).digest("hex");

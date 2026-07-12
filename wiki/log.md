@@ -2831,6 +2831,9 @@ links:
   login/escalation attributes, grants schema-owner migration authority before
   the first migration, captures caller libpq role state before RESET ROLE, and
   revokes Web/RAG access to the append-only `_prisma_migrations` ledger.
+- Final follow-up: schema-owner assignment is idempotent for pre-existing
+  extension schemas, and the migration-history checker fail-closed normalizes
+  Prisma snake_case exports before exact prefix/checksum admission.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
 - Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
 - Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.

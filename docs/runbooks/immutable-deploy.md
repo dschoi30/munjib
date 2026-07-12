@@ -21,7 +21,10 @@ pnpm exec tsx scripts/deploy/check-migration-history.ts <production-history.json
 pnpm exec tsx scripts/deploy/check-expand-contract.ts <migration.sql> EXPAND
 ```
 
-Without a production-history export the checker reports the ledger and pending
+The optional production export accepts either Prisma's exact snake_case columns
+(`migration_name`, `finished_at`, `rolled_back_at`, `applied_steps_count`) or
+their explicit camelCase adapter names; every required field is validated and
+partial rows fail closed. Without a production-history export the checker reports the ledger and pending
 allocation as `production_prefix=not_provided`; it does not claim a live database
 admission. The broker's signed operation must provide the JSON rows to activate
 the exact prefix/checksum gate before migration.

@@ -11,7 +11,7 @@
       "destination": "/var/lib/munjib/database-role-v1/roles-only.sql",
       "type": "regular",
       "mode": "0400",
-      "sha256": "24186b011cd0a2cc3e50dc7938f5f1900d16dda8836b0f03ca0d97c47937427f"
+      "sha256": "f0fd690114b36a0894825e47a8761ba59c6630b650af6f13f7c4341c292863a8"
     },
     {
       "source": "deploy/postgres/finalize-ownership.sql",

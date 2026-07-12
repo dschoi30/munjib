@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   computeMigrationChecksum,
+  normalizeMigrationHistoryRow,
   validateMigrationHistory,
   type MigrationHistoryRow,
 } from "@/lib/deploy/migration-history";
@@ -62,5 +63,16 @@ describe("append-only production migration history", () => {
   it("admits a broker-provided production export through the same prefix validator", () => {
     const image = [row("20260712000000_first", "a"), row("20260712010000_second", "b")];
     expect(validateMigrationHistory([image[0]!], image)).toMatchObject({ ok: true, pending: ["20260712010000_second"] });
+  });
+
+  it("normalizes Prisma snake_case exports and rejects partial rows", () => {
+    expect(normalizeMigrationHistoryRow({
+      migration_name: "20260712000000_first",
+      checksum: "a",
+      finished_at: "2026-07-13T00:00:00.000Z",
+      rolled_back_at: null,
+      applied_steps_count: 1,
+    })).toMatchObject({ migrationName: "20260712000000_first", appliedStepsCount: 1 });
+    expect(() => normalizeMigrationHistoryRow({ migration_name: "missing-fields", checksum: "a" })).toThrow();
   });
 });

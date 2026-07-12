@@ -37,6 +37,7 @@ ALTER ROLE munjib_journal_exporter NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE N
 REVOKE ALL ON DATABASE obsidian_clone FROM PUBLIC;
 GRANT CONNECT ON DATABASE obsidian_clone TO munjib_migrator, munjib_web, munjib_rag;
 CREATE SCHEMA IF NOT EXISTS munjib_extensions AUTHORIZATION munjib_schema_owner;
+ALTER SCHEMA munjib_extensions OWNER TO munjib_schema_owner;
 ALTER SCHEMA public OWNER TO munjib_schema_owner;
 GRANT USAGE, CREATE ON SCHEMA public TO munjib_schema_owner;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
