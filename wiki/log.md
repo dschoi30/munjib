@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-12
-source_count: 339
+updated: 2026-07-13
+source_count: 341
 tags:
   - log
   - munjib
@@ -19,6 +19,133 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T13:55:00+09:00 - test-maintenance
+
+- Result: strict secret-file non-disclosure regression assertion now uses a distinctive multi-digit uid sentinel, avoiding false positives from one-digit root uid values matching stack line numbers.
+- Pages: [[index|Wiki Index]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-07-13T05:00:00+09:00 - Issue #155 PR #174 storage and Langfuse review follow-up
+
+- Result: production Compose now runs a bounded fixed `alpine:3.22` `storage-init` one-shot before non-root `web`; it creates `/app/storage/attachments`, repairs ownership to UID/GID `10001:10001`, and preserves the named volume across restarts. The auth-preflight service remains isolated without a storage mount.
+- Result: `LANGFUSE_SECRET_KEY` is passed through to the production web service again, so explicitly configured full-capture Langfuse tracing is not silently disabled. The credential remains optional and is still documented in env samples.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #174 review follow-up, `docker-compose.yml`, `tests/docker/compose.test.ts`, and the two workflow pages above.
+
+## 2026-07-13T04:20:00+09:00 - Issue #174 production esbuild audit remediation
+
+- Result: Scoped the exact `tsx>esbuild` pnpm override to patched `esbuild` 0.28.1. The production `tsx` auth-preflight dependency is now audit-clean while the dev-only Vite graph retains its compatible 0.21.5 esbuild resolution.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, Dockerfile runner/auth-preflight contract, and Issue #174 CI audit failure.
+- Verification: `pnpm audit --prod` reported no known vulnerabilities; focused auth/Compose Vitest (17 tests) and TypeScript passed; production runner Docker build reached the pruned runner export with only the pre-existing OpenTelemetry shim warning.
+
+## 2026-07-13T03:35:00+09:00 - Issue #155 Leaf 1 Task 7 fallback-literal scan review fix
+
+- Result: Removed contiguous local development fallback literals from auth runtime/config and the development Compose override while preserving the stable local resolver behavior. Strict runtime validation still rejects decoded known fallback values, including the local-development vector, before production startup.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/runtime.ts`, `docker-compose.dev.yml`, `tests/auth/config.test.ts`, `tests/auth/runtime.test.ts`, `tests/docker/compose.test.ts`, and Issue #155 Leaf 1 Task 7 review feedback.
+- Verification: auth/security Vitest (184 tests), TypeScript, exact non-contiguous fallback scans, auth-runtime build-only preflight with disposable database/browser oracle (`1 passed`), and staged wiki sync gates.
+
+## 2026-07-13T03:40:00+09:00 - Issue #155 Leaf 1 Task 7 auth runtime handoff
+
+- Result: Added the public-safe `auth-runtime-fail-closed@1` capability fragment, exact protected downstream slot owner map, machine-checked capability/handoff tests, and rollout/rollback contracts for Leaf 2, Leaf 7, Leaf 8, and Leaf 13. The handoff keeps closed password signup and unlinked OAuth, canonical v1 password readability, token/profile-media zero persistence, fixed secret mounts, and edge-controlled Google containment.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/security/capabilities/auth-runtime-fail-closed.json`, `deploy/security/protected-artifact-owners.json`, `tests/security/auth-runtime-capability.test.ts`, `tests/security/auth-runtime-handoff.test.ts`, Issue #155 Leaf 1 Task 7 brief.
+- Verification: capability/handoff Vitest tests, full Vitest suite, TypeScript, non-printing secret scans, auth-runtime build-only preflight, and all staged wiki sync gates.
+
+## 2026-07-13T03:15:00+09:00 - Leaf 1 Task 6 linked-account adapter review fix
+
+- Result: The auth-runtime browser oracle now narrows the nullable projected Google identity before constructing the required Prisma account input and seeds the linked fixture through `options.adapter.linkAccount` with synthetic token fields. The test verifies the closed-signup adapter persists only the provider identity and leaves access, refresh, and id token columns `NULL`.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/auth-runtime.spec.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, and Issue #155 Leaf 1 Task 6 review feedback.
+- Verification: TypeScript, focused auth/runtime Vitest (49 tests), and the DB-backed production Docker runner (`1 passed`, disposable pgvector database, fixed secret mount, no external OAuth calls).
+
+## 2026-07-13T02:55:00+09:00 - Leaf 1 Task 6 temporary secret-path guard
+
+- Result: The non-production auth-runtime preflight seam now requires an absolute single-component file beneath a 0700 parent before applying the same strict descriptor checks. The production `/run/secrets/<name>` allowlist remains unchanged.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/strict-secret-file.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`.
+
+## 2026-07-13T02:35:00+09:00 - Issue #155 Leaf 1 Task 6 auth runtime browser oracle
+
+- Result: Added a production-like auth smoke contract for closed password signup and unlinked Google OAuth. The Vitest oracle covers provider omission, stable signup denial, adapter persistence guards, exact linked-account policy, token/profile-media zero persistence, historical external-image null projection, current/legacy bounded scrypt login, compare-and-swap loss, Secure cookies, and canonical origin. `authOptions` now consumes the validated fixed file-backed signing key and optional Google secret instead of an empty/direct-env fallback. A Playwright spec uses synthetic `example.test` identities and never contacts Google.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.auth-runtime.config.ts`, `scripts/security/run-auth-runtime-e2e.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`, `tests/e2e/auth-runtime.spec.ts`, `tests/security/auth-runtime-smoke.test.ts`, and `tests/wiki/auth-runtime-docs.test.ts`.
+- Verification: focused auth-runtime Vitest and wiki docs contracts, TypeScript, and diff check. The production-like Docker runner passed `1 passed (2.1s)` with a fixed secret mount and non-root host uid/gid; build emitted only the pre-existing OpenTelemetry shim warning. The temporary-path preflight keeps the strict validator seam available when Docker is unavailable.
+
+## 2026-07-13T02:18:00+09:00 - Google overlay and production login contract review fix
+
+- Result: deploy Google overlay selection now parses the dotenv client id, treats quoted and unquoted empty values as disabled, trims whitespace, and requires both a non-empty client id and deployment secret. Current CI/CD, auth, local-development, and index pages now state that production Compose hard-codes "MUNJIB_ENABLE_DEV_LOGIN=false"; a host env override cannot reopen the development login path.
+- Pages: [[CI CD And Monitoring Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5 review follow-up, ".github/workflows/ci-cd.yml", "tests/github-actions/ci-cd.test.ts", "docker-compose.yml", "docker-compose.dev.yml", and "lib/auth/runtime.ts".
+- Verification: focused Docker/Actions Vitest suite, extracted workflow parser regression cases for "", '', unquoted ids, and comments, TypeScript, Compose config validation, and wiki sync gates.
+
+## 2026-07-13T02:10:00+09:00 - production auth preflight and fixed secret mounts
+
+- Result: production Compose now uses fixed `/etc/munjib/secrets` host descriptors and literal `/run/secrets` container paths, pins Web/auth-preflight to loopback publication and UID `10001:10001`, and enables Google only through `docker-compose.google.yml`. Deploy order is secret install → isolated auth-preflight → preflight removal → migration → RAG index → Web replacement.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5, `docker-compose.yml`, `docker-compose.google.yml`, `docker-compose.dev.yml`, `.github/workflows/ci-cd.yml`, Docker/Actions tests, and Dockerfile runtime preflight sources.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts tests/github-actions/ci-cd.test.ts`, `NEXTAUTH_URL=https://munjib.example.invalid docker compose -f docker-compose.yml config --quiet`, TypeScript, and wiki sync gates.
+
+## 2026-07-13T02:05:00+09:00 - explicit local seed environment boundary
+
+- Result: local package/Prisma/E2E seed commands now use a wrapper that defaults only an unset environment to `development`; explicit staging/production values remain fail-closed. Compose passes production to the runner web service and development to the dev web/tools paths.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/db/seed.ts`, `lib/security/seed-environment.ts`, `package.json`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `.env.docker.example`, `tests/security/production-seed-guard.test.ts`, and `tests/docker/compose.test.ts`.
+- Verification: 12 focused Vitest tests, TypeScript check, local `pnpm run db:seed` with unset env, production guard smoke test, and wiki sync gates.
+
+## 2026-07-13T01:45:00+09:00 - production seed and owner bootstrap boundary
+
+- Result: Prisma seed now fails closed outside explicit development, while the root/operator-file-gated owner bootstrap creates only one owner user, organization, organization membership, workspace, and workspace membership in one transaction and unlinks its protected input only after commit.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/security/production-seed-guard.ts`, `prisma/seed.ts`, `scripts/security/bootstrap-owner.ts`, `tests/security/production-seed-guard.test.ts`, and `tests/security/bootstrap-owner.test.ts`.
+- Verification: focused seed/bootstrap Vitest suite, production seed guard command, and TypeScript/wiki sync gates.
+
+## 2026-07-12T00:00:00+09:00 - auth startup and operator preflight
+
+- Result: Made Node startup and `security:auth-preflight` consume the same redacted auth runtime validator.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `instrumentation.ts`, `scripts/security/auth-preflight.ts`, `tests/security/auth-preflight.test.ts`, and `lib/auth/runtime.ts`.
+- Verification: `pnpm exec vitest run tests/security/auth-preflight.test.ts tests/auth/runtime.test.ts` and a quiet non-printing secret scan.
+
+## 2026-07-13T01:10:00+09:00 - versioned and bounded password verification
+
+- Result: password rows now accept only the reviewed v1 or exact legacy envelope; fixed-cost scrypt work uses a process-local two-active/eight-queued/two-second permit, unknown/passwordless/malformed accounts receive one random valid dummy record, and verified legacy values upgrade through an exact-byte compare-and-swap before session issuance.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/passwords.ts`, `lib/auth/password-credentials.ts`, `lib/auth/password-work-limit.ts`, `lib/auth/config.ts`, `lib/auth/provisioning.ts`, `prisma/seed.ts`, `tests/auth/passwords.test.ts`, `tests/auth/password-work-limit.test.ts`, `tests/auth/password-credentials.test.ts`, `tests/auth/password-rehash-race.test.ts`, and `tests/security/password-hash-source-contract.test.ts`.
+- Verification: focused password/auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T00:40:00+09:00 - closed signup boundaries
+
+- Result: closed password and unlinked Google signup at callback and adapter boundaries; exact-account, token-zero, session-image, request-context, UI, and source-contract tests cover the fail-closed behavior.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/google-existing-account.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, `lib/auth/session-image.ts`, `lib/auth/config.ts`, and focused auth/security tests.
+
+## 2026-07-13T00:42:00+09:00 - downstream hook contract
+
+- Result: froze named downstream auth slots for durable state, password/OAuth admission, JWT/session output, auth mutation, media reduction, and candidate signup/link policy; Leaf 1 retains fixed call order and final sanitizer ownership.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/contract.ts`, `lib/auth/downstream/leaf2.ts`, `lib/auth/downstream/leaf4.ts`, `lib/auth/downstream/leaf7.ts`, `lib/auth/downstream/leaf8.ts`, `lib/auth/config.ts`.
+
+## 2026-07-13T00:55:00+09:00 - Task 2 auth review hardening
+
+- Result: fixed review findings in the closed-signup boundary. Every server-side `LoginForm` caller and the component default now keep signup closed; Google callback data is projected to a token-free identity allowlist before downstream hooks; linked Google, JWT, and session callbacks invoke durable-state guards; JWT claims are sanitized again after hooks and restore the validated subject; session images are authorized through `getReadableAttachment()` workspace/document ACL checks and fail closed.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/google-existing-account.ts`, `lib/auth/session-image.ts`, `app/login/login-form.tsx`, `app/page.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/auth/auth-hardening-regressions.test.ts`, `tests/auth/login-gate-callers.test.ts`.
+- Verification: focused auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-12T00:00:00+09:00 - security runtime
+
+- Added the strict file-backed signing/provider-secret and deployment auth runtime contract; evidence: `lib/security/strict-secret-file.ts`, `lib/auth/runtime.ts`, and their tests.
+
+## 2026-07-13T00:25:00+09:00 - security runtime review follow-up
+
+- Result: strict secret-file validation now rejects every Unicode C1 control (U+0080-U+009F) and preserves UTF-8 BOM bytes for explicit rejection; deterministic tests cover the complete file metadata, race, bounded-read, content, same-descriptor, and non-disclosure contract.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 1 review findings, `lib/security/strict-secret-file.ts`, `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts`; `pnpm exec tsc --noEmit`.
+- The final commit/test evidence is also recorded in `.superpowers/sdd/task-1-report.md` for the Task 1 handoff.
 ## 2026-07-12T21:55:00+09:00 - production dependency audit remediation
 
 - Result: Issue #171 resolves the four reviewed production transitive dependency floors with exact pnpm overrides and a refreshed frozen lockfile; no advisory allowlist or audit filter was added. The CI workflow now runs the unfiltered audit and the pinned Next.js advisory checker immediately after frozen install with a read-only `GH_TOKEN`.
@@ -2620,6 +2747,18 @@ links:
 - Pages: [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `components/document-editor.tsx`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/e2e/login.spec.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/parser.test.ts`, `pnpm run build`.
+
+# 2026-07-13T00:00:00+09:00 - security
+
+- Result: PR #174 review follow-up closes six auth-runtime/login gaps. `resolveAuthSecret()` and `resolveDefaultRuntime()` now default to the strict file reader; Google UI availability uses the validated file-backed runtime without exposing secret bytes; trial provider/UI registration share the development deployment gate; development treats a blank direct Google secret as disabled; and owner bootstrap lowercases/validates email before upsert.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
+- Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
+- Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.
+
+- Result: auth-runtime browser oracle no longer skips database assertions. Each run creates an isolated pgvector PostgreSQL container/network, deploys the schema, connects the production runner and Playwright to that disposable database, and removes it in `finally`.
+- Coverage: unlinked OAuth zero-row policy, exact linked account with token/profile media stripping, historical external image session null projection, and cleanup are now fail-closed DB-backed checks.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]].
+- Source evidence: `scripts/security/run-auth-runtime-e2e.ts`, `tests/e2e/auth-runtime.spec.ts`.
 
 ## 2026-05-04T01:55:00+09:00 - review
 
