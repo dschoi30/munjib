@@ -57,7 +57,12 @@ afterEach(() => {
 
 function renderLoginForm(
   callbackUrl?: string,
-  options: { isDevLoginEnabled?: boolean; isGoogleLoginEnabled?: boolean } = {},
+  options: {
+    isDevLoginEnabled?: boolean;
+    isGoogleLoginEnabled?: boolean;
+    isTrialLoginEnabled?: boolean;
+    isSignupEnabled?: boolean;
+  } = {},
 ) {
   return render(
     <I18nProvider>
@@ -65,12 +70,22 @@ function renderLoginForm(
         {...(callbackUrl ? { callbackUrl } : {})}
         isDevLoginEnabled={options.isDevLoginEnabled ?? true}
         isGoogleLoginEnabled={options.isGoogleLoginEnabled ?? true}
+        isTrialLoginEnabled={options.isTrialLoginEnabled ?? true}
+        isSignupEnabled={options.isSignupEnabled ?? true}
       />
     </I18nProvider>,
   );
 }
 
 describe("LoginForm", () => {
+  it("omits account-creation controls when signup is disabled", async () => {
+    renderLoginForm(undefined, { isSignupEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Create one" })).toBeNull();
+    expect(screen.queryByText("Don't have an account?")).toBeNull();
+  });
+
   it("waits for the stored Korean display language before rendering auth text", async () => {
     window.localStorage.setItem("munjib:language", "ko");
 
@@ -109,6 +124,13 @@ describe("LoginForm", () => {
     expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
     expect(screen.queryByText("or")).toBeNull();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  });
+
+  it("hides the trial provider when the server deployment gate is off", async () => {
+    renderLoginForm(undefined, { isTrialLoginEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Explore demo (read-only) No signup" })).toBeNull();
   });
 
   it("submits email and password through the password provider", async () => {
