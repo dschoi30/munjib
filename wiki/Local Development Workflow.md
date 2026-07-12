@@ -198,6 +198,8 @@ pnpm wiki:feature-start "Markdown heading folding"
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
 
+Issue #158 Task 3의 `tests/e2e/zero-egress-rendering.spec.ts`는 별도 local probe listener를 browser와 Next 서버에서 calibration한 뒤 실제 저장 preview와 Workspace AI answer를 방문한다. Probe는 요청 method/path digest/caller만 기록하고 credentials나 외부 네트워크를 저장하지 않는다. `docker-compose.egress-test.yml`은 `egress-test` profile에서만 probe alias/service를 추가하며 production `docker-compose.yml`에는 probe service, host alias, port가 없다. 이 E2E는 Markdown external image가 click-only button으로 남고 `<img>`, optimizer request, speculative DNS/preconnect/preload, CSS/DOM/SSR destination sink로 새지 않는지 확인한다.
+
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 
 ```bash

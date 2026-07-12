@@ -1,0 +1,24 @@
+# Test-only overlay. Never include this file in production Compose commands.
+services:
+  egress-probe:
+    image: node:22-alpine
+    profiles: [egress-test]
+    command:
+      - node
+      - -e
+      - >-
+        require('node:http').createServer((req,res)=>{res.writeHead(204);res.end()})
+        .listen(39158,'0.0.0.0')
+    ports:
+      - "127.0.0.1:39158:39158"
+    networks:
+      default:
+        aliases: [egress-probe]
+
+  web:
+    depends_on:
+      egress-probe:
+        condition: service_started
+    networks:
+      default:
+        aliases: [munjib-web-egress]

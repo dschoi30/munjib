@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiAnswer, AiCitations } from "@/components/ai/answer";
@@ -9,6 +10,22 @@ afterEach(() => {
 });
 
 describe("AiAnswer", () => {
+  it("produces no external media element during SSR", () => {
+    const html = renderToStaticMarkup(
+      <AiAnswer
+        content={[
+          "![pixel](https://attacker.example/ssr.png)",
+          '<img src="https://attacker.example/raw.png">',
+        ].join("\n")}
+      />,
+    );
+    expect(html).not.toContain("<img");
+    expect(html).not.toMatch(/rel="(?:preload|prefetch|preconnect)"/);
+    expect(html).not.toContain("attacker.example/ssr.png");
+    expect(html).not.toMatch(/(?:href|src|action|formaction|data-[^=]+)="[^"]*attacker/i);
+    expect(html).toContain("<button");
+  });
+
   it("keeps model-authored external destinations out of DOM attributes until explicit confirmation", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const { container } = render(

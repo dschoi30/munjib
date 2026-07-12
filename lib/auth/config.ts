@@ -5,6 +5,10 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/db/client";
 import { verifyPassword } from "@/lib/auth/passwords";
+import {
+  leaf4AuthUserOutput,
+  leaf4SessionMediaHook,
+} from "@/lib/auth/downstream/leaf4";
 
 export function resolveAuthSecret() {
   if (process.env.NEXTAUTH_SECRET) return process.env.NEXTAUTH_SECRET;
@@ -84,12 +88,11 @@ export const authOptions: NextAuthOptions = {
         const verified = await verifyPassword(password, user.passwordHash);
         if (!verified) return null;
 
-        return {
+        return leaf4AuthUserOutput({
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.image,
-        };
+        });
       },
     }),
     credentialsProvider({
@@ -102,12 +105,11 @@ export const authOptions: NextAuthOptions = {
           select: { id: true, email: true, name: true, image: true },
         });
         if (!user) return null;
-        return {
+        return leaf4AuthUserOutput({
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.image,
-        };
+        });
       },
     }),
     credentialsProvider({
@@ -125,12 +127,11 @@ export const authOptions: NextAuthOptions = {
         const user = await prisma.user.findUnique({ where: { email } });
         if (!user) return null;
 
-        return {
+        return leaf4AuthUserOutput({
           id: user.id,
           email: user.email,
           name: user.name,
-          image: user.image,
-        };
+        });
       },
     }),
     ...(googleAuthCredentials
@@ -148,12 +149,20 @@ export const authOptions: NextAuthOptions = {
       return (profile as { email_verified?: boolean } | undefined)?.email_verified === true;
     },
     async jwt({ token, user }) {
+      const media = leaf4SessionMediaHook({ token });
+      if (media.token) {
+        for (const key of Object.keys(token)) delete token[key];
+        Object.assign(token, media.token);
+      }
       if (user?.id) token.sub = user.id;
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+      if (session.user) {
+        if (token.sub) session.user.id = token.sub;
+        session.user.image = leaf4SessionMediaHook({
+          ambientImage: session.user.image,
+        }).ambientImage;
       }
       return session;
     },

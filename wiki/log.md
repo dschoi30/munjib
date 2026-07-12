@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 338
+updated: 2026-07-13
+source_count: 346
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-13T01:30:00+0900 - security
+
+- Added Leaf 4 browser/SSR zero-egress oracles for saved Markdown preview, Workspace AI answer rendering, and auth/session output. Auth media candidates now reduce to a null DTO and JWT `picture`/`image` keys are removed from copied tokens; every Next response disables DNS prefetch globally.
+- Source evidence: `lib/auth/session-media-zero.ts`, `lib/auth/downstream/leaf4.ts`, `lib/auth/config.ts`, `next.config.mjs`, `tests/components/ai-answer.test.tsx`, `tests/auth/session-media-zero.test.ts`, `tests/security/next-config.test.ts`, `tests/security/user-media-source-contract.test.ts`, `tests/e2e/fixtures/egress-probe-server.ts`, `tests/e2e/fixtures/zero-egress-app-fixture.ts`, `tests/e2e/zero-egress-rendering.spec.ts`, `docker-compose.egress-test.yml`, and `tests/docker/egress-probe-overlay.test.ts`.
+- Verification: focused Vitest and TypeScript checks; browser E2E additionally requires the configured local PostgreSQL/Next runtime and provider fixture.
 
 ## 2026-07-13T01:10:00+0900 - security
 
