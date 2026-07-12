@@ -2907,3 +2907,7 @@ links:
 
 - Result: Restored the pre-existing local SDD report artifact after review; it is not part of the Issue #182 product change.
 - Scope: No runtime behavior or security policy changed by this cleanup.
+
+## 2026-07-13T17:25:00+09:00 - maintenance
+
+- Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.

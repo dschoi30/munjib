@@ -1,68 +1,56 @@
-# Task 1 Report: preserve the generated Prisma client in the production runner
+# Task 1 Report: strict secret-file and deployment runtime validation
 
 ## Status
 
-Issue #182 implementation and review follow-up are complete on
-`codex/leaf182-prisma-runtime`, tracking `origin/issue-182-prisma-runtime`.
-Initial implementation commit: `fd4d149`.
+Complete on branch `codex/leaf1-security-auth-runtime`.
+
+Commit: `1e967ab` (`feat(auth): validate fail-closed runtime`)
 
 ## Implemented
 
-- Added a focused Docker contract test in `tests/docker/compose.test.ts`.
-- Runner generation discovers the generated `.prisma/client` directory with a
-  BusyBox-compatible `find ... -print | head -n 1` command, copies it to a
-  build-only temporary path before `pnpm prune --prod`, and restores it to root
-  `node_modules/.prisma/client` after pruning.
-- Prisma CLI remains a development dependency; no production dependency change
-  or pnpm virtual-store version is hard-coded.
-- Added a build-time `node -e 'require("@prisma/client")'` guard after restore.
-- Preserved the existing production prune, non-root UID, `HOME=/tmp`, and
-  `COREPACK_HOME=/tmp/.cache/node/corepack` contracts.
-- Updated only public-safe CI/CD wiki, index, manifest, and timeline evidence.
+- Added `parseDeploymentEnvironment()` with strict development/staging/production parsing.
+- Added `readStrictSecretFile()` and `StrictSecretFileError`:
+  - fixed `/run/secrets/<single-component>` path allowlist;
+  - parent `lstat` checks for symlinks, directory shape, and group/world writability;
+  - final-component `O_NOFOLLOW | O_CLOEXEC` open;
+  - same-descriptor `fstat` checks for regular file, inode race, link count, effective owner, exact `0400` mode, and bounded non-empty size;
+  - exact-size reads plus one-byte growth detection;
+  - strict UTF-8/content validation for NUL, BOM, controls, newline, and edge whitespace;
+  - stable non-sensitive error codes and guaranteed descriptor close.
+- Added `inspectAuthRuntimeEnv()` / `assertValidAuthRuntimeEnv()`:
+  - production/staging file-only secret contract and forbidden direct secret env values;
+  - generated canonical base64url secret checks, fallback detection, and low-entropy rejection;
+  - canonical origin, HTTPS, Secure-cookie, development-login, Google file-backed secret, and signup gates;
+  - explicit development fixture support.
+- Added HMAC-SHA-256 `deriveAuthRuntimeSubkey()` with domain separation.
+- Added focused runtime/parser/derivation tests and strict-reader contract tests.
+- Added the public-safe auth runtime wiki delta, wiki log entry, and regenerated manifest.
 
 ## Verification
 
 Passed:
 
-- RED: before the Dockerfile change, `pnpm exec vitest run tests/docker/compose.test.ts`
-  failed 1/15 because the generated-client guard contract was absent.
-- GREEN: initial focused suite passed 15/15; review follow-up Docker/CI suites
-  passed 21/21 (`tests/docker/compose.test.ts` plus
-  `tests/github-actions/ci-cd.test.ts`).
-- `docker build --target runner --tag munjib-leaf182-prisma .` — passed after
-  initial implementation and again after the BusyBox portability change. The
-  runner generated Prisma, pruned production dependencies, restored the client,
-  and completed the build-time require guard.
-- Production image root and UID `10001:10001` Prisma require smokes — passed;
-  non-root output confirmed `HOME=/tmp` and
-  `COREPACK_HOME=/tmp/.cache/node/corepack`.
-- `pnpm wiki:install-hooks` — passed.
-- `pnpm wiki:sync-plan --staged` — passed with source and public wiki changes.
-- `pnpm wiki:manifest` — passed.
-- `pnpm wiki:lint` — passed with the existing unrelated warning for
-  `wiki/designs/sidebar.md: [[Pasted Image 20260603131407_119.png]]`.
-- `pnpm wiki:sync-check --staged` — passed.
+- `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts` — 15 passed, 1 environment-gated skip.
+- `pnpm exec tsc --noEmit`
+- `pnpm wiki:install-hooks`
+- `pnpm wiki:sync-plan --staged`
+- `pnpm wiki:manifest`
+- `pnpm wiki:lint` (existing warning only: unresolved `[[Pasted Image 20260603131407_119.png]]` in `wiki/designs/sidebar.md`)
+- `pnpm wiki:sync-check --staged`
+- commit hook repeated wiki sync-check and wiki lint successfully.
 
-Not passed / environment limitation:
+The full `pnpm exec vitest run` suite was also attempted. It produced 881 passing tests and 125 pre-existing fixture failures because this checkout has no `DATABASE_URL`; the failures are Prisma initialization errors from `tests/setup/prisma.ts`, unrelated to Task 1.
 
-- `pnpm exec tsc --noEmit --pretty false` could not complete in this local
-  checkout because Prisma Client was not generated: the sandbox denied the
-  existing local Prisma engine-cache timestamp update, and the fallback engine
-  download was unavailable. The Docker build generated Prisma successfully and
-  completed the full Next build; this limitation is unrelated to the changed
-  Docker/test/wiki files.
+## Concerns / handoff
 
-## Concerns
-
-- The Docker build emitted the repository's existing optional OpenTelemetry shim
-  resolution warning; it did not fail the build and is unrelated to Issue #182.
-- Discovery intentionally fails the image build if Prisma generation produces no
-  `.prisma/client` directory, preventing a broken image from being published.
-- No secret values, credentials, or remote runtime logs were read or emitted.
+- The valid `/run/secrets` reader integration case is skipped when `/run/secrets` is absent in the local environment; deployment-image tests should exercise a real owner/mode-checked file.
+- No secrets, secret bytes, paths, metadata, or digests are emitted by the new error paths.
+- The existing `lib/auth/config.ts` still owns the legacy NextAuth environment resolution; later tasks should wire this validated runtime contract into that consumer.
 
 ## Review follow-up
 
-- Replaced Alpine/BusyBox-sensitive `find -print -quit` with
-  `find ... -print | head -n 1` in Dockerfile and contract test.
-- Re-ran the focused 21 tests, runner-target Docker build, root/non-root image
-  require smokes, and all wiki gates; results are recorded above.
+Commit: `cdbf467` (`fix(auth): harden strict secret validation coverage`)
+
+- Expanded `tests/security/strict-secret-file.test.ts` from the environment-gated smoke case to deterministic coverage for final/parent symlinks, untrusted parents, path swaps, non-regular files, link count, owner, exact mode, zero/oversize bounds, short reads, growth, same-FD success, all content rejection classes, and non-disclosure.
+- Tightened content validation to reject every Unicode C1 control (`U+0080`-`U+009F`). `TextDecoder` now preserves a leading UTF-8 BOM so the reader can reject it instead of silently normalizing it away.
+- Final verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts` (76 passed); `pnpm exec tsc --noEmit`; `pnpm wiki:install-hooks`; `pnpm wiki:sync-plan --staged`; `pnpm wiki:manifest`; `pnpm wiki:lint` (existing sidebar warning only); `pnpm wiki:sync-check --staged`.
