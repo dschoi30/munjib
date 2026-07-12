@@ -29,6 +29,7 @@ links:
 - Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
 - Source evidence: Task 1 review findings, `lib/security/strict-secret-file.ts`, `tests/security/strict-secret-file.test.ts`.
 - Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts`; `pnpm exec tsc --noEmit`.
+- The final commit/test evidence is also recorded in `.superpowers/sdd/task-1-report.md` for the Task 1 handoff.
 
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
