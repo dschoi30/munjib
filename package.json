@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "pnpm run db:seed && playwright test",
     "test:e2e:ui": "pnpm run db:seed && playwright test --ui",
+    "test:security-runtime": "bash scripts/test/run-security-runtime-smoke.sh",
     "test:watch": "vitest",
     "wiki:find": "tsx scripts/wiki/find.ts",
     "wiki:log": "tsx scripts/wiki/log.ts",
@@ -47,7 +48,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
-    "next": "^15.0.0",
+    "next": "15.5.18",
     "next-auth": "^4.24.11",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -67,7 +68,7 @@
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
-    "eslint-config-next": "^15.0.0",
+    "eslint-config-next": "15.5.18",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.49",
     "prisma": "^6.5.0",
@@ -77,5 +78,13 @@
   },
   "prisma": {
     "seed": "tsx scripts/db/seed.ts"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss": "8.5.10",
+      "uuid": "11.1.1",
+      "minimatch@10.2.5>brace-expansion": "5.0.6",
+      "@opentelemetry/core": "2.8.0"
+    }
   }
 }

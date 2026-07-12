@@ -15,11 +15,12 @@ type OwnerMap = {
   format: string;
   version: number;
   release: string;
-  artifacts: Array<{
-    path: string;
+  owners: Array<{
+    selector: string;
+    kind: string;
     owner: string;
     version: number;
-    sha256: string;
+    sha256?: string;
   }>;
 };
 
@@ -77,15 +78,17 @@ describe("Leaf 1 auth runtime capability", () => {
 
   it("freezes downstream slot ownership at version zero", () => {
     const ownerMap = JSON.parse(readFileSync(ownerMapPath, "utf8")) as OwnerMap;
-    expect(ownerMap.format).toBe("munjib-security-protected-artifact-owners-v1");
+    expect(ownerMap.format).toBe("munjib-protected-artifact-owners-v1");
     expect(ownerMap.version).toBe(1);
     expect(ownerMap.release).toBe("auth-runtime-fail-closed@1");
 
-    expect(ownerMap.artifacts).toHaveLength(expectedArtifacts.length);
+    const artifacts = ownerMap.owners.filter((entry) => entry.selector.startsWith("path:lib/auth/downstream/"));
+    expect(artifacts).toHaveLength(expectedArtifacts.length);
     for (const expected of expectedArtifacts) {
-      const artifact = ownerMap.artifacts.find((entry) => entry.path === expected.path);
+      const artifact = artifacts.find((entry) => entry.selector === `path:${expected.path}`);
       expect(artifact).toMatchObject({
-        path: expected.path,
+        selector: `path:${expected.path}`,
+        kind: "FULL_PATH",
         owner: expected.owner,
         version: 0,
       });
@@ -101,7 +104,7 @@ describe("Leaf 1 auth runtime capability", () => {
       "lib/security/strict-secret-file.ts",
     ];
     for (const path of protectedLeaf1Paths) {
-      expect(ownerMap.artifacts.some((entry) => entry.path === path)).toBe(false);
+      expect(ownerMap.owners.some((entry) => entry.selector === `path:${path}`)).toBe(false);
     }
   });
 

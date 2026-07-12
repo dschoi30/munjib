@@ -52,6 +52,27 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(runCommands).toContain("corepack enable");
     expect(runCommands).toContain("corepack prepare pnpm@${PNPM_VERSION} --activate");
     expect(runCommands).toContain("pnpm install --frozen-lockfile");
+    const installIndex = ci.steps.findIndex(
+      (step: { run?: string }) => step.run === "pnpm install --frozen-lockfile",
+    );
+    const auditIndex = ci.steps.findIndex(
+      (step: { name?: string }) => step.name === "Audit production dependencies",
+    );
+    expect(auditIndex).toBe(installIndex + 1);
+    expect(ci.steps[auditIndex]?.run).toBe("pnpm audit --prod");
+    const nextAdvisoryIndex = ci.steps.findIndex(
+      (step: { name?: string }) => step.name === "Check Next.js advisories",
+    );
+    expect(nextAdvisoryIndex).toBe(auditIndex + 1);
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "scripts/security/check-next-advisories.ts --candidate",
+    );
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "require('./package.json').dependencies.next",
+    );
+    expect(ci.steps[nextAdvisoryIndex]?.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+    });
     expect(runCommands).toContain("pnpm run db:generate");
     expect(runCommands).toContain("pnpm exec prisma migrate deploy");
     expect(runCommands).toContain("pnpm run db:rag:index");
