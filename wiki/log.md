@@ -2902,3 +2902,8 @@ links:
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub Issue #182, `Dockerfile`, `tests/docker/compose.test.ts`.
 - Verification: focused Docker contract test RED before the Dockerfile change and GREEN after it; runner-target Docker build; production-image Prisma require smoke; non-root Prisma require smoke. TypeScript verification remains blocked by the pre-existing local missing generated Prisma client because the sandbox cannot update the Prisma engine cache; wiki gates are recorded in the task report.
+
+## 2026-07-13T17:20:00+09:00 - maintenance
+
+- Result: Restored the pre-existing local SDD report artifact after review; it is not part of the Issue #182 product change.
+- Scope: No runtime behavior or security policy changed by this cleanup.
