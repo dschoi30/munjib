@@ -33,6 +33,13 @@ links:
 - Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and failed CI job `86690155611`.
 - Verification: focused Docker contract tests, TypeScript, and wiki gates.
 
+## 2026-07-13T14:55:00+09:00 - non-root Corepack cache ownership
+
+- Result: Issue #175 assigns the runner image's build-time Corepack cache to UID/GID `10001:10001` after pruning, so the non-root web/auth-preflight process can refresh or read pnpm metadata without `EACCES`.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and PR #176 review thread.
+- Verification: Docker contract tests, CI image build, and deployment preflight rerun.
+
 ## 2026-07-13T13:55:00+09:00 - test-maintenance
 
 - Result: strict secret-file non-disclosure regression assertion now uses a distinctive multi-digit uid sentinel, avoiding false positives from one-digit root uid values matching stack line numbers.

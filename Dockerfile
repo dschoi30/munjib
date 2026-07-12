@@ -66,7 +66,8 @@ COPY --from=builder /app/lib/security ./lib/security
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
-  && CI=true pnpm prune --prod
+  && CI=true pnpm prune --prod \
+  && chown -R 10001:10001 /tmp/.cache
 
 EXPOSE 3000
 

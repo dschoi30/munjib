@@ -281,6 +281,7 @@ describe("Docker web service configuration", () => {
     expect(devStart).toBeGreaterThan(runnerStart);
     expect(runnerStage).toContain("ENV HOME=/tmp");
     expect(runnerStage).toContain("ENV COREPACK_HOME=/tmp/.cache/node/corepack");
+    expect(runnerStage).toContain("chown -R 10001:10001 /tmp/.cache");
   });
 
   test("Dockerfile sets Sentry build values in the builder stage before building", () => {
