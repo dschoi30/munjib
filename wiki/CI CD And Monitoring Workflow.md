@@ -90,6 +90,39 @@ canonical origin, current/legacy password migration 및 CAS loss를 synthetic
 DB를 production runner와 Playwright에 연결한다. DB 준비 실패는 fail-closed이며 기존
 `DATABASE_URL`은 사용하지 않는다.
 
+### Leaf 1 rollout, downstream handoff, and rollback
+
+Leaf 1 rollout is accepted only when startup/auth preflight, fixed secret-file
+owner/mode/no-follow/content checks, Compose binding checks, and the synthetic browser
+oracle all pass. Record only pass/fail and stable codes in GitHub-visible evidence:
+secret values, row counts, Account/user IDs, provider payloads, and tokens never enter
+logs. The exact handoff fixture is
+`deploy/security/capabilities/auth-runtime-fail-closed.json`; its protected slot
+owner map is `deploy/security/protected-artifact-owners.json`.
+
+Leaf 2 starts only after this deployment evidence is accepted and may change only its
+reserved version-0 downstream slot. Leaf 7 remains closed until its guarded
+invitation/link contract is reviewed. Leaf 8 preserves the canonical scrypt v1
+parser, dummy work, compare-and-swap-before-session rule, and local resource guard.
+Leaf 13 preserves loopback-only Web binding, strict file-backed generated secrets,
+exact-image selection, and closed-signup preflight. The current four downstream
+baselines are immutable at version 0 until their named owners replace them.
+
+Google start/callback containment remains edge-controlled after Leaf 1. Removal
+requires the recovery gate, `JOURNAL_READY`, and a fresh boolean proof that no
+token-bearing Google row remains. Cleanup appends the existing
+`AUTH_OAUTH_ACCOUNT_REVOKED` event in a bounded transaction before revocation; journal
+failure rolls back the transaction and replay is deny-only/idempotent. The canonical
+twenty-six-kind journal union is unchanged.
+
+Rollback is eligible only for an image that keeps root-managed signing/provider secret
+files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
+Secure cookies, canonical origin, disabled development login, production seed
+prohibition, token/profile-media zero persistence, and canonical v1 password-hash
+readability. A rollback image that cannot parse an existing v1 row is ineligible, and
+`email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
+exact-candidate envelopes; they are not committed to this repository.
+
 ### main deploy
 
 `deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.

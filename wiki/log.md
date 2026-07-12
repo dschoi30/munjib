@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T03:40:00+09:00 - Issue #155 Leaf 1 Task 7 auth runtime handoff
+
+- Result: Added the public-safe `auth-runtime-fail-closed@1` capability fragment, exact protected downstream slot owner map, machine-checked capability/handoff tests, and rollout/rollback contracts for Leaf 2, Leaf 7, Leaf 8, and Leaf 13. The handoff keeps closed password signup and unlinked OAuth, canonical v1 password readability, token/profile-media zero persistence, fixed secret mounts, and edge-controlled Google containment.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/security/capabilities/auth-runtime-fail-closed.json`, `deploy/security/protected-artifact-owners.json`, `tests/security/auth-runtime-capability.test.ts`, `tests/security/auth-runtime-handoff.test.ts`, Issue #155 Leaf 1 Task 7 brief.
+- Verification: capability/handoff Vitest tests, full Vitest suite, TypeScript, non-printing secret scans, auth-runtime build-only preflight, and all staged wiki sync gates.
+
 ## 2026-07-13T03:15:00+09:00 - Leaf 1 Task 6 linked-account adapter review fix
 
 - Result: The auth-runtime browser oracle now narrows the nullable projected Google identity before constructing the required Prisma account input and seeds the linked fixture through `options.adapter.linkAccount` with synthetic token fields. The test verifies the closed-signup adapter persists only the provider identity and leaves access, refresh, and id token columns `NULL`.

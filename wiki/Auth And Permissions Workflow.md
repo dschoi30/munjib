@@ -120,6 +120,49 @@ one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
 
+### Leaf 1 downstream handoff and rollback contract
+
+The accepted Leaf 1 deployment evidence is the prerequisite for **Leaf 2**. Leaf 2
+may change only the reserved `lib/auth/downstream/leaf2.ts` baseline from version 0
+to `security-journal-auth-tombstones@1`; Leaf 1 config, callback, password,
+candidate-context, session-image, and adapter paths remain byte-identical. **Leaf 7**
+may replace the closed OAuth behavior only through its guarded invitation/link
+contract and the Leaf 1 minimal Account/session-image helpers. **Leaf 13** must
+preserve loopback-only Web binding, strict file-backed generated secrets, exact-image
+selection, and the closed-signup preflight.
+
+**Leaf 8** must preserve the canonical scrypt v1 parser, dummy work,
+compare-and-swap-before-session rule, and local resource guard while adding PostgreSQL
+admission authority. The four downstream slot baselines and their reserved owners are
+machine-checked in `deploy/security/protected-artifact-owners.json`; a downstream
+fragment cannot name a Leaf 1 core path and a slot cannot move from version 0 without
+its reserved owner.
+
+Google start/callback containment remains at the edge after Leaf 1. After a verified
+recovery gate and `JOURNAL_READY`, a bounded transaction may lock each legacy
+token-bearing Google Account, append the existing `AUTH_OAUTH_ACCOUNT_REVOKED` event
+with subject type `OAUTH_ACCOUNT`, and revoke/remove that Account in the same
+transaction. Journal failure rolls back revocation; replay is deny-only and idempotent.
+Only a fresh boolean proof that no token-bearing Google row remains permits
+containment removal. Evidence contains no row count, Account/user ID, provider
+payload, or token, and the canonical twenty-six-kind journal union does not change.
+
+Rollback retains the current root-managed signing/provider secret files and their
+owner/mode/mount contract, closed password signup, closed unlinked OAuth, Secure
+cookies, canonical origin, disabled development login, production seed prohibition,
+token/profile-media zero persistence, and v1 password-hash readability. No rollback
+image may rely only on `email_verified`; once any canonical v1 password row exists,
+an image unable to parse it is rollback-ineligible. The exact `auth-runtime-fail-closed`
+v1 capability fragment lists the evidence tests and required `secure-next-runtime@1`
+capability. Generated candidate envelopes remain untracked and are published only by
+Leaf 13A's dispatcher.
+
+The closed production invariant is intentionally explicit: Google accepts only the
+**exact linked Google Account**, and callback denial plus the adapter guard produce
+**zero User or Account creation**. Provider credentials and an **external profile image**
+are not persisted or copied into session state. These terms are the stable
+handoff language for Leaf 2, Leaf 7, Leaf 8, and Leaf 13.
+
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.

@@ -1,0 +1,31 @@
+{
+  "format": "munjib-security-protected-artifact-owners-v1",
+  "version": 1,
+  "release": "auth-runtime-fail-closed@1",
+  "artifacts": [
+    {
+      "path": "lib/auth/downstream/leaf2.ts",
+      "owner": "security-journal-auth-tombstones",
+      "version": 0,
+      "sha256": "5c58a978fd6ff0bc950df8fd57298e0ed5293c0822e53baccb851ac9fa446268"
+    },
+    {
+      "path": "lib/auth/downstream/leaf4.ts",
+      "owner": "zero-ambient-media-egress",
+      "version": 0,
+      "sha256": "1dd585fe4e8cc83e62e6b388f8fe315404c09af8a17ec7fe2e18971388128836"
+    },
+    {
+      "path": "lib/auth/downstream/leaf8.ts",
+      "owner": "issue-08-auth-abuse",
+      "version": 0,
+      "sha256": "8aed027ee32c936025d2ad3e02291e06df04b1f45c4fa89452569a22f9e0c8ad"
+    },
+    {
+      "path": "lib/auth/downstream/leaf7.ts",
+      "owner": "invite-signup-gate",
+      "version": 0,
+      "sha256": "c10903345d620f35d78c2b212dfecb54a2ce5d2e90b39e80497bf7f97de16c8d"
+    }
+  ]
+}
