@@ -63,10 +63,9 @@ describe("production dependency audit remediation", () => {
   });
 
   test("keeps minimatch 3 callable with its brace-expansion 1 API", () => {
-    const minimatchPath = join(
-      root,
-      "node_modules/.pnpm/minimatch@3.1.5/node_modules/minimatch/minimatch.js",
-    );
+    const rootRequire = createRequire(join(root, "package.json"));
+    const eslintRequire = createRequire(rootRequire.resolve("eslint/package.json"));
+    const minimatchPath = eslintRequire.resolve("minimatch");
     const minimatch3 = createRequire(minimatchPath)("./") as (
       value: string,
       pattern: string,
