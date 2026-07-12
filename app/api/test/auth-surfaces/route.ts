@@ -2,6 +2,7 @@ import {
   leaf4AuthUserOutput,
   leaf4SessionMediaHook,
 } from "@/lib/auth/downstream/leaf4";
+import { isTestTransportEnabled } from "@/lib/security/test-transport";
 
 export const dynamic = "force-dynamic";
 
@@ -40,14 +41,4 @@ export async function GET(request: Request) {
     jwtPayload: media.token,
     sessionPayload: { user: { image: media.ambientImage } },
   });
-}
-
-function isTestTransportEnabled() {
-  const deployment = process.env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
-  return (
-    process.env.MUNJIB_E2E_PROVIDER_TRANSPORT === "true" &&
-    (process.env.NODE_ENV !== "production" ||
-      deployment === "test" ||
-      deployment === "development")
-  );
 }

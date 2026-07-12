@@ -24,6 +24,7 @@ export default defineConfig({
       "MUNJIB_OPENAI_COMPATIBLE_BASE_URL=http://localhost:3000/api/test/provider/v1 " +
       "MUNJIB_OPENAI_COMPATIBLE_API_KEY=test-only " +
       "MUNJIB_E2E_ATTACKER_ORIGIN=http://localhost:39158 " +
+      "MUNJIB_EGRESS_PROBE_SERVER_ORIGIN=http://127.0.0.1:39158 " +
       "pnpm run dev",
     url: "http://localhost:3000/login",
     reuseExistingServer: !process.env.CI,

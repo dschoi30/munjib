@@ -2580,3 +2580,9 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
+## 2026-07-13T02:11:00+09:00 - security
+
+- Source evidence: Issue #158 Task 3 follow-up, `lib/security/test-transport.ts`, `app/api/test/egress-calibration/route.ts`, `tests/e2e/fixtures/egress-probe-server.ts`, `tests/security/test-transport.test.ts`, CI=1 Chromium zero-egress oracle.
+- Affected pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Result: test-only provider/auth/server-calibration routes now share an explicit test/development environment gate. The zero-egress E2E calibrates browser reachability in page context and server reachability through a guarded Next/Node route, proving that the application process can reach the local probe without opening the harness in default, production, or staging environments.
+- Verification: focused Vitest 120 tests, `pnpm exec tsc --noEmit --pretty false`, and clean CI=1 Chromium run against local PostgreSQL passed; only the pre-existing OpenTelemetry shim warning remained.

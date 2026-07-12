@@ -111,15 +111,21 @@ describe("user/provider media source contract", () => {
   it("uses a real test-only provider transport and does not pre-seed assistant output", async () => {
     const fixture = await source("tests/e2e/fixtures/zero-egress-app-fixture.ts");
     const transport = await source("app/api/test/provider/[...path]/route.ts");
+    const calibration = await source("app/api/test/egress-calibration/route.ts");
+    const transportGate = await source("lib/security/test-transport.ts");
     expect(fixture).toContain("hashPassword");
     expect(fixture).toContain("passwordHash");
     expect(fixture).not.toContain("aiChatThread.create");
     expect(fixture).toContain("providerProfile");
     expect(fixture).toContain("jwtPayload");
     expect(fixture).toContain("sessionPayload");
-    expect(transport).toContain("MUNJIB_E2E_PROVIDER_TRANSPORT");
-    expect(transport).toContain("MUNJIB_DEPLOYMENT_ENV");
+    expect(transportGate).toContain("MUNJIB_E2E_PROVIDER_TRANSPORT");
+    expect(transportGate).toContain("MUNJIB_DEPLOYMENT_ENV");
     expect(transport).toContain("chat/completions");
     expect(transport).toContain("embeddings");
+    expect(calibration).toContain("MUNJIB_EGRESS_PROBE_SERVER_ORIGIN");
+    expect(calibration).toContain("x-egress-probe-caller");
+    expect(calibration).toContain('"server"');
+    expect(calibration).toContain("isTestTransportEnabled");
   });
 });

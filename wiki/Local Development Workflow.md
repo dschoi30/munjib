@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-04
-source_count: 65
+updated: 2026-07-13
+source_count: 66
 tags:
   - munjib
   - workflow
@@ -53,11 +53,11 @@ pnpm run documents:purge-archived -- --workspace company-handbook
 
 ## Zero-egress browser oracle
 
-Task 3 browser oracle은 test-only provider와 probe alias를 명시적으로 켜서 실행한다. Probe는 docker-compose.egress-test.yml의 egress-test profile에만 있고 production Compose에는 없다. Provider/auth test routes는 MUNJIB_E2E_PROVIDER_TRANSPORT=true와 MUNJIB_DEPLOYMENT_ENV=test 또는 development 조합에서만 활성화된다.
+Task 3 browser oracle은 test-only provider와 probe alias를 명시적으로 켜서 실행한다. Probe는 docker-compose.egress-test.yml의 egress-test profile에만 있고 production Compose에는 없다. Provider/auth/server-calibration test routes는 `MUNJIB_E2E_PROVIDER_TRANSPORT=true`와 명시적인 test/development `NODE_ENV` 또는 `MUNJIB_DEPLOYMENT_ENV` 조합에서만 활성화되며, 기본/production/staging 환경에서는 거부된다.
 
 CI=1 DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' NEXTAUTH_SECRET='test-secret' NEXTAUTH_URL='http://localhost:3000' pnpm exec playwright test tests/e2e/zero-egress-rendering.spec.ts --project=chromium
 
-The oracle calibrates browser/server canaries before clearing counters, then asserts no probe request, image optimizer fetch, speculative link, CSS/DOM sink, auth/session media, or settled client stream leak.
+The oracle calibrates the browser canary in page context and calls `/api/test/egress-calibration` so the Next/Node process performs the server canary fetch with `x-egress-probe-caller: server`. It then clears counters and asserts no probe request, image optimizer fetch, speculative link, CSS/DOM sink, auth/session media, or settled client stream leak.
 
 Issue #119 이후 archived document purge는 `Workspace.archivedDocumentRetentionPolicy`와 `Document.archivedAt` cutoff를 읽어 expired archived document를 hard delete하는 CLI/tools command다. 삭제 실행 전에는 `--dry-run`으로 대상 count를 확인한다. Docker 환경에서는 `docker compose run --rm tools pnpm run documents:purge-archived -- --dry-run`처럼 tools container에서 실행할 수 있으며, production 주기 실행은 host cron, Docker tools, 또는 future scheduled workflow 중 하나로 묶는 후속 작업이다.
 

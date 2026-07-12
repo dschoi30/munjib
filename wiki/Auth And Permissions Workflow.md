@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-08
-source_count: 58
+updated: 2026-07-13
+source_count: 59
 tags:
   - munjib
   - auth
@@ -187,6 +187,8 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
 
 Issue #158 Task 3 keeps that historical `User.image` column for adapter compatibility but removes ambient media at the auth/session boundary. Credentials and OAuth identity DTOs are built by `lib/auth/downstream/leaf4.ts` with `image: null`; `zeroAmbientSessionImage()` is total and `stripAmbientTokenMedia()` removes both `picture` and `image` from copied JWT tokens. The session callback applies the reserved hook before returning the session, so provider profile URLs, stored avatar URLs, and shape-valid `/api/attachments/<id>` values remain database history only and cannot become browser-renderable account media.
+
+The zero-egress test harness keeps its provider, auth-surface, and server-calibration routes behind the shared `isTestTransportEnabled()` gate. The route is denied when the opt-in flag is absent or when the runtime/deployment is production or staging; it is enabled only for an explicit test/development `NODE_ENV` or `MUNJIB_DEPLOYMENT_ENV`. The server canary is fetched by the Next/Node process through `/api/test/egress-calibration`, so browser tests do not mistake Playwright-runner reachability for application-server reachability.
 
 `lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
 

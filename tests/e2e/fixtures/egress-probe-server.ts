@@ -103,9 +103,10 @@ export async function startEgressProbeServer(): Promise<EgressProbe> {
         });
         if (!response.ok) throw new Error("Browser calibration failed: " + response.status);
       }, PROBE_BROWSER_ORIGIN);
-      const response = await fetch(PROBE_SERVER_ORIGIN + "/server-canary", {
-        headers: { "x-egress-probe-caller": "server" },
-      });
+      // The server calibration must travel through the Next/Node app route.
+      // Calling the probe directly from this Playwright process would only
+      // prove runner reachability, not server-process reachability.
+      const response = await page.request.get("/api/test/egress-calibration");
       if (!response.ok) throw new Error("Server calibration failed: " + response.status);
     },
     calibration() {
