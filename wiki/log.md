@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-09
+updated: 2026-07-12
 source_count: 338
 tags:
   - log
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-12T18:35:00+09:00 - least-authority delivery substrate
+
+- Result: Leaf 13A adds a public-safe delivery contract for a non-interactive submitter, peer-verified Unix-socket broker, fixed operation allowlist, and empty protected-owner registry.
+- Coverage: The application capability floor remains empty during substrate installation; caller-selected paths, environments, Docker, sudo, root SSH, and interactive forwarding are excluded.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `cmd/munjib-release-submit/main.go`, `cmd/munjib-release-broker/main.go`, `internal/delivery/envelope.go`, fixed delivery manifests, and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests and TypeScript compilation pass; full DB-backed test execution remains dependent on an available test PostgreSQL service.
 
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 

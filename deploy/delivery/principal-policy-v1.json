@@ -1,0 +1,18 @@
+{
+  "format": "munjib-delivery-principal-v1",
+  "version": 1,
+  "submitter": {
+    "user": "munjib-deploy",
+    "uidSource": "root-bootstrap",
+    "exactPeer": true
+  },
+  "socket": {
+    "path": "/run/munjib/release-broker.sock",
+    "mode": "0620",
+    "group": "munjib-release-submit"
+  },
+  "interactive": false,
+  "allowDocker": false,
+  "allowSudo": false,
+  "allowRootSsh": false
+}
