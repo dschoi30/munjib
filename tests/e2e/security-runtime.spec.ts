@@ -29,6 +29,16 @@ test("App Router navigation returns a bounded RSC response and keeps the server 
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/workspaces\/security-runtime-/);
 
+  let rscBodyLength: number | undefined;
+  await page.route("**/*_rsc=*", async (route) => {
+    const upstream = await route.fetch();
+    const body = await upstream.body();
+    if (route.request().resourceType() === "fetch") {
+      rscBodyLength = body.byteLength;
+    }
+    await route.fulfill({ response: upstream, body });
+  });
+
   const navigationResponse = page.waitForResponse((response) => {
     return (
       response.request().resourceType() === "fetch" &&
@@ -41,7 +51,8 @@ test("App Router navigation returns a bounded RSC response and keeps the server 
   const response = await navigationResponse;
 
   expect(response.ok()).toBe(true);
-  expect((await response.body()).byteLength).toBeLessThan(5 * 1024 * 1024);
+  expect(rscBodyLength).toBeDefined();
+  expect(rscBodyLength).toBeLessThan(5 * 1024 * 1024);
   await expect(page.locator("[name='title']")).toHaveValue("Runtime Smoke");
   await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
 });

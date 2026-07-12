@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
+
+- Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.
+- Coverage: The auth/RSC smoke is green 2/2 against `next start`; the synthetic fixture and temporary work directory are cleaned up after the run.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `tests/security/security-runtime-rsc-contract.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green RSC contract Vitest, production-like smoke, PostgreSQL fixture count, and temporary-directory cleanup checks.
+
 ## 2026-07-12T21:10:00+09:00 - secure runtime smoke lifecycle review fixes
 
 - Result: Leaf 3 Task 2 smoke launcher now exports the transient auth secret through the child environment without an argv assignment and installs guarded cleanup immediately after temporary work creation.

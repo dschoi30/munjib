@@ -201,7 +201,7 @@ E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, lo
 
 Leaf 3의 secure runtime smoke는 `pnpm run test:security-runtime`으로 실행한다. Runner는 로컬 synthetic PostgreSQL에서만 mode `0600` password file과 random `@invalid.example` user/workspace를 만들고, `pnpm run build` 뒤 `NODE_ENV=production`인 `next start`를 외부 Playwright server로 검사한다. `MUNJIB_ENABLE_DEV_LOGIN=false`에서 password provider와 `/login` shell을 확인하고, 로그인 뒤 bounded App Router RSC navigation을 확인한다. EXIT/INT/TERM cleanup은 server process, synthetic organization/workspace/user, temporary password file을 항상 정리하며, 이 경로는 staging/production secret-policy 증거가 아니다. Runtime projection ownership은 `package.json`과 `pnpm-lock.yaml`의 FULL_PATH만 금지하고 `docker-compose.yml` ownership은 delivery contract에서 사용할 수 있다.
 
-Smoke launcher review contract는 생성된 `NEXTAUTH_SECRET`을 child environment로만 전달하고 command argv에는 넣지 않으며, temporary work directory 생성 직후 cleanup trap을 설치해 부분 초기화 실패도 안전하게 정리한다. `tests/security/security-runtime-smoke-script.test.ts`가 이 두 조건을 정적으로 고정한다.
+Smoke launcher review contract는 생성된 `NEXTAUTH_SECRET`을 child environment로만 전달하고 command argv에는 넣지 않으며, temporary work directory 생성 직후 cleanup trap을 설치해 부분 초기화 실패도 안전하게 정리한다. RSC 응답 body는 Playwright route interception에서 읽고 다시 fulfill해 browser protocol body lookup에 의존하지 않으면서도 bounded byte length를 검증한다. `tests/security/security-runtime-smoke-script.test.ts`와 `tests/security/security-runtime-rsc-contract.test.ts`가 이 조건을 정적으로 고정한다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 
