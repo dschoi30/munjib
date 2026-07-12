@@ -57,6 +57,15 @@ runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명�
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
 
+## Security-critical runtime gate
+
+Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
+`eslint-config-next` 15.5.18 specifications. The repository contract checks the
+resolved pnpm graph, a deterministic projection of the Next.js/React runtime
+roots, and a paginated advisory gate without persisting advisory response bodies.
+Production runtime smoke fixtures read passwords only from a file and emit no
+credential material.
+
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps

@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T20:25:00+09:00 - secure Next.js runtime gate
+
+- Result: Leaf 3 pins `next` and `eslint-config-next` to exact 15.5.18 specifications and records a deterministic Next.js/React runtime projection with protected-artifact ownership.
+- Coverage: The advisory gate follows paginated GitHub API results and prints only candidate/count; the synthetic runtime fixture reads credentials from a password file and emits no secret values.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, runtime contract tests, advisory gate, projection projector, capability fragment, and protected owner map.
+- Verification: focused Vitest security and delivery contract tests pass; live advisory API verification remains an external network/authentication gate.
+
 ## 2026-07-12T19:00:00+09:00 - delivery substrate tracking handles
 
 - Result: The public-safe delivery documentation records parent Issue #167, child Issue #169, and remote branch `issue-169-delivery-substrate` alongside the Leaf 13A label.
