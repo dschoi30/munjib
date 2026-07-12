@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T03:15:00+09:00 - Leaf 1 Task 6 linked-account adapter review fix
+
+- Result: The auth-runtime browser oracle now narrows the nullable projected Google identity before constructing the required Prisma account input and seeds the linked fixture through `options.adapter.linkAccount` with synthetic token fields. The test verifies the closed-signup adapter persists only the provider identity and leaves access, refresh, and id token columns `NULL`.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/auth-runtime.spec.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, and Issue #155 Leaf 1 Task 6 review feedback.
+- Verification: TypeScript, focused auth/runtime Vitest (49 tests), and the DB-backed production Docker runner (`1 passed`, disposable pgvector database, fixed secret mount, no external OAuth calls).
+
 ## 2026-07-13T02:55:00+09:00 - Leaf 1 Task 6 temporary secret-path guard
 
 - Result: The non-production auth-runtime preflight seam now requires an absolute single-component file beneath a 0700 parent before applying the same strict descriptor checks. The production `/run/secrets/<name>` allowlist remains unchanged.

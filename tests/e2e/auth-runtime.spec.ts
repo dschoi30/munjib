@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { randomUUID } from "node:crypto";
+import { authDownstreamHooks } from "@/lib/auth/downstream/contract";
 import { buildAuthOptions, projectGoogleOAuthCallback } from "@/lib/auth/config";
 import { prisma } from "@/lib/db/client";
 import { authorizePasswordCredential } from "@/lib/auth/password-credentials";
@@ -87,8 +88,49 @@ test("production-like browser auth stays closed and media-free", async ({ page, 
       account: { provider: "google", providerAccountId: subject },
       profile: { email, email_verified: true },
     });
-    await prisma.account.create({
-      data: { userId: linkedUser.id, type: "oauth", ...projected!.account },
+    if (!projected) {
+      throw new Error("AUTH_RUNTIME_PROJECTED_GOOGLE_IDENTITY_INVALID");
+    }
+    const { provider, providerAccountId } = projected.account;
+    if (provider !== "google" || typeof providerAccountId !== "string") {
+      throw new Error("AUTH_RUNTIME_PROJECTED_GOOGLE_ACCOUNT_INVALID");
+    }
+    const persistenceOptions = buildAuthOptions(runtime, {
+      ...authDownstreamHooks,
+      async linkCandidateAccount(account) {
+        const created = await prisma.account.create({ data: account });
+        return {
+          result: {
+            userId: created.userId,
+            type: "oauth" as const,
+            provider: created.provider,
+            providerAccountId: created.providerAccountId,
+          },
+        };
+      },
+    });
+    if (!persistenceOptions.adapter?.linkAccount) {
+      throw new Error("AUTH_RUNTIME_ADAPTER_LINK_UNAVAILABLE");
+    }
+    await persistenceOptions.adapter.linkAccount({
+      userId: linkedUser.id,
+      type: "oauth",
+      provider,
+      providerAccountId,
+      access_token: "synthetic-access-token",
+      refresh_token: "synthetic-refresh-token",
+      id_token: "synthetic-id-token",
+    });
+    const persisted = await prisma.account.findUniqueOrThrow({
+      where: { provider_providerAccountId: { provider, providerAccountId } },
+    });
+    expect(persisted).toMatchObject({
+      userId: linkedUser.id,
+      provider,
+      providerAccountId,
+      access_token: null,
+      refresh_token: null,
+      id_token: null,
     });
     await expect(callback({
       account: { provider: "google", providerAccountId: subject },

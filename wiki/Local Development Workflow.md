@@ -235,7 +235,9 @@ production container 경로와 혼동하지 않는다. Runner는 browser 단계�
 전달한다. DB를 만들거나 migration할 수 없으면 실행을 성공으로 처리하지 않으며, 기존
 개발/production DB URL을 상속하지 않는다. 따라서 unlinked OAuth zero-row, linked account
 token/profile media persistence, historical image, cleanup 검증은 조건부 skip 없이 실제 DB에서
-수행된다.
+수행된다. Linked-account fixture는 `options.adapter.linkAccount`에 synthetic access/refresh/id
+token을 넣어 호출하고, closed-signup downstream hook이 provider identity만 저장한 뒤 세 token
+column이 모두 `NULL`인지 확인한다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 
