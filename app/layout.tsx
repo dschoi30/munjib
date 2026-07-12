@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { I18nProvider } from "@/components/i18n-provider";
+import { SpeculativeLinkGuard } from "@/components/speculative-link-guard";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -13,6 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body>
         <I18nProvider>
+          <SpeculativeLinkGuard />
           {children}
           <Toaster />
         </I18nProvider>

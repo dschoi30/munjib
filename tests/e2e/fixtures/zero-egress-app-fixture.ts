@@ -1,17 +1,17 @@
 import { randomUUID } from "node:crypto";
+import { hashPassword } from "@/lib/auth/passwords";
 import { prisma } from "@/lib/db/client";
 
 type InstallZeroEgressAppFixtureInput = {
   savedDocumentMarkdown: string;
-  completedWorkspaceAiAnswer: string;
 };
 
 export type ZeroEgressAppFixture = {
   ownerEmail: string;
+  ownerPassword: string;
   workspaceSlug: string;
   documentId: string;
   savedDocumentUrl: string;
-  completedWorkspaceAiAnswer: string;
   providerProfile: { image: string; picture: string };
   jwtPayload: { picture: string; image: string };
   sessionPayload: { user: { image: string } };
@@ -24,27 +24,29 @@ function firstAbsoluteHttpUrl(markdown: string) {
 }
 
 /**
- * Install a real persisted workspace/document fixture.  The deliberately
- * tainted values model adapter/provider/JWT/session sources; auth callbacks
- * must turn them into the null media DTO before they can reach a render sink.
+ * Install only durable workspace/document state. The AI answer is intentionally
+ * not seeded: the browser test signs in this password user and drives the real
+ * Workspace AI route through the test-only local provider transport.
  */
 export async function installZeroEgressAppFixture(
   input: InstallZeroEgressAppFixtureInput,
 ): Promise<ZeroEgressAppFixture> {
   const id = randomUUID();
   const attackerOrigin = new URL(firstAbsoluteHttpUrl(input.savedDocumentMarkdown)).origin;
-  const ownerEmail = `zero-egress-${id}@example.com`;
-  const workspaceSlug = `zero-egress-${id}`;
+  const ownerEmail = "zero-egress-" + id + "@example.com";
+  const ownerPassword = "zero-egress-password";
+  const workspaceSlug = "zero-egress-" + id;
 
   const user = await prisma.user.create({
     data: {
       email: ownerEmail,
       name: "Zero Egress Owner",
-      image: `${attackerOrigin}/user-avatar.png`,
+      image: attackerOrigin + "/user-avatar.png",
+      passwordHash: await hashPassword(ownerPassword),
     },
   });
   const organization = await prisma.organization.create({
-    data: { name: "Zero Egress Organization", slug: `${workspaceSlug}-org` },
+    data: { name: "Zero Egress Organization", slug: workspaceSlug + "-org" },
   });
   const workspace = await prisma.workspace.create({
     data: {
@@ -70,43 +72,27 @@ export async function installZeroEgressAppFixture(
     },
   });
 
-  await prisma.aiChatThread.create({
-    data: {
-      workspaceId: workspace.id,
-      userId: user.id,
-      title: "Zero-egress fixture",
-      lastMessageAt: new Date(),
-      messages: {
-        create: {
-          role: "ASSISTANT",
-          content: input.completedWorkspaceAiAnswer,
-          model: "zero-egress-fixture",
-        },
-      },
-    },
-  });
-
   const providerProfile = {
-    image: `${attackerOrigin}/provider-image.png`,
-    picture: `${attackerOrigin}/provider-picture.png`,
+    image: attackerOrigin + "/provider-image.png",
+    picture: attackerOrigin + "/provider-picture.png",
   };
   const jwtPayload = {
-    picture: `${attackerOrigin}/jwt-picture.png`,
-    image: `${attackerOrigin}/jwt-image.png`,
+    picture: attackerOrigin + "/jwt-picture.png",
+    image: attackerOrigin + "/jwt-image.png",
   };
-  const sessionPayload = { user: { image: `${attackerOrigin}/session-image.png` } };
+  const sessionPayload = { user: { image: attackerOrigin + "/session-image.png" } };
 
   return {
     ownerEmail,
+    ownerPassword,
     workspaceSlug,
     documentId: document.id,
-    savedDocumentUrl: `/workspaces/${workspaceSlug}?document=${document.id}`,
-    completedWorkspaceAiAnswer: input.completedWorkspaceAiAnswer,
+    savedDocumentUrl: "/workspaces/" + workspaceSlug + "?document=" + document.id,
     providerProfile,
     jwtPayload,
     sessionPayload,
     async cleanup() {
-      await prisma.organization.delete({ where: { id: organization.id } });
+      await prisma.organization.delete({ where: { id: organization.id } }).catch(() => undefined);
       await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);
     },
   };

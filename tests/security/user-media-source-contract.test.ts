@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -8,37 +8,47 @@ async function source(path: string) {
   return readFile(resolve(root, path), "utf8");
 }
 
-describe("user/provider media source contract", () => {
-  it("keeps an inventory of every ambient media vocabulary used by the app", () => {
-    const inventory = [
-      ".image",
-      "avatar",
-      "picture",
-      "profile.image",
-      "session.user.image",
-      "<img",
-      "next/image",
-      "src",
-      "srcSet",
-      "poster",
-      "url()",
-      "preload",
-    ];
+async function sourceFiles(directory: string): Promise<string[]> {
+  const entries = await readdir(resolve(root, directory), { withFileTypes: true });
+  const files: string[] = [];
+  for (const entry of entries) {
+    const relative = directory + "/" + entry.name;
+    if (entry.isDirectory()) {
+      files.push(...await sourceFiles(relative));
+    } else if (/\.(?:ts|tsx|js|jsx|mjs|css)$/.test(entry.name)) {
+      files.push(relative);
+    }
+  }
+  return files;
+}
 
-    expect(inventory).toEqual(expect.arrayContaining([
-      ".image",
-      "avatar",
-      "picture",
-      "profile.image",
-      "session.user.image",
-      "<img",
-      "next/image",
-      "src",
-      "srcSet",
-      "poster",
-      "url()",
-      "preload",
-    ]));
+describe("user/provider media source contract", () => {
+  it("scans application source for ambient media sources and render sinks", async () => {
+    const files = [
+      ...(await sourceFiles("app")),
+      ...(await sourceFiles("components")),
+      ...(await sourceFiles("lib")),
+      "next.config.mjs",
+    ];
+    const sourceVocabulary = /(?:\.image|avatar|picture|profile\.image|session\.user\.image)/i;
+    const sinkVocabulary = /(?:<img|next\/image|\bsrc(?:Set)?\b|\bposter\b|url\(|preload|prefetch|preconnect)/i;
+    const inventory = (await Promise.all(files.map(async (file) => {
+      const contents = await source(file);
+      return contents
+        .split("\n")
+        .map((line, index) => ({ file, line: index + 1, contents: line }))
+        .filter((entry) => sourceVocabulary.test(entry.contents));
+    }))).flat();
+
+    expect(inventory.length).toBeGreaterThan(5);
+    expect(inventory.some((entry) => entry.file === "lib/auth/config.ts")).toBe(true);
+    expect(inventory.map((entry) => entry.contents).join("\n")).toMatch(/image|avatar|picture/i);
+    const unguarded = inventory.filter((entry) =>
+      sinkVocabulary.test(entry.contents) &&
+      !entry.contents.includes("zeroAmbientSessionImage") &&
+      !entry.contents.includes("classifyMarkdownImageSource"),
+    );
+    expect(unguarded).toEqual([]);
   });
 
   it("routes auth DTO construction through the reserved zero-media slot", async () => {
@@ -78,5 +88,38 @@ describe("user/provider media source contract", () => {
     expect(page).not.toContain("user.image");
     expect(list).not.toContain("currentUser.image");
     expect(session).not.toContain("session.user.image");
+  });
+
+  it("rejects test-only response and stream shortcuts in the browser oracle", async () => {
+    const oracle = await source("tests/e2e/zero-egress-rendering.spec.ts");
+    const fixture = await source("tests/e2e/fixtures/zero-egress-app-fixture.ts");
+    const probe = await source("tests/e2e/fixtures/egress-probe-server.ts");
+    for (const contents of [oracle, fixture]) {
+      expect(contents).not.toMatch(/page\.route|route\.fulfill|route\.continue/);
+      expect(contents).not.toMatch(/application\/x-ndjson|new\s+Response\s*\(/i);
+      expect(contents).not.toMatch(/type\s*:\s*["'](?:start|token|done)["']/);
+      expect(contents).not.toMatch(/addInitScript|setContent\s*\(/);
+    }
+    expect(probe).toContain("server.listen(PROBE_PORT, PROBE_BIND_HOST)");
+    expect(probe).toMatch(/access-control-allow-headers/i);
+    expect(probe).toContain("x-egress-probe-caller");
+    expect(oracle).toContain("waitForTimeout");
+    expect(oracle).toMatch(/script\[type=["']application\/json["']\]/);
+    expect(oracle).toContain("style");
+  });
+
+  it("uses a real test-only provider transport and does not pre-seed assistant output", async () => {
+    const fixture = await source("tests/e2e/fixtures/zero-egress-app-fixture.ts");
+    const transport = await source("app/api/test/provider/[...path]/route.ts");
+    expect(fixture).toContain("hashPassword");
+    expect(fixture).toContain("passwordHash");
+    expect(fixture).not.toContain("aiChatThread.create");
+    expect(fixture).toContain("providerProfile");
+    expect(fixture).toContain("jwtPayload");
+    expect(fixture).toContain("sessionPayload");
+    expect(transport).toContain("MUNJIB_E2E_PROVIDER_TRANSPORT");
+    expect(transport).toContain("MUNJIB_DEPLOYMENT_ENV");
+    expect(transport).toContain("chat/completions");
+    expect(transport).toContain("embeddings");
   });
 });

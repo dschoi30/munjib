@@ -11,7 +11,12 @@ describe("egress probe Compose overlay", () => {
     const productionSource = read("docker-compose.yml");
     const overlaySource = read("docker-compose.egress-test.yml");
     const overlay = parse(overlaySource) as {
-      services: Record<string, { profiles?: string[]; ports?: string[]; networks?: unknown }>;
+      services: Record<string, {
+        profiles?: string[];
+        ports?: string[];
+        networks?: unknown;
+        environment?: Record<string, string>;
+      }>;
     };
 
     expect(productionSource).not.toMatch(/egress-probe|egress-test|39158|munjib-web-egress/);
@@ -19,5 +24,9 @@ describe("egress probe Compose overlay", () => {
     expect(overlay.services["egress-probe"].ports).toEqual(["127.0.0.1:39158:39158"]);
     expect(overlaySource).toContain("aliases: [egress-probe]");
     expect(overlaySource).toContain("condition: service_started");
+    expect(overlay.services.web.environment).toMatchObject({
+      MUNJIB_EGRESS_PROBE_ORIGIN: "http://egress-probe:39158",
+      MUNJIB_EGRESS_PROBE_SERVER_ORIGIN: "http://egress-probe:39158",
+    });
   });
 });

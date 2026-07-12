@@ -34,6 +34,8 @@ Ask AI와 saved-document preview는 `components/markdown/safe-media.tsx`의 공�
 
 Issue #158 Task 3는 이 renderer 경계를 SSR과 실제 브라우저/Next 서버 요청으로 검증한다. `AiAnswer` SSR은 external `<img>`, speculative preload/prefetch/preconnect, attacker URL이 포함된 destination attribute를 만들지 않아야 하고, `next.config.mjs`는 `/:path*` 전역 응답에 `X-DNS-Prefetch-Control: off`를 붙인다. `lib/auth/downstream/leaf4.ts`의 reserved slot은 `zeroAmbientSessionImage()`로 provider/database avatar 후보를 항상 `null`로 만들고, `stripAmbientTokenMedia()`로 JWT의 `picture`/`image`를 복사본에서 제거한다. 따라서 historical `User.image`, OAuth profile image/picture, JWT/session media 값은 auth DTO나 workspace chrome으로 전달되지 않으며, authorized attachment markdown만 authenticated same-origin `<img>` sink가 될 수 있다. `tests/e2e/zero-egress-rendering.spec.ts`는 local attacker listener를 browser와 Next 서버에서 각각 calibration한 뒤 실제 저장 문서 preview와 Workspace AI surface를 방문하고, request, optimizer fetch, DNS/speculative link, CSS/DOM/SSR/JSON destination 누출이 없음을 확인한다. `docker-compose.egress-test.yml`의 probe alias와 service는 test profile 전용이며 production compose에는 없다.
 
+Task 3 보정 oracle은 고정 test-only probe port와 Compose alias, OPTIONS/CORS preflight, password-hash fixture login, deterministic local provider transport를 사용한다. Provider 응답은 실제 Workspace AI service, NDJSON route, client renderer를 통과하며 assistant pre-seed나 route/client response mock을 사용하지 않는다. Provider/auth harness는 명시적인 test transport와 non-production deployment gate 없이는 404이고, browser speculative media link는 dev webpack preload를 포함해 제거한다.
+
 ## Process Map
 
 이 지도는 현재 Ask AI direct path와 workspace chatbot RAG service path를 분리해서 보여준다.

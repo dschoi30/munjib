@@ -2493,6 +2493,15 @@ links:
 - Source evidence: 사용자 보고, `lib/wiki-links/parser.ts`, `lib/wiki-links/reconcile.ts`, `lib/wiki-links/service.ts`, `prisma/schema.prisma`, `prisma/migrations/20260504123500_add_document_link_sort_order/migration.sql`, `tests/wiki-links/parser.test.ts`, `tests/wiki-links/reconcile.test.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/parser.test.ts tests/wiki-links/reconcile.test.ts tests/documents/service.test.ts`.
 
+# 2026-07-13T02:05:00+09:00 - security-oracle-review
+
+- Result: Leaf 4 Task 3 browser/SSR zero-egress oracle 보정. Probe는 고정 test-only port와 Compose alias를 사용하고 custom caller header OPTIONS/CORS preflight를 처리한다.
+- Coverage: password-hash fixture login, real local provider embedding/chat transport, Workspace AI service에서 route NDJSON과 client final render까지의 실제 경로, provider/JWT/session taint auth-surface, account/sidebar DOM과 settled CSS/JSON assertions, source/sink inventory 및 shortcut rejection.
+- Safety: test provider/auth routes는 명시적인 test transport와 non-production deployment gate가 필요하며 production Compose probe service나 external network를 추가하지 않는다. SpeculativeLinkGuard는 dev webpack preload를 포함한 browser speculative media link를 제거한다.
+- Source evidence: tests/e2e/fixtures/egress-probe-server.ts, tests/e2e/fixtures/zero-egress-app-fixture.ts, app/api/test/provider/[...path]/route.ts, app/api/test/auth-surfaces/route.ts, tests/e2e/zero-egress-rendering.spec.ts, tests/security/user-media-source-contract.test.ts, docker-compose.egress-test.yml, playwright.config.ts.
+- Verification: focused Vitest 48 tests, pnpm exec tsc --noEmit --pretty false, clean CI=1 Chromium oracle 1 passed. Existing OpenTelemetry shim resolution warning remains unrelated.
+- Pages: [[RAG Process Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+
 ## 2026-05-04T12:25:00+09:00 - review
 
 - Result: Properties 영역의 frontmatter property 표시 순서가 markdown 파일의 YAML key 순서와 달라지던 문제를 수정했다.
