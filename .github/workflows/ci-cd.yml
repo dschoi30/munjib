@@ -60,6 +60,8 @@ jobs:
 
       - name: Check Next.js advisories
         run: pnpm exec tsx scripts/security/check-next-advisories.ts --candidate "$(node -p "require('./package.json').dependencies.next")"
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Generate Prisma client
         run: pnpm run db:generate

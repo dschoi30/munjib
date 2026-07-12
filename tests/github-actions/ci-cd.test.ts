@@ -69,6 +69,9 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
       "require('./package.json').dependencies.next",
     );
+    expect(ci.steps[nextAdvisoryIndex]?.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+    });
     expect(runCommands).toContain("pnpm run db:generate");
     expect(runCommands).toContain("pnpm exec prisma migrate deploy");
     expect(runCommands).toContain("pnpm run db:rag:index");
