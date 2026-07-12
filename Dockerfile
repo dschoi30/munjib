@@ -45,6 +45,12 @@ FROM deps AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+# The non-root web/auth-preflight UID cannot write the default Corepack cache
+# under /.cache. Keep package-manager metadata in the writable /tmp path instead;
+# this contains no application secrets and makes both `pnpm start` and the
+# isolated preflight command deterministic after production pruning.
+ENV HOME=/tmp
+ENV COREPACK_HOME=/tmp/.cache/node/corepack
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
@@ -60,7 +66,8 @@ COPY --from=builder /app/lib/security ./lib/security
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
-  && pnpm prune --prod
+  && CI=true pnpm prune --prod \
+  && chown -R 10001:10001 /tmp/.cache
 
 EXPOSE 3000
 

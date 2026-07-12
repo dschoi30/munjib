@@ -19,6 +19,27 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:20:00+09:00 - non-root preflight Corepack cache boundary
+
+- Result: Issue #175 sets the production runner's `HOME` and `COREPACK_HOME` to `/tmp` so UID `10001:10001` can execute the pruned image's `pnpm` shim for both web startup and isolated auth-preflight without writing to `/.cache`.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `docker-compose.yml`, `tests/docker/compose.test.ts`, and failed deploy job `86688811222` from run `29206956032`.
+- Verification: focused Docker Compose/Dockerfile contract tests and image startup/preflight deployment rerun.
+
+## 2026-07-13T14:40:00+09:00 - non-interactive runner prune contract
+
+- Result: Issue #175 also runs the final production `pnpm prune --prod` with `CI=true`, preventing pnpm's no-TTY module-removal prompt from aborting the runner image build after the writable Corepack cache change.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and failed CI job `86690155611`.
+- Verification: focused Docker contract tests, TypeScript, and wiki gates.
+
+## 2026-07-13T14:55:00+09:00 - non-root Corepack cache ownership
+
+- Result: Issue #175 assigns the runner image's build-time Corepack cache to UID/GID `10001:10001` after pruning, so the non-root web/auth-preflight process can refresh or read pnpm metadata without `EACCES`.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and PR #176 review thread.
+- Verification: Docker contract tests, CI image build, and deployment preflight rerun.
+
 ## 2026-07-13T15:00:00+09:00 - Issue #158 PR #177 review hardening
 
 - Result: speculative-link removal now inspects only added link nodes; external-media confirmation uses a focusable accessible dialog with Escape close; formatted link labels are reduced to plain text; attachment allowlists use deterministic set keys. The Compose egress overlay no longer redirects the browser/server harness to an unobserved probe or publishes a conflicting host port, preserving the in-process recording oracle. Protected-artifact owner hashes were refreshed to the final renderer bytes (`safe-media.tsx` 8a4617e6… and `external-media-interstitial.tsx` c51b365c…).
