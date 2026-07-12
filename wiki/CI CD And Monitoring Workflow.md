@@ -77,6 +77,16 @@ CI service database는 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 `pg_
 
 현재 PR CI는 Vitest, Next build, runtime image build까지 검증한다. Playwright e2e는 mandatory GitHub Actions gate에 포함되어 있지 않다.
 
+Auth runtime browser oracle는 `pnpm exec tsx scripts/security/run-auth-runtime-e2e.ts`로
+별도 실행할 수 있다. Runner는 secret 값을 환경변수나 argv에 넣지 않고 0700 임시
+디렉터리의 0400 파일을 fixed `/run/secrets/munjib_nextauth_secret`로 mount하며, host
+uid/gid와 같은 non-root identity로 production container를 실행한다. `auth-runtime.spec.ts`는
+production-like provider discovery, password signup closed, exact linked Google
+policy, unlinked OAuth zero rows, token/profile media zero egress, Secure cookie,
+canonical origin, current/legacy password migration 및 CAS loss를 synthetic
+`example.test` identity로 검증한다. Google endpoint 호출은 없다. 이 oracle은
+배포 전 수동/운영 smoke 단계에 두며, 기존 mutable seeded workspace E2E와 분리한다.
+
 ### main deploy
 
 `deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.

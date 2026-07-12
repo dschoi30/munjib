@@ -19,6 +19,19 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T02:55:00+09:00 - Leaf 1 Task 6 temporary secret-path guard
+
+- Result: The non-production auth-runtime preflight seam now requires an absolute single-component file beneath a 0700 parent before applying the same strict descriptor checks. The production `/run/secrets/<name>` allowlist remains unchanged.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/strict-secret-file.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`.
+
+## 2026-07-13T02:35:00+09:00 - Issue #155 Leaf 1 Task 6 auth runtime browser oracle
+
+- Result: Added a production-like auth smoke contract for closed password signup and unlinked Google OAuth. The Vitest oracle covers provider omission, stable signup denial, adapter persistence guards, exact linked-account policy, token/profile-media zero persistence, historical external-image null projection, current/legacy bounded scrypt login, compare-and-swap loss, Secure cookies, and canonical origin. `authOptions` now consumes the validated fixed file-backed signing key and optional Google secret instead of an empty/direct-env fallback. A Playwright spec uses synthetic `example.test` identities and never contacts Google.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.auth-runtime.config.ts`, `scripts/security/run-auth-runtime-e2e.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`, `tests/e2e/auth-runtime.spec.ts`, `tests/security/auth-runtime-smoke.test.ts`, and `tests/wiki/auth-runtime-docs.test.ts`.
+- Verification: focused auth-runtime Vitest and wiki docs contracts, TypeScript, and diff check. The production-like Docker runner passed `1 passed (2.1s)` with a fixed secret mount and non-root host uid/gid; build emitted only the pre-existing OpenTelemetry shim warning. The temporary-path preflight keeps the strict validator seam available when Docker is unavailable.
+
 ## 2026-07-13T02:18:00+09:00 - Google overlay and production login contract review fix
 
 - Result: deploy Google overlay selection now parses the dotenv client id, treats quoted and unquoted empty values as disabled, trims whitespace, and requires both a non-empty client id and deployment secret. Current CI/CD, auth, local-development, and index pages now state that production Compose hard-codes "MUNJIB_ENABLE_DEV_LOGIN=false"; a host env override cannot reopen the development login path.

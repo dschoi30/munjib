@@ -1,4 +1,5 @@
 import { constants, closeSync, fstatSync, lstatSync, openSync, readSync } from "node:fs";
+import path from "node:path";
 
 export type StrictSecretFileErrorCode =
   | "SECRET_FILE_INPUT_INVALID"
@@ -78,6 +79,21 @@ function validateParent(path: string, logicalName: string): void {
   }
 }
 
+function validateTemporaryPath(pathValue: string, logicalName: string): void {
+  if (!path.isAbsolute(pathValue) || pathValue.includes("\u0000")) {
+    fail("SECRET_FILE_PATH_INVALID", logicalName);
+  }
+  const basename = path.basename(pathValue);
+  if (!basename || basename === "." || basename === ".." || basename.includes(path.sep)) {
+    fail("SECRET_FILE_PATH_INVALID", logicalName);
+  }
+  const parent = path.dirname(pathValue);
+  // The browser harness creates a fresh 0700 directory and passes one file
+  // beneath it. Keep the same no-symlink/no-group-write boundary as the fixed
+  // production parents without widening the production allowlist.
+  validateParent(parent, logicalName);
+}
+
 function decodeAndValidate(buffer: Buffer, logicalName: string): string {
   let value: string;
   try {
@@ -104,7 +120,10 @@ function decodeAndValidate(buffer: Buffer, logicalName: string): string {
  * path, parent directories, ownership, mode, link count, and bounded size.
  * No value is written to process.env and errors never include path/value data.
  */
-export function readStrictSecretFile(input: StrictSecretFileInput): string {
+function readStrictSecretFileAtPath(
+  input: StrictSecretFileInput,
+  mode: "production" | "temporary",
+): string {
   if (!input || typeof input !== "object") {
     fail("SECRET_FILE_INPUT_INVALID", "UNKNOWN_SECRET");
   }
@@ -119,12 +138,18 @@ export function readStrictSecretFile(input: StrictSecretFileInput): string {
   ) {
     fail("SECRET_FILE_INPUT_INVALID", logicalName || "UNKNOWN_SECRET");
   }
-  if (!pathShapeIsAllowed(path)) fail("SECRET_FILE_PATH_INVALID", logicalName);
+  if (mode === "production") {
+    if (!pathShapeIsAllowed(path)) fail("SECRET_FILE_PATH_INVALID", logicalName);
+  } else {
+    validateTemporaryPath(path, logicalName);
+  }
 
   // These are fixed, non-user-controlled parent components. lstat is used so
   // a symlink cannot silently redirect the trust boundary.
-  validateParent("/run", logicalName);
-  validateParent("/run/secrets", logicalName);
+  if (mode === "production") {
+    validateParent("/run", logicalName);
+    validateParent("/run/secrets", logicalName);
+  }
 
   let pathStats: ReturnType<typeof lstatSync>;
   try {
@@ -203,4 +228,21 @@ export function readStrictSecretFile(input: StrictSecretFileInput): string {
   } finally {
     closeSync(descriptor!);
   }
+}
+
+/**
+ * Test-only file-backed loader for a 0700 temporary harness directory.
+ *
+ * Production callers must use readStrictSecretFile(), whose path is fixed to
+ * /run/secrets/<single-component>. This seam deliberately keeps the exact
+ * descriptor checks (owner, mode, link count, bounded size, race, and content)
+ * while allowing a local runner to use a generated temporary path without
+ * putting secret bytes in an environment variable or argv.
+ */
+export function readStrictSecretFileFromTemporaryPath(input: StrictSecretFileInput): string {
+  return readStrictSecretFileAtPath(input, "temporary");
+}
+
+export function readStrictSecretFile(input: StrictSecretFileInput): string {
+  return readStrictSecretFileAtPath(input, "production");
 }

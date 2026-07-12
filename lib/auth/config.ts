@@ -23,35 +23,85 @@ import {
   sanitizeInternalSessionImage,
 } from "@/lib/auth/session-image";
 import type { AuthRuntimeConfig } from "@/lib/auth/runtime";
+import {
+  assertValidAuthRuntimeEnv,
+  type AuthRuntimeDependencies,
+} from "@/lib/auth/runtime";
 import { authorizePasswordCredential } from "@/lib/auth/password-credentials";
+import { readStrictSecretFile } from "@/lib/security/strict-secret-file";
 
-function readProcessEnv(name: string): string | undefined {
-  return process.env[name];
+function readProcessEnv(name: string, env: Record<string, string | undefined> = process.env): string | undefined {
+  return env[name];
 }
 
-export function resolveAuthSecret() {
-  const secret = readProcessEnv("NEXTAUTH_SECRET");
+const NEXTAUTH_SECRET_PATH = "/run/secrets/munjib_nextauth_secret";
+
+function effectiveUid(): number {
+  if (typeof process.geteuid === "function") return process.geteuid();
+  if (typeof process.getuid === "function") return process.getuid();
+  return 0;
+}
+
+function isStrictRuntime(env: Record<string, string | undefined>): boolean {
+  const deployment = env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
+  return deployment === "production" || deployment === "staging" ||
+    (!deployment && env.NODE_ENV === "production");
+}
+
+export function resolveAuthSecret(
+  env: Record<string, string | undefined> = process.env,
+  deps?: AuthRuntimeDependencies,
+) {
+  if (isStrictRuntime(env)) {
+    // Production/staging never consume a direct secret environment value.
+    // The startup validator rejects it; keeping this resolver fail-closed
+    // avoids briefly constructing NextAuth with a forbidden credential.
+    if (env.NEXTAUTH_SECRET !== undefined) return undefined;
+    if (env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH && deps) {
+      try {
+        return deps.readStrictSecretFile({
+          logicalName: "NEXTAUTH_SECRET",
+          path: NEXTAUTH_SECRET_PATH,
+          expectedUid: effectiveUid(),
+          maximumBytes: 128,
+        });
+      } catch {
+        return undefined;
+      }
+    }
+    return undefined;
+  }
+
+  const secret = readProcessEnv("NEXTAUTH_SECRET", env);
   if (secret) return secret;
-  return readProcessEnv("NODE_ENV") === "production" ? undefined : "obsidian-clone-development-secret";
+  return readProcessEnv("NODE_ENV", env) === "production"
+    ? undefined
+    : "obsidian-clone-development-secret";
 }
 
-export function resolveAuthCookieSecure() {
-  const secureOverride = readProcessEnv("NEXTAUTH_COOKIE_SECURE")?.trim().toLowerCase();
+export function resolveAuthCookieSecure(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const secureOverride = readProcessEnv("NEXTAUTH_COOKIE_SECURE", env)?.trim().toLowerCase();
   if (secureOverride === "true") return true;
   if (secureOverride === "false") return false;
-  return readProcessEnv("NODE_ENV") === "production";
+  return readProcessEnv("NODE_ENV", env) === "production";
 }
 
-export function resolveDevLoginEnabled() {
-  const override = readProcessEnv("MUNJIB_ENABLE_DEV_LOGIN")?.trim().toLowerCase();
+export function resolveDevLoginEnabled(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const override = readProcessEnv("MUNJIB_ENABLE_DEV_LOGIN", env)?.trim().toLowerCase();
   if (override === "true" || override === "1" || override === "yes") return true;
   if (override === "false" || override === "0" || override === "no") return false;
-  return readProcessEnv("NODE_ENV") !== "production";
+  return readProcessEnv("NODE_ENV", env) !== "production";
 }
 
-export function resolveGoogleAuthCredentials() {
-  const clientId = readProcessEnv("GOOGLE_CLIENT_ID")?.trim();
-  const clientSecret = readProcessEnv("GOOGLE_CLIENT_SECRET")?.trim();
+export function resolveGoogleAuthCredentials(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const clientId = readProcessEnv("GOOGLE_CLIENT_ID", env)?.trim();
+  const clientSecret = readProcessEnv("GOOGLE_CLIENT_SECRET", env)?.trim();
   if (!clientId || !clientSecret) return null;
   return { clientId, clientSecret };
 }
@@ -61,16 +111,35 @@ function credentialsProvider(options: Parameters<typeof CredentialsProvider>[0])
   return { ...provider, ...options, options };
 }
 
-function resolveDefaultRuntime(): AuthRuntimeConfig {
-  const credentials = resolveGoogleAuthCredentials();
+export function resolveDefaultRuntime(
+  env: Record<string, string | undefined> = process.env,
+  deps?: AuthRuntimeDependencies,
+): AuthRuntimeConfig {
+  // Production Compose exposes only fixed file descriptors. Reuse the same
+  // validated snapshot as the startup preflight so NextAuth receives the
+  // actual signing key and optional Google secret instead of an empty secret.
+  // During `next build` the fixed descriptor is absent; instrumentation will
+  // enforce the contract when the runtime starts, so keep the build import
+  // side-effect free and fall back to the legacy empty production shape.
+  if (isStrictRuntime(env) && env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH && deps) {
+    try {
+      return assertValidAuthRuntimeEnv(env, deps);
+    } catch {
+      // Startup instrumentation is the authoritative fail-closed gate.
+    }
+  }
+
+  // A failed strict snapshot must not fall back to a direct Google secret.
+  // Startup instrumentation remains the authoritative error surface.
+  const credentials = isStrictRuntime(env) ? null : resolveGoogleAuthCredentials(env);
   return {
-    deploymentEnvironment: readProcessEnv("NODE_ENV") === "production" ? "production" : "development",
-    secret: resolveAuthSecret() ?? "",
+    deploymentEnvironment: readProcessEnv("NODE_ENV", env) === "production" ? "production" : "development",
+    secret: resolveAuthSecret(env, deps) ?? "",
     googleClientId: credentials?.clientId,
     googleClientSecret: credentials?.clientSecret,
-    canonicalOrigin: readProcessEnv("NEXTAUTH_URL")?.trim() ?? "",
-    secureCookies: resolveAuthCookieSecure(),
-    developmentLoginEnabled: resolveDevLoginEnabled(),
+    canonicalOrigin: readProcessEnv("NEXTAUTH_URL", env)?.trim() ?? "",
+    secureCookies: resolveAuthCookieSecure(env),
+    developmentLoginEnabled: resolveDevLoginEnabled(env),
     passwordSignupEnabled: false,
     oauthSignupEnabled: false,
   };
@@ -272,4 +341,13 @@ export function buildAuthOptions(
   };
 }
 
-export const authOptions: NextAuthOptions = buildAuthOptions(resolveDefaultRuntime());
+export const authOptions: NextAuthOptions = buildAuthOptions(
+  resolveDefaultRuntime(process.env, {
+    readStrictSecretFile: (input) => {
+      // Keep the production default strict reader local to this module so
+      // tests can inject an equivalent descriptor seam without exposing
+      // secret bytes through environment variables.
+      return readStrictSecretFile(input);
+    },
+  }),
+);

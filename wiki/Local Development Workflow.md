@@ -39,6 +39,7 @@ Auth runtime startup/preflight commands:
 
 ```bash
 pnpm run security:auth-preflight
+pnpm exec tsx scripts/security/run-auth-runtime-e2e.ts
 pnpm run dev
 pnpm run start
 ```
@@ -213,6 +214,22 @@ pnpm wiki:feature-start "Markdown heading folding"
 현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
+
+`scripts/security/run-auth-runtime-e2e.ts`는 별도 0700 임시 디렉터리에 synthetic signing
+secret을 0400 파일로 만들고, 그 경로만 child process에 `NEXTAUTH_SECRET_FILE`로
+전달한 뒤 `playwright.auth-runtime.config.ts`를 실행한다. 값과 경로는 stdout/argv에
+쓰지 않고 finally에서 파일과 디렉터리를 제거한다. `tests/e2e/auth-runtime.spec.ts`는
+개발 provider 부재, `403 SIGNUP_NOT_ALLOWED`, synthetic `example.test` Google
+linked/unlinked callback, provider token/profile media zero persistence, historical
+external image null projection, current/legacy scrypt 및 CAS loss를 확인한다. Google
+네트워크에는 절대 연결하지 않는다. 기본 runner는 임시 이미지와 container를 만들고
+`/run/secrets/munjib_nextauth_secret`에 같은 0400 descriptor를 mount한 뒤, host uid/gid와
+같은 non-root identity로 production selector를 실행한다. 그래서 production startup
+validator와 NextAuth의 file-backed signing key가 같은 경로를 읽는다. 별도
+`auth-runtime-preflight-e2e.ts` child는 Docker를 실행할 수 없는 환경에서도 임시 0400
+파일을 같은 descriptor 검사 seam으로 먼저 검증한다. `AUTH_RUNTIME_BASE_URL`을
+지정한 수동 host server 경로에서는 fixed mount가 없으므로 개발 selector를 사용하며,
+production container 경로와 혼동하지 않는다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 

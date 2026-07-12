@@ -110,6 +110,16 @@ no user before session issuance. Seed and one-shot provisioning use `hashPasswor
 so new rows are v1, while `/api/auth/signup` remains a stable `403
 SIGNUP_NOT_ALLOWED` closed boundary.
 
+Production signup invariant: password account creation and unlinked OAuth are both
+closed. Google `email_verified` is checked, then the exact provider account must
+already exist. Callback denial plus the adapter persistence guard produce zero new
+User/Account rows. Google credentials and profile media are never persisted; only a
+canonical internal attachment URL whose exact ID is server-authorized for the current
+user/request may appear in a session. Password verification uses
+one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope before
+session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
+synthetic `example.test` identities only; it never calls Google.
+
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
