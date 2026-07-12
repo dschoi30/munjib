@@ -25,5 +25,7 @@ describe("expand/contract migration policy", () => {
     expect(validateMigrationSql("ALTER TABLE \"NewThing\" ALTER COLUMN \"name\" TYPE integer;", "EXPAND").ok).toBe(false);
     expect(validateMigrationSql("DELETE FROM \"NewThing\";", "CONTRACT").ok).toBe(false);
     expect(validateMigrationSql("-- phase: expand\nALTER TABLE \"NewThing\" DROP COLUMN \"old\";", "EXPAND").ok).toBe(false);
+    expect(classifyMigration("ALTER TABLE a ADD COLUMN x text; DROP TABLE b;")).toBe("INVALID");
+    expect(classifyMigration("ALTER TABLE a ADD COLUMN x text; ALTER TABLE a DROP COLUMN x;")).toBe("INVALID");
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeMigrationChecksum,
   normalizeMigrationHistoryRow,
+  sortMigrationHistoryRows,
   validateMigrationHistory,
   type MigrationHistoryRow,
 } from "@/lib/deploy/migration-history";
@@ -74,5 +75,11 @@ describe("append-only production migration history", () => {
       applied_steps_count: 1,
     })).toMatchObject({ migrationName: "20260712000000_first", appliedStepsCount: 1 });
     expect(() => normalizeMigrationHistoryRow({ migration_name: "missing-fields", checksum: "a" })).toThrow();
+  });
+
+  it("sorts unordered production exports by canonical migration name before admission", () => {
+    const rows = [row("20260712010000_second", "b"), row("20260712000000_first", "a")];
+    const image = [row("20260712000000_first", "a"), row("20260712010000_second", "b")];
+    expect(validateMigrationHistory(sortMigrationHistoryRows(rows), image).ok).toBe(true);
   });
 });

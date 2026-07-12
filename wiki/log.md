@@ -2834,6 +2834,10 @@ links:
 - Final follow-up: schema-owner assignment is idempotent for pre-existing
   extension schemas, and the migration-history checker fail-closed normalizes
   Prisma snake_case exports before exact prefix/checksum admission.
+- External review follow-up: Prisma entrypoints now construct URL-encoded
+  password/options into `DATABASE_URL` from fixed secret files, migration rows
+  sort canonically before validation, policy regexes stay within statements,
+  and `_prisma_migrations` ACL revocation is guarded for fresh databases.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
 - Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
 - Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.

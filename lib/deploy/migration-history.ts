@@ -43,6 +43,10 @@ export function computeMigrationChecksum(sql: string | Uint8Array): string {
   return createHash("sha256").update(sql).digest("hex");
 }
 
+export function sortMigrationHistoryRows(rows: MigrationHistoryRow[]): MigrationHistoryRow[] {
+  return [...rows].sort((left, right) => left.migrationName.localeCompare(right.migrationName));
+}
+
 function isSuccessful(row: MigrationHistoryRow): boolean {
   return Boolean(row.finishedAt) && !row.rolledBackAt && row.appliedStepsCount > 0;
 }

@@ -11,8 +11,8 @@ const stripComments = (sql: string) => sql
   .replace(/\/\*[\s\S]*?\*\//g, " ")
   .replace(/--[^\n]*/g, " ");
 
-const destructive = /\b(?:DROP\s+(?:DATABASE|SCHEMA|TABLE|TYPE|INDEX|VIEW|SEQUENCE)|TRUNCATE|DELETE\s+FROM|ALTER\s+TABLE[\s\S]*?\bDROP\s+(?:COLUMN|CONSTRAINT)|ALTER\s+TABLE[\s\S]*?\bALTER\s+COLUMN[\s\S]*?\bTYPE)\b/i;
-const additive = /\b(?:CREATE\s+(?:TABLE|INDEX|TYPE|SEQUENCE|VIEW)|ALTER\s+TABLE[\s\S]*?\bADD\s+(?:COLUMN|CONSTRAINT)|CREATE\s+EXTENSION)\b/i;
+const destructive = /\b(?:DROP\s+(?:DATABASE|SCHEMA|TABLE|TYPE|INDEX|VIEW|SEQUENCE)|TRUNCATE|DELETE\s+FROM|ALTER\s+TABLE\b[^;]*\bDROP\s+(?:COLUMN|CONSTRAINT)|ALTER\s+TABLE\b[^;]*\bALTER\s+COLUMN\b[^;]*\bTYPE)\b/i;
+const additive = /\b(?:CREATE\s+(?:TABLE|INDEX|TYPE|SEQUENCE|VIEW)|ALTER\s+TABLE\b[^;]*\bADD\s+(?:COLUMN|CONSTRAINT)|CREATE\s+EXTENSION)\b/i;
 
 export function classifyMigration(sql: string): MigrationClass {
   const marker = sql.match(/^\s*--\s*phase:\s*(expand|contract)\s*$/im)?.[1]?.toUpperCase() as MigrationPhase | undefined;

@@ -24,7 +24,8 @@ pnpm exec tsx scripts/deploy/check-expand-contract.ts <migration.sql> EXPAND
 The optional production export accepts either Prisma's exact snake_case columns
 (`migration_name`, `finished_at`, `rolled_back_at`, `applied_steps_count`) or
 their explicit camelCase adapter names; every required field is validated and
-partial rows fail closed. Without a production-history export the checker reports the ledger and pending
+partial rows fail closed. Rows are canonically sorted by migration name before
+the prefix validator runs. Without a production-history export the checker reports the ledger and pending
 allocation as `production_prefix=not_provided`; it does not claim a live database
 admission. The broker's signed operation must provide the JSON rows to activate
 the exact prefix/checksum gate before migration.
@@ -42,7 +43,9 @@ owner/exporter roles remain `NOLOGIN` placeholders until their independently
 reviewed migration.
 
 All entrypoints clear caller-provided libpq variables, use one fixed credential
-file, and set `search_path` with `pg_catalog` first. The migration operation is
+file, URL-encodes the file contents into the password component of `DATABASE_URL`,
+and carries `search_path`/migrator role through PostgreSQL's URL `options` query
+parameter. The migration operation is
 the only operation that adds the owner role. A public-schema shadow must never
 change security-sensitive name resolution.
 

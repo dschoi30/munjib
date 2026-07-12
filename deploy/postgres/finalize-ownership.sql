@@ -27,8 +27,13 @@ REVOKE munjib_journal_owner FROM munjib_web, munjib_rag;
 REVOKE munjib_journal_exporter FROM munjib_web, munjib_rag;
 
 -- Prisma's migration ledger is append-only and belongs to the migrator path.
-REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
-  ON TABLE "_prisma_migrations" FROM munjib_web, munjib_rag;
+DO $$
+BEGIN
+  IF pg_catalog.to_regclass('public._prisma_migrations') IS NOT NULL THEN
+    EXECUTE 'REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLE public._prisma_migrations FROM munjib_web, munjib_rag';
+  END IF;
+END
+$$;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE munjib_schema_owner IN SCHEMA public
   REVOKE ALL ON TABLES FROM PUBLIC;

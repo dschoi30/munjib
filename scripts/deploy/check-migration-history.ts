@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { normalizeMigrationHistoryRow, readMigrationFiles, readMigrationLedger, validateMigrationHistory, type MigrationHistoryRow } from "../../lib/deploy/migration-history";
+import { normalizeMigrationHistoryRow, readMigrationFiles, readMigrationLedger, sortMigrationHistoryRows, validateMigrationHistory, type MigrationHistoryRow } from "../../lib/deploy/migration-history";
 
 const root = process.cwd();
 const migrations = readMigrationFiles(`${root}/prisma/migrations`);
@@ -26,7 +26,7 @@ if (productionHistoryPath) {
   const parsed = JSON.parse(readFileSync(productionHistoryPath, "utf8")) as MigrationHistoryRow[] | { rows: MigrationHistoryRow[] };
   const rawRows = Array.isArray(parsed) ? parsed : parsed.rows;
   if (!Array.isArray(rawRows)) throw new Error("production history JSON must be an array or {rows: []}");
-  const productionRows = rawRows.map(normalizeMigrationHistoryRow);
+  const productionRows = sortMigrationHistoryRows(rawRows.map(normalizeMigrationHistoryRow));
   const imageRows: MigrationHistoryRow[] = migrations.map((migration) => ({
     migrationName: migration.migrationName,
     checksum: migration.checksum,

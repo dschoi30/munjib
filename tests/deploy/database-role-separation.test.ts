@@ -30,8 +30,9 @@ describe("database authority separation", () => {
     expect(sql).toMatch(/REVOKE[\s\S]*TRUNCATE[\s\S]*FROM\s+munjib_web/i);
     expect(sql).toMatch(/REVOKE[\s\S]*munjib_schema_owner[\s\S]*FROM\s+munjib_web/i);
     expect(sql).toMatch(/REVOKE[\s\S]*munjib_schema_owner[\s\S]*FROM\s+munjib_rag/i);
-    expect(sql).toMatch(/REVOKE[\s\S]*ON TABLE\s+"?_prisma_migrations"?[\s\S]*FROM\s+munjib_web/i);
-    expect(sql).toMatch(/REVOKE[\s\S]*ON TABLE\s+"?_prisma_migrations"?[\s\S]*FROM\s+munjib_web,\s+munjib_rag/i);
+    expect(sql).toMatch(/REVOKE[\s\S]*_prisma_migrations[\s\S]*munjib_web,\s+munjib_rag/i);
+    expect(sql).toContain("to_regclass('public._prisma_migrations')");
+    expect(sql).toContain("EXECUTE 'REVOKE");
     expect(sql).not.toMatch(/CREATE EXTENSION\s+pgcrypto/i);
     expect(sql).not.toMatch(/security_journal|genesis/i);
   });
@@ -53,8 +54,11 @@ describe("database authority separation", () => {
     const tools = read("docker-compose.tools.yml");
     for (const source of [migrator, tools]) {
       expect(source).toContain("unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE");
-      expect(source).toContain("PGPASSFILE=/run/secrets/");
+      expect(source).toContain("encodeURIComponent");
+      expect(source).toContain("DATABASE_URL=\"postgresql://");
       expect(source).toContain("search_path=pg_catalog,public,munjib_extensions");
+      expect(source).not.toContain("PGPASSFILE");
+      expect(source).not.toContain("PGOPTIONS");
     }
     expect(migrator).toContain("role=munjib_schema_owner");
     expect(tools).not.toContain("role=munjib_schema_owner");

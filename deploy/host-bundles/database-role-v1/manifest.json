@@ -18,7 +18,7 @@
       "destination": "/var/lib/munjib/database-role-v1/finalize-ownership.sql",
       "type": "regular",
       "mode": "0400",
-      "sha256": "c956c53dcd0b20f0cd1e82bb67d9ecaa12c8b779524bcae9ee2471b9fcaf8a42"
+      "sha256": "1221a43b6add1dacc67de728f9ba6d0628ca35ba3870d41ccacc08acdf20ea27"
     },
     {
       "source": "deploy/postgres/verify-role-separation.sql",
