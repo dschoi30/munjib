@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:30:00+09:00 - secure runtime dependency verification
+
+- Updated [[CI CD And Monitoring Workflow]] after the security-critical Next.js
+  patch upgrade. Evidence: `package.json`, `pnpm-lock.yaml`,
+  `tests/security/next-runtime-version.test.ts`, and
+  `tests/e2e/security-runtime.spec.ts`.
+
 ## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
 
 - Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.

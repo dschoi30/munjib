@@ -98,6 +98,11 @@ CI service database는 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 `pg_
 9. `pnpm run build`
 10. `docker build --target runner --tag munjib-ci:${IMAGE_TAG} .`
 
+The runtime dependency gate pins Next.js and `eslint-config-next` to the same
+reviewed secure patch and rejects an older lockfile resolution. Runtime upgrades run
+the full Vitest suite, TypeScript, production build, runner/tools Docker builds,
+auth/RSC browser smoke, and `pnpm audit --prod` before deployment.
+
 현재 PR CI는 Vitest, Next build, runtime image build까지 검증한다. Playwright e2e는 mandatory GitHub Actions gate에 포함되어 있지 않다.
 
 ### main deploy
