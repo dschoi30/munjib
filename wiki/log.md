@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-12
-source_count: 338
+source_count: 339
 tags:
   - log
   - munjib
@@ -18,6 +18,14 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-12T21:55:00+09:00 - production dependency audit remediation
+
+- Result: Issue #171 resolves the four reviewed production transitive dependency floors with exact pnpm overrides and a refreshed frozen lockfile; no advisory allowlist or audit filter was added.
+- Coverage: `postcss` 8.5.10, `uuid` 11.1.1, `brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0 are asserted in the lock graph. Next.js 15.5.18 and its advisory gate remain unchanged. Compatibility tests cover NextAuth JWT UUID generation and Sentry/OpenTelemetry module loading.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: `pnpm install --frozen-lockfile --offline` and focused security/auth/observability Vitest suites pass; full DB-backed tests require `DATABASE_URL` and PostgreSQL.
 
 ## 2026-07-12T21:45:00+09:00 - production dependency audit remediation design
 
