@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:45:00+09:00 - production dependency audit remediation design
+
+- Result: Issue #171 records a public-safe design to clear the production dependency audit gate with exact patched transitive versions and compatibility checks.
+- Coverage: Advisory suppression and partial audit filters remain prohibited; the Issue #157 runtime pin and exact advisory gate remain unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #171 and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: design self-review completed; implementation remains on the Issue #171 branch.
+
 ## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
 
 - Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.
