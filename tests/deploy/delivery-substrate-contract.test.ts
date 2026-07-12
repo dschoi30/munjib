@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 const read = (path: string) => readFileSync(join(process.cwd(), path), "utf8");
 
 describe("Leaf 13A least-authority delivery substrate", () => {
-  it("ships a root-owned policy, fixed operations, and an empty owner registry", () => {
+  it("ships a root-owned policy, fixed operations, and the Leaf 3 owner registry", () => {
     const policy = JSON.parse(read("deploy/delivery/principal-policy-v1.json"));
     const operations = JSON.parse(read("deploy/delivery/broker-operations-v1.json"));
     const owners = JSON.parse(read("deploy/security/protected-artifact-owners.json"));
@@ -26,11 +26,18 @@ describe("Leaf 13A least-authority delivery substrate", () => {
       version: 1,
       operations: ["VERIFY_ONLY", "INSTALL_SUBSTRATE", "RECONCILE_SUBSTRATE"],
     });
-    expect(owners).toEqual({
+    expect(owners).toMatchObject({
       format: "munjib-protected-artifact-owners-v1",
       version: 1,
-      owners: [],
     });
+    expect(owners.owners).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        selector: "projection:next-runtime-dependencies-v1",
+        kind: "NORMALIZED_PROJECTION",
+        owner: "secure-next-runtime",
+        version: 1,
+      }),
+    ]));
   });
 
   it("keeps the submitter as a bounded Unix-socket relay", () => {

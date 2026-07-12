@@ -1,5 +1,49 @@
 {
   "format": "munjib-protected-artifact-owners-v1",
   "version": 1,
-  "owners": []
+  "owners": [
+    {
+      "selector": "path:scripts/security/check-next-advisories.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:tests/security/next-advisories.test.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:scripts/test/security-runtime-fixture.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:tests/e2e/security-runtime.spec.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:Dockerfile",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:scripts/test/run-security-runtime-smoke.sh",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "projection:next-runtime-dependencies-v1",
+      "kind": "NORMALIZED_PROJECTION",
+      "owner": "secure-next-runtime",
+      "version": 1,
+      "status": "ACTIVE"
+    }
+  ]
 }

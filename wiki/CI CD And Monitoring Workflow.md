@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-04
-source_count: 53
+updated: 2026-07-12
+source_count: 54
 tags:
   - munjib
   - workflow
@@ -57,6 +57,38 @@ runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명�
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
 
+## Security-critical runtime gate
+
+Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
+`eslint-config-next` 15.5.18 specifications. The repository contract checks the
+resolved pnpm graph, a deterministic projection of the Next.js/React runtime
+roots, and a paginated advisory gate without persisting advisory response bodies.
+Production runtime smoke fixtures read passwords only from a file and emit no
+credential material.
+
+The fixture-gated Playwright spec skips during ordinary E2E discovery when the
+dedicated smoke variables are absent, so `pnpm run test:e2e` remains usable;
+`run-security-runtime.sh` supplies the fixture variables and still executes the
+security smoke tests.
+
+The smoke launcher also keeps the generated auth secret out of process argv and
+installs cleanup before fixture/password setup; RSC body bounds are captured in
+a route interception before response fulfillment. Static contract tests cover
+these review-critical lifecycle guarantees.
+
+Issue #171 adds a production dependency audit gate for the same runtime graph.
+`package.json` uses exact pnpm overrides for `postcss` 8.5.10, `uuid` 11.1.1,
+`minimatch@10.2.5>brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0.
+The scoped brace override preserves the callable `minimatch@3` development
+path while patching the production/Sentry `minimatch@10` path. The lockfile
+must resolve those patched versions on production paths while keeping the
+Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
+generation, minimatch major compatibility, and Sentry/OpenTelemetry module
+loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
+paginated Next.js advisory checker, both immediately after the frozen install.
+The checker receives only the workflow's read-only `GH_TOKEN` for GitHub's
+advisory API.
+
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps
@@ -83,6 +115,11 @@ CI service database는 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 `pg_
 8. `pnpm test`
 9. `pnpm run build`
 10. `docker build --target runner --tag munjib-ci:${IMAGE_TAG} .`
+
+The runtime dependency gate pins Next.js and `eslint-config-next` to the same
+reviewed secure patch and rejects an older lockfile resolution. Runtime upgrades run
+the full Vitest suite, TypeScript, production build, runner/tools Docker builds,
+auth/RSC browser smoke, and `pnpm audit --prod` before deployment.
 
 현재 PR CI는 Vitest, Next build, runtime image build까지 검증한다. Playwright e2e는 mandatory GitHub Actions gate에 포함되어 있지 않다.
 

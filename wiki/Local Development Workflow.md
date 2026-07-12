@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-04
-source_count: 65
+updated: 2026-07-12
+source_count: 67
 tags:
   - munjib
   - workflow
@@ -24,6 +24,17 @@ links:
 
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.
 
+Issue #171 production dependency audit remediation은 `postcss` 8.5.10,
+`uuid` 11.1.1, `@opentelemetry/core` 2.8.0을 exact `pnpm.overrides`로
+고정하고, Sentry의 `minimatch@10.2.5` 경로에만 `brace-expansion` 5.0.6을
+scoped override한다. 이 설정은 `minimatch@3`의 기존 callable API를
+보존한다. `tests/security/dependency-audit.test.ts`가 lock-graph와
+NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
+보호한다. 검증 명령은 advisory allowlist나 severity filter 없이
+`pnpm audit --prod`를 그대로 사용하며, CI는 frozen install 직후 이 명령을
+실행한다. Issue #157의 Next.js 15.5.18 exact pin과 별도 advisory gate는
+유지한다.
+
 ## 주요 명령
 
 ```bash
@@ -33,6 +44,8 @@ pnpm run build
 pnpm test
 pnpm run test:e2e
 pnpm run test:e2e:ui
+pnpm run test:security-runtime
+pnpm audit --prod
 ```
 
 DB 관련 명령:
@@ -197,6 +210,10 @@ pnpm wiki:feature-start "Markdown heading folding"
 현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
+
+Leaf 3의 secure runtime smoke는 `pnpm run test:security-runtime`으로 실행한다. Runner는 로컬 synthetic PostgreSQL에서만 mode `0600` password file과 random `@invalid.example` user/workspace를 만들고, `pnpm run build` 뒤 `NODE_ENV=production`인 `next start`를 외부 Playwright server로 검사한다. `MUNJIB_ENABLE_DEV_LOGIN=false`에서 password provider와 `/login` shell을 확인하고, 로그인 뒤 bounded App Router RSC navigation을 확인한다. EXIT/INT/TERM cleanup은 server process, synthetic organization/workspace/user, temporary password file을 항상 정리하며, 이 경로는 staging/production secret-policy 증거가 아니다. Runtime projection ownership은 `package.json`과 `pnpm-lock.yaml`의 FULL_PATH만 금지하고 `docker-compose.yml` ownership은 delivery contract에서 사용할 수 있다.
+
+Smoke launcher review contract는 생성된 `NEXTAUTH_SECRET`을 child environment로만 전달하고 command argv에는 넣지 않으며, temporary work directory 생성 직후 cleanup trap을 설치해 부분 초기화 실패도 안전하게 정리한다. RSC 응답 body는 Playwright route interception에서 읽고 다시 fulfill해 browser protocol body lookup에 의존하지 않으면서도 bounded byte length를 검증한다. `tests/security/security-runtime-smoke-script.test.ts`와 `tests/security/security-runtime-rsc-contract.test.ts`가 이 조건을 정적으로 고정한다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 
