@@ -873,8 +873,8 @@ describe("DocumentEditor heading preview folding", () => {
   it("resolves reference links whose definitions appear in later sections", () => {
     renderEditor("# A\n[ref][x]\n# B\n[x]: https://example.com");
 
-    const link = screen.getByRole("link", { name: "ref" });
-    expect(link.getAttribute("href")).toContain("https://example.com");
+    const destination = screen.getByRole("button", { name: /ref.*https:\/\/example\.com/ });
+    expect(destination.getAttribute("href")).toBeNull();
   });
 
   it("resolves multi-line footnote definitions across preview sections", () => {
@@ -890,12 +890,12 @@ describe("DocumentEditor heading preview folding", () => {
   });
 
   it("resolves reference definitions after CRLF fenced code blocks across preview sections", () => {
-    renderEditor(
+    const { container } = renderEditor(
       "# A\r\n[ref][x]\r\n# B\r\n```ts\r\nconst value = 1;\r\n```\r\n[x]: https://example.com\r\n",
     );
 
-    const link = screen.getByRole("link", { name: "ref" });
-    expect(link.getAttribute("href")).toContain("https://example.com");
+    const destination = screen.getByRole("button", { name: /ref.*https:\/\/example\.com/ });
+    expect(destination.getAttribute("href")).toBeNull();
   });
 
   it("does not append shared definitions again when preview has no headings", () => {
@@ -953,12 +953,12 @@ describe("DocumentEditor heading preview folding", () => {
     expect(paragraph?.querySelector("br")).toBeTruthy();
   });
 
-  it("does not request stale internal attachment images that are not attached to the document", () => {
-    renderEditor(
+  it("renders authorized attachments and makes external saved Markdown click-only", () => {
+    const { container } = renderEditor(
       [
         "Known: ![Known attachment](/api/attachments/known-attachment)",
         "Missing: ![Missing attachment](/api/attachments/missing-attachment)",
-        "Remote: ![Remote image](https://example.com/remote.png)",
+        "Remote: ![Remote image](https://attacker.example/remote.png)",
       ].join("\n\n"),
       { attachmentIds: ["known-attachment"] },
     );
@@ -967,10 +967,12 @@ describe("DocumentEditor heading preview folding", () => {
       "/api/attachments/known-attachment",
     );
     expect(screen.queryByRole("img", { name: "Missing attachment" })).toBeNull();
-    expect(screen.getByText("Missing attachment")).toBeTruthy();
-    expect(screen.getByRole("img", { name: "Remote image" }).getAttribute("src")).toBe(
-      "https://example.com/remote.png",
-    );
+    expect(screen.queryByRole("img", { name: "Remote image" })).toBeNull();
+    const external = screen.getByRole("button", { name: /Remote image.*https:\/\/attacker\.example/i });
+    expect(external.getAttribute("href")).toBeNull();
+    const preview = container.querySelector(".markdown-preview");
+    expect(preview?.innerHTML).not.toContain("attacker.example/remote.png");
+    expect(preview?.querySelectorAll('link[rel="preload"], link[rel="prefetch"], link[rel="preconnect"]')).toHaveLength(0);
   });
 
   it("persists edit-mode folded heading ranges to document localStorage", async () => {
@@ -1956,7 +1958,7 @@ describe("DocumentEditor properties", () => {
       />,
     );
 
-    expect(screen.getByRole("link", { name: "docs #링크" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /docs #링크.*https:\/\/example\.com/ })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Search tag #링크" })).toBeNull();
   });
 

@@ -344,6 +344,12 @@ Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables
 
 Seed reruns preserve existing launch account hashes and email verification timestamps, preserve the local development fixture users, and upsert launch memberships so each existing workspace has one admin launch row and one trial viewer row unless a launch account is already an explicit `OWNER`. 테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
 
+## Leaf 4 zero-media boundary
+
+Issue #158의 Leaf 4는 Auth.js identity DTO와 JWT/session callback에서 provider·adapter가 제공한 ambient media를 출력하지 않는 경계를 유지한다. `lib/auth/downstream/leaf4.ts`의 `leaf4AuthUserOutput()`은 `image: null`인 identity-only shape를 만들고 `leaf4SessionMediaHook()`은 Auth.js `picture`/`image` claims를 제거한다. 이 훅은 Leaf 1의 downstream contract와 합성되며, 저장 attachment가 session에 투영되는 경우에도 `getReadableAttachment()` ACL 검증과 canonical internal path sanitizer를 통과한 값만 허용한다.
+
+Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI answer가 외부 image URL을 자동 fetch/render하지 않는지 실제 Next/Node 경로에서 확인한다. test-only provider transport와 egress calibration은 명시적 test/development gate 뒤에만 열리고 production/staging에서는 거부된다.
+
 ## 근거
 
 - `lib/auth/config.ts`

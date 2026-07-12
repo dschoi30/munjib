@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
+
+- Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, PR #178 review threads.
+- Verification: focused component/media/contract tests (101 tests), TypeScript, and wiki sync gates.
+
 ## 2026-07-13T14:20:00+09:00 - non-root preflight Corepack cache boundary
 
 - Result: Issue #175 sets the production runner's `HOME` and `COREPACK_HOME` to `/tmp` so UID `10001:10001` can execute the pruned image's `pnpm` shim for both web startup and isolated auth-preflight without writing to `/.cache`.
@@ -39,6 +46,41 @@ links:
 - Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
 - Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and PR #176 review thread.
 - Verification: Docker contract tests, CI image build, and deployment preflight rerun.
+
+## 2026-07-13T15:00:00+09:00 - Issue #158 PR #177 review hardening
+
+- Result: speculative-link removal now inspects only added link nodes; external-media confirmation uses a focusable accessible dialog with Escape close; formatted link labels are reduced to plain text; attachment allowlists use deterministic set keys. The Compose egress overlay no longer redirects the browser/server harness to an unobserved probe or publishes a conflicting host port, preserving the in-process recording oracle. Protected-artifact owner hashes were refreshed to the final renderer bytes (`safe-media.tsx` 8a4617e6… and `external-media-interstitial.tsx` c51b365c…).
+- Result: linked external images are rendered through one confirmation control rather than nested interactive buttons, preserving the explicit destination gate without invalid HTML/ARIA nesting.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/speculative-link-guard.tsx`, `components/markdown/external-media-interstitial.tsx`, `components/markdown/safe-media.tsx`, `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, `docker-compose.egress-test.yml`, `deploy/security/protected-artifact-owners.json`, `tests/security/markdown-downstream-extension-contract.test.ts`, and PR #177 review threads.
+- Verification: focused component/media/Compose contract tests, actual Chromium zero-egress oracle, TypeScript, exact scans, and wiki sync gates.
+
+## 2026-07-13T15:30:00+09:00 - zero-egress harness server isolation
+
+- Result: the Playwright zero-egress harness never reuses an unrelated localhost server; its explicit development/test-transport environment is always applied to a fresh Next server.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `tests/security/user-media-source-contract.test.ts`, and PR #178 review thread.
+- Verification: focused UI/source-contract tests, TypeScript, and wiki sync gates.
+
+## 2026-07-13T14:20:00+09:00 - Issue #158 zero-egress harness environment fix
+
+- Result: changed the local Playwright and egress-test Compose harnesses from the unsupported `test` deployment value to parser-approved `development`, while retaining the explicit test-transport gate, adding the required local `NEXTAUTH_URL`, and running the local Next harness through Turbopack so Node-only auth instrumentation can load.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `docker-compose.egress-test.yml`, `tests/security/user-media-source-contract.test.ts`, and Issue #158 review feedback.
+- Verification: zero-egress harness contract test, focused Playwright startup attempt, TypeScript, and wiki sync gates.
+
+## 2026-07-13T14:10:00+09:00 - Issue #158 owner-slot hash refresh
+
+- Result: kept the canonical typed Leaf 4 downstream hook while refreshing its protected-artifact SHA-256 after the origin/main merge.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/leaf4.ts` and `deploy/security/protected-artifact-owners.json`.
+
+## 2026-07-13T14:00:00+09:00 - Issue #158 Leaf 4 zero-egress merge integration
+
+- Result: merged Leaf 4's zero-egress Markdown/Workspace AI browser oracle and Auth.js media hook into the current Leaf 1 runtime branch. Identity DTOs strip provider/adapter media, while session attachment output remains gated by ACL and canonical internal-path sanitization.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/leaf4.ts`, `lib/auth/config.ts`, `playwright.config.ts`, `tests/e2e/zero-egress-rendering.spec.ts`, `tests/security/user-media-source-contract.test.ts`, and Issue #158.
+- Verification: focused zero-egress/browser contract and auth/security tests, TypeScript, and wiki sync gates on the rebased `issue-158-security-ai-output-egress` branch.
 
 ## 2026-07-13T13:55:00+09:00 - test-maintenance
 

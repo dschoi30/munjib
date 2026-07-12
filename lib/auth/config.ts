@@ -16,6 +16,10 @@ import {
   authDownstreamHooks,
   type AuthDownstreamHooks,
 } from "@/lib/auth/downstream/contract";
+import {
+  leaf4AuthUserOutput,
+  leaf4SessionMediaHook,
+} from "@/lib/auth/downstream/leaf4";
 import { minimalGooglePersistenceAdapter } from "@/lib/auth/minimal-google-account";
 import {
   extractInternalAttachmentId,
@@ -281,7 +285,7 @@ export function buildAuthOptions(
           });
           if (!user) return null;
           await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
-          return { id: user.id, email: user.email, name: user.name, image: null };
+          return leaf4AuthUserOutput({ id: user.id, email: user.email, name: user.name });
         },
       }),
       credentialsProvider({
@@ -295,7 +299,7 @@ export function buildAuthOptions(
           const user = await prisma.user.findUnique({ where: { email } });
           if (!user) return null;
           await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
-          return { id: user.id, email: user.email, name: user.name, image: null };
+          return leaf4AuthUserOutput({ id: user.id, email: user.email, name: user.name });
         },
       }),
     );
@@ -353,7 +357,9 @@ export function buildAuthOptions(
         if (expectedSub) {
           await downstreamHooks.assertDurableAuthState({ userId: expectedSub, surface: "JWT" });
         }
-        const reduced = sanitizeGoogleJwtToken(original);
+        const reduced = sanitizeGoogleJwtToken(
+          leaf4SessionMediaHook({ token: original }).token ?? original,
+        );
         const resolved = await downstreamHooks.resolveJwtClaims(reduced);
         const finalClaims = sanitizeGoogleJwtToken(
           resolved && typeof resolved === "object" ? { ...resolved } : {},
@@ -364,7 +370,11 @@ export function buildAuthOptions(
       },
       async session({ session, token }) {
         const userId = isValidAuthSubject(token.sub) ? token.sub : null;
-        if (session.user) session.user.image = null;
+        if (session.user) {
+          session.user.image = leaf4SessionMediaHook({
+            ambientImage: session.user.image,
+          }).ambientImage;
+        }
         if (session.user && userId) {
           session.user.id = userId;
           await downstreamHooks.assertDurableAuthState({ userId, surface: "SESSION" });
