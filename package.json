@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:e2e": "pnpm run db:seed && playwright test",
     "test:e2e:ui": "pnpm run db:seed && playwright test --ui",
+    "test:security-runtime": "bash scripts/test/run-security-runtime-smoke.sh",
     "test:watch": "vitest",
     "wiki:find": "tsx scripts/wiki/find.ts",
     "wiki:log": "tsx scripts/wiki/log.ts",

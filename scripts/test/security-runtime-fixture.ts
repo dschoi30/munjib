@@ -9,11 +9,17 @@ const slug = process.env.SECURITY_RUNTIME_FIXTURE_SLUG?.trim();
 
 async function remove() {
   if (!email || !slug) throw new Error("SECURITY_RUNTIME_FIXTURE_CONFIG_INVALID");
-  const organizations = await prisma.organization.findMany({
-    where: { slug: `${slug}-org` },
-    select: { id: true },
-  });
   await prisma.$transaction(async (tx) => {
+    const organizations = await tx.organization.findMany({
+      where: { slug: `${slug}-org` },
+      select: { id: true },
+    });
+    const organizationIds = organizations.map(({ id }) => id);
+    const workspaces = await tx.workspace.findMany({
+      where: { organizationId: { in: organizationIds }, slug },
+      select: { id: true },
+    });
+    await tx.workspace.deleteMany({ where: { id: { in: workspaces.map(({ id }) => id) } } });
     await tx.organization.deleteMany({ where: { id: { in: organizations.map(({ id }) => id) } } });
     await tx.user.deleteMany({ where: { email } });
   });

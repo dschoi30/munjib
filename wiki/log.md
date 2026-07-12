@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:00:00+09:00 - secure runtime production smoke coverage
+
+- Result: Leaf 3 Task 2 adds two browser-level auth/RSC smoke tests, an explicit `PLAYWRIGHT_TEST_BASE_URL` external-server seam, and a production-like `next start` runner with `MUNJIB_ENABLE_DEV_LOGIN=false`.
+- Coverage: The runner creates a mode `0600` password file and random `@invalid.example` fixture, checks the password provider/login shell plus bounded App Router RSC navigation, then unconditionally removes the server, synthetic organization/workspace/user, and temporary files.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `playwright.config.ts`, `scripts/test/run-security-runtime-smoke.sh`, `scripts/test/security-runtime-fixture.ts`, and `package.json`.
+- Verification: focused static/Playwright checks and wiki gates are recorded in the Task 2 report; database-backed smoke requires the local PostgreSQL and build/server prerequisites.
+
 ## 2026-07-12T20:35:00+09:00 - secure runtime ownership review follow-up
 
 - Result: The protected runtime projection rejects whole-file ownership only for `package.json` and `pnpm-lock.yaml`; future `docker-compose.yml` ownership remains available. Task 2's production smoke spec and launcher placeholders were removed from the Leaf 3 implementation for separate follow-up work while their capability/owner reservations remain recorded.
