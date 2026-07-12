@@ -14,8 +14,6 @@ services:
       - >-
         require('node:http').createServer((req,res)=>{res.writeHead(204);res.end()})
         .listen(39158,process.env.MUNJIB_EGRESS_PROBE_BIND_HOST)
-    ports:
-      - "127.0.0.1:39158:39158"
     networks:
       default:
         aliases: [egress-probe]

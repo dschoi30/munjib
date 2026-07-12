@@ -141,7 +141,7 @@ describe("user/provider media source contract", () => {
     );
     expect(overlay).toContain("MUNJIB_EGRESS_PROBE_BIND_HOST: 0.0.0.0");
     expect(overlay).toContain("process.env.MUNJIB_EGRESS_PROBE_BIND_HOST");
-    expect(overlay).toContain('ports:\n      - "127.0.0.1:39158:39158"');
+    expect(overlay).not.toContain('127.0.0.1:39158:39158');
     expect(overlay).not.toContain("MUNJIB_EGRESS_PROBE_ORIGIN");
     expect(overlay).not.toContain("MUNJIB_EGRESS_PROBE_SERVER_ORIGIN");
     expect(linkGuard).toContain("mutation.addedNodes");

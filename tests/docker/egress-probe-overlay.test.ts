@@ -21,7 +21,7 @@ describe("egress probe Compose overlay", () => {
 
     expect(productionSource).not.toMatch(/egress-probe|egress-test|39158|munjib-web-egress/);
     expect(overlay.services["egress-probe"]).toMatchObject({ profiles: ["egress-test"] });
-    expect(overlay.services["egress-probe"].ports).toEqual(["127.0.0.1:39158:39158"]);
+    expect(overlay.services["egress-probe"]).not.toHaveProperty("ports");
     expect(overlaySource).toContain("aliases: [egress-probe]");
     expect(overlay.services.web.environment).not.toHaveProperty("MUNJIB_EGRESS_PROBE_ORIGIN");
     expect(overlay.services.web.environment).not.toHaveProperty("MUNJIB_EGRESS_PROBE_SERVER_ORIGIN");
