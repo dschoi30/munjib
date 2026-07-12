@@ -8,7 +8,11 @@ import { MetadataPanel } from "@/components/metadata-panel";
 import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { LoginForm } from "@/app/login/login-form";
-import { resolveDevLoginEnabled, resolveGoogleAuthCredentials } from "@/lib/auth/config";
+import {
+  resolveDevLoginEnabled,
+  resolveGoogleAuthCredentials,
+  resolveTrialLoginEnabled,
+} from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
@@ -73,6 +77,8 @@ export default async function WorkspacePage({
           callbackUrl={`/workspaces/${workspaceSlug}`}
           isDevLoginEnabled={resolveDevLoginEnabled()}
           isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+          isTrialLoginEnabled={resolveTrialLoginEnabled()}
+          isSignupEnabled={false}
         />
       </main>
     );

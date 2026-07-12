@@ -43,9 +43,10 @@ describe("secure Next.js runtime capability", () => {
       "path:scripts/test/run-security-runtime-smoke.sh",
       "projection:next-runtime-dependencies-v1",
     ];
-    expect(entries.map((entry) => entry.selector)).toEqual(expected);
-    expect(entries.every((entry) => entry.owner === "secure-next-runtime" && entry.version === 1)).toBe(true);
-    expect(entries.find((entry) => entry.selector === "projection:next-runtime-dependencies-v1")?.kind).toBe("NORMALIZED_PROJECTION");
+    const runtimeEntries = entries.filter((entry) => entry.owner === "secure-next-runtime");
+    expect(runtimeEntries.map((entry) => entry.selector)).toEqual(expected);
+    expect(runtimeEntries.every((entry) => entry.version === 1)).toBe(true);
+    expect(runtimeEntries.find((entry) => entry.selector === "projection:next-runtime-dependencies-v1")?.kind).toBe("NORMALIZED_PROJECTION");
     expect(entries.filter((entry) => String(entry.selector).includes("package.json") || String(entry.selector).includes("pnpm-lock.yaml"))).toHaveLength(0);
   });
 

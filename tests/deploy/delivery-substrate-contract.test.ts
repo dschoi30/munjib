@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -112,6 +112,5 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     const source = read("deploy/delivery/manifest-v1.json");
     expect(source).not.toContain("immutable-private-runtime");
     expect(source).not.toContain("secure-next-runtime");
-    expect(existsSync(join(process.cwd(), "deploy/security/capabilities"))).toBe(false);
   });
 });

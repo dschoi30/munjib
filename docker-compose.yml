@@ -31,13 +31,17 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
+    user: "10001:10001"
     environment:
       NODE_ENV: production
+      MUNJIB_DEPLOYMENT_ENV: production
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
-      NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
-      MUNJIB_ENABLE_DEV_LOGIN: ${MUNJIB_ENABLE_DEV_LOGIN:-}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?nextauth url required}
+      NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
+      NEXTAUTH_COOKIE_SECURE: "true"
+      MUNJIB_ENABLE_DEV_LOGIN: "false"
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       SENTRY_RELEASE: ${SENTRY_RELEASE:-}
@@ -71,11 +75,48 @@ services:
       MUNJIB_LANGFUSE_CAPTURE_MODE: ${MUNJIB_LANGFUSE_CAPTURE_MODE:-}
       MUNJIB_LANGFUSE_CAPTURE: ${MUNJIB_LANGFUSE_CAPTURE:-metadata}
     ports:
-      - "${WEB_PORT:-3000}:3000"
+      - "127.0.0.1:${WEB_PORT:-3000}:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - web_storage:/app/storage
+    secrets:
+      - source: munjib_nextauth_secret
+        target: munjib_nextauth_secret
+
+  # The production web image is intentionally non-root. Initialize the named
+  # volume once per `up` so fresh and previously root-owned attachment trees
+  # are writable by the pinned runtime UID before Next.js starts.
+  storage-init:
+    image: alpine:3.22
+    user: "0:0"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /app/storage/attachments
+        chown -R 10001:10001 /app/storage
+        chmod 0750 /app/storage /app/storage/attachments
+    volumes:
+      - web_storage:/app/storage
+
+  auth-preflight:
+    image: ${WEB_IMAGE:-ghcr.io/dschoi30/munjib:latest}
+    profiles:
+      - auth-preflight
+    user: "10001:10001"
+    network_mode: "none"
+    environment:
+      NODE_ENV: production
+      MUNJIB_DEPLOYMENT_ENV: production
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?nextauth url required}
+      NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
+      NEXTAUTH_COOKIE_SECURE: "true"
+      MUNJIB_ENABLE_DEV_LOGIN: "false"
+    command: pnpm security:auth-preflight
+    secrets:
+      - source: munjib_nextauth_secret
+        target: munjib_nextauth_secret
 
   tools:
     build:
@@ -88,10 +129,8 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: development
+      MUNJIB_DEPLOYMENT_ENV: ${MUNJIB_DEPLOYMENT_ENV:-development}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
-      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}
-      NEXTAUTH_COOKIE_SECURE: ${NEXTAUTH_COOKIE_SECURE:-}
       MUNJIB_OLLAMA_BASE_URL: ${MUNJIB_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       MUNJIB_RAG_CHAT_MODEL: ${MUNJIB_RAG_CHAT_MODEL:-gemma4:e4b}
       MUNJIB_RAG_EMBED_MODEL: ${MUNJIB_RAG_EMBED_MODEL:-bge-m3}
@@ -102,3 +141,7 @@ services:
 volumes:
   postgres_data:
   web_storage:
+
+secrets:
+  munjib_nextauth_secret:
+    file: /etc/munjib/secrets/nextauth-current

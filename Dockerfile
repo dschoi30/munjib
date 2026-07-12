@@ -50,6 +50,14 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
+# The production auth-preflight service runs from this same image. Keep only
+# the small source surface needed by its strict runtime validator; tsx is a
+# production dependency so pruning devDependencies cannot remove the command.
+COPY --from=builder /app/scripts/security ./scripts/security
+COPY --from=builder /app/lib/auth ./lib/auth
+COPY --from=builder /app/lib/runtime ./lib/runtime
+COPY --from=builder /app/lib/security ./lib/security
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
   && pnpm prune --prod
