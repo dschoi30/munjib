@@ -12,8 +12,20 @@ const readCompose = () =>
       {
         build?: { args?: Record<string, string> };
         environment?: Record<string, string>;
+        profiles?: string[];
+        network_mode?: string;
+        command?: string;
+        depends_on?: unknown;
+        volumes?: unknown;
+        extra_hosts?: unknown;
+        secrets?: unknown[];
       }
     >;
+  };
+const readGoogleCompose = () =>
+  parse(read("docker-compose.google.yml")) as {
+    services: Record<string, { environment?: Record<string, string> }>;
+    secrets: Record<string, { file?: string }>;
   };
 
 describe("Docker web service configuration", () => {
@@ -33,12 +45,12 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("DOCKER_DATABASE_URL");
     expect(compose).toContain("postgres:5432");
     expect(compose).toContain("NEXTAUTH_URL");
-    expect(compose).toContain("localhost:3000");
+    expect(compose).toContain("127.0.0.1:${WEB_PORT:-3000}:3000");
     expect(compose).toContain("NEXTAUTH_SECRET");
     expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
     expect(compose).toContain("MUNJIB_ENABLE_DEV_LOGIN");
     expect(web.environment).toMatchObject({
-      MUNJIB_DEPLOYMENT_ENV: "${MUNJIB_DEPLOYMENT_ENV:-production}",
+      MUNJIB_DEPLOYMENT_ENV: "production",
     });
     expect(tools.environment).toMatchObject({
       MUNJIB_DEPLOYMENT_ENV: "${MUNJIB_DEPLOYMENT_ENV:-development}",
@@ -56,7 +68,7 @@ describe("Docker web service configuration", () => {
       SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
     });
     expect(web.environment).toMatchObject({
-      MUNJIB_ENABLE_DEV_LOGIN: "${MUNJIB_ENABLE_DEV_LOGIN:-}",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
       SENTRY_DSN: "${SENTRY_DSN:-}",
       SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}",
       SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
@@ -98,7 +110,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("bge-m3");
     expect(compose).toContain("MUNJIB_RAG_EMBED_DIMENSIONS");
     expect(compose).toContain("host.docker.internal:host-gateway");
-    expect(compose).toContain('"${WEB_PORT:-3000}:3000"');
+    expect(compose).toContain('"127.0.0.1:${WEB_PORT:-3000}:3000"');
     expect(compose).toContain("web_storage:/app/storage");
     expect(compose).toContain("web_storage:");
   });
@@ -107,6 +119,67 @@ describe("Docker web service configuration", () => {
     const compose = read("docker-compose.yml");
 
     expect(compose).toContain("pgvector/pgvector:0.8.2-pg16");
+  });
+
+  test("production auth uses fixed file-backed secrets and a loopback web port", () => {
+    const compose = read("docker-compose.yml");
+    const { services } = readCompose();
+    const web = services.web;
+
+    expect(web.environment).toMatchObject({
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    });
+    expect(compose).toContain("file: /etc/munjib/secrets/nextauth-current");
+    expect(compose).toContain("target: munjib_nextauth_secret");
+    expect(compose).not.toMatch(/^\s+NEXTAUTH_SECRET:/m);
+    expect(compose).not.toMatch(/^\s+GOOGLE_CLIENT_SECRET:/m);
+    expect(compose).not.toMatch(/\$\{[^}]*SECRET/);
+    expect(compose).toContain("127.0.0.1:${WEB_PORT:-3000}:3000");
+  });
+
+  test("base compose disables Google and auth-preflight is isolated", () => {
+    const compose = read("docker-compose.yml");
+    const { services } = readCompose();
+    const preflight = services["auth-preflight"];
+
+    expect(compose).not.toContain("GOOGLE_CLIENT_ID");
+    expect(compose).not.toContain("munjib_google_client_secret");
+    expect(preflight.profiles).toEqual(["auth-preflight"]);
+    expect(preflight.network_mode).toBe("none");
+    expect(preflight.command).toBe("pnpm security:auth-preflight");
+    expect(preflight.environment).toMatchObject({
+      MUNJIB_DEPLOYMENT_ENV: "production",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    });
+    expect(preflight.depends_on).toBeUndefined();
+    expect(preflight.volumes).toBeUndefined();
+    expect(preflight.extra_hosts).toBeUndefined();
+  });
+
+  test("Google is enabled only through the fixed repository overlay", () => {
+    const base = read("docker-compose.yml");
+    const google = read("docker-compose.google.yml");
+    const config = readGoogleCompose();
+
+    expect(base).not.toContain("GOOGLE_CLIENT");
+    expect(google).toContain("GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?google client id required}");
+    expect(google).toContain("GOOGLE_CLIENT_SECRET_FILE: /run/secrets/munjib_google_client_secret");
+    expect(google).toContain("file: /etc/munjib/secrets/google-client-current");
+    expect(config.services.web.environment).toMatchObject({
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:?google client id required}",
+      GOOGLE_CLIENT_SECRET_FILE: "/run/secrets/munjib_google_client_secret",
+    });
+    expect(config.services["auth-preflight"].environment).toMatchObject({
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:?google client id required}",
+      GOOGLE_CLIENT_SECRET_FILE: "/run/secrets/munjib_google_client_secret",
+    });
+    expect(config.secrets.munjib_google_client_secret.file).toBe(
+      "/etc/munjib/secrets/google-client-current",
+    );
   });
 
   test("passes RAG provider and optional Langfuse settings into the web service", () => {
@@ -127,7 +200,6 @@ describe("Docker web service configuration", () => {
         "${MUNJIB_OPENAI_COMPATIBLE_BASE_URL:-}",
       MUNJIB_OPENAI_COMPATIBLE_API_KEY: "${MUNJIB_OPENAI_COMPATIBLE_API_KEY:-}",
       LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}",
-      LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}",
       LANGFUSE_HOST: "${LANGFUSE_HOST:-}",
       LANGFUSE_BASEURL: "${LANGFUSE_BASEURL:-}",
       LANGFUSE_BASE_URL: "${LANGFUSE_BASE_URL:-}",
@@ -154,6 +226,9 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain(".:/app");
     expect(compose).toContain("/app/node_modules");
     expect(compose).toContain("/app/.next");
+    expect(compose).toContain("NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}");
+    expect(compose).toContain("GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}");
+    expect(compose).toContain("secrets: !reset []");
   });
 
   test("Dockerfile exposes production and development targets", () => {

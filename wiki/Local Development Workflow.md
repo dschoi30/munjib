@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 65
+source_count: 67
 tags:
   - munjib
   - workflow
@@ -124,6 +124,8 @@ Production-style container 실행:
 ```bash
 docker compose up --build
 ```
+
+Production-style Compose는 auth secret 값을 `.env`나 Compose interpolation으로 받지 않는다. Deploy가 `/etc/munjib/secrets/nextauth-current`를 설치하면 `web`과 isolated `auth-preflight`가 고정된 `/run/secrets/munjib_nextauth_secret` path를 사용하고, Web port는 loopback에만 publish된다. Google auth가 필요한 경우 repository의 `docker-compose.google.yml` overlay와 `/etc/munjib/secrets/google-client-current`를 함께 사용한다. 로컬 개발 override는 이 secret mount를 제거하고 `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET` direct env와 development flags를 허용한다.
 
 Development container 실행:
 

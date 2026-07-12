@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 340
+source_count: 341
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-13T02:10:00+09:00 - production auth preflight and fixed secret mounts
+
+- Result: production Compose now uses fixed `/etc/munjib/secrets` host descriptors and literal `/run/secrets` container paths, pins Web/auth-preflight to loopback publication and UID `10001:10001`, and enables Google only through `docker-compose.google.yml`. Deploy order is secret install → isolated auth-preflight → preflight removal → migration → RAG index → Web replacement.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5, `docker-compose.yml`, `docker-compose.google.yml`, `docker-compose.dev.yml`, `.github/workflows/ci-cd.yml`, Docker/Actions tests, and Dockerfile runtime preflight sources.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts tests/github-actions/ci-cd.test.ts`, `NEXTAUTH_URL=https://munjib.andrewchoi.link docker compose -f docker-compose.yml config --quiet`, TypeScript, and wiki sync gates.
 
 ## 2026-07-13T02:05:00+09:00 - explicit local seed environment boundary
 

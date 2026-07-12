@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-04
-source_count: 53
+updated: 2026-07-13
+source_count: 57
 tags:
   - munjib
   - workflow
@@ -40,6 +40,8 @@ PNPM_VERSION=10.28.1
 ```
 
 Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
+
+Production Compose auth 경계는 root-managed fixed descriptor를 사용한다. `web`과 일회성 `auth-preflight`는 `/run/secrets/munjib_nextauth_secret`를 읽고 host source는 `/etc/munjib/secrets/nextauth-current`로 고정된다. Google auth를 켤 때도 임의 overlay 대신 repository의 `docker-compose.google.yml`만 추가하며 `/etc/munjib/secrets/google-client-current`를 `/run/secrets/munjib_google_client_secret`으로 마운트한다. 두 production service는 pinned non-root UID `10001:10001`로 실행되고 descriptor는 owner `10001`, mode `0400`이어야 한다. Web host port는 `127.0.0.1:${WEB_PORT:-3000}:3000`으로만 publish한다.
 
 Monitoring entry point는 두 갈래다.
 
@@ -93,6 +95,8 @@ DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
 DEPLOY_REPOSITORY=${{ github.repository }}
 DEPLOY_GIT_TOKEN=${{ github.token }}
+DEPLOY_NEXTAUTH_SECRET=<GitHub protected secret>
+DEPLOY_GOOGLE_CLIENT_SECRET=<GitHub protected secret when Google overlay is enabled>
 ```
 
 Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
@@ -122,10 +126,14 @@ git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_head
 git checkout --detach "$DEPLOY_SHA"
 test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
 sudo test -r "$DEPLOY_ENV_FILE"
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web
+install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
+if sudo grep -Eq '^GOOGLE_CLIENT_ID=[^[:space:]]' "$DEPLOY_ENV_FILE"; then install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"; compose_files="$compose_files -f docker-compose.google.yml"; fi
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
     break
@@ -139,6 +147,8 @@ sudo docker image prune -f
 ```
 
 이 deploy는 server checkout에서 Actions-provided ephemeral `github.token`을 Git HTTP extraheader로 사용해 repository `main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. 이 fetch 방식은 OCI server checkout의 stored HTTPS credential/token에 의존하지 않으며 token을 remote `.git/config`에 저장하지 않는다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Remote script 안에서는 hairpin NAT 영향을 피하기 위해 `http://127.0.0.1:3000`에 `Host: munjib.andrewchoi.link` header를 붙인 local health check를 최대 10회 재시도하고, 성공 후 dangling image 정리를 위해 `sudo docker image prune -f`를 실행한다. SSH deploy step 뒤에는 GitHub-hosted runner에서 `https://munjib.andrewchoi.link` public health check를 별도 실행해 DNS/TLS/Caddy public path를 확인한다.
+
+Secret install은 `umask 077` 아래에서 protected SSH channel의 process environment를 root-only temporary descriptor에 pipe하고 `chown 10001:10001`, `chmod 0400`, atomic `mv` 순서로 완료한다. 값은 argv, shell trace, GitHub output, Compose interpolation, checked-in env 파일에 쓰지 않는다. `auth-preflight`가 같은 runtime image에서 strict auth environment를 검사하고 성공한 뒤에만 service를 제거하고 Prisma migration, RAG index, Web replacement를 시작한다. Preflight 실패는 `set -euo pipefail`로 migration이나 current-container replacement를 중단한다. `docker-compose.dev.yml`만 direct `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET`와 development flags를 허용하며 production workflow에서는 사용하지 않는다.
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
