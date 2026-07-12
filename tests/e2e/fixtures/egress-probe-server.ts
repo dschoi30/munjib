@@ -20,7 +20,10 @@ export type EgressProbe = {
 };
 
 const PROBE_PORT = readProbePort();
-const PROBE_BIND_HOST = process.env.MUNJIB_EGRESS_PROBE_BIND_HOST?.trim() || "0.0.0.0";
+// The in-process Playwright oracle is local-only by default. A containerized
+// probe must opt into its own network listener explicitly (the test Compose
+// overlay does that for the separate `egress-probe` service).
+const PROBE_BIND_HOST = process.env.MUNJIB_EGRESS_PROBE_BIND_HOST?.trim() || "127.0.0.1";
 const PROBE_ORIGIN = process.env.MUNJIB_EGRESS_PROBE_ORIGIN?.trim();
 const PROBE_BROWSER_ORIGIN =
   process.env.MUNJIB_EGRESS_PROBE_BROWSER_ORIGIN?.trim() ||

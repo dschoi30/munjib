@@ -36,6 +36,8 @@ Issue #158 Task 3는 이 renderer 경계를 SSR과 실제 브라우저/Next 서�
 
 Task 3 보정 oracle은 고정 test-only probe port와 Compose alias, OPTIONS/CORS preflight, password-hash fixture login, deterministic local provider transport를 사용한다. Provider 응답은 실제 Workspace AI service, NDJSON route, client renderer를 통과하며 assistant pre-seed나 route/client response mock을 사용하지 않는다. Provider/auth harness는 명시적인 test transport와 non-production deployment gate 없이는 404이고, browser speculative media link는 dev webpack preload를 포함해 제거한다.
 
+Probe binding is local-only in the in-process Playwright harness (`127.0.0.1` default). Containerized calibration uses a separate `egress-test` Compose service with an explicit `0.0.0.0` listener only for the internal network alias and a loopback-only host port publication; the container override is not a production setting.
+
 ## Process Map
 
 이 지도는 현재 Ask AI direct path와 workspace chatbot RAG service path를 분리해서 보여준다.

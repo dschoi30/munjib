@@ -55,6 +55,8 @@ pnpm run documents:purge-archived -- --workspace company-handbook
 
 Task 3 browser oracle은 test-only provider와 probe alias를 명시적으로 켜서 실행한다. Probe는 docker-compose.egress-test.yml의 egress-test profile에만 있고 production Compose에는 없다. Provider/auth/server-calibration test routes는 `MUNJIB_E2E_PROVIDER_TRANSPORT=true`와 명시적인 test/development `NODE_ENV` 또는 `MUNJIB_DEPLOYMENT_ENV` 조합에서만 활성화되며, 기본/production/staging 환경에서는 거부된다.
 
+The in-process Playwright probe binds to `127.0.0.1` by default and accepts `MUNJIB_EGRESS_PROBE_BIND_HOST` only as an explicit test override. The Compose `egress-probe` service is a separate test-profile container; its overlay explicitly sets that host to `0.0.0.0` for the internal `egress-probe` network alias while publishing only `127.0.0.1:39158` on the host. Do not copy that container override into local or production processes.
+
 CI=1 DATABASE_URL='postgresql://obsidian:obsidian@127.0.0.1:55434/obsidian_clone?schema=public' NEXTAUTH_SECRET='test-secret' NEXTAUTH_URL='http://localhost:3000' pnpm exec playwright test tests/e2e/zero-egress-rendering.spec.ts --project=chromium
 
 The oracle calibrates the browser canary in page context and calls `/api/test/egress-calibration` so the Next/Node process performs the server canary fetch with `x-egress-probe-caller: server`. It then clears counters and asserts no probe request, image optimizer fetch, speculative link, CSS/DOM sink, auth/session media, or settled client stream leak.

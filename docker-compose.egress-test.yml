@@ -3,12 +3,17 @@ services:
   egress-probe:
     image: node:22-alpine
     profiles: [egress-test]
+    # This is a separate container-network listener. Keep the in-process
+    # Playwright probe loopback-only; only this explicit overlay override is
+    # reachable by the web container through the `egress-probe` alias.
+    environment:
+      MUNJIB_EGRESS_PROBE_BIND_HOST: 0.0.0.0
     command:
       - node
       - -e
       - >-
         require('node:http').createServer((req,res)=>{res.writeHead(204);res.end()})
-        .listen(39158,'0.0.0.0')
+        .listen(39158,process.env.MUNJIB_EGRESS_PROBE_BIND_HOST)
     ports:
       - "127.0.0.1:39158:39158"
     networks:

@@ -101,6 +101,8 @@ describe("user/provider media source contract", () => {
       expect(contents).not.toMatch(/addInitScript|setContent\s*\(/);
     }
     expect(probe).toContain("server.listen(PROBE_PORT, PROBE_BIND_HOST)");
+    expect(probe).toContain('|| "127.0.0.1"');
+    expect(probe).toContain("MUNJIB_EGRESS_PROBE_BIND_HOST");
     expect(probe).toMatch(/access-control-allow-headers/i);
     expect(probe).toContain("x-egress-probe-caller");
     expect(oracle).toContain("waitForTimeout");
@@ -127,5 +129,17 @@ describe("user/provider media source contract", () => {
     expect(calibration).toContain("x-egress-probe-caller");
     expect(calibration).toContain('"server"');
     expect(calibration).toContain("isTestTransportEnabled");
+  });
+
+  it("keeps the in-process probe loopback-only and makes container reachability explicit", async () => {
+    const probe = await source("tests/e2e/fixtures/egress-probe-server.ts");
+    const overlay = await source("docker-compose.egress-test.yml");
+
+    expect(probe).toMatch(
+      /MUNJIB_EGRESS_PROBE_BIND_HOST\?\.trim\(\) \|\| "127\.0\.0\.1"/,
+    );
+    expect(overlay).toContain("MUNJIB_EGRESS_PROBE_BIND_HOST: 0.0.0.0");
+    expect(overlay).toContain("process.env.MUNJIB_EGRESS_PROBE_BIND_HOST");
+    expect(overlay).toContain('ports:\n      - "127.0.0.1:39158:39158"');
   });
 });
