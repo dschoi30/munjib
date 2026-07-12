@@ -70,7 +70,10 @@ export function MarkdownPreview({
     [linkCandidates],
   );
   const attachmentIdsKey = JSON.stringify([...new Set(attachmentIds)].sort());
-  const attachmentIdSet = useMemo(() => new Set(attachmentIds), [attachmentIdsKey]);
+  const attachmentIdSet = useMemo(
+    () => new Set(JSON.parse(attachmentIdsKey) as string[]),
+    [attachmentIdsKey],
+  );
   const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
   const markdownComponents = useMemo<Components>(
     () => {
@@ -117,7 +120,7 @@ export function MarkdownPreview({
         onExternalMediaRequest: setExternalRequest,
       });
     },
-    [attachmentIdsKey, tagSearch?.requestTagSearch, tagSearchLabel],
+    [attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);

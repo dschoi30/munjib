@@ -57,7 +57,10 @@ const aiTextComponents: Components = {
 export function AiAnswer({ content, className, allowedAttachmentIds = [] }: AiAnswerProps) {
   const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
   const allowedAttachmentIdsKey = JSON.stringify([...new Set(allowedAttachmentIds)].sort());
-  const allowed = useMemo(() => new Set(allowedAttachmentIds), [allowedAttachmentIdsKey]);
+  const allowed = useMemo(
+    () => new Set(JSON.parse(allowedAttachmentIdsKey) as string[]),
+    [allowedAttachmentIdsKey],
+  );
   const components = useMemo(() => buildSafeMarkdownComponents({
     allowedAttachmentIds: allowed,
     components: aiTextComponents,

@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
+
+- Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, PR #178 review threads.
+- Verification: focused component/media/contract tests (101 tests), TypeScript, and wiki sync gates.
+
 ## 2026-07-13T14:20:00+09:00 - non-root preflight Corepack cache boundary
 
 - Result: Issue #175 sets the production runner's `HOME` and `COREPACK_HOME` to `/tmp` so UID `10001:10001` can execute the pruned image's `pnpm` shim for both web startup and isolated auth-preflight without writing to `/.cache`.
