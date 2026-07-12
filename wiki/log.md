@@ -55,6 +55,13 @@ links:
 - Source evidence: `components/speculative-link-guard.tsx`, `components/markdown/external-media-interstitial.tsx`, `components/markdown/safe-media.tsx`, `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, `docker-compose.egress-test.yml`, `deploy/security/protected-artifact-owners.json`, `tests/security/markdown-downstream-extension-contract.test.ts`, and PR #177 review threads.
 - Verification: focused component/media/Compose contract tests, actual Chromium zero-egress oracle, TypeScript, exact scans, and wiki sync gates.
 
+## 2026-07-13T15:30:00+09:00 - zero-egress harness server isolation
+
+- Result: the Playwright zero-egress harness never reuses an unrelated localhost server; its explicit development/test-transport environment is always applied to a fresh Next server.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `tests/security/user-media-source-contract.test.ts`, and PR #178 review thread.
+- Verification: focused UI/source-contract tests, TypeScript, and wiki sync gates.
+
 ## 2026-07-13T14:20:00+09:00 - Issue #158 zero-egress harness environment fix
 
 - Result: changed the local Playwright and egress-test Compose harnesses from the unsupported `test` deployment value to parser-approved `development`, while retaining the explicit test-transport gate, adding the required local `NEXTAUTH_URL`, and running the local Next harness through Turbopack so Node-only auth instrumentation can load.

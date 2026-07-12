@@ -37,7 +37,10 @@ export default defineConfig({
           "MUNJIB_EGRESS_PROBE_SERVER_ORIGIN=http://127.0.0.1:39158 " +
           "pnpm exec next dev --turbo",
         url: "http://localhost:3000/login",
-        reuseExistingServer: !process.env.CI,
+        // The zero-egress routes are enabled only by this command's explicit
+        // environment. Never reuse an unrelated localhost app that lacks the
+        // test transport gate or could point the oracle at the wrong server.
+        reuseExistingServer: false,
         timeout: 30_000,
       },
   projects: [

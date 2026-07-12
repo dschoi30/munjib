@@ -156,6 +156,7 @@ describe("user/provider media source contract", () => {
     expect(playwright).toContain("MUNJIB_DEPLOYMENT_ENV=development");
     expect(playwright).toContain("MUNJIB_E2E_PROVIDER_TRANSPORT=true");
     expect(playwright).toContain("pnpm exec next dev --turbo");
+    expect(playwright).toContain("reuseExistingServer: false");
     expect(overlay).toContain("MUNJIB_DEPLOYMENT_ENV: development");
     expect(overlay).toContain('MUNJIB_E2E_PROVIDER_TRANSPORT: "true"');
   });
