@@ -17,7 +17,7 @@ RestrictAddressFamilies=AF_UNIX
 RestrictNamespaces=true
 LockPersonality=true
 MemoryDenyWriteExecute=true
-ReadWritePaths=/var/lib/munjib/security /run/munjib
+ReadWritePaths=/run/munjib
 UMask=0077
 Restart=on-failure
 

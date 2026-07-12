@@ -10,6 +10,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"os/user"
 	"strconv"
 	"syscall"
 	"time"
@@ -19,7 +20,7 @@ import (
 
 const (
 	socketPath = "/run/munjib/release-broker.sock"
-	policyPath = "/var/lib/munjib/security/deploy-principal-v1.json"
+	policyPath = "/etc/munjib/security/principal-policy-v1.json"
 	keyPath    = "/var/lib/munjib/security/bootstrap/release-verify.pub"
 	maxConcurrentConnections = 32
 )
@@ -27,8 +28,12 @@ const (
 var connectionSlots = make(chan struct{}, maxConcurrentConnections)
 
 type policy struct {
-	SubmitterUID uint32 `json:"submitterUid"`
-	Generation   uint64 `json:"generation"`
+	Generation uint64 `json:"generation"`
+	Submitter  struct {
+		User      string `json:"user"`
+		UIDSource string `json:"uidSource"`
+		ExactPeer bool   `json:"exactPeer"`
+	} `json:"submitter"`
 }
 
 type response struct {
@@ -90,11 +95,23 @@ func handle(conn *net.UnixConn) {
 		return
 	}
 	var configured policy
-	if json.Unmarshal(policyBytes, &configured) != nil || configured.SubmitterUID == 0 {
+	if json.Unmarshal(policyBytes, &configured) != nil || configured.Generation == 0 ||
+		configured.Submitter.User != "munjib-deploy" ||
+		configured.Submitter.UIDSource != "root-bootstrap" || !configured.Submitter.ExactPeer {
 		writeResponse(conn, response{Code: "POLICY_INVALID"})
 		return
 	}
-	if err := requirePeerUID(conn, configured.SubmitterUID); err != nil {
+	account, err := user.Lookup(configured.Submitter.User)
+	if err != nil {
+		writeResponse(conn, response{Code: "SUBMITTER_UNAVAILABLE"})
+		return
+	}
+	uid, err := strconv.ParseUint(account.Uid, 10, 32)
+	if err != nil || uid == 0 {
+		writeResponse(conn, response{Code: "SUBMITTER_UID_INVALID"})
+		return
+	}
+	if err := requirePeerUID(conn, uint32(uid)); err != nil {
 		writeResponse(conn, response{Code: err.Error()})
 		return
 	}

@@ -13,6 +13,7 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     expect(policy).toMatchObject({
       format: "munjib-delivery-principal-v1",
       version: 1,
+      generation: 1,
       submitter: { user: "munjib-deploy", uidSource: "root-bootstrap", exactPeer: true },
       socket: { path: "/run/munjib/release-broker.sock", mode: "0620", group: "munjib-release-submit" },
       interactive: false,
@@ -49,6 +50,8 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     const verifyOnly = read("cmd/munjib-release-verify/main.go");
     expect(source).toContain("SO_PEERCRED");
     expect(source).toContain("GetsockoptUcred");
+    expect(source).toContain("/etc/munjib/security/principal-policy-v1.json");
+    expect(source).toContain("user.Lookup");
     expect(source).toContain("SetDeadline");
     expect(source).toContain("connectionSlots");
     expect(source).toContain("file.Close()");
@@ -76,12 +79,15 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     expect(service).toContain("NoNewPrivileges=true");
     expect(service).toContain("RestrictAddressFamilies=AF_UNIX");
     expect(service).toContain("ProtectSystem=strict");
+    expect(service).toContain("ReadWritePaths=/run/munjib");
+    expect(service).not.toContain("ReadWritePaths=/var/lib/munjib/security");
     expect(service).not.toMatch(/docker|sudo|checkout|Compose/i);
     expect(socket).toContain("SocketMode=0620");
     expect(socket).toContain("SocketGroup=munjib-release-submit");
     expect(ssh).toContain("ForceCommand /usr/local/libexec/munjib-release-submit");
     expect(ssh).toContain("PermitTTY no");
     expect(ssh).toContain("AllowTcpForwarding no");
+    expect(ssh).toContain("AllowStreamLocalForwarding no");
     expect(ssh).toContain("PermitTunnel no");
     expect(ssh).toContain("PasswordAuthentication no");
     expect(manifest).toMatchObject({ format: "munjib-delivery-bundle-manifest-v1", version: 1 });
@@ -89,6 +95,7 @@ describe("Leaf 13A least-authority delivery substrate", () => {
       "usr/local/libexec/munjib-release-submit",
       "usr/local/libexec/munjib-release-broker",
       "etc/munjib/security/principal-policy-v1.json",
+      "var/lib/munjib/security/bootstrap/release-verify.pub",
     ]));
   });
 

@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T19:00:00+09:00 - delivery substrate tracking handles
+
+- Result: The public-safe delivery documentation records parent Issue #167, child Issue #169, and remote branch `issue-169-delivery-substrate` alongside the Leaf 13A label.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A child issue/branch mapping and delivery substrate contract files.
+- Verification: focused delivery contract tests and TypeScript compilation pass.
+
 ## 2026-07-12T18:45:00+09:00 - delivery broker review hardening
 
 - Result: Leaf 13A review follow-up adds bounded broker deadlines and concurrency, framed response parsing, socket-activation descriptor cleanup, and allocation-free envelope decoding with trailing-data rejection.

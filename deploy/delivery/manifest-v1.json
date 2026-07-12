@@ -8,6 +8,7 @@
     "usr/local/libexec/munjib-release-verify",
     "etc/munjib/security/principal-policy-v1.json",
     "etc/munjib/security/broker-operations-v1.json",
+    "var/lib/munjib/security/bootstrap/release-verify.pub",
     "etc/systemd/system/munjib-release-broker.service",
     "etc/systemd/system/munjib-release-broker.socket",
     "etc/ssh/sshd_config.d/munjib-release-submit.conf"

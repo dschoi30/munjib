@@ -48,7 +48,8 @@ Monitoring entry point는 두 갈래다.
 
 ## Least-authority delivery substrate
 
-Leaf 13A의 delivery substrate는 비대화형 forced-SSH submitter가 고정 Unix socket
+Leaf 13A의 delivery substrate는 parent Issue #167 (`issue-167-security-immutable-deploy`) 아래
+child Issue #169 (`issue-169-delivery-substrate`)가 추적하는 비대화형 forced-SSH submitter가 고정 Unix socket
 broker에 bounded envelope만 전달하는 구조를 사용한다. Broker는 kernel peer
 credential, root-owned trust policy, 서명, nonce, expiry, generation, operation
 schema를 매 요청 다시 검증한다. 이 단계에는 application capability나 실행 중인
