@@ -53,7 +53,9 @@ values are forbidden. The runtime also requires one canonical origin, Secure coo
 disabled development login, and closed password/OAuth signup.
 The reader also compares the pre-open path identity with the opened descriptor to
 reject a path swap before consuming the bounded secret bytes, and treats Unicode
-line separators as content violations alongside ASCII controls/newlines. The
+line separators and all C1 controls as content violations alongside ASCII
+controls/newlines. A leading UTF-8 BOM is preserved during decoding so it cannot
+be normalized into an accepted secret. The
 descriptor also uses close-on-exec semantics on Linux and Darwin.
 
 ## Session helper

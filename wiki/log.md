@@ -23,6 +23,13 @@ links:
 
 - Added the strict file-backed signing/provider-secret and deployment auth runtime contract; evidence: `lib/security/strict-secret-file.ts`, `lib/auth/runtime.ts`, and their tests.
 
+## 2026-07-13T00:25:00+09:00 - security runtime review follow-up
+
+- Result: strict secret-file validation now rejects every Unicode C1 control (U+0080-U+009F) and preserves UTF-8 BOM bytes for explicit rejection; deterministic tests cover the complete file metadata, race, bounded-read, content, same-descriptor, and non-disclosure contract.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 1 review findings, `lib/security/strict-secret-file.ts`, `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts`; `pnpm exec tsc --noEmit`.
+
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
 - Result: Local `mjtrial@munjib.com` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.

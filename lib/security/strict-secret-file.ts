@@ -81,7 +81,9 @@ function validateParent(path: string, logicalName: string): void {
 function decodeAndValidate(buffer: Buffer, logicalName: string): string {
   let value: string;
   try {
-    value = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+    // Preserve a leading UTF-8 BOM so it can be rejected as content rather
+    // than silently normalized away by the decoder.
+    value = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(buffer);
   } catch {
     fail("SECRET_FILE_CONTENT_INVALID", logicalName);
   }
@@ -90,7 +92,7 @@ function decodeAndValidate(buffer: Buffer, logicalName: string): string {
     value.includes("\uFEFF") ||
     /[\u0001-\u001F\u007F]/u.test(value) ||
     value !== value.trim() ||
-    /[\n\r\u0085\u2028\u2029]/u.test(value)
+    /[\n\r\u0080-\u009F\u2028\u2029]/u.test(value)
   ) {
     fail("SECRET_FILE_CONTENT_INVALID", logicalName);
   }
