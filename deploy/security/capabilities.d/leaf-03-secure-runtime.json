@@ -1,0 +1,14 @@
+{
+  "format": "munjib-security-capability-v1",
+  "id": "secure-next-runtime",
+  "version": 1,
+  "leaf": 3,
+  "requires": [],
+  "evidenceTests": [
+    "tests/security/next-runtime-version.test.ts",
+    "tests/security/next-runtime-projection.test.ts",
+    "tests/security/next-advisories.test.ts",
+    "tests/security/secure-next-runtime-capability.test.ts",
+    "tests/e2e/security-runtime.spec.ts"
+  ]
+}

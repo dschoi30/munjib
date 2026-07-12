@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-12
-source_count: 338
+source_count: 339
 tags:
   - log
   - munjib
@@ -18,6 +18,82 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-12T21:55:00+09:00 - production dependency audit remediation
+
+- Result: Issue #171 resolves the four reviewed production transitive dependency floors with exact pnpm overrides and a refreshed frozen lockfile; no advisory allowlist or audit filter was added. The CI workflow now runs the unfiltered audit and the pinned Next.js advisory checker immediately after frozen install with a read-only `GH_TOKEN`.
+- Coverage: `postcss` 8.5.10, `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, and scoped `minimatch@10.2.5>brace-expansion` 5.0.6 are asserted in the lock graph. The minimatch 3 path remains on brace-expansion 1.1.16. The minimatch 3 compatibility test resolves through ESLint's installed dependency instead of assuming a pnpm virtual-store path. Next.js 15.5.18 and its advisory gate remain unchanged. Compatibility tests cover NextAuth JWT UUID generation, minimatch major compatibility, and Sentry/OpenTelemetry module loading.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: `pnpm install --frozen-lockfile --offline` and focused security/auth/observability Vitest suites pass; full DB-backed tests require `DATABASE_URL` and PostgreSQL.
+
+## 2026-07-12T21:45:00+09:00 - production dependency audit remediation design
+
+- Result: Issue #171 records a public-safe design to clear the production dependency audit gate with exact patched transitive versions and compatibility checks.
+- Coverage: Advisory suppression and partial audit filters remain prohibited; the Issue #157 runtime pin and exact advisory gate remain unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #171 and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: design self-review completed; implementation remains on the Issue #171 branch.
+
+## 2026-07-12T22:53:00+09:00 - fixture-gated security runtime e2e discovery
+
+- Result: The security runtime Playwright spec now skips during ordinary `playwright test` discovery when its dedicated fixture variables are absent; the production-like smoke launcher still supplies the required fixture and runs both tests.
+- Coverage: `tests/e2e/security-runtime.spec.ts` uses Playwright describe-level skips for missing/empty fixture inputs, keeping the default E2E command discoverable without weakening the dedicated smoke gate.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Verification: `PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:9 pnpm exec playwright test tests/e2e/security-runtime.spec.ts --list`, runtime contract tests, and TypeScript pass.
+
+## 2026-07-12T21:35:00+09:00 - secure runtime smoke health timeout clarity
+
+- Result: The production-like smoke runner now reports an explicit health timeout instead of relying on `set -e` test semantics after the final poll.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh` and `tests/security/security-runtime-smoke-script.test.ts`.
+- Verification: red/green shell-contract Vitest and `bash -n` pass.
+
+## 2026-07-12T21:30:00+09:00 - secure runtime dependency verification
+
+- Updated [[CI CD And Monitoring Workflow]] after the security-critical Next.js
+   patch upgrade. Evidence: `package.json`, `pnpm-lock.yaml`,
+   `tests/security/next-runtime-version.test.ts`, and
+   `tests/e2e/security-runtime.spec.ts`.
+
+## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
+
+- Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.
+- Coverage: The auth/RSC smoke is green 2/2 against `next start`; the synthetic fixture and temporary work directory are cleaned up after the run.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `tests/security/security-runtime-rsc-contract.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green RSC contract Vitest, production-like smoke, PostgreSQL fixture count, and temporary-directory cleanup checks.
+
+## 2026-07-12T21:10:00+09:00 - secure runtime smoke lifecycle review fixes
+
+- Result: Leaf 3 Task 2 smoke launcher now exports the transient auth secret through the child environment without an argv assignment and installs guarded cleanup immediately after temporary work creation.
+- Coverage: Partial initialization paths safely skip absent server/fixture state; a static Vitest contract protects both no-secret-argv and cleanup ordering guarantees.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh`, `tests/security/security-runtime-smoke-script.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green focused smoke-launcher Vitest and `bash -n` shell syntax check.
+
+## 2026-07-12T21:00:00+09:00 - secure runtime production smoke coverage
+
+- Result: Leaf 3 Task 2 adds two browser-level auth/RSC smoke tests, an explicit `PLAYWRIGHT_TEST_BASE_URL` external-server seam, and a production-like `next start` runner with `MUNJIB_ENABLE_DEV_LOGIN=false`.
+- Coverage: The runner creates a mode `0600` password file and random `@invalid.example` fixture, checks the password provider/login shell plus bounded App Router RSC navigation, then unconditionally removes the server, synthetic organization/workspace/user, and temporary files.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `playwright.config.ts`, `scripts/test/run-security-runtime-smoke.sh`, `scripts/test/security-runtime-fixture.ts`, and `package.json`.
+- Verification: focused static/Playwright checks and wiki gates are recorded in the Task 2 report; database-backed smoke requires the local PostgreSQL and build/server prerequisites.
+
+## 2026-07-12T20:35:00+09:00 - secure runtime ownership review follow-up
+
+- Result: The protected runtime projection rejects whole-file ownership only for `package.json` and `pnpm-lock.yaml`; future `docker-compose.yml` ownership remains available. Task 2's production smoke spec and launcher placeholders were removed from the Leaf 3 implementation for separate follow-up work while their capability/owner reservations remain recorded.
+- Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/project-protected-artifacts.ts`, `tests/security/next-runtime-projection.test.ts`, capability fragment, and protected owner map.
+- Verification: focused projection/security/delivery tests pass; Task 2 will supply the real production smoke implementation.
+
+## 2026-07-12T20:25:00+09:00 - secure Next.js runtime gate
+
+- Result: Leaf 3 pins `next` and `eslint-config-next` to exact 15.5.18 specifications and records a deterministic Next.js/React runtime projection with protected-artifact ownership.
+- Coverage: The advisory gate follows paginated GitHub API results and prints only candidate/count; the synthetic runtime fixture reads credentials from a password file and emits no secret values.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, runtime contract tests, advisory gate, projection projector, capability fragment, and protected owner map.
+- Verification: focused Vitest security and delivery contract tests pass; live advisory API verification remains an external network/authentication gate.
 
 ## 2026-07-12T19:00:00+09:00 - delivery substrate tracking handles
 
