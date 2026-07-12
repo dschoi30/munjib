@@ -2895,3 +2895,10 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
+## 2026-07-13T17:10:00+09:00 - security-runtime
+
+- Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
+- Coverage: Prisma CLI remains a development dependency; the existing `HOME=/tmp`, `COREPACK_HOME=/tmp/.cache/node/corepack`, non-root UID, and production prune contracts remain in force.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #182, `Dockerfile`, `tests/docker/compose.test.ts`.
+- Verification: focused Docker contract test RED before the Dockerfile change and GREEN after it; runner-target Docker build; production-image Prisma require smoke; non-root Prisma require smoke. TypeScript verification remains blocked by the pre-existing local missing generated Prisma client because the sandbox cannot update the Prisma engine cache; wiki gates are recorded in the task report.
