@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-09
+updated: 2026-07-12
 source_count: 338
 tags:
   - log
@@ -18,6 +18,35 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-12T19:00:00+09:00 - delivery substrate tracking handles
+
+- Result: The public-safe delivery documentation records parent Issue #167, child Issue #169, and remote branch `issue-169-delivery-substrate` alongside the Leaf 13A label.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A child issue/branch mapping and delivery substrate contract files.
+- Verification: focused delivery contract tests and TypeScript compilation pass.
+
+## 2026-07-12T19:10:00+09:00 - sshd policy parser hardening
+
+- Result: The forced-submit fragment keeps `PermitUserEnvironment no` in the global scope, where OpenSSH accepts it, while the `Match User munjib-deploy` block contains only match-valid restrictions.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/sshd/munjib-release-submit.conf` and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests pass; production `sshd -t` remains an installation gate.
+
+## 2026-07-12T18:45:00+09:00 - delivery broker review hardening
+
+- Result: Leaf 13A review follow-up adds bounded broker deadlines and concurrency, framed response parsing, socket-activation descriptor cleanup, and allocation-free envelope decoding with trailing-data rejection.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A delivery broker/submitter/envelope sources and contract tests.
+- Verification: focused delivery contract tests and TypeScript compilation pass; the review fixes are on the same child PR.
+
+## 2026-07-12T18:35:00+09:00 - least-authority delivery substrate
+
+- Result: Leaf 13A adds a public-safe delivery contract for a non-interactive submitter, peer-verified Unix-socket broker, fixed operation allowlist, and empty protected-owner registry.
+- Coverage: The application capability floor remains empty during substrate installation; caller-selected paths, environments, Docker, sudo, root SSH, and interactive forwarding are excluded.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `cmd/munjib-release-submit/main.go`, `cmd/munjib-release-broker/main.go`, `internal/delivery/envelope.go`, fixed delivery manifests, and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests and TypeScript compilation pass; full DB-backed test execution remains dependent on an available test PostgreSQL service.
 
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 

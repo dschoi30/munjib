@@ -46,6 +46,17 @@ Monitoring entry point는 두 갈래다.
 - Docker stdout/stderr: startup, env, DB connection, PostgreSQL process log, Sentry init 이전 failure.
 - Sentry SaaS: Next.js App Router request error, global error, browser runtime error, low sample rate tracing, opt-in Node runtime metrics, error-only Replay, low-cardinality application metrics.
 
+## Least-authority delivery substrate
+
+Leaf 13A의 delivery substrate는 parent Issue #167 (`issue-167-security-immutable-deploy`) 아래
+child Issue #169 (`issue-169-delivery-substrate`)가 추적하는 비대화형 forced-SSH submitter가 고정 Unix socket
+broker에 bounded envelope만 전달하는 구조를 사용한다. Broker는 kernel peer
+credential, root-owned trust policy, 서명, nonce, expiry, generation, operation
+schema를 매 요청 다시 검증한다. 이 단계에는 application capability나 실행 중인
+runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명령을 선택할 수
+없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
+없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
+
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps

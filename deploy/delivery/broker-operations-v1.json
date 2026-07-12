@@ -1,0 +1,9 @@
+{
+  "format": "munjib-delivery-broker-operations-v1",
+  "version": 1,
+  "operations": [
+    "VERIFY_ONLY",
+    "INSTALL_SUBSTRATE",
+    "RECONCILE_SUBSTRATE"
+  ]
+}
