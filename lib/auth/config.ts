@@ -54,16 +54,26 @@ function isStrictRuntime(env: Record<string, string | undefined>): boolean {
     (!deployment && env.NODE_ENV === "production");
 }
 
+function resolveDeploymentEnvironmentFallback(
+  env: Record<string, string | undefined>,
+): AuthRuntimeConfig["deploymentEnvironment"] {
+  const deployment = env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
+  if (deployment === "development" || deployment === "staging" || deployment === "production") {
+    return deployment;
+  }
+  return env.NODE_ENV === "production" ? "production" : "development";
+}
+
 export function resolveAuthSecret(
   env: Record<string, string | undefined> = process.env,
-  deps?: AuthRuntimeDependencies,
+  deps: AuthRuntimeDependencies = { readStrictSecretFile },
 ) {
   if (isStrictRuntime(env)) {
     // Production/staging never consume a direct secret environment value.
     // The startup validator rejects it; keeping this resolver fail-closed
     // avoids briefly constructing NextAuth with a forbidden credential.
     if (env.NEXTAUTH_SECRET !== undefined) return undefined;
-    if (env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH && deps) {
+    if (env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH) {
       try {
         return deps.readStrictSecretFile({
           logicalName: "NEXTAUTH_SECRET",
@@ -105,11 +115,35 @@ export function resolveDevLoginEnabled(
 
 export function resolveGoogleAuthCredentials(
   env: Record<string, string | undefined> = process.env,
+  deps: AuthRuntimeDependencies = { readStrictSecretFile },
 ) {
   const clientId = readProcessEnv("GOOGLE_CLIENT_ID", env)?.trim();
+  if (!clientId) return null;
+
+  if (isStrictRuntime(env)) {
+    try {
+      const runtime = assertValidAuthRuntimeEnv(env, deps);
+      const clientSecret = runtime.googleClientSecret?.trim();
+      if (!clientSecret) return null;
+      return { clientId: runtime.googleClientId?.trim() ?? clientId, clientSecret };
+    } catch {
+      return null;
+    }
+  }
+
   const clientSecret = readProcessEnv("GOOGLE_CLIENT_SECRET", env)?.trim();
-  if (!clientId || !clientSecret) return null;
+  if (!clientSecret) return null;
   return { clientId, clientSecret };
+}
+
+/** Keep the trial provider and login button on the same deployment gate. */
+export function resolveTrialLoginEnabled(
+  env: Record<string, string | undefined> = process.env,
+) {
+  const deployment = env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
+  if (deployment === "production" || deployment === "staging") return false;
+  if (deployment === "development") return true;
+  return env.NODE_ENV !== "production";
 }
 
 function credentialsProvider(options: Parameters<typeof CredentialsProvider>[0]) {
@@ -119,7 +153,7 @@ function credentialsProvider(options: Parameters<typeof CredentialsProvider>[0])
 
 export function resolveDefaultRuntime(
   env: Record<string, string | undefined> = process.env,
-  deps?: AuthRuntimeDependencies,
+  deps: AuthRuntimeDependencies = { readStrictSecretFile },
 ): AuthRuntimeConfig {
   // Production Compose exposes only fixed file descriptors. Reuse the same
   // validated snapshot as the startup preflight so NextAuth receives the
@@ -127,7 +161,7 @@ export function resolveDefaultRuntime(
   // During `next build` the fixed descriptor is absent; instrumentation will
   // enforce the contract when the runtime starts, so keep the build import
   // side-effect free and fall back to the legacy empty production shape.
-  if (isStrictRuntime(env) && env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH && deps) {
+  if (isStrictRuntime(env) && env.NEXTAUTH_SECRET_FILE === NEXTAUTH_SECRET_PATH) {
     try {
       return assertValidAuthRuntimeEnv(env, deps);
     } catch {
@@ -139,7 +173,7 @@ export function resolveDefaultRuntime(
   // Startup instrumentation remains the authoritative error surface.
   const credentials = isStrictRuntime(env) ? null : resolveGoogleAuthCredentials(env);
   return {
-    deploymentEnvironment: readProcessEnv("NODE_ENV", env) === "production" ? "production" : "development",
+    deploymentEnvironment: resolveDeploymentEnvironmentFallback(env),
     secret: resolveAuthSecret(env, deps) ?? "",
     googleClientId: credentials?.clientId,
     googleClientSecret: credentials?.clientSecret,

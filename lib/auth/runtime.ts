@@ -168,7 +168,8 @@ export function inspectAuthRuntimeEnv(
     }
   } else {
     loadedNextAuthSecret = env.NEXTAUTH_SECRET;
-    loadedGoogleSecret = env.GOOGLE_CLIENT_SECRET;
+    const directGoogleSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+    loadedGoogleSecret = directGoogleSecret || undefined;
   }
 
   const secretResult = inspectSecret(loadedNextAuthSecret);

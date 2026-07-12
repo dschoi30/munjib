@@ -130,6 +130,18 @@ describe("auth runtime", () => {
     });
   });
 
+  it("treats a blank development Google secret as disabled", () => {
+    const inspection = inspectAuthRuntimeEnv({
+      MUNJIB_DEPLOYMENT_ENV: "development",
+      GOOGLE_CLIENT_ID: "client-id",
+      GOOGLE_CLIENT_SECRET: "   ",
+      NEXTAUTH_SECRET: generatedSecret(),
+      NEXTAUTH_URL: "http://localhost:3000",
+    });
+    expect(inspection.errors).not.toContain("GOOGLE_CLIENT_SECRET_FILE_INVALID");
+    expect(inspection.config.googleClientSecret).toBeUndefined();
+  });
+
   it("derives deterministic domain-separated runtime subkeys", () => {
     const runtime = assertValidAuthRuntimeEnv(productionEnv(), deps());
     const same = deriveAuthRuntimeSubkey(runtime, "document-cursor-v1");

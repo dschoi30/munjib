@@ -5,6 +5,8 @@ import {
   resolveGoogleAuthCredentials,
   resolveAuthSecret,
   resolveDevLoginEnabled,
+  resolveDefaultRuntime,
+  resolveTrialLoginEnabled,
 } from "@/lib/auth/config";
 
 type CredentialsAuthorizeForTest = (
@@ -79,6 +81,20 @@ describe("authOptions", () => {
     vi.stubEnv("NODE_ENV", "production");
 
     expect(resolveAuthSecret()).toBeUndefined();
+  });
+
+  it("uses the strict file reader by default for production runtime resolution", () => {
+    const env = {
+      MUNJIB_DEPLOYMENT_ENV: "production",
+      NODE_ENV: "production",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      NEXTAUTH_URL: "https://munjib.example",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    };
+
+    expect(resolveAuthSecret(env)).toBeUndefined();
+    expect(resolveDefaultRuntime(env).secret).toBe("");
   });
 
   it("uses the current app-specific session cookie name", () => {
@@ -313,6 +329,42 @@ describe("authOptions", () => {
     vi.stubEnv("GOOGLE_CLIENT_SECRET", "");
 
     expect(resolveGoogleAuthCredentials()).toBeNull();
+  });
+
+  it("resolves Google credentials from the validated production secret file", () => {
+    const env = {
+      MUNJIB_DEPLOYMENT_ENV: "production",
+      NODE_ENV: "production",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      GOOGLE_CLIENT_ID: " client-id ",
+      GOOGLE_CLIENT_SECRET_FILE: "/run/secrets/munjib_google_client_secret",
+      NEXTAUTH_URL: "https://munjib.example",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    };
+    const signingSecret = Buffer.from("signing-secret-with-more-than-32-bytes-123").toString("base64url");
+    expect(resolveGoogleAuthCredentials(env, {
+      readStrictSecretFile: ({ logicalName }) =>
+        logicalName === "NEXTAUTH_SECRET" ? signingSecret : "provider-secret-abcdefghijkl",
+    })).toEqual({ clientId: "client-id", clientSecret: "provider-secret-abcdefghijkl" });
+  });
+
+  it.each([
+    [{ MUNJIB_DEPLOYMENT_ENV: "development", NODE_ENV: "production" }, true],
+    [{ MUNJIB_DEPLOYMENT_ENV: "staging", NODE_ENV: "production" }, false],
+    [{ MUNJIB_DEPLOYMENT_ENV: "production", NODE_ENV: "production" }, false],
+    [{ NODE_ENV: "development" }, true],
+    [{ NODE_ENV: "production" }, false],
+  ])("gates the trial login on deployment environment", (env, expected) => {
+    expect(resolveTrialLoginEnabled(env)).toBe(expected);
+  });
+
+  it("keeps explicit development deployment ahead of NODE_ENV for trial registration", () => {
+    expect(resolveDefaultRuntime({
+      MUNJIB_DEPLOYMENT_ENV: "development",
+      NODE_ENV: "production",
+      NEXTAUTH_URL: "http://localhost:3000",
+    }).deploymentEnvironment).toBe("development");
   });
 
   it("rejects Google sign-ins when Google did not verify the email", async () => {

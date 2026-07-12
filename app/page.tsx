@@ -1,5 +1,9 @@
 import { LoginForm } from "@/app/login/login-form";
-import { resolveDevLoginEnabled, resolveGoogleAuthCredentials } from "@/lib/auth/config";
+import {
+  resolveDevLoginEnabled,
+  resolveGoogleAuthCredentials,
+  resolveTrialLoginEnabled,
+} from "@/lib/auth/config";
 import { ensureCurrentUserWorkspaceAndRedirect } from "@/lib/auth/provisioning";
 import { getCurrentUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
@@ -20,6 +24,7 @@ export default async function HomePage() {
       <LoginForm
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+        isTrialLoginEnabled={resolveTrialLoginEnabled()}
         isSignupEnabled={false}
       />
     </main>

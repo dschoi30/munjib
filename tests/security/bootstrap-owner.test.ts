@@ -104,6 +104,44 @@ describe("owner bootstrap", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
+  it("normalizes the bootstrap owner email before the transaction upsert", async () => {
+    const passwordHash = await hashPassword("operator-password");
+    const tx = createTransactionMock();
+    const transaction = vi.fn(
+      async (callback: (value: ReturnType<typeof createTransactionMock>) => unknown) => callback(tx),
+    );
+
+    await runBootstrapOwner({
+      env: {
+        MUNJIB_OWNER_BOOTSTRAP_ENABLED: "true",
+        MUNJIB_OWNER_BOOTSTRAP_INPUT_FILE: "/run/secrets/munjib_owner_bootstrap",
+      },
+      uid: 0,
+      inputBuffer: Buffer.from(JSON.stringify({
+        email: " Owner@Example.COM ",
+        displayName: "Owner",
+        organizationName: "Munjib",
+        organizationSlug: "munjib",
+        workspaceName: "Handbook",
+        workspaceSlug: "handbook",
+        passwordHash,
+      })),
+      prisma: {
+        $transaction: transaction as unknown as BootstrapOwnerPrisma["$transaction"],
+      },
+      unlink: vi.fn(),
+    });
+
+    expect(tx.user.findUnique).toHaveBeenCalledWith({
+      where: { email: "owner@example.com" },
+      select: { id: true, passwordHash: true },
+    });
+    expect(tx.user.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { email: "owner@example.com" },
+      create: expect.objectContaining({ email: "owner@example.com" }),
+    }));
+  });
+
   it("requires the root uid and explicit one-shot flag before reading or writing", async () => {
     const readInputFile = vi.fn();
     const transaction = vi.fn();

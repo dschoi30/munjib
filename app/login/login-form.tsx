@@ -20,6 +20,7 @@ type LoginFormProps = {
   callbackUrl?: string;
   isDevLoginEnabled?: boolean;
   isGoogleLoginEnabled?: boolean;
+  isTrialLoginEnabled?: boolean;
   isSignupEnabled?: boolean;
 };
 
@@ -47,6 +48,7 @@ export function LoginForm({
   callbackUrl = defaultPostLoginCallbackUrl,
   isDevLoginEnabled = true,
   isGoogleLoginEnabled = true,
+  isTrialLoginEnabled = true,
   isSignupEnabled = false,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
@@ -145,6 +147,7 @@ export function LoginForm({
   async function onTrialSignIn() {
     setErrorKey(null);
     setStatusKey(null);
+    if (!isTrialLoginEnabled) return;
     setActiveAction("trial");
     const result = await signIn("trial", {
       redirect: false,
@@ -316,24 +319,26 @@ export function LoginForm({
 
         <div className="my-4 h-px bg-border" aria-hidden="true" />
 
-        <button
-          type="button"
-          onClick={onTrialSignIn}
-          disabled={isSubmitting}
-          aria-busy={activeAction === "trial"}
-          aria-label={`${t("login.trial")} ${t("login.noSignup")}`}
-          className="flex w-full items-center gap-3 rounded-md px-7 py-1 text-left transition-colors duration-fast hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-ink-muted text-ink-muted">
-            <Compass className="size-3.5" />
-          </span>
-          <span className="min-w-0 flex-1 text-sm font-medium text-ink">
-            {t("login.trial")}
-          </span>
-          <span className="shrink-0 rounded-full border border-border bg-surface px-3 py-0.5 text-xs font-medium text-ink-muted">
-            {t("login.noSignup")}
-          </span>
-        </button>
+        {isTrialLoginEnabled ? (
+          <button
+            type="button"
+            onClick={onTrialSignIn}
+            disabled={isSubmitting}
+            aria-busy={activeAction === "trial"}
+            aria-label={`${t("login.trial")} ${t("login.noSignup")}`}
+            className="flex w-full items-center gap-3 rounded-md px-7 py-1 text-left transition-colors duration-fast hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full border border-ink-muted text-ink-muted">
+              <Compass className="size-3.5" />
+            </span>
+            <span className="min-w-0 flex-1 text-sm font-medium text-ink">
+              {t("login.trial")}
+            </span>
+            <span className="shrink-0 rounded-full border border-border bg-surface px-3 py-0.5 text-xs font-medium text-ink-muted">
+              {t("login.noSignup")}
+            </span>
+          </button>
+        ) : null}
 
         {errorKey ? <p className="mt-4 text-sm text-danger">{t(errorKey)}</p> : null}
         {statusKey ? <p className="mt-4 text-sm text-ink-muted">{t(statusKey)}</p> : null}

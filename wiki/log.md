@@ -2736,6 +2736,11 @@ links:
 
 # 2026-07-13T00:00:00+09:00 - security
 
+- Result: PR #174 review follow-up closes six auth-runtime/login gaps. `resolveAuthSecret()` and `resolveDefaultRuntime()` now default to the strict file reader; Google UI availability uses the validated file-backed runtime without exposing secret bytes; trial provider/UI registration share the development deployment gate; development treats a blank direct Google secret as disabled; and owner bootstrap lowercases/validates email before upsert.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
+- Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
+- Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.
+
 - Result: auth-runtime browser oracle no longer skips database assertions. Each run creates an isolated pgvector PostgreSQL container/network, deploys the schema, connects the production runner and Playwright to that disposable database, and removes it in `finally`.
 - Coverage: unlinked OAuth zero-row policy, exact linked account with token/profile media stripping, historical external image session null projection, and cleanup are now fail-closed DB-backed checks.
 - Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]].

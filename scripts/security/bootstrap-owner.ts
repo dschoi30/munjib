@@ -110,6 +110,19 @@ function assertInputPath(path: string): asserts path is string {
   }
 }
 
+function normalizeOwnerEmail(value: string): string {
+  const email = value.trim().toLowerCase();
+  if (
+    !email ||
+    email.length > 320 ||
+    /[\u0000-\u001f\u007f]/.test(email) ||
+    !email.includes("@")
+  ) {
+    fail("OWNER_BOOTSTRAP_EMAIL_INVALID");
+  }
+  return email;
+}
+
 function readBoundedInputFile(path: string, expectedUid: number): Buffer {
   assertInputPath(path);
 
@@ -209,7 +222,7 @@ function decodePayload(input: Buffer): BootstrapOwnerPayload {
   }
 
   return {
-    email: value.email as string,
+    email: normalizeOwnerEmail(value.email as string),
     displayName: value.displayName as string,
     organizationName: value.organizationName as string,
     organizationSlug: value.organizationSlug as string,

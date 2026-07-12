@@ -60,6 +60,7 @@ function renderLoginForm(
   options: {
     isDevLoginEnabled?: boolean;
     isGoogleLoginEnabled?: boolean;
+    isTrialLoginEnabled?: boolean;
     isSignupEnabled?: boolean;
   } = {},
 ) {
@@ -69,6 +70,7 @@ function renderLoginForm(
         {...(callbackUrl ? { callbackUrl } : {})}
         isDevLoginEnabled={options.isDevLoginEnabled ?? true}
         isGoogleLoginEnabled={options.isGoogleLoginEnabled ?? true}
+        isTrialLoginEnabled={options.isTrialLoginEnabled ?? true}
         isSignupEnabled={options.isSignupEnabled ?? true}
       />
     </I18nProvider>,
@@ -122,6 +124,13 @@ describe("LoginForm", () => {
     expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
     expect(screen.queryByText("or")).toBeNull();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+  });
+
+  it("hides the trial provider when the server deployment gate is off", async () => {
+    renderLoginForm(undefined, { isTrialLoginEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Explore demo (read-only) No signup" })).toBeNull();
   });
 
   it("submits email and password through the password provider", async () => {

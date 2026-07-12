@@ -171,6 +171,19 @@ The closed production invariant is intentionally explicit: Google accepts only t
 are not persisted or copied into session state. These terms are the stable
 handoff language for Leaf 2, Leaf 7, Leaf 8, and Leaf 13.
 
+### Runtime-backed login availability
+
+The server-rendered login surfaces use the same validated runtime snapshot as
+NextAuth for Google availability. In staging/production, `GOOGLE_CLIENT_SECRET`
+must remain absent from the environment; `resolveGoogleAuthCredentials()` reads
+the fixed secret file through the strict reader and returns only a boolean-safe
+credential projection for provider registration/UI gating. A blank direct Google
+secret is treated as disabled in development, while strict runtimes remain
+fail-closed. The trial provider and its `Explore demo` button are both limited to
+the development deployment gate, so production/staging never advertise an
+unregistered provider. The root-gated owner bootstrap normalizes email addresses
+before the transactional upsert, matching the password login normalizer.
+
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
