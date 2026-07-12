@@ -271,6 +271,18 @@ describe("Docker web service configuration", () => {
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
   });
 
+  test("non-root production runtime uses a writable Corepack cache", () => {
+    const dockerfile = read("Dockerfile");
+    const runnerStart = dockerfile.indexOf("FROM deps AS runner");
+    const devStart = dockerfile.indexOf("FROM deps AS dev");
+    const runnerStage = dockerfile.slice(runnerStart, devStart);
+
+    expect(runnerStart).toBeGreaterThanOrEqual(0);
+    expect(devStart).toBeGreaterThan(runnerStart);
+    expect(runnerStage).toContain("ENV HOME=/tmp");
+    expect(runnerStage).toContain("ENV COREPACK_HOME=/tmp/.cache/node/corepack");
+  });
+
   test("Dockerfile sets Sentry build values in the builder stage before building", () => {
     const dockerfile = read("Dockerfile");
     const builderStart = dockerfile.indexOf("FROM deps AS builder");

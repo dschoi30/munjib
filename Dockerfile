@@ -45,6 +45,12 @@ FROM deps AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+# The non-root web/auth-preflight UID cannot write the default Corepack cache
+# under /.cache. Keep package-manager metadata in the writable tmpfs instead;
+# this contains no application secrets and makes both `pnpm start` and the
+# isolated preflight command deterministic after production pruning.
+ENV HOME=/tmp
+ENV COREPACK_HOME=/tmp/.cache/node/corepack
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
