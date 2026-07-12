@@ -26,6 +26,13 @@ links:
 - Source evidence: `Dockerfile`, `docker-compose.yml`, `tests/docker/compose.test.ts`, and failed deploy job `86688811222` from run `29206956032`.
 - Verification: focused Docker Compose/Dockerfile contract tests and image startup/preflight deployment rerun.
 
+## 2026-07-13T14:40:00+09:00 - non-interactive runner prune contract
+
+- Result: Issue #175 also runs the final production `pnpm prune --prod` with `CI=true`, preventing pnpm's no-TTY module-removal prompt from aborting the runner image build after the writable Corepack cache change.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and failed CI job `86690155611`.
+- Verification: focused Docker contract tests, TypeScript, and wiki gates.
+
 ## 2026-07-13T13:55:00+09:00 - test-maintenance
 
 - Result: strict secret-file non-disclosure regression assertion now uses a distinctive multi-digit uid sentinel, avoiding false positives from one-digit root uid values matching stack line numbers.

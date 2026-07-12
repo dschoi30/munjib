@@ -66,7 +66,7 @@ COPY --from=builder /app/lib/security ./lib/security
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
-  && pnpm prune --prod
+  && CI=true pnpm prune --prod
 
 EXPOSE 3000
 
