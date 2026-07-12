@@ -47,7 +47,7 @@ export function LoginForm({
   callbackUrl = defaultPostLoginCallbackUrl,
   isDevLoginEnabled = true,
   isGoogleLoginEnabled = true,
-  isSignupEnabled = true,
+  isSignupEnabled = false,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");

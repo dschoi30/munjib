@@ -4,11 +4,24 @@ import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
 import { prisma } from "@/lib/db/client";
-import { authorizeExistingGoogleAccount, isGoogleProviderAccountUnclaimed } from "@/lib/auth/google-existing-account";
+import { getReadableAttachment } from "@/lib/attachments/service";
+import {
+  isGoogleProviderAccountUnclaimed,
+  resolveExistingGoogleAccount,
+  type GoogleAccountIdentity,
+  type GoogleProfileIdentity,
+} from "@/lib/auth/google-existing-account";
 import { closedSignupAdapter } from "@/lib/auth/closed-signup-adapter";
-import { authDownstreamHooks } from "@/lib/auth/downstream/contract";
+import {
+  authDownstreamHooks,
+  type AuthDownstreamHooks,
+} from "@/lib/auth/downstream/contract";
 import { minimalGooglePersistenceAdapter } from "@/lib/auth/minimal-google-account";
-import { sanitizeGoogleJwtToken, sanitizeInternalSessionImage } from "@/lib/auth/session-image";
+import {
+  extractInternalAttachmentId,
+  sanitizeGoogleJwtToken,
+  sanitizeInternalSessionImage,
+} from "@/lib/auth/session-image";
 import type { AuthRuntimeConfig } from "@/lib/auth/runtime";
 import { verifyPassword } from "@/lib/auth/passwords";
 
@@ -63,31 +76,70 @@ function resolveDefaultRuntime(): AuthRuntimeConfig {
   };
 }
 
-async function resolveAuthorizationBoundSessionImage(userId: string): Promise<string | null> {
+function isValidAuthSubject(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    value.trim() === value &&
+    !/[\u0000-\u001f\u007f]/.test(value)
+  );
+}
+
+export function projectGoogleOAuthCallback(input: {
+  account: unknown;
+  profile: unknown;
+}): {
+  account: GoogleAccountIdentity;
+  profile: GoogleProfileIdentity;
+} | null {
+  const account = input.account as { provider?: unknown; providerAccountId?: unknown } | null | undefined;
+  if (account?.provider !== "google" || !isValidAuthSubject(account.providerAccountId)) {
+    return null;
+  }
+  const profile = input.profile as { email?: unknown; email_verified?: unknown } | null | undefined;
+  return {
+    account: {
+      provider: "google",
+      providerAccountId: account.providerAccountId,
+    },
+    profile: {
+      email: typeof profile?.email === "string" ? profile.email : null,
+      email_verified: profile?.email_verified === true,
+    },
+  };
+}
+
+async function resolveAuthorizationBoundSessionImage(
+  userId: string,
+  downstreamHooks: AuthDownstreamHooks,
+): Promise<string | null> {
   const current = await prisma.user.findUnique({
     where: { id: userId },
     select: { image: true },
   });
   if (!current) return null;
-  const attachmentDelegate = (prisma as unknown as {
-    attachment?: { findMany?: (input: unknown) => Promise<Array<{ id: string }>> };
-  }).attachment;
-  const attachmentIds = attachmentDelegate?.findMany
-    ? await attachmentDelegate
-        .findMany({ where: { uploadedById: userId }, select: { id: true } })
-        .then((rows) => new Set(rows.map((row) => row.id)))
-        .catch(() => new Set<string>())
-    : new Set<string>();
-  const reducedImage = await authDownstreamHooks.reduceSessionImage({
+  const reducedImage = await downstreamHooks.reduceSessionImage({
     userId,
     databaseValue: current.image,
   });
-  return sanitizeInternalSessionImage(reducedImage ?? current.image, attachmentIds);
+  const candidateImage = reducedImage ?? current.image;
+  const attachmentId = extractInternalAttachmentId(candidateImage);
+  if (!attachmentId) return null;
+  try {
+    await getReadableAttachment(attachmentId, userId);
+  } catch {
+    return null;
+  }
+  return sanitizeInternalSessionImage(candidateImage, new Set([attachmentId]));
 }
 
-export function buildAuthOptions(runtime: AuthRuntimeConfig): NextAuthOptions {
+export function buildAuthOptions(
+  runtime: AuthRuntimeConfig,
+  downstreamHooks: AuthDownstreamHooks = authDownstreamHooks,
+): NextAuthOptions {
   const baseAdapter = PrismaAdapter(prisma) as Adapter;
-  const guardedCandidateAdapter = closedSignupAdapter(baseAdapter, authDownstreamHooks);
+  const guardedCandidateAdapter = closedSignupAdapter(baseAdapter, downstreamHooks);
   const adapter = minimalGooglePersistenceAdapter(guardedCandidateAdapter);
 
   const providers = [
@@ -109,8 +161,8 @@ export function buildAuthOptions(runtime: AuthRuntimeConfig): NextAuthOptions {
         if (!user?.passwordHash) return null;
         const verified = await verifyPassword(password, user.passwordHash);
         if (!verified) return null;
-        await authDownstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PASSWORD" });
-        if (!(await authDownstreamHooks.admitPasswordCredentials({ userId: user.id, email }))) {
+        await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PASSWORD" });
+        if (!(await downstreamHooks.admitPasswordCredentials({ userId: user.id, email }))) {
           return null;
         }
         return { id: user.id, email: user.email, name: user.name, image: null };
@@ -130,7 +182,7 @@ export function buildAuthOptions(runtime: AuthRuntimeConfig): NextAuthOptions {
             select: { id: true, email: true, name: true, image: true },
           });
           if (!user) return null;
-          await authDownstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
+          await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
           return { id: user.id, email: user.email, name: user.name, image: null };
         },
       }),
@@ -144,7 +196,7 @@ export function buildAuthOptions(runtime: AuthRuntimeConfig): NextAuthOptions {
           if (!email) return null;
           const user = await prisma.user.findUnique({ where: { email } });
           if (!user) return null;
-          await authDownstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
+          await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
           return { id: user.id, email: user.email, name: user.name, image: null };
         },
       }),
@@ -176,35 +228,54 @@ export function buildAuthOptions(runtime: AuthRuntimeConfig): NextAuthOptions {
     callbacks: {
       async signIn({ account, profile }) {
         if (account?.provider !== "google") return true;
-        if (!(await authDownstreamHooks.guardOAuthStart({ provider: "google" }))) return false;
-        const guardedIdentity = await authDownstreamHooks.guardOAuthIdentity({
-          account,
-          profile: profile as { email?: string; email_verified?: boolean } | undefined,
-        });
+        const projected = projectGoogleOAuthCallback({ account, profile });
+        if (!projected) return false;
+        if (!(await downstreamHooks.guardOAuthStart({ provider: "google" }))) return false;
+        const guardedIdentity = await downstreamHooks.guardOAuthIdentity(projected);
         if (!guardedIdentity) return false;
-        const existing = await authorizeExistingGoogleAccount({
-          account,
-          profile: profile as { email?: string; email_verified?: boolean } | undefined,
-        });
-        if (existing) return true;
-        if (!(await isGoogleProviderAccountUnclaimed(account))) return false;
-        return authDownstreamHooks.authorizeCandidateGoogle({
+        const existing = await resolveExistingGoogleAccount(projected);
+        if (existing) {
+          await downstreamHooks.assertDurableAuthState({
+            userId: existing.userId,
+            surface: "GOOGLE_EXISTING",
+          });
+          return true;
+        }
+        if (!(await isGoogleProviderAccountUnclaimed(projected.account))) return false;
+        return downstreamHooks.authorizeCandidateGoogle({
           guardedIdentity,
-          account,
-          profile: profile as { email?: string; email_verified?: boolean },
+          account: projected.account,
+          profile: projected.profile,
         });
       },
       async jwt({ token, user }) {
-        if (user?.id) token.sub = user.id;
-        const reduced = sanitizeGoogleJwtToken(token as Record<string, unknown>);
-        return authDownstreamHooks.resolveJwtClaims(reduced) as typeof token;
+        const original = { ...(token as Record<string, unknown>) };
+        if (isValidAuthSubject(user?.id)) original.sub = user.id;
+        const expectedSub = isValidAuthSubject(original.sub) ? original.sub : undefined;
+        if (expectedSub) {
+          await downstreamHooks.assertDurableAuthState({ userId: expectedSub, surface: "JWT" });
+        }
+        const reduced = sanitizeGoogleJwtToken(original);
+        const resolved = await downstreamHooks.resolveJwtClaims(reduced);
+        const finalClaims = sanitizeGoogleJwtToken(
+          resolved && typeof resolved === "object" ? { ...resolved } : {},
+        );
+        if (expectedSub) finalClaims.sub = expectedSub;
+        else delete finalClaims.sub;
+        return finalClaims as typeof token;
       },
       async session({ session, token }) {
-        const userId = token.sub;
+        const userId = isValidAuthSubject(token.sub) ? token.sub : null;
+        if (session.user) session.user.image = null;
         if (session.user && userId) {
           session.user.id = userId;
-          session.user.image = await resolveAuthorizationBoundSessionImage(userId);
-          await authDownstreamHooks.resolveSessionOutput({ userId });
+          await downstreamHooks.assertDurableAuthState({ userId, surface: "SESSION" });
+          try {
+            session.user.image = await resolveAuthorizationBoundSessionImage(userId, downstreamHooks);
+          } catch {
+            session.user.image = null;
+          }
+          await downstreamHooks.resolveSessionOutput({ userId });
         }
         return session;
       },

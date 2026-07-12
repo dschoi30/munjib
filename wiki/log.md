@@ -31,6 +31,13 @@ links:
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `lib/auth/downstream/contract.ts`, `lib/auth/downstream/leaf2.ts`, `lib/auth/downstream/leaf4.ts`, `lib/auth/downstream/leaf7.ts`, `lib/auth/downstream/leaf8.ts`, `lib/auth/config.ts`.
 
+## 2026-07-13T00:55:00+09:00 - Task 2 auth review hardening
+
+- Result: fixed review findings in the closed-signup boundary. Every server-side `LoginForm` caller and the component default now keep signup closed; Google callback data is projected to a token-free identity allowlist before downstream hooks; linked Google, JWT, and session callbacks invoke durable-state guards; JWT claims are sanitized again after hooks and restore the validated subject; session images are authorized through `getReadableAttachment()` workspace/document ACL checks and fail closed.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/google-existing-account.ts`, `lib/auth/session-image.ts`, `app/login/login-form.tsx`, `app/page.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/auth/auth-hardening-regressions.test.ts`, `tests/auth/login-gate-callers.test.ts`.
+- Verification: focused auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-07-12T00:00:00+09:00 - security runtime
 
 - Added the strict file-backed signing/provider-secret and deployment auth runtime contract; evidence: `lib/security/strict-secret-file.ts`, `lib/auth/runtime.ts`, and their tests.

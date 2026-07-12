@@ -10,6 +10,10 @@ export type GoogleProfileIdentity = {
   email_verified?: boolean;
 };
 
+export type ExistingGoogleAccount = {
+  userId: string;
+};
+
 const accountIdentitySelect = {
   userId: true,
   access_token: true,
@@ -32,12 +36,12 @@ function hasGoogleIdentity(account: GoogleAccountIdentity | null | undefined): a
   );
 }
 
-export async function authorizeExistingGoogleAccount(input: {
+export async function resolveExistingGoogleAccount(input: {
   account: GoogleAccountIdentity | null | undefined;
   profile: GoogleProfileIdentity | null | undefined;
-}): Promise<boolean> {
+}): Promise<ExistingGoogleAccount | null> {
   if (!hasGoogleIdentity(input.account) || input.profile?.email_verified !== true) {
-    return false;
+    return null;
   }
 
   const linked = await prisma.account.findUnique({
@@ -50,7 +54,7 @@ export async function authorizeExistingGoogleAccount(input: {
     select: accountIdentitySelect,
   });
 
-  return Boolean(
+  if (
     linked &&
       linked.access_token === null &&
       linked.refresh_token === null &&
@@ -58,8 +62,18 @@ export async function authorizeExistingGoogleAccount(input: {
       linked.session_state === null &&
       linked.scope === null &&
       linked.token_type === null &&
-      linked.expires_at === null,
-  );
+      linked.expires_at === null
+  ) {
+    return { userId: linked.userId };
+  }
+  return null;
+}
+
+export async function authorizeExistingGoogleAccount(input: {
+  account: GoogleAccountIdentity | null | undefined;
+  profile: GoogleProfileIdentity | null | undefined;
+}): Promise<boolean> {
+  return Boolean(await resolveExistingGoogleAccount(input));
 }
 
 /** Separate no-row query used before a candidate hook can be considered. */

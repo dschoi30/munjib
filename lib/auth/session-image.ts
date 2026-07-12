@@ -6,9 +6,16 @@ export function sanitizeInternalSessionImage(
   value: unknown,
   authorizedAttachmentIds?: ReadonlySet<string> | readonly string[] | null,
 ): string | null {
-  if (typeof value !== "string" || value.length === 0) return null;
   const ids = new Set(authorizedAttachmentIds ?? []);
   if (ids.size === 0) return null;
+  const decodedId = extractInternalAttachmentId(value);
+  if (!decodedId || !ids.has(decodedId)) return null;
+  return `/api/attachments/${decodedId}`;
+}
+
+/** Parse only the canonical internal attachment path; authorization is separate. */
+export function extractInternalAttachmentId(value: unknown): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
   if (!value.startsWith("/api/attachments/") || value.includes("?") || value.includes("#")) {
     return null;
   }
@@ -26,12 +33,11 @@ export function sanitizeInternalSessionImage(
     decodedId.includes("\\") ||
     decodedId.includes("?") ||
     decodedId.includes("#") ||
-    !/^[A-Za-z0-9_-]+$/.test(decodedId) ||
-    !ids.has(decodedId)
+    !/^[A-Za-z0-9_-]+$/.test(decodedId)
   ) {
     return null;
   }
-  return `/api/attachments/${decodedId}`;
+  return decodedId;
 }
 
 /** Remove provider-controlled media claims before a token can be persisted. */

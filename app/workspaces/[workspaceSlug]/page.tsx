@@ -73,6 +73,7 @@ export default async function WorkspacePage({
           callbackUrl={`/workspaces/${workspaceSlug}`}
           isDevLoginEnabled={resolveDevLoginEnabled()}
           isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+          isSignupEnabled={false}
         />
       </main>
     );

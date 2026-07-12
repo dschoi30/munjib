@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 60
+source_count: 63
 tags:
   - munjib
   - auth
@@ -70,6 +70,17 @@ and already-linked Google controls while omitting account creation.
 The frozen downstream hook contract also reserves durable-state, password-admission,
 OAuth start/identity, JWT/session-output, auth-mutation, and candidate policy slots;
 Leaf 1 owns their call order and final media postcondition.
+
+The callback boundary projects Google account/profile input to only
+`provider`/`providerAccountId` and `email`/`email_verified` before any downstream
+hook runs. Linked Google sign-in, JWT creation, and session projection each call
+the durable-auth-state hook before returning protected state. JWT output is
+sanitized again after downstream claims resolution and restores the original
+validated `sub`, so hooks cannot add provider media or replace identity. Session
+avatar resolution uses `getReadableAttachment()` with the current user's
+workspace/document ACL; missing, malformed, or unauthorized attachment images
+fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
+gate, and the component default is also fail closed.
 
 ## Session helper
 

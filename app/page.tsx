@@ -20,6 +20,7 @@ export default async function HomePage() {
       <LoginForm
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+        isSignupEnabled={false}
       />
     </main>
   );

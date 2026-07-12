@@ -15,6 +15,7 @@ describe("development login gate callers", () => {
 
     expect(source).toContain("resolveDevLoginEnabled");
     expect(source).toContain("isDevLoginEnabled={resolveDevLoginEnabled()}");
+    expect(source).toContain("isSignupEnabled={false}");
   });
 
   it("passes the closed signup gate from the login page", () => {
