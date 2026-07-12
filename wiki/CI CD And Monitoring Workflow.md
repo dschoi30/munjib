@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-04
-source_count: 53
+updated: 2026-07-12
+source_count: 54
 tags:
   - munjib
   - workflow
@@ -75,6 +75,19 @@ The smoke launcher also keeps the generated auth secret out of process argv and
 installs cleanup before fixture/password setup; RSC body bounds are captured in
 a route interception before response fulfillment. Static contract tests cover
 these review-critical lifecycle guarantees.
+
+Issue #171 adds a production dependency audit gate for the same runtime graph.
+`package.json` uses exact pnpm overrides for `postcss` 8.5.10, `uuid` 11.1.1,
+`minimatch@10.2.5>brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0.
+The scoped brace override preserves the callable `minimatch@3` development
+path while patching the production/Sentry `minimatch@10` path. The lockfile
+must resolve those patched versions on production paths while keeping the
+Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
+generation, minimatch major compatibility, and Sentry/OpenTelemetry module
+loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
+paginated Next.js advisory checker, both immediately after the frozen install.
+The checker receives only the workflow's read-only `GH_TOKEN` for GitHub's
+advisory API.
 
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
