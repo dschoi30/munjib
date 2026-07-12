@@ -66,6 +66,10 @@ roots, and a paginated advisory gate without persisting advisory response bodies
 Production runtime smoke fixtures read passwords only from a file and emit no
 credential material.
 
+The smoke launcher also keeps the generated auth secret out of process argv and
+installs cleanup before fixture/password setup; a static contract test covers
+these review-critical lifecycle guarantees.
+
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps

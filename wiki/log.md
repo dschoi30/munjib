@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:10:00+09:00 - secure runtime smoke lifecycle review fixes
+
+- Result: Leaf 3 Task 2 smoke launcher now exports the transient auth secret through the child environment without an argv assignment and installs guarded cleanup immediately after temporary work creation.
+- Coverage: Partial initialization paths safely skip absent server/fixture state; a static Vitest contract protects both no-secret-argv and cleanup ordering guarantees.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh`, `tests/security/security-runtime-smoke-script.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green focused smoke-launcher Vitest and `bash -n` shell syntax check.
+
 ## 2026-07-12T21:00:00+09:00 - secure runtime production smoke coverage
 
 - Result: Leaf 3 Task 2 adds two browser-level auth/RSC smoke tests, an explicit `PLAYWRIGHT_TEST_BASE_URL` external-server seam, and a production-like `next start` runner with `MUNJIB_ENABLE_DEV_LOGIN=false`.
