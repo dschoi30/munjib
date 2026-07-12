@@ -2827,6 +2827,10 @@ links:
   `pnpm exec tsc --noEmit --pretty false`, and migration ledger checker.
 
 - Result: PR #174 review follow-up closes six auth-runtime/login gaps. `resolveAuthSecret()` and `resolveDefaultRuntime()` now default to the strict file reader; Google UI availability uses the validated file-backed runtime without exposing secret bytes; trial provider/UI registration share the development deployment gate; development treats a blank direct Google secret as disabled; and owner bootstrap lowercases/validates email before upsert.
+- Follow-up: Leaf 13B role bootstrap now hardens every pre-existing role's
+  login/escalation attributes, grants schema-owner migration authority before
+  the first migration, captures caller libpq role state before RESET ROLE, and
+  revokes Web/RAG access to the append-only `_prisma_migrations` ledger.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
 - Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
 - Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.

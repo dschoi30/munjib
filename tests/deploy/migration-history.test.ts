@@ -34,6 +34,9 @@ describe("append-only production migration history", () => {
     expect(validateMigrationHistory([row("20260712000000_first", "a", { finishedAt: null })], image).ok).toBe(false);
     expect(validateMigrationHistory([row("20260712000000_first", "a", { rolledBackAt: "2026-07-13T01:00:00.000Z" })], image).ok).toBe(false);
     expect(validateMigrationHistory([row("20260712000000_first", "a", { appliedStepsCount: 0 })], image).ok).toBe(false);
+    expect(validateMigrationHistory([
+      { migrationName: "20260712000000_first", checksum: "a" } as MigrationHistoryRow,
+    ], image).ok).toBe(false);
   });
 
   it("rejects edited image history and nonmonotonic pending names", () => {
@@ -54,5 +57,10 @@ describe("append-only production migration history", () => {
     expect(computeMigrationChecksum("CREATE TABLE example (id text);\n")).toBe(
       "0f2ff3eb179f68a046851c493a4dfee182ea8d8ffdc092715d830a261a341056",
     );
+  });
+
+  it("admits a broker-provided production export through the same prefix validator", () => {
+    const image = [row("20260712000000_first", "a"), row("20260712010000_second", "b")];
+    expect(validateMigrationHistory([image[0]!], image)).toMatchObject({ ok: true, pending: ["20260712010000_second"] });
   });
 });

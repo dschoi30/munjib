@@ -7,7 +7,7 @@ SET search_path = pg_catalog, public, munjib_extensions;
 
 ALTER SCHEMA public OWNER TO munjib_schema_owner;
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
-REVOKE CREATE ON SCHEMA public FROM munjib_migrator, munjib_web, munjib_rag;
+REVOKE ALL ON SCHEMA public FROM munjib_migrator, munjib_web, munjib_rag;
 GRANT USAGE ON SCHEMA public TO munjib_web, munjib_rag;
 
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
@@ -25,6 +25,10 @@ REVOKE munjib_schema_owner FROM munjib_web;
 REVOKE munjib_schema_owner FROM munjib_rag;
 REVOKE munjib_journal_owner FROM munjib_web, munjib_rag;
 REVOKE munjib_journal_exporter FROM munjib_web, munjib_rag;
+
+-- Prisma's migration ledger is append-only and belongs to the migrator path.
+REVOKE SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER
+  ON TABLE "_prisma_migrations" FROM munjib_web, munjib_rag;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE munjib_schema_owner IN SCHEMA public
   REVOKE ALL ON TABLES FROM PUBLIC;

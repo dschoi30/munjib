@@ -94,12 +94,20 @@ export interface MigrationLedger {
   format: "munjib-migration-ledger-v1";
   version: 1;
   migrations: MigrationLedgerEntry[];
+  allocations?: MigrationLedgerEntry[];
 }
 
 export function readMigrationLedger(path: string): MigrationLedger {
   const parsed = JSON.parse(readFileSync(path, "utf8")) as MigrationLedger;
   if (parsed.format !== "munjib-migration-ledger-v1" || parsed.version !== 1 || !Array.isArray(parsed.migrations)) {
     throw new Error("invalid migration ledger");
+  }
+  const entries = [...parsed.migrations, ...(parsed.allocations ?? [])];
+  if (entries.some((entry) => !entry.migrationName || (entry.checksum !== undefined && !/^[a-f0-9]{64}$/.test(entry.checksum)))) {
+    throw new Error("invalid migration ledger entry");
+  }
+  if (entries.some((entry, index) => index > 0 && entries[index - 1]!.migrationName >= entry.migrationName)) {
+    throw new Error("migration ledger is not strictly monotonic");
   }
   return parsed;
 }

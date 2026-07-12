@@ -11,21 +11,21 @@
       "destination": "/var/lib/munjib/database-role-v1/roles-only.sql",
       "type": "regular",
       "mode": "0400",
-      "sha256": "fcc62d2b81adfa9e7d6ea7c9a87841c5cc564c463161b93bf9f2dddaad8c47d9"
+      "sha256": "24186b011cd0a2cc3e50dc7938f5f1900d16dda8836b0f03ca0d97c47937427f"
     },
     {
       "source": "deploy/postgres/finalize-ownership.sql",
       "destination": "/var/lib/munjib/database-role-v1/finalize-ownership.sql",
       "type": "regular",
       "mode": "0400",
-      "sha256": "79aeccc2c62a94cfb1a7eaf4708500d2454757ec8ec531a0e0fa67a2fb1572ba"
+      "sha256": "c956c53dcd0b20f0cd1e82bb67d9ecaa12c8b779524bcae9ee2471b9fcaf8a42"
     },
     {
       "source": "deploy/postgres/verify-role-separation.sql",
       "destination": "/var/lib/munjib/database-role-v1/verify-role-separation.sql",
       "type": "regular",
       "mode": "0400",
-      "sha256": "020ce59a395cbb0bb16bd430c6aa84a3a200a6d4711395b38b0f26bd1aa825be"
+      "sha256": "5c2e0f3679a06a4a8b903d27f56ff50adc6540fe55c8227b2013de4d90fd1a47"
     }
   ]
 }

@@ -25,11 +25,14 @@ export function classifyMigration(sql: string): MigrationClass {
 
 export function validateMigrationSql(sql: string, requestedPhase: MigrationPhase): MigrationPolicyResult {
   const phase = classifyMigration(sql);
-  if (phase === "INVALID") return { ok: false, phase: requestedPhase, reason: "ambiguous or destructive migration" };
+  if (phase === "INVALID") return { ok: false, phase: requestedPhase, reason: "ambiguous migration" };
   if (phase !== requestedPhase) return { ok: false, phase: requestedPhase, reason: `migration classified as ${phase}` };
   const body = stripComments(sql);
   if (requestedPhase === "EXPAND" && destructive.test(body)) {
     return { ok: false, phase: requestedPhase, reason: "expand migration contains destructive SQL" };
+  }
+  if (requestedPhase === "CONTRACT" && !/^\s*--\s*phase:\s*contract\s*$/im.test(sql)) {
+    return { ok: false, phase: requestedPhase, reason: "contract migration requires an explicit phase marker" };
   }
   if (requestedPhase === "CONTRACT" && /\bDROP\s+DATABASE\b|\bTRUNCATE\b|\bDELETE\s+FROM\b/i.test(body)) {
     return { ok: false, phase: requestedPhase, reason: "contract migration contains unsafe data/destructive SQL" };

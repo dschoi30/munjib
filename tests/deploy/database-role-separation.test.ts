@@ -15,6 +15,11 @@ describe("database authority separation", () => {
     expect(sql).toContain("GRANT munjib_schema_owner TO munjib_migrator");
     expect(sql).toContain("SET ROLE munjib_schema_owner");
     expect(sql).toContain("pg_catalog,public,munjib_extensions");
+    expect(sql).toContain("ALTER SCHEMA public OWNER TO munjib_schema_owner");
+    expect(sql).toContain("GRANT USAGE, CREATE ON SCHEMA public TO munjib_schema_owner");
+    expect(sql).toMatch(/ALTER ROLE\s+munjib_migrator\s+LOGIN[\s\S]*NOINHERIT[\s\S]*NOBYPASSRLS/i);
+    expect(sql).toMatch(/ALTER ROLE\s+munjib_web\s+LOGIN[\s\S]*NOINHERIT[\s\S]*NOBYPASSRLS/i);
+    expect(sql).toMatch(/ALTER ROLE\s+munjib_journal_owner\s+NOLOGIN[\s\S]*NOBYPASSRLS/i);
   });
 
   it("keeps web and RAG away from DDL, ownership, truncation, and journal authority", () => {
@@ -24,6 +29,8 @@ describe("database authority separation", () => {
     expect(sql).toMatch(/REVOKE[\s\S]*TRUNCATE[\s\S]*FROM\s+munjib_web/i);
     expect(sql).toMatch(/REVOKE[\s\S]*munjib_schema_owner[\s\S]*FROM\s+munjib_web/i);
     expect(sql).toMatch(/REVOKE[\s\S]*munjib_schema_owner[\s\S]*FROM\s+munjib_rag/i);
+    expect(sql).toMatch(/REVOKE[\s\S]*ON TABLE\s+"?_prisma_migrations"?[\s\S]*FROM\s+munjib_web/i);
+    expect(sql).toMatch(/REVOKE[\s\S]*ON TABLE\s+"?_prisma_migrations"?[\s\S]*FROM\s+munjib_web,\s+munjib_rag/i);
     expect(sql).not.toMatch(/CREATE EXTENSION\s+pgcrypto/i);
     expect(sql).not.toMatch(/security_journal|genesis/i);
   });
@@ -33,6 +40,7 @@ describe("database authority separation", () => {
     expect(sql).toContain("SET search_path = pg_catalog, public, munjib_extensions");
     expect(sql).toContain("RESET ROLE");
     expect(sql).toContain("RESET SESSION AUTHORIZATION");
+    expect(sql).toContain("caller_requested_role");
     expect(sql).toContain("current_setting('role'");
     expect(sql).toContain("current_setting('search_path'");
     expect(sql).toContain("pg_catalog");

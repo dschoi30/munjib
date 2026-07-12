@@ -37,6 +37,9 @@ describe("database-role-v1 host bundle", () => {
     expect(source).toContain("manifest.files");
     expect(source).toContain("regular");
     expect(source).toMatch(/mode.*0400|0400.*mode/);
+    expect(source).toContain("lstatSync");
+    expect(source).toContain("realpathSync");
+    expect(source).toContain("duplicate bundle destination");
     expect(source).not.toMatch(/process\.argv\.slice|checkout|git\s+(show|archive)|exec\.Command|sudo|docker/i);
   });
 

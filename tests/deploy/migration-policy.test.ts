@@ -17,6 +17,7 @@ describe("expand/contract migration policy", () => {
       .toBe("CONTRACT");
     expect(validateMigrationSql("-- phase: contract\nALTER TABLE \"NewThing\" DROP COLUMN \"old\";", "CONTRACT").ok).toBe(true);
     expect(validateMigrationSql("-- phase: contract\nDROP DATABASE obsidian_clone;", "CONTRACT").ok).toBe(false);
+    expect(classifyMigration("ALTER TABLE \"NewThing\" DROP COLUMN \"old\";")).toBe("INVALID");
     expect(validateMigrationSql("ALTER TABLE \"NewThing\" DROP COLUMN \"old\";", "CONTRACT").ok).toBe(false);
   });
 

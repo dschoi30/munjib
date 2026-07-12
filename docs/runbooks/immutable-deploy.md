@@ -16,8 +16,15 @@ credentials, host topology, release evidence, or journal contents.
 
 ```bash
 pnpm exec tsx scripts/deploy/check-migration-history.ts
+# When a broker-provided, public-safe export of _prisma_migrations is available:
+pnpm exec tsx scripts/deploy/check-migration-history.ts <production-history.json>
 pnpm exec tsx scripts/deploy/check-expand-contract.ts <migration.sql> EXPAND
 ```
+
+Without a production-history export the checker reports the ledger and pending
+allocation as `production_prefix=not_provided`; it does not claim a live database
+admission. The broker's signed operation must provide the JSON rows to activate
+the exact prefix/checksum gate before migration.
 
 ## Role boundary
 
@@ -25,8 +32,11 @@ The root-held bootstrap operation creates a `NOLOGIN` schema owner, a
 `NOINHERIT` migration login, and separate `NOINHERIT` Web/RAG logins. Only the
 fixed migration operation may set `ROLE munjib_schema_owner`. Web and RAG have
 application DML/read privileges only; they cannot create schema objects,
-truncate, alter ownership, or use journal roles. Journal owner/exporter roles
-remain `NOLOGIN` placeholders until their independently reviewed migration.
+truncate, alter ownership, or use journal roles. The bootstrap assigns public
+schema ownership to the schema owner before the first migration; Web/RAG are
+then denied all access to Prisma's `_prisma_migrations` ledger. Journal
+owner/exporter roles remain `NOLOGIN` placeholders until their independently
+reviewed migration.
 
 All entrypoints clear caller-provided libpq variables, use one fixed credential
 file, and set `search_path` with `pg_catalog` first. The migration operation is

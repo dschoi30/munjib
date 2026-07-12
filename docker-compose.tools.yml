@@ -10,7 +10,7 @@ services:
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
-        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS
+        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGPASSFILE PGSSLMODE PGSSLROOTCERT PGSSLCERT PGSSLKEY PGAPPNAME PGCHANNELBINDING
         export PGOPTIONS='-c search_path=pg_catalog,public,munjib_extensions'
         export PGPASSFILE=/run/secrets/munjib_rag_credential
         exec pnpm run db:rag:index

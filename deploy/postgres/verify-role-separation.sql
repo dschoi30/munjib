@@ -3,6 +3,16 @@
 -- PRE_JOURNAL verification is intentionally read-only and must run before
 -- any journal extension, journal table, or genesis row exists.
 SET search_path = pg_catalog, public, munjib_extensions;
+DO $$
+DECLARE
+  caller_requested_role text := pg_catalog.current_setting('role', true);
+BEGIN
+  IF caller_requested_role IS NOT NULL
+     AND caller_requested_role NOT IN ('', 'none') THEN
+    RAISE EXCEPTION 'caller-provided libpq role is not permitted';
+  END IF;
+END
+$$;
 RESET ROLE;
 RESET SESSION AUTHORIZATION;
 
@@ -15,7 +25,8 @@ BEGIN
   IF effective_role NOT IN ('postgres', 'munjib_schema_owner', 'munjib_migrator') THEN
     RAISE EXCEPTION 'unexpected verification role';
   END IF;
-  IF requested_role IS NOT NULL AND requested_role <> '' AND effective_role <> 'munjib_migrator' THEN
+  IF requested_role IS NOT NULL
+     AND requested_role NOT IN ('', 'none') THEN
     RAISE EXCEPTION 'caller-provided libpq role is not permitted';
   END IF;
   IF effective_path NOT LIKE 'pg_catalog,%' THEN
