@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T13:55:00+09:00 - test-maintenance
+
+- Result: strict secret-file non-disclosure regression assertion now uses a distinctive multi-digit uid sentinel, avoiding false positives from one-digit root uid values matching stack line numbers.
+- Pages: [[index|Wiki Index]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts`, `pnpm exec tsc --noEmit`.
+
 ## 2026-07-13T05:00:00+09:00 - Issue #155 PR #174 storage and Langfuse review follow-up
 
 - Result: production Compose now runs a bounded fixed `alpine:3.22` `storage-init` one-shot before non-root `web`; it creates `/app/storage/attachments`, repairs ownership to UID/GID `10001:10001`, and preserves the named volume across restarts. The auth-preflight service remains isolated without a storage mount.

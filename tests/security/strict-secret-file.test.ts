@@ -68,6 +68,9 @@ const expectedUid =
     : typeof process.getuid === "function"
       ? process.getuid()
       : 0;
+// Keep the non-disclosure assertion specific without using a one-digit uid
+// (which would match incidental line numbers when the suite runs as root).
+const nonDisclosingUid = expectedUid + 100_000_003;
 
 type StatKind = "directory" | "file" | "symlink" | "other";
 
@@ -258,13 +261,13 @@ describe("readStrictSecretFile", () => {
 
   it("keeps failures non-disclosing", () => {
     resetFs();
-    fsState.descriptorStat = stat("file", { uid: expectedUid + 1, size: 99 });
+    fsState.descriptorStat = stat("file", { uid: nonDisclosingUid, size: 99 });
     const error = expectCode(() => readStrictSecretFile(input()), "SECRET_FILE_OWNER_INVALID");
     const rendered = `${String(error)} ${JSON.stringify(error)} ${error.stack ?? ""}`;
     expect(rendered).not.toContain(secretPath);
     expect(rendered).not.toContain("super-secret-value");
     expect(rendered).not.toContain("99");
-    expect(rendered).not.toContain(String(expectedUid + 1));
+    expect(rendered).not.toContain(String(nonDisclosingUid));
     expect(rendered).not.toContain("0400");
     expect(error.logicalName).toBe("TEST_SECRET");
   });
