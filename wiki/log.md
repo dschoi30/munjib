@@ -22,7 +22,7 @@ links:
 ## 2026-07-13T14:20:00+09:00 - non-root preflight Corepack cache boundary
 
 - Result: Issue #175 sets the production runner's `HOME` and `COREPACK_HOME` to `/tmp` so UID `10001:10001` can execute the pruned image's `pnpm` shim for both web startup and isolated auth-preflight without writing to `/.cache`.
-- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[manifest|Wiki Manifest]].
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
 - Source evidence: `Dockerfile`, `docker-compose.yml`, `tests/docker/compose.test.ts`, and failed deploy job `86688811222` from run `29206956032`.
 - Verification: focused Docker Compose/Dockerfile contract tests and image startup/preflight deployment rerun.
 
