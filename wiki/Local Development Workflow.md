@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-04
+updated: 2026-07-13
 source_count: 65
 tags:
   - munjib
@@ -44,6 +44,8 @@ pnpm run start
 ```
 
 `security:auth-preflight` emits only a redacted `AUTH_PREFLIGHT_OK` summary and exits non-zero for invalid auth runtime configuration. Node startup performs the same fail-closed validation before initializing server instrumentation, so `pnpm run dev` and `pnpm run start` cannot continue with invalid auth runtime settings.
+
+Owner 계정의 최초 생성은 production seed와 분리된 one-shot operator 명령이다. 운영자가 root 권한으로 `MUNJIB_OWNER_BOOTSTRAP_ENABLED=true`와 `MUNJIB_OWNER_BOOTSTRAP_INPUT_FILE=/run/secrets/<single-file>`을 설정하고 `pnpm run security:bootstrap-owner`를 실행한다. 입력 파일은 root 소유 regular file이며 mode는 `0400` 또는 `0600`만 허용되고, 최대 4096 bytes를 같은 descriptor에서 읽는다. JSON에는 email, display name, organization/workspace name·slug와 Task 2A의 canonical `munjib-scrypt$v=1$...` password hash만 넣는다. transaction commit 뒤 입력 파일을 즉시 unlink하며 command는 값 없이 `OWNER_BOOTSTRAP_OK`만 출력한다.
 
 DB 관련 명령:
 
@@ -178,7 +180,7 @@ docker compose run --rm tools pnpm run db:seed
 
 ## Seed와 로그인
 
-`pnpm run db:seed`는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. Seed는 반복 실행된 로컬 E2E가 fixture document/folder를 rename/archive한 뒤에도 Welcome, Engineering Runbook, Operations folder, Operations Runbook의 canonical title/slug/path/status를 복구한다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
+`pnpm run db:seed`는 `MUNJIB_DEPLOYMENT_ENV=development`에서만 동작하며 staging/production에서는 `PRODUCTION_SEED_FORBIDDEN`으로 Prisma 연결 전에 종료된다. Seed는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. Seed는 반복 실행된 로컬 E2E가 fixture document/folder를 rename/archive한 뒤에도 Welcome, Engineering Runbook, Operations folder, Operations Runbook의 canonical title/slug/path/status를 복구한다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
 
 ## Feature start
 

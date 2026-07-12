@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T01:45:00+09:00 - production seed and owner bootstrap boundary
+
+- Result: Prisma seed now fails closed outside explicit development, while the root/operator-file-gated owner bootstrap creates only one owner user, organization, organization membership, workspace, and workspace membership in one transaction and unlinks its protected input only after commit.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/security/production-seed-guard.ts`, `prisma/seed.ts`, `scripts/security/bootstrap-owner.ts`, `tests/security/production-seed-guard.test.ts`, and `tests/security/bootstrap-owner.test.ts`.
+- Verification: focused seed/bootstrap Vitest suite, production seed guard command, and TypeScript/wiki sync gates.
+
 ## 2026-07-12T00:00:00+09:00 - auth startup and operator preflight
 
 - Result: Made Node startup and `security:auth-preflight` consume the same redacted auth runtime validator.

@@ -1,5 +1,6 @@
 import { PrismaClient, WorkspaceRole } from "@prisma/client";
 import { hashPassword, parsePasswordHash } from "../lib/auth/passwords";
+import { assertProductionSeedForbidden } from "../lib/security/production-seed-guard";
 import {
   backfillLaunchMembershipsForAllWorkspaces,
   ensureWorkspaceLaunchMemberships,
@@ -7,6 +8,7 @@ import {
 } from "../lib/workspaces/membership-bootstrap";
 import { reconcileDocumentLinks } from "../lib/wiki-links/reconcile";
 
+assertProductionSeedForbidden(process.env);
 const prisma = new PrismaClient();
 
 const launchAccountPasswords = {
