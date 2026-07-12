@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -58,10 +59,33 @@ describe("database authority separation", () => {
       expect(source).toContain("DATABASE_URL=\"postgresql://");
       expect(source).toContain("search_path=pg_catalog,public,munjib_extensions");
       expect(source).not.toContain("PGPASSFILE");
-      expect(source).not.toContain("PGOPTIONS");
+      expect(source).toMatch(/unset[^\n]*PGOPTIONS/);
+      expect(source).not.toMatch(/^\s+PGOPTIONS\s*:/m);
     }
     expect(migrator).toContain("role=munjib_schema_owner");
     expect(tools).not.toContain("role=munjib_schema_owner");
+  });
+
+  it("keeps shell variables and URL options intact through docker compose config", () => {
+    const env = {
+      ...process.env,
+      WEB_IMAGE: "example/web@sha256:" + "a".repeat(64),
+      POSTGRES_IMAGE: "example/postgres@sha256:" + "b".repeat(64),
+    };
+    for (const file of ["docker-compose.migrator.yml", "docker-compose.tools.yml"]) {
+      let config: string;
+      try {
+        config = execFileSync("docker", ["compose", "-f", file, "config"], { env, encoding: "utf8" });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        throw error;
+      }
+      expect(config).toContain("credential_encoded=\"$$(node");
+      expect(config).toContain("test -n \"$$credential_encoded\"");
+      expect(config).toContain("$${credential_encoded}");
+      expect(config).toContain("options=$$(node");
+      expect(config).not.toContain('credential_encoded=""');
+    }
   });
 
   it("does not embed credentials or create journal/genesis objects in the pre-journal bundle", () => {

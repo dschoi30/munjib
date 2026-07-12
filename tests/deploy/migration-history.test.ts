@@ -82,4 +82,9 @@ describe("append-only production migration history", () => {
     const image = [row("20260712000000_first", "a"), row("20260712010000_second", "b")];
     expect(validateMigrationHistory(sortMigrationHistoryRows(rows), image).ok).toBe(true);
   });
+
+  it("uses code-unit ordering for mixed-case names regardless of host locale", () => {
+    const rows = [row("a", "a"), row("A", "b")];
+    expect(sortMigrationHistoryRows(rows).map((entry) => entry.migrationName)).toEqual(["A", "a"]);
+  });
 });

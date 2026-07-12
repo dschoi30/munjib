@@ -2838,6 +2838,14 @@ links:
   password/options into `DATABASE_URL` from fixed secret files, migration rows
   sort canonically before validation, policy regexes stay within statements,
   and `_prisma_migrations` ACL revocation is guarded for fresh databases.
+- Final deterministic-order follow-up: migration history sorting now uses the
+  same locale-independent code-unit comparator as filesystem migration ordering,
+  with mixed-case regression coverage.
+- Compose interpolation follow-up: runtime credential variables are escaped for
+  Compose (`$$`) and inherited `PGOPTIONS` is explicitly unset before URL option
+  construction; `docker compose config` coverage prevents empty interpolation.
+- Migration policy follow-up: quoted semicolons are outside the accepted static
+  grammar and fail closed instead of crossing statement boundaries.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
 - Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
 - Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.

@@ -44,7 +44,9 @@ export function computeMigrationChecksum(sql: string | Uint8Array): string {
 }
 
 export function sortMigrationHistoryRows(rows: MigrationHistoryRow[]): MigrationHistoryRow[] {
-  return [...rows].sort((left, right) => left.migrationName.localeCompare(right.migrationName));
+  return [...rows].sort((left, right) =>
+    left.migrationName < right.migrationName ? -1 : left.migrationName > right.migrationName ? 1 : 0,
+  );
 }
 
 function isSuccessful(row: MigrationHistoryRow): boolean {
