@@ -66,7 +66,17 @@ COPY --from=builder /app/lib/security ./lib/security
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
+  && generated_prisma_client="$(find node_modules -type d -path '*/.prisma/client' -print | head -n 1)" \
+  && test -n "$generated_prisma_client" \
+  && rm -rf /tmp/prisma-client \
+  && mkdir -p /tmp/prisma-client \
+  && cp -a "$generated_prisma_client/." /tmp/prisma-client/ \
   && CI=true pnpm prune --prod \
+  && rm -rf node_modules/.prisma \
+  && mkdir -p node_modules/.prisma/client \
+  && cp -a /tmp/prisma-client/. node_modules/.prisma/client/ \
+  && node -e 'require("@prisma/client")' \
+  && rm -rf /tmp/prisma-client \
   && chown -R 10001:10001 /tmp/.cache
 
 EXPOSE 3000

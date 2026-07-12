@@ -284,6 +284,31 @@ describe("Docker web service configuration", () => {
     expect(runnerStage).toContain("chown -R 10001:10001 /tmp/.cache");
   });
 
+  test("retains and validates the generated Prisma client after pruning", () => {
+    const dockerfile = read("Dockerfile");
+    const runnerStart = dockerfile.indexOf("FROM deps AS runner");
+    const devStart = dockerfile.indexOf("FROM deps AS dev");
+    const runnerStage = dockerfile.slice(runnerStart, devStart);
+    const generateIndex = runnerStage.indexOf("RUN pnpm run db:generate");
+    const pruneIndex = runnerStage.indexOf("CI=true pnpm prune --prod");
+    const guardIndex = runnerStage.indexOf("node -e 'require(\"@prisma/client\")'");
+
+    expect(generateIndex).toBeGreaterThanOrEqual(0);
+    expect(pruneIndex).toBeGreaterThan(generateIndex);
+    expect(guardIndex).toBeGreaterThan(pruneIndex);
+    expect(runnerStage).toContain(
+      "generated_prisma_client=\"$(find node_modules -type d -path '*/.prisma/client' -print | head -n 1)\"",
+    );
+    expect(runnerStage).toContain(
+      'cp -a "$generated_prisma_client/." /tmp/prisma-client/',
+    );
+    expect(runnerStage).toContain("rm -rf node_modules/.prisma");
+    expect(runnerStage).toContain(
+      "cp -a /tmp/prisma-client/. node_modules/.prisma/client/",
+    );
+    expect(runnerStage).toContain("node -e 'require(\"@prisma/client\")'");
+  });
+
   test("Dockerfile sets Sentry build values in the builder stage before building", () => {
     const dockerfile = read("Dockerfile");
     const builderStart = dockerfile.indexOf("FROM deps AS builder");
