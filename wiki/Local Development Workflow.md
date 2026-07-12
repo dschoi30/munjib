@@ -35,6 +35,16 @@ pnpm run test:e2e
 pnpm run test:e2e:ui
 ```
 
+Auth runtime startup/preflight commands:
+
+```bash
+pnpm run security:auth-preflight
+pnpm run dev
+pnpm run start
+```
+
+`security:auth-preflight` emits only a redacted `AUTH_PREFLIGHT_OK` summary and exits non-zero for invalid auth runtime configuration. Node startup performs the same fail-closed validation before initializing server instrumentation, so `pnpm run dev` and `pnpm run start` cannot continue with invalid auth runtime settings.
+
 DB 관련 명령:
 
 ```bash

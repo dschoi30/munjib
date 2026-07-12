@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T00:00:00+09:00 - auth startup and operator preflight
+
+- Result: Made Node startup and `security:auth-preflight` consume the same redacted auth runtime validator.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `instrumentation.ts`, `scripts/security/auth-preflight.ts`, `tests/security/auth-preflight.test.ts`, and `lib/auth/runtime.ts`.
+- Verification: `pnpm exec vitest run tests/security/auth-preflight.test.ts tests/auth/runtime.test.ts` and a quiet non-printing secret scan.
+
 ## 2026-07-13T01:10:00+09:00 - versioned and bounded password verification
 
 - Result: password rows now accept only the reviewed v1 or exact legacy envelope; fixed-cost scrypt work uses a process-local two-active/eight-queued/two-second permit, unknown/passwordless/malformed accounts receive one random valid dummy record, and verified legacy values upgrade through an exact-byte compare-and-swap before session issuance.
