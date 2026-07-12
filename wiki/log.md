@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T02:18:00+09:00 - Google overlay and production login contract review fix
+
+- Result: deploy Google overlay selection now parses the dotenv client id, treats quoted and unquoted empty values as disabled, trims whitespace, and requires both a non-empty client id and deployment secret. Current CI/CD, auth, local-development, and index pages now state that production Compose hard-codes "MUNJIB_ENABLE_DEV_LOGIN=false"; a host env override cannot reopen the development login path.
+- Pages: [[CI CD And Monitoring Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5 review follow-up, ".github/workflows/ci-cd.yml", "tests/github-actions/ci-cd.test.ts", "docker-compose.yml", "docker-compose.dev.yml", and "lib/auth/runtime.ts".
+- Verification: focused Docker/Actions Vitest suite, extracted workflow parser regression cases for "", '', unquoted ids, and comments, TypeScript, Compose config validation, and wiki sync gates.
+
 ## 2026-07-13T02:10:00+09:00 - production auth preflight and fixed secret mounts
 
 - Result: production Compose now uses fixed `/etc/munjib/secrets` host descriptors and literal `/run/secrets` container paths, pins Web/auth-preflight to loopback publication and UID `10001:10001`, and enables Google only through `docker-compose.google.yml`. Deploy order is secret install → isolated auth-preflight → preflight removal → migration → RAG index → Web replacement.

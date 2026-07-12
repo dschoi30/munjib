@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -158,6 +159,40 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(publicHealthStep).toBeDefined();
     expect(publicHealthStep?.run).toBe(
       "curl --fail --silent --show-error --location --max-time 20 https://munjib.andrewchoi.link >/dev/null",
+    );
+  });
+
+  test("enables Google only for non-empty dotenv client id and secret", () => {
+    const deploy = workflow.jobs.deploy;
+    const deployStep = deploy.steps.find((step: { uses?: string }) =>
+      step.uses?.startsWith("appleboy/ssh-action@"),
+    );
+    const script = deployStep?.with.script as string;
+
+    expect(script).not.toContain(
+      "sudo grep -Eq '^GOOGLE_CLIENT_ID=[^[:space:]]'",
+    );
+    expect(script).toContain('google_client_id="$(');
+    expect(script).toContain('single=sprintf("%c", 39)');
+    expect(script).toContain(
+      'if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then',
+    );
+
+    const parser = script.match(
+      /sudo awk -v key=GOOGLE_CLIENT_ID '([\s\S]*?)' "\$DEPLOY_ENV_FILE"/,
+    )?.[1];
+    expect(parser).toBeDefined();
+    const readClientId = (line: string) =>
+      execFileSync("awk", ["-v", "key=GOOGLE_CLIENT_ID", parser as string], {
+        input: line + "\n",
+        encoding: "utf8",
+      }).trim();
+
+    expect(readClientId('GOOGLE_CLIENT_ID=""')).toBe("");
+    expect(readClientId("GOOGLE_CLIENT_ID=''")).toBe("");
+    expect(readClientId("GOOGLE_CLIENT_ID=client-id")).toBe("client-id");
+    expect(readClientId(" GOOGLE_CLIENT_ID =  client-id  # comment")).toBe(
+      "client-id",
     );
   });
 });

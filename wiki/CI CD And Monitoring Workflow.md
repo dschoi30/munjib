@@ -154,7 +154,7 @@ Secret install은 `umask 077` 아래에서 protected SSH channel의 process envi
 
 OCI server production env는 repository checkout 안의 `.env`나 `.env.docker`가 아니라 host-local secret file `/etc/munjib/env`가 기준이다. Deploy workflow는 모든 remote Compose 명령에 `docker compose --env-file "$DEPLOY_ENV_FILE"`를 명시하고, 실제 compose interpolation은 이 파일과 workflow가 넘기는 release env를 함께 사용한다. `docker-compose.yml`의 `environment:` 항목은 `${VAR:-}` 형태라서 service-level `env_file`만 추가하면 빈 문자열이 우선되어 provider credentials가 계속 비는 문제가 생길 수 있다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
 
-Issue #143의 email-only development login은 production에서 기본 disabled다. Controlled temporary access가 필요할 때만 `/etc/munjib/env`에 `MUNJIB_ENABLE_DEV_LOGIN=true`를 명시하며, `docker-compose.yml`은 이 값을 `web` service runtime env로 전달한다.
+Issue #143의 email-only development login은 production에서 항상 disabled다. Production `docker-compose.yml`은 `MUNJIB_ENABLE_DEV_LOGIN=false`를 literal로 고정하고, strict auth runtime validator도 production의 `true` 값을 거부한다. 따라서 `/etc/munjib/env`에서 이 값을 바꿔도 production의 temporary login path는 열리지 않는다. 개발용 direct env와 기본 `true` 값은 `docker-compose.dev.yml`에만 남긴다.
 
 ```text
 NEXTAUTH_URL="https://munjib.andrewchoi.link"
@@ -186,7 +186,7 @@ Production compose는 `postgres`, `web`, `tools` service를 가진다.
 - `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
 
 `web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
-`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate이므로 production-style `web` runtime env에만 전달한다.
+`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate다. Production-style `web`은 `false`를 literal로 고정하고, local development override만 이 값을 직접 설정한다.
 
 Dockerfile stages:
 

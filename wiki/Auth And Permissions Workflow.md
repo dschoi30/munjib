@@ -21,14 +21,16 @@ links:
 
 # Auth And Permissions Workflow
 
-Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 계속 gate되어 production에서는 명시 env 없이 열리지 않는다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
+Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 개발 환경 전용이며 production에서는 항상 닫혀 있다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
 
 ## Development login gate
 
 Issue #143 keeps the email-only `development-login` Credentials provider for
 development but gates authentication with `MUNJIB_ENABLE_DEV_LOGIN`. Local development
 defaults to enabled so seed users can keep signing in, while production defaults
-to disabled unless an operator explicitly sets `MUNJIB_ENABLE_DEV_LOGIN=true`.
+to disabled in production; the production Compose contract hard-codes
+`MUNJIB_ENABLE_DEV_LOGIN=false`, while the development override defaults it to
+enabled.
 When disabled, the provider returns `null` before querying `User`, and the login
 form does not render the development shortcut section.
 
@@ -37,10 +39,11 @@ gate rather than a statically baked build-time value. `/`, `/login`, and the
 unauthenticated `/workspaces/[workspaceSlug]` entry point all pass the server
 gate into `LoginForm`.
 
-Production-style Docker also forwards `MUNJIB_ENABLE_DEV_LOGIN` into the `web`
-service environment, so a host-local `/etc/munjib/env` override can reach the
-runtime auth helper when operators intentionally enable the temporary
-development login path.
+Production-style Docker sets `MUNJIB_ENABLE_DEV_LOGIN=false` literally. A
+host-local `/etc/munjib/env` override cannot enable the temporary development
+login path; the strict production runtime validator rejects an attempted
+`true` value. Only `docker-compose.dev.yml` forwards a direct development
+override.
 
 이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
 
