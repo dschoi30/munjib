@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-07
+updated: 2026-07-13
 source_count: 115
 tags:
   - munjib
@@ -29,6 +29,8 @@ links:
 이 page는 document editor의 `AI에게 묻기` direct-context request와 workspace chatbot의 saved DB content RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 
 Issue #104 구현 이후 Ask AI의 기본 service path는 현재 저장 문서 direct-context answer다. `askDocumentQuestion()`은 selected document re-indexing, question embedding, vector search, graph-aware scope expansion, rerank를 호출하지 않고, 현재 저장 markdown을 `buildCurrentDocumentContext()`로 pack한 뒤 `buildDirectDocumentPrompt()`와 LangChain answer chain으로 답한다. Direct Ask는 chat/Langfuse generation config만 읽으므로 embedding provider/model/dimension env가 invalid여도 현재 문서 답변 자체를 막지 않는다. 기존 `DocumentChunk` pgvector store는 제거하지 않고, workspace chatbot이 사용자+workspace conversation history와 함께 readable workspace document retrieval에 재사용한다. Chatbot은 authenticated API route와 우측 하단 floating UI로 `getOrCreateWorkspaceChatThread()`, streaming `/assistant/messages`, `resetWorkspaceChatThread()`를 감싼다. Issue #105는 answer-chain token streaming, workspace-chat service preparation/finalization seam, `/assistant/messages` NDJSON route events, and React client stream rendering을 추가했다.
+
+Ask AI와 saved-document preview는 `components/markdown/safe-media.tsx`의 공통 renderer를 사용한다. Independently supplied `allowedAttachmentIds`에 포함된 `/api/attachments/<id>`만 `<img>`로 렌더하고, model-authored external links/images는 URL을 `href`/`src`/preload attribute로 내보내지 않는 click-only button으로 바꾼다. 버튼 클릭은 `ExternalMediaInterstitial`에서 origin과 외부 이동 경고를 먼저 보여주며, 사용자가 확인했을 때만 `window.open(..., "_blank", "noopener,noreferrer")`를 호출한다. ReactMarkdown raw HTML은 `skipHtml`로 무시한다. Leaf 11 external-image-import은 version-0 passive slot으로만 예약되어 fetch, navigation, storage, import action을 수행하지 않는다.
 
 ## Process Map
 

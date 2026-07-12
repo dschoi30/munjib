@@ -16,6 +16,11 @@ import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useTagSearch } from "@/components/app-shell";
 import {
+  ExternalMediaInterstitial,
+  type ExternalMediaRequest,
+} from "@/components/markdown/external-media-interstitial";
+import { buildSafeMarkdownComponents } from "@/components/markdown/safe-media";
+import {
   getMarkdownBeforeFirstHeading,
   getSharedMarkdownDefinitions,
   markdownInlineToPlainText,
@@ -65,66 +70,52 @@ export function MarkdownPreview({
     [linkCandidates],
   );
   const attachmentIdSet = useMemo(() => new Set(attachmentIds), [attachmentIds]);
+  const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
   const markdownComponents = useMemo<Components>(
-    () => ({
-      p: ({ children }) => (
-        <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</p>
-      ),
-      li: ({ children }) => (
-        <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</li>
-      ),
-      h1: ({ node: _node, children, ...props }) => (
-        <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h1>
-      ),
-      h2: ({ node: _node, children, ...props }) => (
-        <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h2>
-      ),
-      h3: ({ node: _node, children, ...props }) => (
-        <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h3>
-      ),
-      h4: ({ node: _node, children, ...props }) => (
-        <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h4>
-      ),
-      h5: ({ node: _node, children, ...props }) => (
-        <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h5>
-      ),
-      h6: ({ node: _node, children, ...props }) => (
-        <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h6>
-      ),
-      blockquote: ({ node: _node, children, ...props }) => (
-        <blockquote {...props}>
-          {renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}
-        </blockquote>
-      ),
-      td: ({ node: _node, children, ...props }) => (
-        <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</td>
-      ),
-      th: ({ node: _node, children, ...props }) => (
-        <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</th>
-      ),
-      a: ({ href, children }) => {
-        const className =
-          "text-primary underline underline-offset-2 hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-visible)]";
-        return href?.startsWith("?document=") ? (
-          <Link href={href} className={className}>
-            {children}
-          </Link>
-        ) : (
-          <a href={href} className={className}>
-            {children}
-          </a>
-        );
-      },
-      img: ({ node: _node, src, alt, ...props }) => {
-        const attachmentId = getInternalAttachmentId(typeof src === "string" ? src : undefined);
-
-        if (attachmentId && !attachmentIdSet.has(attachmentId)) {
-          return alt ? <span>{alt}</span> : null;
-        }
-
-        return <img {...props} src={src} alt={alt ?? ""} />;
-      },
-    }),
+    () => {
+      const textComponents: Components = {
+        p: ({ children }) => (
+          <p>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</p>
+        ),
+        li: ({ children }) => (
+          <li>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</li>
+        ),
+        h1: ({ node: _node, children, ...props }) => (
+          <h1 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h1>
+        ),
+        h2: ({ node: _node, children, ...props }) => (
+          <h2 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h2>
+        ),
+        h3: ({ node: _node, children, ...props }) => (
+          <h3 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h3>
+        ),
+        h4: ({ node: _node, children, ...props }) => (
+          <h4 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h4>
+        ),
+        h5: ({ node: _node, children, ...props }) => (
+          <h5 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h5>
+        ),
+        h6: ({ node: _node, children, ...props }) => (
+          <h6 {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</h6>
+        ),
+        blockquote: ({ node: _node, children, ...props }) => (
+          <blockquote {...props}>
+            {renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}
+          </blockquote>
+        ),
+        td: ({ node: _node, children, ...props }) => (
+          <td {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</td>
+        ),
+        th: ({ node: _node, children, ...props }) => (
+          <th {...props}>{renderTagSearchChildren(children, tagSearch?.requestTagSearch, tagSearchLabel)}</th>
+        ),
+      };
+      return buildSafeMarkdownComponents({
+        allowedAttachmentIds: attachmentIdSet,
+        components: textComponents,
+        onExternalMediaRequest: setExternalRequest,
+      });
+    },
     [attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
@@ -197,44 +188,42 @@ export function MarkdownPreview({
   }, [registerHeadingExpander, unfoldHeadingAncestors]);
 
   return (
-    <div className="markdown-preview min-w-0 p-5">
-      {foldTree.sections.length > 0 ? (
-        <>
-          {leadingMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-              {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
-            </ReactMarkdown>
-          ) : null}
-          {foldTree.sections.map((section) => (
-            <MarkdownPreviewSection
-              key={section.key}
-              section={section}
-              foldedKeys={foldedKeys}
-              markdownComponents={markdownComponents}
-              candidateBySlug={candidateBySlug}
-              sharedDefinitions={sharedDefinitions}
-              onToggle={toggleSection}
-            />
-          ))}
-        </>
-      ) : (
-        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
-          {renderPreviewMarkdownWithWikiLinks(
-            strippedMarkdown.trim().length > 0 ? strippedMarkdown : `_${t("editor.nothingToPreview")}_`,
-            candidateBySlug,
-          )}
-        </ReactMarkdown>
-      )}
-    </div>
+    <>
+      <div className="markdown-preview min-w-0 p-5">
+        {foldTree.sections.length > 0 ? (
+          <>
+            {leadingMarkdown.trim().length > 0 ? (
+              <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents} skipHtml>
+                {renderPreviewChunk(leadingMarkdown, candidateBySlug, sharedDefinitions)}
+              </ReactMarkdown>
+            ) : null}
+            {foldTree.sections.map((section) => (
+              <MarkdownPreviewSection
+                key={section.key}
+                section={section}
+                foldedKeys={foldedKeys}
+                markdownComponents={markdownComponents}
+                candidateBySlug={candidateBySlug}
+                sharedDefinitions={sharedDefinitions}
+                onToggle={toggleSection}
+              />
+            ))}
+          </>
+        ) : (
+          <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents} skipHtml>
+            {renderPreviewMarkdownWithWikiLinks(
+              strippedMarkdown.trim().length > 0 ? strippedMarkdown : `_${t("editor.nothingToPreview")}_`,
+              candidateBySlug,
+            )}
+          </ReactMarkdown>
+        )}
+      </div>
+      <ExternalMediaInterstitial
+        request={externalRequest}
+        onClose={() => setExternalRequest(null)}
+      />
+    </>
   );
-}
-
-function getInternalAttachmentId(src: string | undefined) {
-  if (!src?.startsWith("/api/attachments/")) {
-    return null;
-  }
-
-  return src.slice("/api/attachments/".length).split(/[/?#]/, 1)[0] || null;
 }
 
 function getAncestorOutlineHeadingIds(id: string) {
@@ -293,14 +282,14 @@ function MarkdownPreviewSection({
             <ChevronDown className="h-4 w-4" aria-hidden="true" />
           )}
         </button>
-        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
+        <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents} skipHtml>
           {previewHeadingMarkdown}
         </ReactMarkdown>
       </div>
       {folded ? null : (
         <>
           {section.bodyMarkdown.trim().length > 0 ? (
-            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents}>
+            <ReactMarkdown remarkPlugins={previewRemarkPlugins} components={markdownComponents} skipHtml>
               {previewBodyMarkdown}
             </ReactMarkdown>
           ) : null}

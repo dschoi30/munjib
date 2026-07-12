@@ -1,0 +1,26 @@
+{
+  "slots": {
+    "leaf11-external-image-import": {
+      "version": 0,
+      "state": "RESERVED",
+      "reservedOwner": "attachment-integrity-lifecycle"
+    }
+  },
+  "artifacts": {
+    "components/markdown/safe-media.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "d3703cf08b4e0d6d9695f283cdf1c117d634d87edda41b48ea3edf593fd3a733"
+    },
+    "components/markdown/external-media-interstitial.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "65a9fa53cb65917ce9459d142bcee31569b8c0ca0600157f0ade6bdeaeec7504"
+    }
+  },
+  "transitions": [
+    {
+      "from": 0,
+      "to": 1,
+      "owner": "attachment-integrity-lifecycle"
+    }
+  ]
+}

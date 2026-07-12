@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T01:10:00+0900 - security
+
+- Added shared safe Markdown media rendering for Ask AI and saved preview: authorized attachments only, click-confirmed external destinations, raw HTML disabled, and passive Leaf 11 version-0 extension seam.
+- Source evidence: `components/markdown/safe-media.tsx`, `components/markdown/external-media-interstitial.tsx`, `components/markdown/downstream/leaf11-external-image-import.tsx`, renderer tests, and `deploy/security/protected-artifact-owners.json`.
+
 ## 2026-07-13T00:40:40+0900 - security
 
 - Added a shared zero-egress Markdown media policy; external image import remains a separate explicit action.
