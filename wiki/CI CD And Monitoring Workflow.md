@@ -73,11 +73,14 @@ these review-critical lifecycle guarantees.
 
 Issue #171 adds a production dependency audit gate for the same runtime graph.
 `package.json` uses exact pnpm overrides for `postcss` 8.5.10, `uuid` 11.1.1,
-`brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0. The lockfile must
-resolve those patched versions on production paths while keeping the Next.js
-15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
-generation and Sentry/OpenTelemetry module loading; CI keeps the unfiltered
-`pnpm audit --prod` command as the release gate.
+`minimatch@10.2.5>brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0.
+The scoped brace override preserves the callable `minimatch@3` development
+path while patching the production/Sentry `minimatch@10` path. The lockfile
+must resolve those patched versions on production paths while keeping the
+Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
+generation, minimatch major compatibility, and Sentry/OpenTelemetry module
+loading; CI runs the unfiltered `pnpm audit --prod` command immediately after
+the frozen install as the release gate.
 
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 

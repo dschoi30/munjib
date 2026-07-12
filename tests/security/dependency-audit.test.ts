@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import { decode, encode } from "next-auth/jwt";
@@ -13,16 +14,18 @@ const packageJson = JSON.parse(read("package.json")) as {
 };
 const lockfile = parse(read("pnpm-lock.yaml")) as {
   packages?: Record<string, unknown>;
+  snapshots?: Record<string, { dependencies?: Record<string, string> }>;
 };
 
 const packageKeys = Object.keys(lockfile.packages ?? {});
+const snapshots = lockfile.snapshots ?? {};
 
 describe("production dependency audit remediation", () => {
   test("pins every advisory package to its patched compatibility floor", () => {
     expect(packageJson.pnpm?.overrides).toMatchObject({
       postcss: "8.5.10",
       uuid: "11.1.1",
-      "brace-expansion": "5.0.6",
+      "minimatch@10.2.5>brace-expansion": "5.0.6",
       "@opentelemetry/core": "2.8.0",
     });
   });
@@ -41,6 +44,37 @@ describe("production dependency audit remediation", () => {
 
   test("does not retain an outdated OpenTelemetry core package in the lock graph", () => {
     expect(packageKeys).not.toContain("@opentelemetry/core@2.7.1");
+  });
+
+  test("scopes brace-expansion v5 to minimatch v10 without a global override", () => {
+    expect(packageJson.pnpm?.overrides).toMatchObject({
+      "minimatch@10.2.5>brace-expansion": "5.0.6",
+    });
+    expect(packageJson.pnpm?.overrides).not.toHaveProperty("brace-expansion");
+    expect(packageKeys).toEqual(
+      expect.arrayContaining(["brace-expansion@1.1.16", "brace-expansion@5.0.6"]),
+    );
+    expect(snapshots["minimatch@3.1.5"]?.dependencies?.["brace-expansion"]).toBe(
+      "1.1.16",
+    );
+    expect(snapshots["minimatch@10.2.5"]?.dependencies?.["brace-expansion"]).toBe(
+      "5.0.6",
+    );
+  });
+
+  test("keeps minimatch 3 callable with its brace-expansion 1 API", () => {
+    const minimatchPath = join(
+      root,
+      "node_modules/.pnpm/minimatch@3.1.5/node_modules/minimatch/minimatch.js",
+    );
+    const minimatch3 = createRequire(minimatchPath)("./") as (
+      value: string,
+      pattern: string,
+    ) => boolean;
+
+    expect(typeof minimatch3).toBe("function");
+    expect(minimatch3("report.md", "{report,notes}.md")).toBe(true);
+    expect(minimatch3("image.png", "{report,notes}.md")).toBe(false);
   });
 
   test("keeps NextAuth JWT UUID generation compatible with the patched uuid package", async () => {
