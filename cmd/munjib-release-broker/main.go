@@ -21,7 +21,10 @@ const (
 	socketPath = "/run/munjib/release-broker.sock"
 	policyPath = "/var/lib/munjib/security/deploy-principal-v1.json"
 	keyPath    = "/var/lib/munjib/security/bootstrap/release-verify.pub"
+	maxConcurrentConnections = 32
 )
+
+var connectionSlots = make(chan struct{}, maxConcurrentConnections)
 
 type policy struct {
 	SubmitterUID uint32 `json:"submitterUid"`
@@ -54,7 +57,15 @@ func main() {
 			_ = raw.Close()
 			continue
 		}
-		go handle(conn)
+		select {
+		case connectionSlots <- struct{}{}:
+			go func() {
+				defer func() { <-connectionSlots }()
+				handle(conn)
+			}()
+		default:
+			_ = conn.Close()
+		}
 	}
 }
 
@@ -62,13 +73,17 @@ func listen() (net.Listener, error) {
 	// systemd socket activation is the production path. The fallback is useful for
 	// an isolated contract test and still binds only the fixed Unix path.
 	if os.Getenv("LISTEN_PID") == strconv.Itoa(os.Getpid()) && os.Getenv("LISTEN_FDS") == "1" {
-		return net.FileListener(os.NewFile(3, "munjib-release-broker"))
+		file := os.NewFile(3, "munjib-release-broker")
+		listener, err := net.FileListener(file)
+		_ = file.Close()
+		return listener, err
 	}
 	return net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
 }
 
 func handle(conn *net.UnixConn) {
 	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 	policyBytes, err := os.ReadFile(policyPath)
 	if err != nil {
 		writeResponse(conn, response{Code: "POLICY_UNAVAILABLE"})

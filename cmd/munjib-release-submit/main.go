@@ -34,8 +34,28 @@ func relay() error {
 	if err := copyBoundedFrame(conn, os.Stdin); err != nil {
 		return err
 	}
-	_, err = io.CopyN(os.Stdout, conn, MaxFrameSize+4)
+	response, err := readBoundedResponse(conn)
+	if err != nil {
+		return err
+	}
+	_, err = os.Stdout.Write(response)
 	return err
+}
+
+func readBoundedResponse(src io.Reader) ([]byte, error) {
+	var lengthBytes [4]byte
+	if _, err := io.ReadFull(src, lengthBytes[:]); err != nil {
+		return nil, err
+	}
+	length := binary.BigEndian.Uint32(lengthBytes[:])
+	if length == 0 || length > 4096 {
+		return nil, errors.New("response-size")
+	}
+	response := make([]byte, length)
+	if _, err := io.ReadFull(src, response); err != nil {
+		return nil, err
+	}
+	return append(lengthBytes[:], response...), nil
 }
 
 func copyBoundedFrame(dst *net.UnixConn, src *os.File) error {

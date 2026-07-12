@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T18:45:00+09:00 - delivery broker review hardening
+
+- Result: Leaf 13A review follow-up adds bounded broker deadlines and concurrency, framed response parsing, socket-activation descriptor cleanup, and allocation-free envelope decoding with trailing-data rejection.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A delivery broker/submitter/envelope sources and contract tests.
+- Verification: focused delivery contract tests and TypeScript compilation pass; the review fixes are on the same child PR.
+
 ## 2026-07-12T18:35:00+09:00 - least-authority delivery substrate
 
 - Result: Leaf 13A adds a public-safe delivery contract for a non-interactive submitter, peer-verified Unix-socket broker, fixed operation allowlist, and empty protected-owner registry.

@@ -38,6 +38,8 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     expect(source).toContain("MaxFrameSize");
     expect(source).toContain("/run/munjib/release-broker.sock");
     expect(source).toContain("len(os.Args) != 1");
+    expect(source).toContain("binary.BigEndian.Uint32");
+    expect(source).not.toContain("io.CopyN");
     expect(source).not.toMatch(/exec\.Command|sudo|docker/);
   });
 
@@ -47,6 +49,9 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     const verifyOnly = read("cmd/munjib-release-verify/main.go");
     expect(source).toContain("SO_PEERCRED");
     expect(source).toContain("GetsockoptUcred");
+    expect(source).toContain("SetDeadline");
+    expect(source).toContain("connectionSlots");
+    expect(source).toContain("file.Close()");
     expect(source).toContain("VERIFY_ONLY");
     expect(source).toContain("INSTALL_SUBSTRATE");
     expect(source).not.toMatch(/exec\.Command|docker|sudo/);
@@ -54,6 +59,8 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     expect(verifier).toContain("ExpectedGeneration");
     expect(verifier).toContain("ExpiresAt");
     expect(verifier).toContain("Nonce");
+    expect(verifier).toContain("bytes.NewReader");
+    expect(verifier).not.toContain("string(raw)");
     expect(verifyOnly).toContain("VerifyEnvelope");
     expect(verifyOnly).toContain("VERIFY_ONLY");
     expect(verifyOnly).not.toMatch(/exec\.Command|docker|sudo|os\.Getenv/);

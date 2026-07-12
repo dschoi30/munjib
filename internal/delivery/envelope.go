@@ -1,6 +1,7 @@
 package delivery
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -8,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 )
@@ -44,11 +46,15 @@ func VerifyEnvelope(raw []byte, publicKey ed25519.PublicKey, now time.Time) (Ver
 	if len(raw) == 0 || len(raw) > MaxEnvelopeBytes {
 		return VerifiedRequest{}, errors.New("ENVELOPE_SIZE")
 	}
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.DisallowUnknownFields()
 	var envelope Envelope
 	if err := decoder.Decode(&envelope); err != nil {
 		return VerifiedRequest{}, fmt.Errorf("ENVELOPE_JSON: %w", err)
+	}
+	var trailing struct{}
+	if err := decoder.Decode(&trailing); err != io.EOF {
+		return VerifiedRequest{}, errors.New("ENVELOPE_TRAILING_DATA")
 	}
 	if envelope.Format != "munjib-release-envelope-v1" || !allowedOperations[envelope.Operation] {
 		return VerifiedRequest{}, errors.New("ENVELOPE_OPERATION")
