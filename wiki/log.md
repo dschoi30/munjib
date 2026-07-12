@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T21:35:00+09:00 - secure runtime smoke health timeout clarity
+
+- Result: The production-like smoke runner now reports an explicit health timeout instead of relying on `set -e` test semantics after the final poll.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh` and `tests/security/security-runtime-smoke-script.test.ts`.
+- Verification: red/green shell-contract Vitest and `bash -n` pass.
+
 ## 2026-07-12T21:30:00+09:00 - secure runtime dependency verification
 
 - Updated [[CI CD And Monitoring Workflow]] after the security-critical Next.js
