@@ -21,15 +21,9 @@ services:
         aliases: [egress-probe]
 
   web:
-    depends_on:
-      egress-probe:
-        condition: service_started
     environment:
       MUNJIB_E2E_PROVIDER_TRANSPORT: "true"
       MUNJIB_DEPLOYMENT_ENV: development
-      MUNJIB_EGRESS_PROBE_ORIGIN: http://egress-probe:39158
-      MUNJIB_EGRESS_PROBE_SERVER_ORIGIN: http://egress-probe:39158
-      MUNJIB_E2E_ATTACKER_ORIGIN: http://egress-probe:39158
     networks:
       default:
         aliases: [munjib-web-egress]

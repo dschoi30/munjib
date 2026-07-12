@@ -80,6 +80,31 @@ describe("AiAnswer", () => {
     expect(destination.className).not.toContain("violet");
   });
 
+  it("uses formatted external link text in the confirmation label", async () => {
+    render(<AiAnswer content="[**Runbook**](https://example.com/runbook)" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Runbook.*https:\/\/example\.com/ }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "External destination confirmation",
+    });
+    expect(dialog.textContent).toContain("Runbook");
+    expect(dialog.textContent).not.toContain("External destination\n");
+  });
+
+  it("focuses Cancel and closes the confirmation on Escape", async () => {
+    render(<AiAnswer content="[Runbook](https://example.com/runbook)" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Runbook.*https:\/\/example\.com/ }));
+
+    await screen.findByRole("dialog", { name: "External destination confirmation" });
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(document.activeElement).toBe(cancel);
+
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("uses the primary green theme for citation links", () => {
     render(
       <AiCitations

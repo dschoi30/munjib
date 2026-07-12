@@ -16,14 +16,27 @@ const SPECULATIVE_REL_VALUES = new Set([
  */
 export function SpeculativeLinkGuard() {
   useEffect(() => {
-    const removeSpeculativeLinks = () => {
+    const removeExistingSpeculativeLinks = () => {
       document.head.querySelectorAll("link").forEach((link) => {
         if (SPECULATIVE_REL_VALUES.has(link.rel.toLowerCase())) link.remove();
       });
     };
 
-    removeSpeculativeLinks();
-    const observer = new MutationObserver(removeSpeculativeLinks);
+    const removeAddedSpeculativeLinks = (mutations: MutationRecord[]) => {
+      for (const mutation of mutations) {
+        mutation.addedNodes.forEach((node) => {
+          if (
+            node instanceof HTMLLinkElement &&
+            SPECULATIVE_REL_VALUES.has(node.rel.toLowerCase())
+          ) {
+            node.remove();
+          }
+        });
+      }
+    };
+
+    removeExistingSpeculativeLinks();
+    const observer = new MutationObserver(removeAddedSpeculativeLinks);
     observer.observe(document.head, { childList: true });
     return () => observer.disconnect();
   }, []);

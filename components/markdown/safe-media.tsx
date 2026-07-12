@@ -1,3 +1,4 @@
+import { isValidElement, type ReactNode } from "react";
 import type { Components } from "react-markdown";
 import {
   prepareLeaf11ExternalMediaRequest,
@@ -28,7 +29,7 @@ export function buildSafeMarkdownComponents({
       const external = safeHref.startsWith("http://") || safeHref.startsWith("https://");
       if (external) {
         const originLabel = new URL(safeHref).origin;
-        const label = typeof children === "string" ? children : "External destination";
+        const label = extractTextContent(children).trim() || "External destination";
         return (
           <button
             type="button"
@@ -87,4 +88,13 @@ export function buildSafeMarkdownComponents({
       return alt ? <span>{alt}</span> : null;
     },
   };
+}
+
+function extractTextContent(children: ReactNode): string {
+  if (typeof children === "string" || typeof children === "number") return String(children);
+  if (Array.isArray(children)) return children.map(extractTextContent).join("");
+  if (isValidElement<{ children?: ReactNode }>(children)) {
+    return extractTextContent(children.props.children);
+  }
+  return "";
 }

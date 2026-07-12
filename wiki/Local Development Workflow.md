@@ -301,7 +301,7 @@ PR merge 이후에는 관련 GitHub issue가 닫혔는지 반드시 확인한다
 
 Issue #158의 `tests/e2e/zero-egress-rendering.spec.ts`는 실제 Next 서버와 별도 loopback probe를 calibration한 뒤 saved Markdown preview와 Workspace AI answer를 방문한다. 외부 Markdown image는 click-only interstitial로 남아야 하며 `<img>`, Next image optimizer, speculative preload/prefetch/preconnect, CSS/DOM/SSR destination sink가 없어야 한다. probe는 method/path digest/caller만 기록하고 credentials와 외부 network body를 저장하지 않는다.
 
-`playwright.config.ts`의 기본 local webServer는 Turbopack 기반 `next dev`로 실행해 Node 전용 인증 instrumentation을 실제 서버 경로에서 로드하고, 유효한 `NEXTAUTH_URL`과 파서가 허용하는 `MUNJIB_DEPLOYMENT_ENV=development`를 주입한다. test-only provider transport는 별도의 명시적 `MUNJIB_E2E_PROVIDER_TRANSPORT=true` 게이트로만 열리며, 이 환경 조합은 production/staging 인증 런타임을 우회하지 않는다. `docker-compose.egress-test.yml`도 같은 development/test-transport 조합을 `egress-test` profile에만 추가하며 production Compose에는 probe service·host alias·port가 없다.
+`playwright.config.ts`의 기본 local webServer는 Turbopack 기반 `next dev`로 실행해 Node 전용 인증 instrumentation을 실제 서버 경로에서 로드하고, 유효한 `NEXTAUTH_URL`과 파서가 허용하는 `MUNJIB_DEPLOYMENT_ENV=development`를 주입한다. test-only provider transport는 별도의 명시적 `MUNJIB_E2E_PROVIDER_TRANSPORT=true` 게이트로만 열리며, 이 환경 조합은 production/staging 인증 런타임을 우회하지 않는다. `docker-compose.egress-test.yml`은 development/test-transport와 수동적인 container-network probe만 `egress-test` profile에 추가한다. Compose web 환경으로 probe origin을 덮어쓰지 않으므로 실제 Playwright 실행은 계속 기록하는 in-process oracle을 사용하며 production Compose에는 probe service·host alias·port가 없다.
 
 ## 근거
 

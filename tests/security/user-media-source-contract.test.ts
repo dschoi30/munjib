@@ -134,6 +134,7 @@ describe("user/provider media source contract", () => {
   it("keeps the in-process probe loopback-only and makes container reachability explicit", async () => {
     const probe = await source("tests/e2e/fixtures/egress-probe-server.ts");
     const overlay = await source("docker-compose.egress-test.yml");
+    const linkGuard = await source("components/speculative-link-guard.tsx");
 
     expect(probe).toMatch(
       /MUNJIB_EGRESS_PROBE_BIND_HOST\?\.trim\(\) \|\| "127\.0\.0\.1"/,
@@ -141,6 +142,10 @@ describe("user/provider media source contract", () => {
     expect(overlay).toContain("MUNJIB_EGRESS_PROBE_BIND_HOST: 0.0.0.0");
     expect(overlay).toContain("process.env.MUNJIB_EGRESS_PROBE_BIND_HOST");
     expect(overlay).toContain('ports:\n      - "127.0.0.1:39158:39158"');
+    expect(overlay).not.toContain("MUNJIB_EGRESS_PROBE_ORIGIN");
+    expect(overlay).not.toContain("MUNJIB_EGRESS_PROBE_SERVER_ORIGIN");
+    expect(linkGuard).toContain("mutation.addedNodes");
+    expect(linkGuard).not.toContain("MutationObserver(removeSpeculativeLinks)");
   });
 
   it("runs the zero-egress harness in a parsed non-production environment", async () => {

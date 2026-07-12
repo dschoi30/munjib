@@ -69,7 +69,8 @@ export function MarkdownPreview({
     () => buildWikiLinkPreviewCandidateMap(linkCandidates),
     [linkCandidates],
   );
-  const attachmentIdSet = useMemo(() => new Set(attachmentIds), [attachmentIds]);
+  const attachmentIdsKey = JSON.stringify([...new Set(attachmentIds)].sort());
+  const attachmentIdSet = useMemo(() => new Set(attachmentIds), [attachmentIdsKey]);
   const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
   const markdownComponents = useMemo<Components>(
     () => {
@@ -116,7 +117,7 @@ export function MarkdownPreview({
         onExternalMediaRequest: setExternalRequest,
       });
     },
-    [attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
+    [attachmentIdsKey, tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);

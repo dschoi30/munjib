@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T15:00:00+09:00 - Issue #158 PR #177 review hardening
+
+- Result: speculative-link removal now inspects only added link nodes; external-media confirmation uses a focusable accessible dialog with Escape close; formatted link labels are reduced to plain text; attachment allowlists use deterministic set keys. The Compose egress overlay no longer redirects the browser/server harness to an unobserved probe, preserving the in-process recording oracle.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/speculative-link-guard.tsx`, `components/markdown/external-media-interstitial.tsx`, `components/markdown/safe-media.tsx`, `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, `docker-compose.egress-test.yml`, and PR #177 review threads.
+- Verification: focused component/media/Compose contract tests, actual Chromium zero-egress oracle, TypeScript, exact scans, and wiki sync gates.
+
 ## 2026-07-13T14:20:00+09:00 - Issue #158 zero-egress harness environment fix
 
 - Result: changed the local Playwright and egress-test Compose harnesses from the unsupported `test` deployment value to parser-approved `development`, while retaining the explicit test-transport gate, adding the required local `NEXTAUTH_URL`, and running the local Next harness through Turbopack so Node-only auth instrumentation can load.
