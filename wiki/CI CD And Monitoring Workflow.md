@@ -91,6 +91,13 @@ paginated Next.js advisory checker, both immediately after the frozen install.
 The checker receives only the workflow's read-only `GH_TOKEN` for GitHub's
 advisory API.
 
+Issue #174 closes the production `tsx` audit path without changing the
+development Vite/esbuild graph: the lockfile scopes an exact
+`tsx>esbuild` override to patched `esbuild` 0.28.1, while the dev-only Vite
+path remains on its compatible 0.21.5 resolution. `pnpm audit --prod` must
+remain clean after this override, and the same pruned runner image continues
+to execute the network-isolated `auth-preflight` command.
+
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
 ## Steps

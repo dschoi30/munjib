@@ -35,6 +35,11 @@ NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
 실행한다. Issue #157의 Next.js 15.5.18 exact pin과 별도 advisory gate는
 유지한다.
 
+Issue #174는 production `tsx` auth-preflight 경로에만
+`tsx>esbuild: 0.28.1` exact override를 적용한다. 따라서 production
+audit은 patched esbuild를 사용하고, dev-only Vite는 기존 0.21.5
+resolution을 유지한다.
+
 ## 주요 명령
 
 ```bash

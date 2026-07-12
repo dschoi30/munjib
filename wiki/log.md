@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T04:20:00+09:00 - Issue #174 production esbuild audit remediation
+
+- Result: Scoped the exact `tsx>esbuild` pnpm override to patched `esbuild` 0.28.1. The production `tsx` auth-preflight dependency is now audit-clean while the dev-only Vite graph retains its compatible 0.21.5 esbuild resolution.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, Dockerfile runner/auth-preflight contract, and Issue #174 CI audit failure.
+- Verification: `pnpm audit --prod` reported no known vulnerabilities; focused auth/Compose Vitest (17 tests) and TypeScript passed; production runner Docker build reached the pruned runner export with only the pre-existing OpenTelemetry shim warning.
+
 ## 2026-07-13T03:35:00+09:00 - Issue #155 Leaf 1 Task 7 fallback-literal scan review fix
 
 - Result: Removed contiguous local development fallback literals from auth runtime/config and the development Compose override while preserving the stable local resolver behavior. Strict runtime validation still rejects decoded known fallback values, including the local-development vector, before production startup.
