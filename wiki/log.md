@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-12T20:35:00+09:00 - secure runtime ownership review follow-up
+
+- Result: The protected runtime projection rejects whole-file ownership only for `package.json` and `pnpm-lock.yaml`; future `docker-compose.yml` ownership remains available. Task 2's production smoke spec and launcher placeholders were removed from the Leaf 3 implementation for separate follow-up work while their capability/owner reservations remain recorded.
+- Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/project-protected-artifacts.ts`, `tests/security/next-runtime-projection.test.ts`, capability fragment, and protected owner map.
+- Verification: focused projection/security/delivery tests pass; Task 2 will supply the real production smoke implementation.
+
 ## 2026-07-12T20:25:00+09:00 - secure Next.js runtime gate
 
 - Result: Leaf 3 pins `next` and `eslint-config-next` to exact 15.5.18 specifications and records a deterministic Next.js/React runtime projection with protected-artifact ownership.

@@ -70,7 +70,7 @@ describe("canonical Next.js runtime dependency projection", () => {
     })).toThrow(/next|root|lock/i);
   });
 
-  test("rejects owner drift and whole-file ownership of projection sources", () => {
+  test("rejects package and lock ownership while allowing docker-compose ownership", () => {
     const packageText = read("package.json");
     const lockText = read("pnpm-lock.yaml");
     const ownerMap = JSON.parse(read("deploy/security/protected-artifact-owners.json")) as {
@@ -86,11 +86,19 @@ describe("canonical Next.js runtime dependency projection", () => {
     });
     expect(() => projectNextRuntimeDependencies({ packageJsonText: packageText, lockfileText: lockText, ownerMapText: wrongOwner })).toThrow(/owner/i);
 
-    const wholePathOwner = JSON.stringify({
+    for (const selector of ["path:package.json", "path:pnpm-lock.yaml"]) {
+      const wholePathOwner = JSON.stringify({
+        ...ownerMap,
+        owners: [...ownerMap.owners, { selector, kind: "FULL_PATH", owner: "secure-next-runtime", version: 1 }],
+      });
+      expect(() => projectNextRuntimeDependencies({ packageJsonText: packageText, lockfileText: lockText, ownerMapText: wholePathOwner })).toThrow(/FULL_PATH|projection source|package\.json|pnpm-lock\.yaml/i);
+    }
+
+    const dockerComposeOwner = JSON.stringify({
       ...ownerMap,
-      owners: [...ownerMap.owners, { selector: "path:package.json", kind: "FULL_PATH", owner: "secure-next-runtime", version: 1 }],
+      owners: [...ownerMap.owners, { selector: "path:docker-compose.yml", kind: "FULL_PATH", owner: "secure-next-runtime", version: 1 }],
     });
-    expect(() => projectNextRuntimeDependencies({ packageJsonText: packageText, lockfileText: lockText, ownerMapText: wholePathOwner })).toThrow(/FULL_PATH|projection source|package\.json/i);
+    expect(() => projectNextRuntimeDependencies({ packageJsonText: packageText, lockfileText: lockText, ownerMapText: dockerComposeOwner })).not.toThrow();
   });
 
   test("rejects a stale hash instead of trusting a candidate assertion", () => {

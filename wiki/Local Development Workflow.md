@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-04
-source_count: 65
+updated: 2026-07-12
+source_count: 66
 tags:
   - munjib
   - workflow
@@ -197,6 +197,8 @@ pnpm wiki:feature-start "Markdown heading folding"
 현재 unit/integration test는 workspace permission, document-level permission, document service, wiki link parsing/reconciliation/autocomplete, document metadata parsing, attachment service, comment service, wiki CLI를 검증한다.
 
 E2E는 개발 credentials login 후 workspace에 진입해 search/navigation, local graph, editor modes, tags/properties/links/comments, broken link document creation, folder-like document creation, quick switcher를 확인한다. Current Playwright config runs E2E with one worker because the specs share the same seeded account and mutable Welcome document. Attachment upload와 DB-backed service tests는 local `DATABASE_URL`이 필요하다.
+
+Leaf 3의 secure runtime capability는 production smoke 경로의 capability/owner reservation을 유지하지만, placeholder smoke launcher/spec은 별도 후속 구현(Task 2)을 위해 현재 branch에서 제공하지 않는다. Runtime projection ownership은 `package.json`과 `pnpm-lock.yaml`의 FULL_PATH만 금지하고 `docker-compose.yml` ownership은 향후 delivery contract에서 사용할 수 있다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 

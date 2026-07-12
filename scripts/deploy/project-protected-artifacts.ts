@@ -109,7 +109,7 @@ function validateOwners(ownerMapText: string): void {
   for (const entry of owners) {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) throw new Error("owner entry is invalid");
     const selector = (entry as JsonRecord).selector;
-    if (selector === "path:package.json" || selector === "path:pnpm-lock.yaml" || selector === "path:docker-compose.yml") {
+    if (selector === "path:package.json" || selector === "path:pnpm-lock.yaml") {
       throw new Error("projection source cannot have FULL_PATH ownership");
     }
   }
