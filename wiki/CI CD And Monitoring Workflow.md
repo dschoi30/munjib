@@ -85,7 +85,10 @@ production-like provider discovery, password signup closed, exact linked Google
 policy, unlinked OAuth zero rows, token/profile media zero egress, Secure cookie,
 canonical origin, current/legacy password migration 및 CAS loss를 synthetic
 `example.test` identity로 검증한다. Google endpoint 호출은 없다. 이 oracle은
-배포 전 수동/운영 smoke 단계에 두며, 기존 mutable seeded workspace E2E와 분리한다.
+배포 전 수동/운영 smoke 단계에 두며, 기존 mutable seeded workspace E2E와 분리한다. 실행
+때마다 별도 pgvector PostgreSQL container/network를 만들고 migration 후 같은 disposable
+DB를 production runner와 Playwright에 연결한다. DB 준비 실패는 fail-closed이며 기존
+`DATABASE_URL`은 사용하지 않는다.
 
 ### main deploy
 

@@ -229,7 +229,13 @@ validator와 NextAuth의 file-backed signing key가 같은 경로를 읽는다. 
 `auth-runtime-preflight-e2e.ts` child는 Docker를 실행할 수 없는 환경에서도 임시 0400
 파일을 같은 descriptor 검사 seam으로 먼저 검증한다. `AUTH_RUNTIME_BASE_URL`을
 지정한 수동 host server 경로에서는 fixed mount가 없으므로 개발 selector를 사용하며,
-production container 경로와 혼동하지 않는다.
+production container 경로와 혼동하지 않는다. Runner는 browser 단계마다 별도
+`pgvector/pgvector:0.8.2-pg16` container와 Docker network를 만들고 `prisma migrate deploy`를
+적용한 뒤, host Playwright와 production container 양쪽에 같은 disposable `DATABASE_URL`을
+전달한다. DB를 만들거나 migration할 수 없으면 실행을 성공으로 처리하지 않으며, 기존
+개발/production DB URL을 상속하지 않는다. 따라서 unlinked OAuth zero-row, linked account
+token/profile media persistence, historical image, cleanup 검증은 조건부 skip 없이 실제 DB에서
+수행된다.
 
 DB-backed Vitest runs need host access to local PostgreSQL. In Codex's restricted sandbox, tests that connect to `127.0.0.1:55432` can fail with Prisma `Can't reach database server` even when the Docker Postgres container is healthy. When that happens, first verify the container/port, for example:
 

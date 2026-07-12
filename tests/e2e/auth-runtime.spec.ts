@@ -53,32 +53,42 @@ test("production-like browser auth stays closed and media-free", async ({ page, 
   const callback = options.callbacks?.signIn!;
   const subject = `linked-${randomUUID()}`;
   const email = `auth-runtime-${randomUUID()}@example.test`;
-  let linkedUserId: string | null = null;
+  if (!process.env.DATABASE_URL) {
+    throw new Error("AUTH_RUNTIME_DATABASE_REQUIRED");
+  }
+  const beforeUsers = await prisma.user.count({ where: { email } });
+  const beforeAccounts = await prisma.account.count({ where: { provider: "google", providerAccountId: subject } });
+  await expect(callback({
+    account: { provider: "google", providerAccountId: subject },
+    profile: { email, email_verified: true },
+    user: undefined,
+    credentials: undefined,
+    email: undefined,
+  } as never)).resolves.toBe(false);
+  expect(await prisma.user.count({ where: { email } })).toBe(beforeUsers);
+  expect(await prisma.account.count({ where: { provider: "google", providerAccountId: subject } })).toBe(beforeAccounts);
 
-  if (process.env.DATABASE_URL) {
-    const beforeUsers = await prisma.user.count({ where: { email } });
-    const beforeAccounts = await prisma.account.count({ where: { provider: "google", providerAccountId: subject } });
-    await expect(callback({
-      account: { provider: "google", providerAccountId: subject },
-      profile: { email, email_verified: true },
-      user: undefined,
-      credentials: undefined,
-      email: undefined,
-    } as never)).resolves.toBe(false);
-    expect(await prisma.user.count({ where: { email } })).toBe(beforeUsers);
-    expect(await prisma.account.count({ where: { provider: "google", providerAccountId: subject } })).toBe(beforeAccounts);
-
-    const linkedUser = await prisma.user.create({
-      data: { email, name: "Synthetic linked user", image: "https://evil.example/avatar.png" },
-    });
-    linkedUserId = linkedUser.id;
-    await prisma.account.create({
-      data: {
-        userId: linkedUser.id,
-        type: "oauth",
+  const linkedUser = await prisma.user.create({
+    data: { email, name: "Synthetic linked user", image: "https://evil.example/avatar.png" },
+  });
+  try {
+    const linkedBefore = await prisma.user.findUniqueOrThrow({ where: { id: linkedUser.id }, select: { image: true } });
+    const projected = projectGoogleOAuthCallback({
+      account: {
         provider: "google",
         providerAccountId: subject,
+        access_token: "synthetic-access-token",
+        refresh_token: "synthetic-refresh-token",
+        id_token: "synthetic-id-token",
       },
+      profile: { email, email_verified: true, picture: "https://evil.example/avatar.png" },
+    });
+    expect(projected).toEqual({
+      account: { provider: "google", providerAccountId: subject },
+      profile: { email, email_verified: true },
+    });
+    await prisma.account.create({
+      data: { userId: linkedUser.id, type: "oauth", ...projected!.account },
     });
     await expect(callback({
       account: { provider: "google", providerAccountId: subject },
@@ -90,6 +100,7 @@ test("production-like browser auth stays closed and media-free", async ({ page, 
 
     const linked = await prisma.account.findUnique({ where: { provider_providerAccountId: { provider: "google", providerAccountId: subject } } });
     expect(linked).toMatchObject({ access_token: null, refresh_token: null, id_token: null });
+    expect(await prisma.user.findUniqueOrThrow({ where: { id: linkedUser.id }, select: { image: true } })).toEqual(linkedBefore);
 
     const session = await options.callbacks?.session?.({
       session: { user: { id: linkedUser.id, image: "https://evil.example/avatar.png" } },
@@ -100,6 +111,8 @@ test("production-like browser auth stays closed and media-free", async ({ page, 
     expect(sanitizeInternalSessionImage("/api/attachments/internal-1", new Set(["internal-1"]))).toBe(
       "/api/attachments/internal-1",
     );
+  } finally {
+    await prisma.user.delete({ where: { id: linkedUser.id } });
   }
 
   const current = await hashPassword("correct horse");
@@ -158,7 +171,4 @@ test("production-like browser auth stays closed and media-free", async ({ page, 
     profile: { email, email_verified: true },
   });
 
-  if (linkedUserId && process.env.DATABASE_URL) {
-    await prisma.user.delete({ where: { id: linkedUserId } });
-  }
 });
