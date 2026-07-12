@@ -1,0 +1,36 @@
+services:
+  migrator:
+    image: ${WEB_IMAGE:?immutable image digest required}
+    user: "10001:10001"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://munjib_migrator@postgres:5432/obsidian_clone?schema=public
+      PGPASSFILE: /run/secrets/munjib_migrator_credential
+      PGOPTIONS: -c search_path=pg_catalog,public,munjib_extensions -c role=munjib_schema_owner
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE
+        export PGPASSFILE=/run/secrets/munjib_migrator_credential
+        export PGOPTIONS='-c search_path=pg_catalog,public,munjib_extensions -c role=munjib_schema_owner'
+        exec pnpm exec prisma migrate deploy
+    secrets:
+      - source: munjib_migrator_credential
+        target: munjib_migrator_credential
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: ${POSTGRES_IMAGE:?immutable postgres digest required}
+    environment:
+      POSTGRES_DB: obsidian_clone
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+
+secrets:
+  munjib_migrator_credential:
+    file: /etc/munjib/secrets/migrator-current
