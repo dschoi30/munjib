@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T02:05:00+09:00 - explicit local seed environment boundary
+
+- Result: local package/Prisma/E2E seed commands now use a wrapper that defaults only an unset environment to `development`; explicit staging/production values remain fail-closed. Compose passes production to the runner web service and development to the dev web/tools paths.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/db/seed.ts`, `lib/security/seed-environment.ts`, `package.json`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `.env.docker.example`, `tests/security/production-seed-guard.test.ts`, and `tests/docker/compose.test.ts`.
+- Verification: 12 focused Vitest tests, TypeScript check, local `pnpm run db:seed` with unset env, production guard smoke test, and wiki sync gates.
+
 ## 2026-07-13T01:45:00+09:00 - production seed and owner bootstrap boundary
 
 - Result: Prisma seed now fails closed outside explicit development, while the root/operator-file-gated owner bootstrap creates only one owner user, organization, organization membership, workspace, and workspace membership in one transaction and unlinks its protected input only after commit.

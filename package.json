@@ -23,7 +23,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev && pnpm run db:rag:index",
     "db:rag:index": "tsx scripts/db/ensure-rag-vector-index.ts",
-    "db:seed": "tsx prisma/seed.ts",
+    "db:seed": "tsx scripts/db/seed.ts",
     "security:bootstrap-owner": "tsx scripts/security/bootstrap-owner.ts",
     "documents:purge-archived": "tsx scripts/documents/purge-archived.ts",
     "security:auth-preflight": "tsx scripts/security/auth-preflight.ts"
@@ -76,6 +76,6 @@
     "vitest": "^2.1.8"
   },
   "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx scripts/db/seed.ts"
   }
 }

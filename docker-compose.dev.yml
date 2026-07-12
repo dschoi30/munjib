@@ -11,6 +11,7 @@ services:
       - /app/.next
     environment:
       NODE_ENV: development
+      MUNJIB_DEPLOYMENT_ENV: ${MUNJIB_DEPLOYMENT_ENV:-development}
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
       NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}

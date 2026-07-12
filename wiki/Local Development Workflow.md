@@ -95,6 +95,8 @@ Prisma는 `DATABASE_URL`을 요구한다. 이전 로컬 검증에서는 PostgreS
 postgresql://obsidian:obsidian@127.0.0.1:55432/obsidian_clone?schema=public
 ```
 
+`MUNJIB_DEPLOYMENT_ENV=development`는 로컬 `.env`와 Docker 개발 예제에 명시한다. `pnpm run db:seed`, Prisma가 호출하는 seed, E2E seed, `docker compose run --rm tools pnpm run db:seed`는 `scripts/db/seed.ts` wrapper를 통해 환경이 비어 있을 때만 `development`를 설정한다. 명시된 `staging`/`production` 값은 덮어쓰지 않으므로 seed guard가 Prisma를 만들기 전에 `PRODUCTION_SEED_FORBIDDEN`으로 차단한다. 기본 compose의 production-style `web`은 `MUNJIB_DEPLOYMENT_ENV=production`, `docker-compose.dev.yml`의 web과 `tools`는 `development`를 기본값으로 전달한다.
+
 NextAuth 개발 환경에서는 안정적인 dev secret fallback이 있다. 운영 환경에서는 명시적 secret을 설정해야 한다. Issue #143 이후 email-only development login은 `MUNJIB_ENABLE_DEV_LOGIN`으로 gate된다. Local development는 unset 상태에서도 seed user 로그인이 가능하지만, production은 `MUNJIB_ENABLE_DEV_LOGIN=true`를 명시한 경우에만 이 임시 login path를 연다.
 
 Issue #100 이후 Ask AI RAG provider는 server-wide env로 고른다. 기본값은 기존 local Ollama 경로와 같은 chat provider `ollama`, embedding provider `ollama`, chat model `gemma4:e4b`, embedding model `bge-m3`, embedding dimensions `1024`, local base URL `http://localhost:11434`다. Official OpenAI는 `MUNJIB_RAG_CHAT_PROVIDER=openai` 또는 `MUNJIB_RAG_EMBED_PROVIDER=openai`와 `OPENAI_API_KEY`를 사용하고, OpenAI-compatible endpoint는 `openai-compatible`과 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 사용한다. `MUNJIB_OPENAI_COMPATIBLE_API_KEY`는 endpoint가 인증을 요구할 때만 설정하며, LM Studio, LocalAI, vLLM 같은 local unauthenticated endpoint에서는 비워둘 수 있다. 현재 DB vector index identity는 Ollama `bge-m3` 1024라 다른 embedding identity는 live Ask AI에서 fail-fast하며, reindex workflow는 별도 follow-up이다.
@@ -180,7 +182,7 @@ docker compose run --rm tools pnpm run db:seed
 
 ## Seed와 로그인
 
-`pnpm run db:seed`는 `MUNJIB_DEPLOYMENT_ENV=development`에서만 동작하며 staging/production에서는 `PRODUCTION_SEED_FORBIDDEN`으로 Prisma 연결 전에 종료된다. Seed는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. Seed는 반복 실행된 로컬 E2E가 fixture document/folder를 rename/archive한 뒤에도 Welcome, Engineering Runbook, Operations folder, Operations Runbook의 canonical title/slug/path/status를 복구한다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
+`pnpm run db:seed`는 local wrapper가 비어 있는 환경을 `development`로 명시한 뒤 실행하며, 명시된 `staging`/`production`에서는 `PRODUCTION_SEED_FORBIDDEN`으로 Prisma 연결 전에 종료된다. `prisma migrate dev`가 호출하는 seed도 같은 wrapper를 사용한다. Seed는 `company-handbook` workspace와 owner/editor/viewer seed user를 만든다. Seed는 반복 실행된 로컬 E2E가 fixture document/folder를 rename/archive한 뒤에도 Welcome, Engineering Runbook, Operations folder, Operations Runbook의 canonical title/slug/path/status를 복구한다. E2E 테스트는 seed 후 로그인과 workspace 문서 편집 흐름을 검증한다. `pnpm run test:e2e:ui`는 같은 seed 준비 후 Playwright UI mode를 열어 e2e 시나리오를 브라우저 UI에서 점검한다.
 
 ## Feature start
 

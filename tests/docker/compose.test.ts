@@ -37,6 +37,12 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("NEXTAUTH_SECRET");
     expect(compose).toContain("NEXTAUTH_COOKIE_SECURE");
     expect(compose).toContain("MUNJIB_ENABLE_DEV_LOGIN");
+    expect(web.environment).toMatchObject({
+      MUNJIB_DEPLOYMENT_ENV: "${MUNJIB_DEPLOYMENT_ENV:-production}",
+    });
+    expect(tools.environment).toMatchObject({
+      MUNJIB_DEPLOYMENT_ENV: "${MUNJIB_DEPLOYMENT_ENV:-development}",
+    });
     expect(web.build?.args).toMatchObject({
       NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
       NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
@@ -142,6 +148,9 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("DOCKER_DATABASE_URL");
     expect(compose).toContain("postgres:5432");
     expect(compose).toContain("NEXTAUTH_URL");
+    expect(compose).toContain(
+      "MUNJIB_DEPLOYMENT_ENV: ${MUNJIB_DEPLOYMENT_ENV:-development}",
+    );
     expect(compose).toContain(".:/app");
     expect(compose).toContain("/app/node_modules");
     expect(compose).toContain("/app/.next");
