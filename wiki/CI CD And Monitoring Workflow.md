@@ -127,7 +127,29 @@ git checkout --detach "$DEPLOY_SHA"
 test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
 sudo test -r "$DEPLOY_ENV_FILE"
 install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
-if sudo grep -Eq '^GOOGLE_CLIENT_ID=[^[:space:]]' "$DEPLOY_ENV_FILE"; then install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"; compose_files="$compose_files -f docker-compose.google.yml"; fi
+compose_files="-f docker-compose.yml"
+google_client_id="$(
+  sudo awk -v key=GOOGLE_CLIENT_ID '
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+      value=$0
+      sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
+      sub("[[:space:]]*(#.*)?$", "", value)
+      single=sprintf("%c", 39)
+      if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+          (substr(value, 1, 1) == single && substr(value, length(value), 1) == single)) {
+        value=substr(value, 2, length(value)-2)
+      }
+      sub("^[[:space:]]*", "", value)
+      sub("[[:space:]]*$", "", value)
+      print value
+      exit
+    }
+  ' "$DEPLOY_ENV_FILE"
+)"
+if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then
+  install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"
+  compose_files="$compose_files -f docker-compose.google.yml"
+fi
 sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
 sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
 sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
