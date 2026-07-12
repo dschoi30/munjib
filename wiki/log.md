@@ -2897,7 +2897,7 @@ links:
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
 ## 2026-07-13T17:10:00+09:00 - security-runtime
 
-- Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
+- Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` with the BusyBox-compatible `find ... -print | head -n 1` form without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
 - Coverage: Prisma CLI remains a development dependency; the existing `HOME=/tmp`, `COREPACK_HOME=/tmp/.cache/node/corepack`, non-root UID, and production prune contracts remain in force.
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub Issue #182, `Dockerfile`, `tests/docker/compose.test.ts`.

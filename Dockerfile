@@ -66,7 +66,7 @@ COPY --from=builder /app/lib/security ./lib/security
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
-  && generated_prisma_client="$(find node_modules -type d -path '*/.prisma/client' -print -quit)" \
+  && generated_prisma_client="$(find node_modules -type d -path '*/.prisma/client' -print | head -n 1)" \
   && test -n "$generated_prisma_client" \
   && rm -rf /tmp/prisma-client \
   && mkdir -p /tmp/prisma-client \

@@ -297,7 +297,7 @@ describe("Docker web service configuration", () => {
     expect(pruneIndex).toBeGreaterThan(generateIndex);
     expect(guardIndex).toBeGreaterThan(pruneIndex);
     expect(runnerStage).toContain(
-      "generated_prisma_client=\"$(find node_modules -type d -path '*/.prisma/client' -print -quit)\"",
+      "generated_prisma_client=\"$(find node_modules -type d -path '*/.prisma/client' -print | head -n 1)\"",
     );
     expect(runnerStage).toContain(
       'cp -a "$generated_prisma_client/." /tmp/prisma-client/',

@@ -326,7 +326,8 @@ NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다. runner image는 non-root web/auth-preflight가 Corepack의 기본 `/.cache`에 쓰지 않도록 `HOME=/tmp`와 `COREPACK_HOME=/tmp/.cache/node/corepack`을 사용한다. 이 cache에는 애플리케이션 secret이 들어가지 않으며, production prune 뒤에도 `pnpm start`와 isolated preflight가 같은 UID로 실행된다.
 
 Issue #182는 production dependency prune 뒤에도 generated Prisma client를 보존하는
-runner build contract를 추가한다. Runner는 production prune 전에 `find`로 생성된
+runner build contract를 추가한다. Runner는 BusyBox 호환 `find ... -print | head -n 1`로
+production prune 전에 생성된
 `.prisma/client` directory를 찾아 임시 build-only 경로에 복사하고, prune 뒤 root
 `node_modules/.prisma/client`로 복원한다. Prisma CLI는 계속 development-only
 dependency로 유지하며, 최종 image build는 `require("@prisma/client")` guard가
