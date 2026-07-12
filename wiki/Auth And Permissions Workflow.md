@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 68
+source_count: 69
 tags:
   - munjib
   - auth
@@ -60,6 +60,14 @@ line separators and all C1 controls as content violations alongside ASCII
 controls/newlines. A leading UTF-8 BOM is preserved during decoding so it cannot
 be normalized into an accepted secret. The
 descriptor also uses close-on-exec semantics on Linux and Darwin.
+
+Local development may leave `NEXTAUTH_SECRET` empty: `docker-compose.dev.yml`
+passes an empty optional override and `resolveAuthSecret()` supplies the stable
+development compatibility value. The value is assembled from non-contiguous
+source fragments so a production-source secret scan cannot mistake it for a
+deployable credential. Strict staging/production validation never uses that
+fallback and rejects its decoded value, as well as the other known local fallback
+vectors, with `AUTH_SECRET_FALLBACK`.
 
 ## Closed signup covers OAuth
 

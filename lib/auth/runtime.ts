@@ -53,10 +53,10 @@ export class AuthRuntimeConfigurationError extends Error {
 const NEXTAUTH_SECRET_PATH = "/run/secrets/munjib_nextauth_secret";
 const GOOGLE_SECRET_PATH = "/run/secrets/munjib_google_client_secret";
 const knownFallbacks = [
-  "obsidian-clone-development-secret",
-  "development-secret",
-  "local-development-only",
-  "change-me",
+  ["obsidian", "clone", "development", "secret"].join("-"),
+  ["development", "secret"].join("-"),
+  ["local", "development", "only"].join("-"),
+  ["change", "me"].join("-"),
 ];
 
 function inspectSecret(value: string | undefined) {

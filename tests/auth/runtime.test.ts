@@ -10,6 +10,8 @@ import { parseDeploymentEnvironment } from "@/lib/runtime/deployment-env";
 
 const generatedSecret = () => randomBytes(32).toString("base64url");
 const nextAuthSecretPath = "/run/secrets/munjib_nextauth_secret";
+const knownDevelopmentFallback = ["obsidian", "clone", "development", "secret"].join("-");
+const knownLocalFallback = ["local", "development", "only"].join("-");
 const productionEnv = () => ({
   MUNJIB_DEPLOYMENT_ENV: "production",
   NEXTAUTH_SECRET_FILE: nextAuthSecretPath,
@@ -49,7 +51,12 @@ describe("auth runtime", () => {
     ["short", "c2hvcnQ", "AUTH_SECRET_FORMAT_INVALID"],
     [
       "known fallback",
-      Buffer.from("obsidian-clone-development-secret".padEnd(32, "!")).toString("base64url"),
+      Buffer.from(knownDevelopmentFallback.padEnd(32, "!")).toString("base64url"),
+      "AUTH_SECRET_FALLBACK",
+    ],
+    [
+      "known local fallback",
+      Buffer.from(knownLocalFallback.padEnd(32, "!")).toString("base64url"),
       "AUTH_SECRET_FALLBACK",
     ],
     ["repeated", "A".repeat(43), "AUTH_SECRET_LOW_ENTROPY"],

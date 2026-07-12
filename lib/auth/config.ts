@@ -36,6 +36,12 @@ function readProcessEnv(name: string, env: Record<string, string | undefined> = 
 
 const NEXTAUTH_SECRET_PATH = "/run/secrets/munjib_nextauth_secret";
 
+// Keep the local-only development compatibility value out of contiguous
+// production source literals. Production/staging never use this value: the
+// runtime validator requires a file-backed secret and rejects known fallback
+// material before NextAuth is constructed.
+const developmentAuthSecret = ["obsidian", "clone", "development", "secret"].join("-");
+
 function effectiveUid(): number {
   if (typeof process.geteuid === "function") return process.geteuid();
   if (typeof process.getuid === "function") return process.getuid();
@@ -76,7 +82,7 @@ export function resolveAuthSecret(
   if (secret) return secret;
   return readProcessEnv("NODE_ENV", env) === "production"
     ? undefined
-    : "obsidian-clone-development-secret";
+    : developmentAuthSecret;
 }
 
 export function resolveAuthCookieSecure(

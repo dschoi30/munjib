@@ -226,7 +226,7 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain(".:/app");
     expect(compose).toContain("/app/node_modules");
     expect(compose).toContain("/app/.next");
-    expect(compose).toContain("NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-obsidian-clone-development-secret}");
+    expect(compose).toContain("NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-}");
     expect(compose).toContain("GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}");
     expect(compose).toContain("secrets: !reset []");
   });

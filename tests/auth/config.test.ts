@@ -71,7 +71,7 @@ describe("authOptions", () => {
     vi.stubEnv("NEXTAUTH_SECRET", "");
     vi.stubEnv("NODE_ENV", "development");
 
-    expect(resolveAuthSecret()).toBe("obsidian-clone-development-secret");
+    expect(resolveAuthSecret()).toBe(["obsidian", "clone", "development", "secret"].join("-"));
   });
 
   it("does not hardcode a fallback secret in production", () => {

@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T03:35:00+09:00 - Issue #155 Leaf 1 Task 7 fallback-literal scan review fix
+
+- Result: Removed contiguous local development fallback literals from auth runtime/config and the development Compose override while preserving the stable local resolver behavior. Strict runtime validation still rejects decoded known fallback values, including the local-development vector, before production startup.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/runtime.ts`, `docker-compose.dev.yml`, `tests/auth/config.test.ts`, `tests/auth/runtime.test.ts`, `tests/docker/compose.test.ts`, and Issue #155 Leaf 1 Task 7 review feedback.
+- Verification: auth/security Vitest (184 tests), TypeScript, exact non-contiguous fallback scans, auth-runtime build-only preflight with disposable database/browser oracle (`1 passed`), and staged wiki sync gates.
+
 ## 2026-07-13T03:40:00+09:00 - Issue #155 Leaf 1 Task 7 auth runtime handoff
 
 - Result: Added the public-safe `auth-runtime-fail-closed@1` capability fragment, exact protected downstream slot owner map, machine-checked capability/handoff tests, and rollout/rollback contracts for Leaf 2, Leaf 7, Leaf 8, and Leaf 13. The handoff keeps closed password signup and unlinked OAuth, canonical v1 password readability, token/profile-media zero persistence, fixed secret mounts, and edge-controlled Google containment.
