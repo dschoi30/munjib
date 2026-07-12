@@ -302,13 +302,14 @@ NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 
 ### Docker runtime
 
-Production compose는 `postgres`, `web`, `tools` service를 가진다.
+Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다.
 
 - `postgres`: `pgvector/pgvector:0.8.2-pg16`, named volume `postgres_data`, configurable host port `POSTGRES_PORT`.
+- `storage-init`: 고정 `alpine:3.22` root one-shot service. `web_storage:/app/storage`를 마운트하고 `/app/storage/attachments`를 만든 뒤 전체 storage tree를 UID/GID `10001:10001`로 소유권 정리한다. `web`은 `service_completed_successfully` 조건으로 이 단계가 끝난 뒤에만 시작한다.
 - `web`: `runner` target 기반 production app, named volume `web_storage:/app/storage`, configurable host port `WEB_PORT`.
 - `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
 
-`web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
+`web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정, 그리고 선택적 Langfuse `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` credential을 받는다. Langfuse secret은 명시적으로 full capture를 켠 운영 환경에서도 callback/exporter가 동작하도록 Compose env passthrough를 유지한다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
 `MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate다. Production-style `web`은 `false`를 literal로 고정하고, local development override만 이 값을 직접 설정한다.
 
 Dockerfile stages:

@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T05:00:00+09:00 - Issue #155 PR #174 storage and Langfuse review follow-up
+
+- Result: production Compose now runs a bounded fixed `alpine:3.22` `storage-init` one-shot before non-root `web`; it creates `/app/storage/attachments`, repairs ownership to UID/GID `10001:10001`, and preserves the named volume across restarts. The auth-preflight service remains isolated without a storage mount.
+- Result: `LANGFUSE_SECRET_KEY` is passed through to the production web service again, so explicitly configured full-capture Langfuse tracing is not silently disabled. The credential remains optional and is still documented in env samples.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #174 review follow-up, `docker-compose.yml`, `tests/docker/compose.test.ts`, and the two workflow pages above.
+
 ## 2026-07-13T04:20:00+09:00 - Issue #174 production esbuild audit remediation
 
 - Result: Scoped the exact `tsx>esbuild` pnpm override to patched `esbuild` 0.28.1. The production `tsx` auth-preflight dependency is now audit-clean while the dev-only Vite graph retains its compatible 0.21.5 esbuild resolution.

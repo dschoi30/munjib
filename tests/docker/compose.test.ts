@@ -13,8 +13,10 @@ const readCompose = () =>
         build?: { args?: Record<string, string> };
         environment?: Record<string, string>;
         profiles?: string[];
+        image?: string;
+        user?: string;
         network_mode?: string;
-        command?: string;
+        command?: string | string[];
         depends_on?: unknown;
         volumes?: unknown;
         extra_hosts?: unknown;
@@ -115,6 +117,29 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("web_storage:");
   });
 
+  test("initializes the named storage volume before the non-root web service", () => {
+    const { services } = readCompose();
+    const web = services.web;
+    const storageInit = services["storage-init"];
+    const storageCommand = Array.isArray(storageInit.command)
+      ? storageInit.command[2]
+      : storageInit.command;
+
+    expect(storageInit).toMatchObject({
+      image: "alpine:3.22",
+      user: "0:0",
+      command: ["/bin/sh", "-ec", expect.any(String)],
+      volumes: ["web_storage:/app/storage"],
+    });
+    expect(storageCommand).toContain("mkdir -p /app/storage/attachments");
+    expect(storageCommand).toContain("chown -R 10001:10001 /app/storage");
+    expect(storageCommand).toContain("chmod 0750 /app/storage /app/storage/attachments");
+    expect(web.user).toBe("10001:10001");
+    expect(web.depends_on).toMatchObject({
+      "storage-init": { condition: "service_completed_successfully" },
+    });
+  });
+
   test("uses a pgvector-enabled postgres image", () => {
     const compose = read("docker-compose.yml");
 
@@ -135,7 +160,6 @@ describe("Docker web service configuration", () => {
     expect(compose).toContain("target: munjib_nextauth_secret");
     expect(compose).not.toMatch(/^\s+NEXTAUTH_SECRET:/m);
     expect(compose).not.toMatch(/^\s+GOOGLE_CLIENT_SECRET:/m);
-    expect(compose).not.toMatch(/\$\{[^}]*SECRET/);
     expect(compose).toContain("127.0.0.1:${WEB_PORT:-3000}:3000");
   });
 
@@ -200,6 +224,7 @@ describe("Docker web service configuration", () => {
         "${MUNJIB_OPENAI_COMPATIBLE_BASE_URL:-}",
       MUNJIB_OPENAI_COMPATIBLE_API_KEY: "${MUNJIB_OPENAI_COMPATIBLE_API_KEY:-}",
       LANGFUSE_PUBLIC_KEY: "${LANGFUSE_PUBLIC_KEY:-}",
+      LANGFUSE_SECRET_KEY: "${LANGFUSE_SECRET_KEY:-}",
       LANGFUSE_HOST: "${LANGFUSE_HOST:-}",
       LANGFUSE_BASEURL: "${LANGFUSE_BASEURL:-}",
       LANGFUSE_BASE_URL: "${LANGFUSE_BASE_URL:-}",
