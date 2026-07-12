@@ -22,14 +22,17 @@ export function buildSafeMarkdownComponents({
 }: BuildSafeMarkdownComponentsInput): Components {
   return {
     ...components,
-    a: ({ node: _node, href, children, ...props }) => {
+    a: ({ node, href, children, ...props }) => {
       const safeHref = safeMarkdownLinkHref(href);
       if (!safeHref) return <span>{children}</span>;
 
       const external = safeHref.startsWith("http://") || safeHref.startsWith("https://");
       if (external) {
         const originLabel = new URL(safeHref).origin;
-        const label = extractTextContent(children).trim() || "External destination";
+        const label =
+          extractTextContent(children).trim() || extractImageAlt(node) || "External destination";
+        const renderedChildren =
+          containsInteractiveChild(children) || containsImageNode(node) ? label : children;
         return (
           <button
             type="button"
@@ -41,7 +44,7 @@ export function buildSafeMarkdownComponents({
               label,
             }))}
           >
-            {children} · {originLabel}
+            {renderedChildren} · {originLabel}
           </button>
         );
       }
@@ -97,4 +100,32 @@ function extractTextContent(children: ReactNode): string {
     return extractTextContent(children.props.children);
   }
   return "";
+}
+
+function containsInteractiveChild(children: ReactNode): boolean {
+  if (Array.isArray(children)) return children.some(containsInteractiveChild);
+  if (!isValidElement<{ children?: ReactNode }>(children)) return false;
+  if (children.type === "button" || children.type === "a") return true;
+  return containsInteractiveChild(children.props.children);
+}
+
+function containsImageNode(node: unknown): boolean {
+  if (!node || typeof node !== "object") return false;
+  const candidate = node as { tagName?: unknown; children?: unknown };
+  if (candidate.tagName === "img") return true;
+  return Array.isArray(candidate.children) && candidate.children.some(containsImageNode);
+}
+
+function extractImageAlt(node: unknown): string {
+  if (!node || typeof node !== "object") return "";
+  const candidate = node as {
+    tagName?: unknown;
+    properties?: { alt?: unknown };
+    children?: unknown;
+  };
+  if (candidate.tagName === "img" && typeof candidate.properties?.alt === "string") {
+    return candidate.properties.alt.trim();
+  }
+  if (!Array.isArray(candidate.children)) return "";
+  return candidate.children.map(extractImageAlt).find(Boolean) ?? "";
 }

@@ -9,7 +9,7 @@
   "artifacts": {
     "components/markdown/safe-media.tsx": {
       "owner": "zero-ambient-media-egress",
-      "sha256": "f377ddc8fe696ed3d70969f032c863022c879634fec93426c6904a6369b28fab"
+      "sha256": "8a4617e61d70ef19860cf7e83e19160b439e98a0bc13747cd8c49e479b3ae6ba"
     },
     "components/markdown/external-media-interstitial.tsx": {
       "owner": "zero-ambient-media-egress",

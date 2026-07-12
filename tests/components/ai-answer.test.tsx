@@ -92,6 +92,17 @@ describe("AiAnswer", () => {
     expect(dialog.textContent).not.toContain("External destination\n");
   });
 
+  it("does not nest an external image button inside an external link button", () => {
+    render(
+      <AiAnswer content="[![Preview](https://images.example/pixel.png)](https://docs.example/runbook)" />,
+    );
+
+    const buttons = screen.getAllByRole("button");
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0].textContent).toContain("https://docs.example");
+    expect(buttons[0].querySelector("button")).toBeNull();
+  });
+
   it("focuses Cancel and closes the confirmation on Escape", async () => {
     render(<AiAnswer content="[Runbook](https://example.com/runbook)" />);
 
