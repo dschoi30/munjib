@@ -59,6 +59,16 @@ describe("GitHub Actions CI/CD workflow", () => {
     );
     expect(auditIndex).toBe(installIndex + 1);
     expect(ci.steps[auditIndex]?.run).toBe("pnpm audit --prod");
+    const nextAdvisoryIndex = ci.steps.findIndex(
+      (step: { name?: string }) => step.name === "Check Next.js advisories",
+    );
+    expect(nextAdvisoryIndex).toBe(auditIndex + 1);
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "scripts/security/check-next-advisories.ts --candidate",
+    );
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "require('./package.json').dependencies.next",
+    );
     expect(runCommands).toContain("pnpm run db:generate");
     expect(runCommands).toContain("pnpm exec prisma migrate deploy");
     expect(runCommands).toContain("pnpm run db:rag:index");

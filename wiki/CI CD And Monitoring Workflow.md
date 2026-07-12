@@ -79,8 +79,8 @@ path while patching the production/Sentry `minimatch@10` path. The lockfile
 must resolve those patched versions on production paths while keeping the
 Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
 generation, minimatch major compatibility, and Sentry/OpenTelemetry module
-loading; CI runs the unfiltered `pnpm audit --prod` command immediately after
-the frozen install as the release gate.
+loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
+paginated Next.js advisory checker, both immediately after the frozen install.
 
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 

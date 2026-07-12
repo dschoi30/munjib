@@ -58,6 +58,9 @@ jobs:
       - name: Audit production dependencies
         run: pnpm audit --prod
 
+      - name: Check Next.js advisories
+        run: pnpm exec tsx scripts/security/check-next-advisories.ts --candidate "$(node -p "require('./package.json').dependencies.next")"
+
       - name: Generate Prisma client
         run: pnpm run db:generate
 
