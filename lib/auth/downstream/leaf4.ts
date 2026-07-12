@@ -1,3 +1,4 @@
+import type { AuthDownstreamHooks } from "./contract";
 import {
   stripAmbientTokenMedia,
   zeroAmbientSessionImage,
@@ -13,9 +14,8 @@ export type Leaf4AuthUserOutput = {
 };
 
 /**
- * Build the small Auth.js user DTO without copying adapter/provider media.
- * The input intentionally contains only identity fields, so a provider
- * profile or historical database object cannot be spread into the response.
+ * Construct an identity-only Auth.js user DTO. Provider and adapter media are
+ * deliberately not accepted as input, so they cannot cross this boundary.
  */
 export function leaf4AuthUserOutput(input: {
   id: string;
@@ -29,11 +29,8 @@ export function leaf4AuthUserOutput(input: {
     image: zeroAmbientSessionImage(undefined),
   };
 }
-/**
- * Reserved downstream hook for the protected auth config.  It strips token
- * media and returns a null ambient image candidate; it never consumes or
- * copies provider profile/database media.
- */
+
+/** Remove ambient media from copied Auth.js token/session values. */
 export function leaf4SessionMediaHook(input: {
   token?: Record<string, unknown>;
   ambientImage?: unknown;
@@ -43,3 +40,9 @@ export function leaf4SessionMediaHook(input: {
     ambientImage: zeroAmbientSessionImage(input.ambientImage),
   };
 }
+
+export const leaf4AuthHooks: Pick<AuthDownstreamHooks, "reduceSessionImage"> = Object.freeze({
+  reduceSessionImage() {
+    return null;
+  },
+});

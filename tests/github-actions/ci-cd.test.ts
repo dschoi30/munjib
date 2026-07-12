@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -51,6 +52,27 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(runCommands).toContain("corepack enable");
     expect(runCommands).toContain("corepack prepare pnpm@${PNPM_VERSION} --activate");
     expect(runCommands).toContain("pnpm install --frozen-lockfile");
+    const installIndex = ci.steps.findIndex(
+      (step: { run?: string }) => step.run === "pnpm install --frozen-lockfile",
+    );
+    const auditIndex = ci.steps.findIndex(
+      (step: { name?: string }) => step.name === "Audit production dependencies",
+    );
+    expect(auditIndex).toBe(installIndex + 1);
+    expect(ci.steps[auditIndex]?.run).toBe("pnpm audit --prod");
+    const nextAdvisoryIndex = ci.steps.findIndex(
+      (step: { name?: string }) => step.name === "Check Next.js advisories",
+    );
+    expect(nextAdvisoryIndex).toBe(auditIndex + 1);
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "scripts/security/check-next-advisories.ts --candidate",
+    );
+    expect(ci.steps[nextAdvisoryIndex]?.run).toContain(
+      "require('./package.json').dependencies.next",
+    );
+    expect(ci.steps[nextAdvisoryIndex]?.env).toMatchObject({
+      GH_TOKEN: "${{ github.token }}",
+    });
     expect(runCommands).toContain("pnpm run db:generate");
     expect(runCommands).toContain("pnpm exec prisma migrate deploy");
     expect(runCommands).toContain("pnpm run db:rag:index");
@@ -96,7 +118,7 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
     expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
     expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN",
+      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN,DEPLOY_NEXTAUTH_SECRET,DEPLOY_GOOGLE_CLIENT_SECRET",
     );
     expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
     expect(deployStep?.with.script).toContain(
@@ -112,17 +134,35 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(deployStep?.with.script).not.toContain("docker login ghcr.io");
     expect(deployStep?.with.script).not.toContain("docker compose pull web");
     expect(deployStep?.with.script).toContain('sudo test -r "$DEPLOY_ENV_FILE"');
+    expect(deployStep?.with.script).toContain("install_secret nextauth-current");
+    expect(deployStep?.with.script).toContain("sudo chown 10001:10001");
+    expect(deployStep?.with.script).toContain("sudo chmod 0400");
+    expect(deployStep?.with.script).toContain("docker-compose.google.yml");
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy',
     );
     expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web',
+      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index',
+    );
+    expect(deployStep?.with.script).toContain(
+      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web',
+    );
+    const runCommands = deployStep?.with.script as string;
+    expect(runCommands.indexOf("pnpm security:auth-preflight")).toBeGreaterThanOrEqual(0);
+    expect(runCommands.indexOf("pnpm security:auth-preflight")).toBeLessThan(
+      runCommands.indexOf("pnpm exec prisma migrate deploy"),
+    );
+    expect(runCommands.indexOf("install_secret nextauth-current")).toBeLessThan(
+      runCommands.indexOf("pnpm security:auth-preflight"),
+    );
+    expect(runCommands).toContain(
+      "--profile auth-preflight rm --force --stop auth-preflight",
     );
     expect(deployStep?.with.script).toContain(
       "for attempt in 1 2 3 4 5 6 7 8 9 10; do",
@@ -140,6 +180,40 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(publicHealthStep).toBeDefined();
     expect(publicHealthStep?.run).toBe(
       "curl --fail --silent --show-error --location --max-time 20 https://munjib.andrewchoi.link >/dev/null",
+    );
+  });
+
+  test("enables Google only for non-empty dotenv client id and secret", () => {
+    const deploy = workflow.jobs.deploy;
+    const deployStep = deploy.steps.find((step: { uses?: string }) =>
+      step.uses?.startsWith("appleboy/ssh-action@"),
+    );
+    const script = deployStep?.with.script as string;
+
+    expect(script).not.toContain(
+      "sudo grep -Eq '^GOOGLE_CLIENT_ID=[^[:space:]]'",
+    );
+    expect(script).toContain('google_client_id="$(');
+    expect(script).toContain('single=sprintf("%c", 39)');
+    expect(script).toContain(
+      'if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then',
+    );
+
+    const parser = script.match(
+      /sudo awk -v key=GOOGLE_CLIENT_ID '([\s\S]*?)' "\$DEPLOY_ENV_FILE"/,
+    )?.[1];
+    expect(parser).toBeDefined();
+    const readClientId = (line: string) =>
+      execFileSync("awk", ["-v", "key=GOOGLE_CLIENT_ID", parser as string], {
+        input: line + "\n",
+        encoding: "utf8",
+      }).trim();
+
+    expect(readClientId('GOOGLE_CLIENT_ID=""')).toBe("");
+    expect(readClientId("GOOGLE_CLIENT_ID=''")).toBe("");
+    expect(readClientId("GOOGLE_CLIENT_ID=client-id")).toBe("client-id");
+    expect(readClientId(" GOOGLE_CLIENT_ID =  client-id  # comment")).toBe(
+      "client-id",
     );
   });
 });

@@ -1,0 +1,25 @@
+[Unit]
+Description=Munjib least-authority release broker
+Requires=munjib-release-broker.socket
+After=munjib-release-broker.socket
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/munjib-release-broker
+User=root
+Group=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/run/munjib
+UMask=0077
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
