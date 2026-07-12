@@ -19,6 +19,10 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T00:40:40+0900 - security
+
+- Added a shared zero-egress Markdown media policy; external image import remains a separate explicit action.
+
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
 - Result: Local `mjtrial@munjib.com` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.
