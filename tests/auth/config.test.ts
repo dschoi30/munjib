@@ -32,15 +32,16 @@ const prismaMock = vi.hoisted(() => ({
 }));
 
 const passwordMock = vi.hoisted(() => ({
-  verifyPassword: vi.fn(),
+  verifyParsedPasswordHash: vi.fn(),
 }));
 
 vi.mock("@/lib/db/client", () => ({
   prisma: prismaMock,
 }));
 
-vi.mock("@/lib/auth/passwords", () => ({
-  verifyPassword: passwordMock.verifyPassword,
+vi.mock("@/lib/auth/passwords", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth/passwords")>()),
+  verifyParsedPasswordHash: passwordMock.verifyParsedPasswordHash,
 }));
 
 describe("authOptions", () => {
@@ -49,7 +50,7 @@ describe("authOptions", () => {
     prismaMock.user.findUnique.mockReset();
     prismaMock.account.findUnique.mockReset();
     prismaMock.attachment.findMany.mockReset();
-    passwordMock.verifyPassword.mockReset();
+    passwordMock.verifyParsedPasswordHash.mockReset();
   });
 
   function getCredentialsProvider(providerId: string) {
@@ -204,9 +205,10 @@ describe("authOptions", () => {
       email: "member@example.com",
       name: "Member",
       image: null,
-      passwordHash: "scrypt:salt:key",
+      passwordHash:
+        "munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
-    passwordMock.verifyPassword.mockResolvedValue(true);
+    passwordMock.verifyParsedPasswordHash.mockResolvedValue(true);
 
     const provider = getCredentialsProvider("password");
     const result = await provider.authorize?.(
@@ -224,7 +226,11 @@ describe("authOptions", () => {
         passwordHash: true,
       },
     });
-    expect(passwordMock.verifyPassword).toHaveBeenCalledWith("correct horse", "scrypt:salt:key");
+    expect(passwordMock.verifyParsedPasswordHash).toHaveBeenCalledWith(
+      "correct horse",
+      expect.objectContaining({ format: "v1" }),
+      undefined,
+    );
     expect(result).toEqual({
       id: "user-1",
       email: "member@example.com",
@@ -249,7 +255,7 @@ describe("authOptions", () => {
     );
 
     expect(result).toBeNull();
-    expect(passwordMock.verifyPassword).not.toHaveBeenCalled();
+    expect(passwordMock.verifyParsedPasswordHash).toHaveBeenCalledTimes(1);
   });
 
   it("rejects password credentials when the password does not verify", async () => {
@@ -258,9 +264,10 @@ describe("authOptions", () => {
       email: "member@example.com",
       name: "Member",
       image: null,
-      passwordHash: "scrypt:salt:key",
+      passwordHash:
+        "munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
-    passwordMock.verifyPassword.mockResolvedValue(false);
+    passwordMock.verifyParsedPasswordHash.mockResolvedValue(false);
 
     const provider = getCredentialsProvider("password");
     const result = await provider.authorize?.(

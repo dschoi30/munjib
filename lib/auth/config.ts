@@ -23,7 +23,7 @@ import {
   sanitizeInternalSessionImage,
 } from "@/lib/auth/session-image";
 import type { AuthRuntimeConfig } from "@/lib/auth/runtime";
-import { verifyPassword } from "@/lib/auth/passwords";
+import { authorizePasswordCredential } from "@/lib/auth/password-credentials";
 
 function readProcessEnv(name: string): string | undefined {
   return process.env[name];
@@ -151,21 +151,10 @@ export function buildAuthOptions(
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const email = credentials?.email?.toLowerCase().trim();
-        const password = credentials?.password;
-        if (!email || typeof password !== "string" || password.length === 0) return null;
-        const user = await prisma.user.findUnique({
-          where: { email },
-          select: { id: true, email: true, name: true, image: true, passwordHash: true },
+        return authorizePasswordCredential(credentials, {
+          db: prisma,
+          downstreamHooks,
         });
-        if (!user?.passwordHash) return null;
-        const verified = await verifyPassword(password, user.passwordHash);
-        if (!verified) return null;
-        await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PASSWORD" });
-        if (!(await downstreamHooks.admitPasswordCredentials({ userId: user.id, email }))) {
-          return null;
-        }
-        return { id: user.id, email: user.email, name: user.name, image: null };
       },
     }),
   ];

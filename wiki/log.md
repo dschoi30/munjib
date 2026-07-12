@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T01:10:00+09:00 - versioned and bounded password verification
+
+- Result: password rows now accept only the reviewed v1 or exact legacy envelope; fixed-cost scrypt work uses a process-local two-active/eight-queued/two-second permit, unknown/passwordless/malformed accounts receive one random valid dummy record, and verified legacy values upgrade through an exact-byte compare-and-swap before session issuance.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/passwords.ts`, `lib/auth/password-credentials.ts`, `lib/auth/password-work-limit.ts`, `lib/auth/config.ts`, `lib/auth/provisioning.ts`, `prisma/seed.ts`, `tests/auth/passwords.test.ts`, `tests/auth/password-work-limit.test.ts`, `tests/auth/password-credentials.test.ts`, `tests/auth/password-rehash-race.test.ts`, and `tests/security/password-hash-source-contract.test.ts`.
+- Verification: focused password/auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-07-13T00:40:00+09:00 - closed signup boundaries
 
 - Result: closed password and unlinked Google signup at callback and adapter boundaries; exact-account, token-zero, session-image, request-context, UI, and source-contract tests cover the fail-closed behavior.

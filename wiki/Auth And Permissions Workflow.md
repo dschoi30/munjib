@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 63
+source_count: 68
 tags:
   - munjib
   - auth
@@ -82,6 +82,31 @@ workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
 
+## Versioned and bounded password verification
+
+`User.passwordHash` accepts only the reviewed v1 envelope
+`munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$<22-char-salt>$<86-char-key>`
+or the exact legacy `scrypt:<salt>:<key>` envelope. Every base64url token is
+decoded and re-encoded before use; fixed `N=16384`, `r=8`, `p=1`, 64-byte key,
+UTF-8 bytes of the canonical salt token, and 64 MiB `maxmem` are never selected
+from stored data. Password inputs are strings of 1-256 UTF-8 bytes and stored
+envelopes are ASCII and at most 256 bytes.
+
+`authorizePasswordCredential()` queries a normalized email, then selects either
+the validated account envelope or one process-random valid v1 dummy envelope.
+Every valid-shaped attempt performs one fixed scrypt and one equal-length
+constant-time comparison under `withPasswordWorkPermit()`: two calls may run,
+eight may queue, and queued work expires after two seconds. The permit is a
+resource guard only; saturation has a stable non-sensitive cause code and does
+not emit account, email, password, hash, salt, path, or duration data.
+
+Successful current hashes are not rewritten. A verified legacy value is wrapped
+with the same salt/key into v1 and conditionally updated with `WHERE id AND the
+exact old passwordHash`; a zero-row compare-and-swap or database failure returns
+no user before session issuance. Seed and one-shot provisioning use `hashPassword()`
+so new rows are v1, while `/api/auth/signup` remains a stable `403
+SIGNUP_NOT_ALLOWED` closed boundary.
+
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
@@ -122,15 +147,16 @@ and Korean strings live in `lib/i18n/messages.ts`.
 
 `lib/auth/config.ts` now exposes distinct NextAuth providers:
 
-- `password`: credentials provider that finds `User.passwordHash` by normalized email and verifies it with `verifyPassword()`.
+- `password`: credentials provider that finds `User.passwordHash` by normalized email and delegates to `authorizePasswordCredential()` for bounded dummy work, fixed verification, and legacy compare-and-swap migration.
 - `trial`: credentials provider with no browser-visible secret; it signs in the seeded `mjtrial@munjib.com` account.
 - `development-login`: gated seed-user shortcut controlled by `MUNJIB_ENABLE_DEV_LOGIN`.
 - `google`: OAuth provider added only when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present. The `signIn` callback rejects Google profiles whose email is not verified.
 
-`/api/auth/signup` creates email/password accounts through
-`createPasswordSignup()`. It normalizes email, enforces an 8-character minimum
-password, hashes the password with the existing `scrypt` helper, creates the
-`User`, and provisions a personal organization plus default workspace. The
+`createPasswordSignup()` remains the one-shot provisioning helper for internal
+callers: it normalizes email, enforces an 8-character minimum password, hashes
+with the versioned helper, creates the `User`, and provisions a personal
+organization plus default workspace. The public `/api/auth/signup` route is
+closed with `403 SIGNUP_NOT_ALLOWED`. The
 workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
 launch membership bootstrap so the new user is `OWNER`, `mjadmin@munjib.com`
@@ -222,9 +248,9 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 
 ## Launch account foundation
 
-Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
+Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores the reviewed versioned `munjib-scrypt` envelope described above, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
 
-`lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
+`lib/auth/passwords.ts` owns the canonical parser, fixed-cost hashing, and constant-time verification. It generates a random salt for each hash, uses Node `scrypt` with explicit options, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate v1 rows.
 
 `lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `mjadmin@munjib.com` as `ADMIN` plus `mjtrial@munjib.com` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. Existing launch-account `OWNER` rows also stay `OWNER` during backfill. The backfill helper fetches launch users once and applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
 
@@ -254,6 +280,9 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `app/api/auth/signup/route.ts`
 - `app/api/auth/landing/route.ts`
 - `lib/auth/provisioning.ts`
+- `lib/auth/passwords.ts`
+- `lib/auth/password-credentials.ts`
+- `lib/auth/password-work-limit.ts`
 - `lib/workspaces/management-service.ts`
 - `lib/workspaces/page-query.ts`
 - `lib/documents/service.ts`
