@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 338
+updated: 2026-07-13
+source_count: 340
 tags:
   - log
   - munjib
@@ -18,6 +18,18 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-13T00:40:00+09:00 - closed signup boundaries
+
+- Result: closed password and unlinked Google signup at callback and adapter boundaries; exact-account, token-zero, session-image, request-context, UI, and source-contract tests cover the fail-closed behavior.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/google-existing-account.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, `lib/auth/session-image.ts`, `lib/auth/config.ts`, and focused auth/security tests.
+
+## 2026-07-13T00:42:00+09:00 - downstream hook contract
+
+- Result: froze named downstream auth slots for durable state, password/OAuth admission, JWT/session output, auth mutation, media reduction, and candidate signup/link policy; Leaf 1 retains fixed call order and final sanitizer ownership.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/contract.ts`, `lib/auth/downstream/leaf2.ts`, `lib/auth/downstream/leaf4.ts`, `lib/auth/downstream/leaf7.ts`, `lib/auth/downstream/leaf8.ts`, `lib/auth/config.ts`.
 
 ## 2026-07-12T00:00:00+09:00 - security runtime
 

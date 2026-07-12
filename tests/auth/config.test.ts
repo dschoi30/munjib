@@ -23,6 +23,12 @@ const prismaMock = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
   },
+  account: {
+    findUnique: vi.fn(),
+  },
+  attachment: {
+    findMany: vi.fn(),
+  },
 }));
 
 const passwordMock = vi.hoisted(() => ({
@@ -41,6 +47,8 @@ describe("authOptions", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     prismaMock.user.findUnique.mockReset();
+    prismaMock.account.findUnique.mockReset();
+    prismaMock.attachment.findMany.mockReset();
     passwordMock.verifyPassword.mockReset();
   });
 
@@ -310,5 +318,18 @@ describe("authOptions", () => {
     });
 
     expect(result).toBe(false);
+  });
+
+  it("denies a verified but unlinked Google identity without candidate signup", async () => {
+    prismaMock.account.findUnique.mockResolvedValue(null);
+    const result = await authOptions.callbacks?.signIn?.({
+      account: { provider: "google", type: "oauth", providerAccountId: "unlinked" },
+      profile: { email: "member@example.com", email_verified: true } as never,
+      user: { id: "user-1", email: "member@example.com", name: "Member" },
+      credentials: undefined,
+      email: undefined,
+    });
+    expect(result).toBe(false);
+    expect(prismaMock.account.findUnique).toHaveBeenCalledTimes(2);
   });
 });

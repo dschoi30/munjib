@@ -20,6 +20,7 @@ type LoginFormProps = {
   callbackUrl?: string;
   isDevLoginEnabled?: boolean;
   isGoogleLoginEnabled?: boolean;
+  isSignupEnabled?: boolean;
 };
 
 type AuthMode = "signin" | "signup";
@@ -46,6 +47,7 @@ export function LoginForm({
   callbackUrl = defaultPostLoginCallbackUrl,
   isDevLoginEnabled = true,
   isGoogleLoginEnabled = true,
+  isSignupEnabled = true,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -60,7 +62,7 @@ export function LoginForm({
 
   const postAuthCallbackUrl = buildPostAuthCallbackUrl(callbackUrl);
   const isSubmitting = activeAction !== null;
-  const isSignupMode = mode === "signup";
+  const isSignupMode = isSignupEnabled && mode === "signup";
 
   async function onPasswordSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -294,21 +296,23 @@ export function LoginForm({
           </Button>
         </form>
 
-        <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
-          <span>{isSignupMode ? t("login.hasAccount") : t("login.noAccount")}</span>
-          <button
-            type="button"
-            disabled={isSubmitting}
-            onClick={() => {
-              setMode((current) => (current === "signin" ? "signup" : "signin"));
-              setErrorKey(null);
-              setStatusKey(null);
-            }}
-            className="font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isSignupMode ? t("login.backToSignIn") : t("login.createOne")}
-          </button>
-        </div>
+        {isSignupEnabled ? (
+          <div className="mt-3 flex items-center justify-center gap-1.5 text-sm text-ink-muted">
+            <span>{isSignupMode ? t("login.hasAccount") : t("login.noAccount")}</span>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => {
+                setMode((current) => (current === "signin" ? "signup" : "signin"));
+                setErrorKey(null);
+                setStatusKey(null);
+              }}
+              className="font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSignupMode ? t("login.backToSignIn") : t("login.createOne")}
+            </button>
+          </div>
+        ) : null}
 
         <div className="my-4 h-px bg-border" aria-hidden="true" />
 

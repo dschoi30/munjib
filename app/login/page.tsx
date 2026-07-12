@@ -10,6 +10,7 @@ export default function LoginPage() {
       <LoginForm
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+        isSignupEnabled={false}
       />
     </main>
   );

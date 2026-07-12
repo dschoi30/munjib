@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-08
-source_count: 58
+updated: 2026-07-13
+source_count: 60
 tags:
   - munjib
   - auth
@@ -57,6 +57,19 @@ line separators and all C1 controls as content violations alongside ASCII
 controls/newlines. A leading UTF-8 BOM is preserved during decoding so it cannot
 be normalized into an accepted secret. The
 descriptor also uses close-on-exec semantics on Linux and Darwin.
+
+## Closed signup covers OAuth
+
+Closed mode allows Google only when the exact provider account identifier already
+exists in `Account` and every legacy token/expiry column is SQL `NULL`.
+`email_verified` alone cannot create or link a user. A guarded adapter rejects
+`createUser` and new `linkAccount` calls before delegate persistence, so callback
+ordering cannot turn a verified email into signup. Password signup returns the
+stable `403 SIGNUP_NOT_ALLOWED` response and the login form keeps password sign-in
+and already-linked Google controls while omitting account creation.
+The frozen downstream hook contract also reserves durable-state, password-admission,
+OAuth start/identity, JWT/session-output, auth-mutation, and candidate policy slots;
+Leaf 1 owns their call order and final media postcondition.
 
 ## Session helper
 

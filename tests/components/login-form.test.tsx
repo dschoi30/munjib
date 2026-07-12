@@ -57,7 +57,11 @@ afterEach(() => {
 
 function renderLoginForm(
   callbackUrl?: string,
-  options: { isDevLoginEnabled?: boolean; isGoogleLoginEnabled?: boolean } = {},
+  options: {
+    isDevLoginEnabled?: boolean;
+    isGoogleLoginEnabled?: boolean;
+    isSignupEnabled?: boolean;
+  } = {},
 ) {
   return render(
     <I18nProvider>
@@ -65,12 +69,21 @@ function renderLoginForm(
         {...(callbackUrl ? { callbackUrl } : {})}
         isDevLoginEnabled={options.isDevLoginEnabled ?? true}
         isGoogleLoginEnabled={options.isGoogleLoginEnabled ?? true}
+        isSignupEnabled={options.isSignupEnabled ?? true}
       />
     </I18nProvider>,
   );
 }
 
 describe("LoginForm", () => {
+  it("omits account-creation controls when signup is disabled", async () => {
+    renderLoginForm(undefined, { isSignupEnabled: false });
+
+    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Create one" })).toBeNull();
+    expect(screen.queryByText("Don't have an account?")).toBeNull();
+  });
+
   it("waits for the stored Korean display language before rendering auth text", async () => {
     window.localStorage.setItem("munjib:language", "ko");
 
