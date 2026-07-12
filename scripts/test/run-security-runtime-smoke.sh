@@ -58,7 +58,10 @@ for attempt in $(seq 1 30); do
   if curl --fail --silent --show-error --max-time 5 "http://127.0.0.1:$PORT/api/auth/providers" >/dev/null; then
     break
   fi
-  test "$attempt" != 30
+  if [ "$attempt" = 30 ]; then
+    printf '%s\n' "security runtime server health timeout" >&2
+    exit 1
+  fi
   sleep 2
 done
 PLAYWRIGHT_TEST_BASE_URL="http://127.0.0.1:$PORT" \

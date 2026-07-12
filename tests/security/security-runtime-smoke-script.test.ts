@@ -34,4 +34,9 @@ describe("security runtime smoke launcher", () => {
     expect(script).toContain('"${FIXTURE_CREATED:-false}"');
     expect(script).toContain('"${WORK:-}"');
   });
+
+  test("uses an explicit health timeout instead of set -e side effects", () => {
+    expect(script).toContain('if [ "$attempt" = 30 ]; then');
+    expect(script).toContain("security runtime server health timeout");
+  });
 });

@@ -35,6 +35,27 @@ links:
 - Source evidence: Issue #171 and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
 - Verification: design self-review completed; implementation remains on the Issue #171 branch.
 
+## 2026-07-12T22:53:00+09:00 - fixture-gated security runtime e2e discovery
+
+- Result: The security runtime Playwright spec now skips during ordinary `playwright test` discovery when its dedicated fixture variables are absent; the production-like smoke launcher still supplies the required fixture and runs both tests.
+- Coverage: `tests/e2e/security-runtime.spec.ts` uses Playwright describe-level skips for missing/empty fixture inputs, keeping the default E2E command discoverable without weakening the dedicated smoke gate.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Verification: `PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:9 pnpm exec playwright test tests/e2e/security-runtime.spec.ts --list`, runtime contract tests, and TypeScript pass.
+
+## 2026-07-12T21:35:00+09:00 - secure runtime smoke health timeout clarity
+
+- Result: The production-like smoke runner now reports an explicit health timeout instead of relying on `set -e` test semantics after the final poll.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh` and `tests/security/security-runtime-smoke-script.test.ts`.
+- Verification: red/green shell-contract Vitest and `bash -n` pass.
+
+## 2026-07-12T21:30:00+09:00 - secure runtime dependency verification
+
+- Updated [[CI CD And Monitoring Workflow]] after the security-critical Next.js
+   patch upgrade. Evidence: `package.json`, `pnpm-lock.yaml`,
+   `tests/security/next-runtime-version.test.ts`, and
+   `tests/e2e/security-runtime.spec.ts`.
+
 ## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
 
 - Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.
