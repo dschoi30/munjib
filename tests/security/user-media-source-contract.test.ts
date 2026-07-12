@@ -142,4 +142,16 @@ describe("user/provider media source contract", () => {
     expect(overlay).toContain("process.env.MUNJIB_EGRESS_PROBE_BIND_HOST");
     expect(overlay).toContain('ports:\n      - "127.0.0.1:39158:39158"');
   });
+
+  it("runs the zero-egress harness in a parsed non-production environment", async () => {
+    const playwright = await source("playwright.config.ts");
+    const overlay = await source("docker-compose.egress-test.yml");
+
+    expect(playwright).toContain("NEXTAUTH_URL=http://localhost:3000");
+    expect(playwright).toContain("MUNJIB_DEPLOYMENT_ENV=development");
+    expect(playwright).toContain("MUNJIB_E2E_PROVIDER_TRANSPORT=true");
+    expect(playwright).toContain("pnpm exec next dev --turbo");
+    expect(overlay).toContain("MUNJIB_DEPLOYMENT_ENV: development");
+    expect(overlay).toContain('MUNJIB_E2E_PROVIDER_TRANSPORT: "true"');
+  });
 });

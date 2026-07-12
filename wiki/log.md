@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:20:00+09:00 - Issue #158 zero-egress harness environment fix
+
+- Result: changed the local Playwright and egress-test Compose harnesses from the unsupported `test` deployment value to parser-approved `development`, while retaining the explicit test-transport gate, adding the required local `NEXTAUTH_URL`, and running the local Next harness through Turbopack so Node-only auth instrumentation can load.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `docker-compose.egress-test.yml`, `tests/security/user-media-source-contract.test.ts`, and Issue #158 review feedback.
+- Verification: zero-egress harness contract test, focused Playwright startup attempt, TypeScript, and wiki sync gates.
+
 ## 2026-07-13T14:10:00+09:00 - Issue #158 owner-slot hash refresh
 
 - Result: kept the canonical typed Leaf 4 downstream hook while refreshing its protected-artifact SHA-256 after the origin/main merge.

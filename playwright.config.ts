@@ -19,7 +19,12 @@ export default defineConfig({
     : {
         command:
           "MUNJIB_E2E_PROVIDER_TRANSPORT=true " +
-          "MUNJIB_DEPLOYMENT_ENV=test " +
+          "NEXTAUTH_URL=http://localhost:3000 " +
+          // The auth runtime parser intentionally accepts only the deployment
+          // environments used by the application. Keep the harness in the
+          // parsed development lane; the explicit test transport flag below
+          // remains the separate gate for deterministic local provider routes.
+          "MUNJIB_DEPLOYMENT_ENV=development " +
           "MUNJIB_RAG_CHAT_PROVIDER=openai-compatible " +
           "MUNJIB_RAG_CHAT_MODEL=zero-egress-fixture " +
           "MUNJIB_RAG_EMBED_PROVIDER=ollama " +
@@ -30,7 +35,7 @@ export default defineConfig({
           "MUNJIB_OPENAI_COMPATIBLE_API_KEY=test-only " +
           "MUNJIB_E2E_ATTACKER_ORIGIN=http://localhost:39158 " +
           "MUNJIB_EGRESS_PROBE_SERVER_ORIGIN=http://127.0.0.1:39158 " +
-          "pnpm run dev",
+          "pnpm exec next dev --turbo",
         url: "http://localhost:3000/login",
         reuseExistingServer: !process.env.CI,
         timeout: 30_000,
