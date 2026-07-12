@@ -85,6 +85,8 @@ describe("Leaf 13A least-authority delivery substrate", () => {
     expect(socket).toContain("SocketMode=0620");
     expect(socket).toContain("SocketGroup=munjib-release-submit");
     expect(ssh).toContain("ForceCommand /usr/local/libexec/munjib-release-submit");
+    expect(ssh).toMatch(/^PermitUserEnvironment no\n\nMatch User munjib-deploy/m);
+    expect(ssh).not.toMatch(/Match User munjib-deploy[\s\S]*PermitUserEnvironment no/);
     expect(ssh).toContain("PermitTTY no");
     expect(ssh).toContain("AllowTcpForwarding no");
     expect(ssh).toContain("AllowStreamLocalForwarding no");

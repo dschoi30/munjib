@@ -26,6 +26,13 @@ links:
 - Source evidence: Leaf 13A child issue/branch mapping and delivery substrate contract files.
 - Verification: focused delivery contract tests and TypeScript compilation pass.
 
+## 2026-07-12T19:10:00+09:00 - sshd policy parser hardening
+
+- Result: The forced-submit fragment keeps `PermitUserEnvironment no` in the global scope, where OpenSSH accepts it, while the `Match User munjib-deploy` block contains only match-valid restrictions.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/sshd/munjib-release-submit.conf` and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests pass; production `sshd -t` remains an installation gate.
+
 ## 2026-07-12T18:45:00+09:00 - delivery broker review hardening
 
 - Result: Leaf 13A review follow-up adds bounded broker deadlines and concurrency, framed response parsing, socket-activation descriptor cleanup, and allocation-free envelope decoding with trailing-data rejection.
