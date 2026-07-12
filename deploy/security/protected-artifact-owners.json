@@ -1,4 +1,28 @@
 {
+  "slots": {
+    "leaf11-external-image-import": {
+      "version": 0,
+      "state": "RESERVED",
+      "reservedOwner": "attachment-integrity-lifecycle"
+    }
+  },
+  "artifacts": {
+    "components/markdown/safe-media.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "8a4617e61d70ef19860cf7e83e19160b439e98a0bc13747cd8c49e479b3ae6ba"
+    },
+    "components/markdown/external-media-interstitial.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "c51b365c0b6ba09ae9c7e98c7ebc6d78fef041c21e68b162a19463e2ea48f663"
+    }
+  },
+  "transitions": [
+    {
+      "from": 0,
+      "to": 1,
+      "owner": "attachment-integrity-lifecycle"
+    }
+  ],
   "format": "munjib-protected-artifact-owners-v1",
   "version": 1,
   "release": "auth-runtime-fail-closed@1",
@@ -58,7 +82,7 @@
       "kind": "FULL_PATH",
       "owner": "zero-ambient-media-egress",
       "version": 0,
-      "sha256": "1dd585fe4e8cc83e62e6b388f8fe315404c09af8a17ec7fe2e18971388128836"
+      "sha256": "e0816ac62759864295041eb07f47bb016e124ff0ddfae3387f42ac4cea579242"
     },
     {
       "selector": "path:lib/auth/downstream/leaf8.ts",
