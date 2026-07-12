@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-07-13
-source_count: 57
+source_count: 58
 tags:
   - munjib
   - workflow
@@ -324,6 +324,15 @@ NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ### Docker runtime
 
 Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다. runner image는 non-root web/auth-preflight가 Corepack의 기본 `/.cache`에 쓰지 않도록 `HOME=/tmp`와 `COREPACK_HOME=/tmp/.cache/node/corepack`을 사용한다. 이 cache에는 애플리케이션 secret이 들어가지 않으며, production prune 뒤에도 `pnpm start`와 isolated preflight가 같은 UID로 실행된다.
+
+Issue #182는 production dependency prune 뒤에도 generated Prisma client를 보존하는
+runner build contract를 추가한다. Runner는 BusyBox 호환 `find ... -print | head -n 1`로
+production prune 전에 생성된
+`.prisma/client` directory를 찾아 임시 build-only 경로에 복사하고, prune 뒤 root
+`node_modules/.prisma/client`로 복원한다. Prisma CLI는 계속 development-only
+dependency로 유지하며, 최종 image build는 `require("@prisma/client")` guard가
+성공해야 끝난다. 따라서 package-manager virtual-store version을 고정하지 않고,
+생성 client가 빠진 image는 publish 전에 fail-closed 된다.
 
 - `postgres`: `pgvector/pgvector:0.8.2-pg16`, named volume `postgres_data`, configurable host port `POSTGRES_PORT`.
 - `storage-init`: 고정 `alpine:3.22` root one-shot service. `web_storage:/app/storage`를 마운트하고 `/app/storage/attachments`를 만든 뒤 전체 storage tree를 UID/GID `10001:10001`로 소유권 정리한다. `web`은 `service_completed_successfully` 조건으로 이 단계가 끝난 뒤에만 시작한다.
