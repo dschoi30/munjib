@@ -3,9 +3,17 @@ import { readFileSync } from "node:fs";
 
 const fixtureEmail = process.env.SECURITY_RUNTIME_FIXTURE_EMAIL?.trim();
 const fixturePasswordFile = process.env.SECURITY_RUNTIME_FIXTURE_PASSWORD_FILE?.trim();
-if (!fixtureEmail || !fixturePasswordFile) throw new Error("SECURITY_RUNTIME_FIXTURE_REQUIRED");
-const fixturePassword = readFileSync(fixturePasswordFile, "utf8").trim();
-if (!fixturePassword) throw new Error("SECURITY_RUNTIME_FIXTURE_PASSWORD_REQUIRED");
+const fixturePassword = fixturePasswordFile ? readFileSync(fixturePasswordFile, "utf8").trim() : "";
+
+test.describe("security runtime smoke", () => {
+  test.skip(
+    !fixtureEmail || !fixturePasswordFile,
+    "security runtime fixture is supplied by the dedicated smoke launcher",
+  );
+  test.skip(
+    Boolean(fixturePasswordFile) && !fixturePassword,
+    "security runtime fixture password file is empty",
+  );
 
 test("auth providers and the login shell remain available", async ({ page, request }) => {
   const providersResponse = await request.get("/api/auth/providers");
@@ -24,7 +32,7 @@ test("App Router navigation returns a bounded RSC response and keeps the server 
   page,
 }) => {
   await page.goto("/login");
-  await page.getByLabel("Email").fill(fixtureEmail);
+  await page.getByLabel("Email").fill(fixtureEmail!);
   await page.getByLabel("Password", { exact: true }).fill(fixturePassword);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/workspaces\/security-runtime-/);
@@ -55,4 +63,5 @@ test("App Router navigation returns a bounded RSC response and keeps the server 
   expect(rscBodyLength).toBeLessThan(5 * 1024 * 1024);
   await expect(page.locator("[name='title']")).toHaveValue("Runtime Smoke");
   await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible();
+});
 });

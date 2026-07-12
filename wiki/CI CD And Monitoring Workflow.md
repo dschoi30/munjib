@@ -66,6 +66,11 @@ roots, and a paginated advisory gate without persisting advisory response bodies
 Production runtime smoke fixtures read passwords only from a file and emit no
 credential material.
 
+The fixture-gated Playwright spec skips during ordinary E2E discovery when the
+dedicated smoke variables are absent, so `pnpm run test:e2e` remains usable;
+`run-security-runtime.sh` supplies the fixture variables and still executes the
+security smoke tests.
+
 The smoke launcher also keeps the generated auth secret out of process argv and
 installs cleanup before fixture/password setup; RSC body bounds are captured in
 a route interception before response fulfillment. Static contract tests cover
