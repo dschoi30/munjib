@@ -1,0 +1,31 @@
+{
+  "format": "munjib-database-role-bundle-v1",
+  "version": 1,
+  "bundle": "database-role-v1",
+  "evidence": "PRE_JOURNAL",
+  "searchPath": "pg_catalog,public,munjib_extensions",
+  "callerAuthority": "cleared-before-fixed-credential-file",
+  "files": [
+    {
+      "source": "deploy/postgres/roles-only.sql",
+      "destination": "/var/lib/munjib/database-role-v1/roles-only.sql",
+      "type": "regular",
+      "mode": "0400",
+      "sha256": "f0fd690114b36a0894825e47a8761ba59c6630b650af6f13f7c4341c292863a8"
+    },
+    {
+      "source": "deploy/postgres/finalize-ownership.sql",
+      "destination": "/var/lib/munjib/database-role-v1/finalize-ownership.sql",
+      "type": "regular",
+      "mode": "0400",
+      "sha256": "1221a43b6add1dacc67de728f9ba6d0628ca35ba3870d41ccacc08acdf20ea27"
+    },
+    {
+      "source": "deploy/postgres/verify-role-separation.sql",
+      "destination": "/var/lib/munjib/database-role-v1/verify-role-separation.sql",
+      "type": "regular",
+      "mode": "0400",
+      "sha256": "5c2e0f3679a06a4a8b903d27f56ff50adc6540fe55c8227b2013de4d90fd1a47"
+    }
+  ]
+}

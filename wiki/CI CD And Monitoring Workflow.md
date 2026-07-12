@@ -41,6 +41,27 @@ PNPM_VERSION=10.28.1
 
 Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
 
+### Leaf 13B database authority gate
+
+Leaf 13B는 production migration history를 append-only exact
+name/checksum prefix로 admission하고, 실패·롤백·미완료·수정 checksum·비단조
+pending migration을 거부한다. `scripts/deploy/check-migration-history.ts`는
+현재 Prisma migration bytes와 `deploy/security/migration-ledger.json`을
+대조하고, `scripts/deploy/check-expand-contract.ts`는 additive `EXPAND`와
+명시적 `CONTRACT` 경계를 검사한다.
+
+`deploy/postgres/roles-only.sql`은 `NOLOGIN` schema owner와 제한된 migration,
+Web, RAG 역할을 준비한다. `finalize-ownership.sql`은 Web/RAG에 필요한
+application DML/read만 주고 DDL·truncate·owner/journal authority를 차단한다.
+모든 entrypoint는 caller libpq 변수를 지운 뒤 고정 credential file과
+`pg_catalog` 우선 `search_path`를 사용하며, owner role을 설정하는 것은
+고정 migrator operation 하나뿐이다.
+
+`database-role-v1` manifest는 PRE_JOURNAL 단계의 manifest-listed regular SQL
+파일과 SHA-256/mode/destination을 고정한다. 이 단계에서는 `pgcrypto`, journal
+objects, genesis rows를 만들지 않는다. 세부 운영 절차는
+`docs/runbooks/immutable-deploy.md`에 기록한다.
+
 Production Compose auth 경계는 root-managed fixed descriptor를 사용한다. `web`과 일회성 `auth-preflight`는 `/run/secrets/munjib_nextauth_secret`를 읽고 host source는 `/etc/munjib/secrets/nextauth-current`로 고정된다. Google auth를 켤 때도 임의 overlay 대신 repository의 `docker-compose.google.yml`만 추가하며 `/etc/munjib/secrets/google-client-current`를 `/run/secrets/munjib_google_client_secret`으로 마운트한다. 두 production service는 pinned non-root UID `10001:10001`로 실행되고 descriptor는 owner `10001`, mode `0400`이어야 한다. Web host port는 `127.0.0.1:${WEB_PORT:-3000}:3000`으로만 publish한다.
 
 Monitoring entry point는 두 갈래다.

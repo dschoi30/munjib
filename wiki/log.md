@@ -2813,7 +2813,39 @@ links:
 
 # 2026-07-13T00:00:00+09:00 - security
 
+- Result: Leaf 13B Task 5 adds append-only migration prefix/checksum admission,
+  expand/contract policy checks, separated PostgreSQL roles, and the
+  PRE_JOURNAL database-role-v1 manifest/builder. Web/RAG authority excludes
+  DDL, truncate, ownership, and journal roles; fixed migrator entrypoints clear
+  caller libpq variables before using a file-backed credential.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `lib/deploy/migration-history.ts`, `lib/deploy/migration-policy.ts`,
+  `deploy/postgres/roles-only.sql`, `deploy/postgres/finalize-ownership.sql`,
+  `deploy/postgres/verify-role-separation.sql`,
+  `deploy/host-bundles/database-role-v1/manifest.json`, and focused deploy tests.
+- Verification: focused migration/role/bundle Vitest suites (16 tests),
+  `pnpm exec tsc --noEmit --pretty false`, and migration ledger checker.
+
 - Result: PR #174 review follow-up closes six auth-runtime/login gaps. `resolveAuthSecret()` and `resolveDefaultRuntime()` now default to the strict file reader; Google UI availability uses the validated file-backed runtime without exposing secret bytes; trial provider/UI registration share the development deployment gate; development treats a blank direct Google secret as disabled; and owner bootstrap lowercases/validates email before upsert.
+- Follow-up: Leaf 13B role bootstrap now hardens every pre-existing role's
+  login/escalation attributes, grants schema-owner migration authority before
+  the first migration, captures caller libpq role state before RESET ROLE, and
+  revokes Web/RAG access to the append-only `_prisma_migrations` ledger.
+- Final follow-up: schema-owner assignment is idempotent for pre-existing
+  extension schemas, and the migration-history checker fail-closed normalizes
+  Prisma snake_case exports before exact prefix/checksum admission.
+- External review follow-up: Prisma entrypoints now construct URL-encoded
+  password/options into `DATABASE_URL` from fixed secret files, migration rows
+  sort canonically before validation, policy regexes stay within statements,
+  and `_prisma_migrations` ACL revocation is guarded for fresh databases.
+- Final deterministic-order follow-up: migration history sorting now uses the
+  same locale-independent code-unit comparator as filesystem migration ordering,
+  with mixed-case regression coverage.
+- Compose interpolation follow-up: runtime credential variables are escaped for
+  Compose (`$$`) and inherited `PGOPTIONS` is explicitly unset before URL option
+  construction; `docker compose config` coverage prevents empty interpolation.
+- Migration policy follow-up: quoted semicolons are outside the accepted static
+  grammar and fail closed instead of crossing statement boundaries.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
 - Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
 - Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.
