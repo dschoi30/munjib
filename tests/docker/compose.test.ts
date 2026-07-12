@@ -266,9 +266,22 @@ describe("Docker web service configuration", () => {
     expect(dockerfile).toContain("COPY --from=builder /app/public ./public");
     expect(dockerfile).toContain("COPY --from=builder /app/next.config.mjs ./next.config.mjs");
     expect(dockerfile).not.toContain("next.config.ts");
-    expect(dockerfile).toContain("pnpm prune --prod");
+    expect(dockerfile).toContain("CI=true pnpm prune --prod");
     expect(dockerfile).toContain('CMD ["pnpm", "start"]');
     expect(dockerfile).toContain('CMD ["pnpm", "run", "dev"]');
+  });
+
+  test("non-root production runtime uses a writable Corepack cache", () => {
+    const dockerfile = read("Dockerfile");
+    const runnerStart = dockerfile.indexOf("FROM deps AS runner");
+    const devStart = dockerfile.indexOf("FROM deps AS dev");
+    const runnerStage = dockerfile.slice(runnerStart, devStart);
+
+    expect(runnerStart).toBeGreaterThanOrEqual(0);
+    expect(devStart).toBeGreaterThan(runnerStart);
+    expect(runnerStage).toContain("ENV HOME=/tmp");
+    expect(runnerStage).toContain("ENV COREPACK_HOME=/tmp/.cache/node/corepack");
+    expect(runnerStage).toContain("chown -R 10001:10001 /tmp/.cache");
   });
 
   test("Dockerfile sets Sentry build values in the builder stage before building", () => {
