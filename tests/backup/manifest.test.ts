@@ -185,6 +185,7 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, databaseNameHash: HASH.toUpperCase() })).toThrow(/hash/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "/absolute" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "documents/" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: `${"a".repeat(513)}.bin` }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[1], manifest.attachments.entries[0]] } })).toThrow(/sorted/i);
     expect(() => parseSnapshotManifest({ ...manifest, migrations: { ...manifest.migrations, appliedIds: [...manifest.migrations.appliedIds].reverse() } })).toThrow(/sorted/i);
   });
