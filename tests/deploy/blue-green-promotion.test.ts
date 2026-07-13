@@ -132,4 +132,36 @@ describe("private blue/green candidate qualification", () => {
     expect(revalidateBrokerOperation({ ...envelope, hostPort: 3000 })).toMatchObject({ ok: false });
     expect(revalidateBrokerOperation({ ...envelope, command: ["docker compose up"] })).toMatchObject({ ok: false });
   });
+
+  test("rejects malformed broker envelopes without throwing", () => {
+    const malformed: unknown[] = [
+      null,
+      [],
+      {},
+      { brokerRevalidated: true },
+      { brokerRevalidated: true, operation: "PROMOTE", composeFiles: null },
+      { brokerRevalidated: true, operation: "PROMOTE", environment: [] },
+      { brokerRevalidated: true, operation: "PROMOTE", entrypoint: null, command: [] },
+      { brokerRevalidated: true, operation: "PROMOTE", entrypoint: [], command: [null] },
+    ];
+    for (const envelope of malformed) {
+      expect(() => revalidateBrokerOperation(envelope)).not.toThrow();
+      expect(revalidateBrokerOperation(envelope)).toMatchObject({ ok: false });
+    }
+  });
+
+  test("rejects prefixed image values instead of accepting a digest suffix", () => {
+    const prefixedApp = "prefix " + validCandidate.appDigest;
+    const prefixedBindings = { ...validCandidate.bindings, image: prefixedApp };
+    const prefixedEvidence = { ...validCandidate.evidence, appDigest: prefixedApp };
+    expect(verifyPrivateBindings(prefixedBindings)).toMatchObject({ ok: false });
+    expect(
+      qualifyCandidate({
+        ...validCandidate,
+        appDigest: prefixedApp,
+        bindings: prefixedBindings,
+        evidence: prefixedEvidence,
+      }),
+    ).toMatchObject({ ok: false });
+  });
 });

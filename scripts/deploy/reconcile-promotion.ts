@@ -1,4 +1,4 @@
-import { readFileSync, renameSync, closeSync, fsyncSync, openSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, closeSync, fsyncSync, openSync, writeSync } from "node:fs";
 
 export type PromotionPhase = "IDLE" | "PREPARED" | "TRAFFIC_SWITCHED" | "COMMITTED";
 export type PromotionOperation = "PREPARE" | "SWITCH_TRAFFIC" | "COMMIT" | "ROLLBACK";
@@ -256,41 +256,74 @@ const FIXED_ENVIRONMENT_KEYS = new Set([
 ]);
 
 /** Revalidate the complete fixed broker operation, never caller-selected Docker arguments. */
-export function revalidateBrokerOperation(envelope: BrokerOperationEnvelope): { ok: boolean; reason?: string } {
-  if (!envelope || envelope.brokerRevalidated !== true) return { ok: false, reason: "broker revalidation missing" };
-  if (!Object.values(["QUALIFY", "MIGRATE", "PROMOTE", "ROLLBACK", "RESCAN"]).includes(envelope.operation)) {
+export function revalidateBrokerOperation(envelope: unknown): { ok: boolean; reason?: string } {
+  if (typeof envelope !== "object" || envelope === null || Array.isArray(envelope)) {
+    return { ok: false, reason: "broker revalidation missing" };
+  }
+  const candidate = envelope as Partial<BrokerOperationEnvelope>;
+  if (candidate.brokerRevalidated !== true) {
+    return { ok: false, reason: "broker revalidation missing" };
+  }
+  if (
+    typeof candidate.operation !== "string" ||
+    !Object.values(["QUALIFY", "MIGRATE", "PROMOTE", "ROLLBACK", "RESCAN"]).includes(candidate.operation as BrokerOperationEnvelope["operation"])
+  ) {
     return { ok: false, reason: "unknown broker operation" };
   }
   if (
-    !/^ghcr\.io\/dschoi30\/munjib@sha256:[a-f0-9]{64}$/.test(envelope.appImage) ||
-    !/^pgvector\/pgvector@sha256:[a-f0-9]{64}$/.test(envelope.postgresImage) ||
-    !/^alpine@sha256:[a-f0-9]{64}$/.test(envelope.storageInitImage) ||
-    !/^sha256:[a-f0-9]{64}$/.test(envelope.hostBundleDigest)
+    typeof candidate.appImage !== "string" ||
+    typeof candidate.postgresImage !== "string" ||
+    typeof candidate.storageInitImage !== "string" ||
+    typeof candidate.hostBundleDigest !== "string" ||
+    !/^ghcr\.io\/dschoi30\/munjib@sha256:[a-f0-9]{64}$/.test(candidate.appImage) ||
+    !/^pgvector\/pgvector@sha256:[a-f0-9]{64}$/.test(candidate.postgresImage) ||
+    !/^alpine@sha256:[a-f0-9]{64}$/.test(candidate.storageInitImage) ||
+    !/^sha256:[a-f0-9]{64}$/.test(candidate.hostBundleDigest)
   ) {
     return { ok: false, reason: "broker accepts only allowlisted exact image digests" };
   }
-  if (envelope.project !== FIXED_PROJECT || envelope.network !== FIXED_NETWORK) {
+  if (candidate.project !== FIXED_PROJECT || candidate.network !== FIXED_NETWORK) {
     return { ok: false, reason: "project/network are fixed" };
   }
-  if (envelope.hostPort !== undefined) return { ok: false, reason: "host ports are not caller-selectable" };
-  if (JSON.stringify(envelope.composeFiles) !== JSON.stringify(FIXED_COMPOSE_FILES)) {
+  if (candidate.hostPort !== undefined) return { ok: false, reason: "host ports are not caller-selectable" };
+  if (
+    !Array.isArray(candidate.composeFiles) ||
+    candidate.composeFiles.length !== FIXED_COMPOSE_FILES.length ||
+    candidate.composeFiles.some((path) => typeof path !== "string") ||
+    JSON.stringify(candidate.composeFiles) !== JSON.stringify(FIXED_COMPOSE_FILES)
+  ) {
     return { ok: false, reason: "compose file set is fixed" };
   }
-  if (Object.keys(envelope.environment).some((key) => !FIXED_ENVIRONMENT_KEYS.has(key))) {
+  if (
+    typeof candidate.environment !== "object" ||
+    candidate.environment === null ||
+    Array.isArray(candidate.environment)
+  ) {
+    return { ok: false, reason: "environment is invalid" };
+  }
+  if (Object.keys(candidate.environment).some((key) => !FIXED_ENVIRONMENT_KEYS.has(key))) {
     return { ok: false, reason: "environment keys are not caller-selectable" };
   }
   if (
-    envelope.environment.WEB_IMAGE !== envelope.appImage ||
-    envelope.environment.POSTGRES_IMAGE !== envelope.postgresImage ||
-    envelope.environment.STORAGE_INIT_IMAGE !== envelope.storageInitImage ||
-    envelope.environment.HOST_BUNDLE_DIGEST !== envelope.hostBundleDigest
+    candidate.environment.WEB_IMAGE !== candidate.appImage ||
+    candidate.environment.POSTGRES_IMAGE !== candidate.postgresImage ||
+    candidate.environment.STORAGE_INIT_IMAGE !== candidate.storageInitImage ||
+    candidate.environment.HOST_BUNDLE_DIGEST !== candidate.hostBundleDigest
   ) {
     return { ok: false, reason: "environment values must exactly bind the signed artifacts" };
   }
-  if (envelope.entrypoint.length !== 0 || envelope.command.some((value) => /checkout|build|docker\s+compose|systemctl|\.\./i.test(value))) {
+  if (!Array.isArray(candidate.entrypoint) || !Array.isArray(candidate.command)) {
+    return { ok: false, reason: "entrypoint and command must be arrays" };
+  }
+  if (
+    candidate.entrypoint.some((value) => typeof value !== "string") ||
+    candidate.command.some((value) => typeof value !== "string") ||
+    candidate.entrypoint.length !== 0 ||
+    candidate.command.some((value) => typeof value === "string" && /checkout|build|docker\s+compose|systemctl|\.\./i.test(value))
+  ) {
     return { ok: false, reason: "entrypoint/command is not an approved fixed operation" };
   }
-  for (const path of envelope.composeFiles) {
+  for (const path of candidate.composeFiles) {
     if (path.includes("..") || path.startsWith("/") || path.includes("\\")) {
       return { ok: false, reason: "compose paths must be fixed relative names" };
     }
@@ -301,9 +334,9 @@ export function revalidateBrokerOperation(envelope: BrokerOperationEnvelope): { 
 /** Atomically writes a regular state record; callers hold the global broker lock. */
 export function writePromotionRecord(path: string, record: PromotionJournalRecord): void {
   const temporary = `${path}.tmp-${process.pid}`;
-  writeFileSync(temporary, JSON.stringify(record) + "\n", { mode: 0o600 });
-  const descriptor = openSync(temporary, "r");
+  const descriptor = openSync(temporary, "w", 0o600);
   try {
+    writeSync(descriptor, JSON.stringify(record) + "\n");
     fsyncSync(descriptor);
   } finally {
     closeSync(descriptor);

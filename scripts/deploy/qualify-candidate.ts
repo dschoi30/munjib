@@ -5,7 +5,7 @@ import {
 } from "./verify-private-bindings";
 
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
-const IMAGE_DIGEST = /@sha256:[a-f0-9]{64}$/;
+const IMAGE_DIGEST = /^[^@\s]+@sha256:[a-f0-9]{64}$/;
 
 export interface CandidateQualificationInput {
   currentGeneration: string;

@@ -8,7 +8,7 @@ services:
     command:
       - |
         unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGSSLMODE PGSSLROOTCERT PGSSLCERT PGSSLKEY PGAPPNAME PGCHANNELBINDING
-        credential_encoded="$$(node -e 'const chunks=[];process.stdin.on("data",c=>chunks.push(c)).on("end",()=>process.stdout.write(encodeURIComponent(Buffer.concat(chunks).toString("utf8"))))' < /run/secrets/munjib_migrator_credential)"
+        credential_encoded="$$(node -e 'const chunks=[];process.stdin.on("data",c=>chunks.push(c)).on("end",()=>process.stdout.write(encodeURIComponent(Buffer.concat(chunks).toString("utf8").replace(/\r?\n$/, ""))))' < /run/secrets/munjib_migrator_credential)"
         test -n "$$credential_encoded"
         export DATABASE_URL="postgresql://munjib_migrator:$${credential_encoded}@postgres:5432/obsidian_clone?schema=public&options=$$(node -e 'process.stdout.write(encodeURIComponent("-c search_path=pg_catalog,public,munjib_extensions -c role=munjib_schema_owner"))')"
         exec pnpm exec prisma migrate deploy

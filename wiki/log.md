@@ -2936,3 +2936,11 @@ links:
   `scripts/deploy/verify-private-bindings.ts`,
   `scripts/deploy/reconcile-promotion.ts`, and focused Docker/deploy/workflow
   tests.
+
+## 2026-07-13T14:38:00+09:00 - security-runtime
+
+- Result: Addressed the remaining Leaf 13B review findings without enabling production deployment.
+- Coverage: promotion journals now write and fsync through a writable descriptor; broker envelopes reject malformed arrays/objects without throwing; image-digest checks reject whitespace-prefixed suffix tricks; fixed credential readers remove only a trailing CR/LF before URI encoding.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #188 review threads, scripts/deploy/reconcile-promotion.ts, scripts/deploy/qualify-candidate.ts, scripts/deploy/verify-private-bindings.ts, production/candidate Compose files, and focused deploy/Docker tests.
+- Verification: 40 focused tests passed; TypeScript noEmit passed; git diff --check passed.

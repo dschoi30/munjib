@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 const DIGEST = /^sha256:[a-f0-9]{64}$/;
-const IMAGE_DIGEST = /@sha256:[a-f0-9]{64}$/;
+const IMAGE_DIGEST = /^[^@\s]+@sha256:[a-f0-9]{64}$/;
 const PUBLIC_HOST = /^(?:0\.0\.0\.0|\[?::\]?|\*|localhost)$/i;
 const DISALLOWED_PORTS = new Set([2019, 2375, 2376, 5432, 55432, 9229, 11434]);
 

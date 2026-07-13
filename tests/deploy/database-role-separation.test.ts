@@ -56,6 +56,7 @@ describe("database authority separation", () => {
     for (const source of [migrator, tools]) {
       expect(source).toContain("unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE");
       expect(source).toContain("encodeURIComponent");
+      expect(source).toContain('replace(/\\r?\\n$/, "")');
       expect(source).toContain("DATABASE_URL=\"postgresql://");
       expect(source).toContain("search_path=pg_catalog,public,munjib_extensions");
       expect(source).not.toContain("PGPASSFILE");
@@ -64,6 +65,19 @@ describe("database authority separation", () => {
     }
     expect(migrator).toContain("role=munjib_schema_owner");
     expect(tools).not.toContain("role=munjib_schema_owner");
+  });
+
+  it("removes only a trailing credential line ending before URI encoding", () => {
+    for (const path of [
+      "docker-compose.yml",
+      "docker-compose.candidate.yml",
+      "docker-compose.migrator.yml",
+      "docker-compose.tools.yml",
+    ]) {
+      const source = read(path);
+      expect(source).toContain('replace(/\\r?\\n$/, "")');
+      expect(source).not.toContain('.toString("utf8").trim()');
+    }
   });
 
   it("keeps shell variables and URL options intact through docker compose config", () => {

@@ -1,8 +1,12 @@
+import { mkdtempSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   advancePromotion,
   promoteBlueGreen,
   reconcilePromotion,
+  writePromotionRecord,
   type PromotionState,
 } from "../../scripts/deploy/reconcile-promotion";
 
@@ -166,5 +170,26 @@ describe("crash-safe blue/green promotion", () => {
     expect(events).not.toContain("migrator");
     expect(events).not.toContain("ownership");
     expect(events).not.toContain("stage");
+  });
+
+  test("writes and fsyncs the promotion record through a writable descriptor", () => {
+    const directory = mkdtempSync(join(tmpdir(), "munjib-promotion-"));
+    const path = join(directory, "state.json");
+    try {
+      writePromotionRecord(path, {
+        format: "munjib-promotion-journal-v1",
+        state: base,
+        sequence: 1,
+        lastFsync: "PREPARED",
+      });
+      expect(JSON.parse(readFileSync(path, "utf8"))).toMatchObject({
+        format: "munjib-promotion-journal-v1",
+        sequence: 1,
+        lastFsync: "PREPARED",
+      });
+      expect(statSync(path).mode & 0o777).toBe(0o600);
+    } finally {
+      rmSync(directory, { recursive: true, force: true });
+    }
   });
 });
