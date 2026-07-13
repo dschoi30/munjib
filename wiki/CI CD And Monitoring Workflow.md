@@ -211,29 +211,42 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
-### main deploy
+### main deploy (retired legacy path)
 
-`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
+The checkout/native-build/Compose mutation path documented below is historical
+only and is not an authorization path. The current workflow submits a bounded,
+signed exact-digest envelope through the root broker; production performs no
+checkout or source build. The deploy job is skipped until the protected broker
+readiness gate and the required host installation/attestation evidence exist.
 
-Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
-
-Deploy job env:
+Current broker-only inputs:
 
 ```text
-WEB_IMAGE=munjib-web:latest
-DEPLOY_SHA=${{ github.sha }}
+APP_IMAGE_DIGEST=<protected exact app digest>
+POSTGRES_IMAGE_DIGEST=<protected exact PostgreSQL digest>
+HOST_BUNDLE_DIGEST=<protected exact host-bundle digest>
+STORAGE_INIT_IMAGE_DIGEST=<protected exact storage-init digest>
+RELEASE_ENVELOPE=<protected signed broker envelope>
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_ENV_FILE=/etc/munjib/env
 DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
-DEPLOY_REPOSITORY=${{ github.repository }}
-DEPLOY_GIT_TOKEN=${{ github.token }}
-DEPLOY_NEXTAUTH_SECRET=<GitHub protected secret>
-DEPLOY_GOOGLE_CLIENT_SECRET=<GitHub protected secret when Google overlay is enabled>
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
+Required protected inputs include the exact digests above,
+`MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, the restricted deploy channel, and
+the signed envelope. Browser SDK values are built into the attested application
+artifact; the host does not rebuild it. Issue #135's low-cost steady state
+remains the default for tracing and Replay.
+
+Before a restricted operator signs or installs a bundle, CI can build and verify
+the public-safe package from the fixed layout. These commands do not sign,
+install, enroll the trust key, or mutate a host:
+
+```bash
+pnpm delivery:build-bundle -- dist/delivery/linux-arm64 .artifacts/delivery-substrate-v1
+pnpm delivery:verify-bundle -- .artifacts/delivery-substrate-v1
+```
 
 Required GitHub secrets:
 
@@ -251,7 +264,36 @@ Current OCI production domain:
 https://munjib.example.invalid
 ```
 
-Remote deploy 순서:
+Current broker-only submit (host install is still an external gate):
+
+```bash
+test -n "$APP_IMAGE_DIGEST"
+test -n "$POSTGRES_IMAGE_DIGEST"
+test -n "$HOST_BUNDLE_DIGEST"
+test -n "$STORAGE_INIT_IMAGE_DIGEST"
+test -n "$RELEASE_ENVELOPE"
+printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+test -S /run/munjib/release-broker.sock
+test -r /etc/munjib/security/broker-operations-v1.json
+printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
+```
+
+The submit account only forwards a bounded frame to the fixed Unix socket; the
+root broker independently revalidates the envelope and evidence before any
+system mutation. A broker socket, signed envelope, or root trust key is not
+present in this repository/host context, so this flow is documented but cannot
+be claimed as production-ready.
+
+<details>
+<summary>Retired checkout/native-build flow (historical, do not use)</summary>
+
+Historical deploy sequence:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -332,6 +374,8 @@ SENTRY_RUNTIME_METRICS_INTERVAL_MS=60000
 NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
 NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ```
+
+</details>
 
 ### Docker runtime
 
