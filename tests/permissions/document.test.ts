@@ -43,6 +43,30 @@ describe("document permissions", () => {
     ).toBe(true);
   });
 
+  it("caps explicit permissions at the actor's workspace role", () => {
+    expect(
+      canReadDocument({
+        workspaceRole: "VIEWER",
+        explicitPermissionCount: 1,
+        userPermission: "MANAGE",
+      }),
+    ).toBe(true);
+    expect(
+      canWriteDocument({
+        workspaceRole: "VIEWER",
+        explicitPermissionCount: 1,
+        userPermission: "MANAGE",
+      }),
+    ).toBe(false);
+    expect(
+      canWriteDocument({
+        workspaceRole: "EDITOR",
+        explicitPermissionCount: 1,
+        userPermission: "MANAGE",
+      }),
+    ).toBe(true);
+  });
+
   it("lets workspace managers access explicit documents", () => {
     expect(
       canWriteDocument({

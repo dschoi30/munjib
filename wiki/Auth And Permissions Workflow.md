@@ -114,6 +114,18 @@ its own owner. The reserved Leaf 6/Leaf 14 paths and their hashes live in
 `deploy/security/protected-artifact-owners.json`; this branch changes no schema,
 archive state, purge rows, or production behavior.
 
+Issue #160 adds the dependency-safe Leaf 6 decision seam without activating a
+new authority. `lib/authorization/document-acl-entrypoint.ts` must resolve the
+active document resource before loading Leaf 6 access data, and
+`lib/authorization/document-acl.ts` rejects missing, mismatched, or
+structurally forged authority proofs. The proof carries a module-private
+runtime brand, so a legacy `WorkspaceMember` or `Permission` query cannot mint
+document authority. Explicit document grants are capped by the active
+workspace role (`VIEWER`→`READ`, `EDITOR`→`WRITE`, `ADMIN`/`OWNER`→`MANAGE`),
+preventing a higher explicit row from elevating a lower workspace role. The
+resolver and Leaf 6 slot remain fail closed until the canonical DB-time
+active-membership authority and its ACL implementation are installed.
+
 ## Versioned and bounded password verification
 
 `User.passwordHash` accepts only the reviewed v1 envelope
