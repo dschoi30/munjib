@@ -301,6 +301,13 @@ function assertRelativePath(value: unknown, path: string): asserts value is stri
   if (typeof value !== "string" || value.length > 512 || !SAFE_RELATIVE_PATH.test(value)) fail(`${path} must be a safe relative path`);
 }
 
+function assertDenseArray(value: unknown, path: string, maxLength = 100_000): asserts value is unknown[] {
+  if (!Array.isArray(value) || value.length > maxLength) fail(`${path} must be a bounded array`);
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(value, index)) fail(`${path} must be a dense array`);
+  }
+}
+
 function assertCanonicalAscending(values: readonly string[], path: string): readonly string[] {
   let previous: string | undefined;
   for (const [index, value] of values.entries()) {
@@ -328,6 +335,7 @@ function freeze<T>(value: T): Readonly<T> {
  */
 export function assertNoSensitiveKeys(value: unknown, path = "value"): void {
   if (Array.isArray(value)) {
+    assertDenseArray(value, path);
     value.forEach((item, index) => assertNoSensitiveKeys(item, `${path}[${index}]`));
     return;
   }
@@ -439,7 +447,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertExactKeys(value.attachments, ["archiveSha256", "archiveSizeBytes", "entries"], "manifest.attachments");
   assertHash(value.attachments.archiveSha256, "manifest.attachments.archiveSha256");
   assertDecimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
-  if (!Array.isArray(value.attachments.entries) || value.attachments.entries.length > 100_000) fail("manifest.attachments.entries must be a bounded array");
+  assertDenseArray(value.attachments.entries, "manifest.attachments.entries");
   const entries = value.attachments.entries.map(parseAttachmentEntry);
   const relativePaths = new Set<string>();
   for (let index = 1; index < entries.length; index += 1) {
@@ -455,7 +463,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
 
   assertRecord(value.migrations, "manifest.migrations");
   assertExactKeys(value.migrations, ["appliedIds", "orderedIdsSha256", "schemaFingerprintSha256"], "manifest.migrations");
-  if (!Array.isArray(value.migrations.appliedIds) || value.migrations.appliedIds.length > 100_000) fail("manifest.migrations.appliedIds must be a bounded array");
+  assertDenseArray(value.migrations.appliedIds, "manifest.migrations.appliedIds");
   if (value.migrations.appliedIds.some((item) => typeof item !== "string")) fail("manifest.migrations.appliedIds must contain strings");
   const appliedIds = assertCanonicalAscending(value.migrations.appliedIds as string[], "manifest.migrations.appliedIds");
   assertHash(value.migrations.orderedIdsSha256, "manifest.migrations.orderedIdsSha256");
@@ -542,7 +550,7 @@ export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, act
   assertDecimal(actual.database.sizeBytes, "actual.database.sizeBytes");
   assertHash(actual.archive.sha256, "actual.archive.sha256");
   assertDecimal(actual.archive.sizeBytes, "actual.archive.sizeBytes");
-  if (!Array.isArray(actual.archive.entries) || actual.archive.entries.length > 100_000) fail("actual.archive.entries must be a bounded array");
+  assertDenseArray(actual.archive.entries, "actual.archive.entries");
   for (const [index, value] of actual.archive.entries.entries()) {
     const path = `actual.archive.entries[${index}]`;
     assertRecord(value, path);

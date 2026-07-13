@@ -178,6 +178,16 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest(withPrototypeSecret)).not.toThrow();
   });
 
+  test("rejects sparse attachment and migration arrays", () => {
+    const manifest = completeManifest();
+    const sparseEntries = new Array(2) as unknown[];
+    sparseEntries[1] = manifest.attachments.entries[1];
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: sparseEntries } })).toThrow(/dense/i);
+    const sparseMigrations = new Array(2) as unknown[];
+    sparseMigrations[1] = manifest.migrations.appliedIds[1];
+    expect(() => parseSnapshotManifest({ ...manifest, migrations: { ...manifest.migrations, appliedIds: sparseMigrations } })).toThrow(/dense/i);
+  });
+
   test("rejects noncanonical decimals, hashes, timestamps, IDs, paths, and ordering", () => {
     const manifest = completeManifest();
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-07-13T00:00:00Z" })).toThrow(/timestamp/i);
@@ -256,6 +266,11 @@ describe("snapshot envelope v2", () => {
       database: { sha256: HASH, sizeBytes: "1024", inherited: true } as never,
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [] },
     })).toThrow(/unknown/i);
+    const sparseArchiveEntries = new Array(1) as unknown[];
+    expect(() => assertManifestPayloadIntegrity(completeManifest(), {
+      database: { sha256: HASH, sizeBytes: "1024" },
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: sparseArchiveEntries as never },
+    })).toThrow(/dense/i);
   });
 
   test("keeps snapshot image as evidence, never an executable restore selection", () => {

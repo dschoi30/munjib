@@ -122,4 +122,15 @@ describe("encrypted recovery readiness contract", () => {
     const inherited = Object.create(completeContract()) as Record<string, unknown>;
     expect(() => parseRecoveryReadinessContract(inherited)).toThrow(/required/i);
   });
+
+  test("rejects sparse dependency and invariant arrays", () => {
+    const contract = completeContract();
+    const sparseDependencies = new Array(1) as string[];
+    expect(() => parseRecoveryReadinessContract({
+      ...contract,
+      phases: { ...contract.phases, phaseA: { ...contract.phases.phaseA, dependencies: sparseDependencies } },
+    })).toThrow(/dense/i);
+    const sparseInvariants = new Array(contract.invariants.length) as string[];
+    expect(() => parseRecoveryReadinessContract({ ...contract, invariants: sparseInvariants })).toThrow(/dense/i);
+  });
 });

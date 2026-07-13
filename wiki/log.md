@@ -27,7 +27,7 @@ links:
   readiness contract keys now use the same own-property rule; top-level and
   nested receipt/payload objects are exact-key and bounded before reads,
   including a 512-byte relative-path limit; returned excluded-table metadata is
-  deeply immutable.
+  deeply immutable. Sparse arrays are rejected before traversal.
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Verification: focused manifest/recovery tests and TypeScript; no runtime or
   production operation was added.
