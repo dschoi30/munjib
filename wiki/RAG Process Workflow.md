@@ -254,6 +254,22 @@ pnpm wiki:lint
 pnpm wiki:sync-check --staged
 ```
 
+## Derived history authorization handoff
+
+Issue #163의 dependency-safe implementation slice는 `lib/rag/ai-history-authorization.ts`에
+저장된 Workspace AI turn의 lineage 파서와 visibility decision, non-enumerating
+tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
+`source-backed` document/chunk 쌍만 현재 canonical source authority에 다시 확인하며,
+모든 source가 승인되어야 turn 전체가 visible이 된다. `source-free-v1` proof가 없는
+행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
+`legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
+citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
+
+이 helper는 Prisma, route, migration, purge, provider call, telemetry를 import하지
+않는다. 최종 thread load/follow-up/memory refresh/finalization/citation navigation
+caller는 Leaf 2/4/6/13B가 제공하는 canonical authority와 함께 이 경계를 사용해야
+하며, 그 dependency gate 전에는 production behavior를 연결하지 않는다.
+
 ## 근거
 
 - GitHub issue #73
