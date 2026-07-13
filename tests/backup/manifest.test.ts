@@ -192,6 +192,7 @@ describe("snapshot manifest v2", () => {
     const manifest = completeManifest();
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-07-13T00:00:00Z" })).toThrow(/timestamp/i);
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-02-30T00:00:00.000Z" })).toThrow(SnapshotManifestError);
+    expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-13-45T25:61:61.999Z" })).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotManifest({ ...manifest, database: { ...manifest.database, sizeBytes: 1 } })).toThrow(/decimal/i);
     expect(() => parseSnapshotManifest({ ...manifest, databaseNameHash: HASH.toUpperCase() })).toThrow(/hash/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "/absolute" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
@@ -206,6 +207,32 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "READY", sizeBytes: "0" }, manifest.attachments.entries[1]] } })).toThrow(/non-zero/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "PENDING", relativePath: "leak.bin" }, manifest.attachments.entries[1]] } })).toThrow(/non-READY/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[0], { ...manifest.attachments.entries[1], id: manifest.attachments.entries[0].id }] } })).toThrow(/sorted|duplicate/i);
+
+    const nonAdjacentDuplicateEntries = [
+      { ...manifest.attachments.entries[0], id: "att-0001", relativePath: "documents/first.bin" },
+      {
+        ...manifest.attachments.entries[1],
+        id: "att-0002",
+        documentId: "doc-0002",
+        status: "READY" as const,
+        relativePath: "documents/second.bin",
+        sizeBytes: "42",
+        contentSha256: HASH_2,
+      },
+      {
+        ...manifest.attachments.entries[1],
+        id: "att-0003",
+        documentId: "doc-0003",
+        status: "READY" as const,
+        relativePath: "documents/first.bin",
+        sizeBytes: "42",
+        contentSha256: HASH_2,
+      },
+    ];
+    expect(() => parseSnapshotManifest({
+      ...manifest,
+      attachments: { ...manifest.attachments, entries: nonAdjacentDuplicateEntries },
+    })).toThrow(/duplicate relative paths/i);
   });
 
   test("checks migration compatibility, journal high-water, and payload receipts", () => {

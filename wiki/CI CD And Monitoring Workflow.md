@@ -213,6 +213,8 @@ until root seal, immutable exact-read, and authenticated decrypt receipts match;
 `snapshotImageDigest` remains audit evidence and is never a restore selector. No
 builder, capture, restore, purge, key rotation, or host/provider operation is
 included in this slice.
+Validation also rejects non-adjacent duplicate attachment paths, invalid UTC
+timestamps through the domain error, and locale-dependent archive ordering.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
