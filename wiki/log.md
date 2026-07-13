@@ -2911,3 +2911,11 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T11:16:15+09:00 - security authorization readiness
+
+- Result: Issue #160 was assessed against current `origin/main`. The remaining document authorization closure is dependency-gated on Leaf 5's active-resource authority; no competing membership lookup or ACL helper was added.
+- Coverage: recorded the public-safe boundaries for descendant-folder authorization, broken-link source checks, active attachment/comment/history routes, role-capped document permissions, minimal current-view DTOs, and authenticated history pagination.
+- Pages: `docs/runbooks/document-authorization-readiness.md`, [[Auth And Permissions Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/documents/service.ts`, `lib/folders/service.ts`, `lib/attachments/service.ts`, `lib/comments/service.ts`, `lib/wiki-links/service.ts`, `app/workspaces/[workspaceSlug]/page.tsx`, `app/api/attachments/[attachmentId]/route.ts`, and current permission tests.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`, and `pnpm wiki:sync-check --staged` are required before commit; no production or secret-bearing operation is part of this handoff.

@@ -144,6 +144,16 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 `createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다. 생성 transaction이 commit된 뒤 새 blank document의 saved content 기준으로 RAG chunk replacement를 실행해 기존 stale chunk가 있으면 비운다.
 
+Issue #160 document authorization closure는 이 흐름을 다음 공통 경계로
+확장할 준비를 기록한다. Broken-link 생성은 workspace write 권한만으로
+충분하지 않고 source document의 현재 권한을 확인해야 하며, folder tree
+mutation은 active descendant 전체를 한 번에 검사해야 한다. Attachment,
+comment, version, audit/history direct route도 현재 active workspace/document와
+document permission을 매번 재확인하고, server page는 current-view에 필요한
+최소 DTO만 내려야 한다. 이 변경은 Leaf 5 active-resource authority가
+머지·검증된 뒤에만 구현하며, 공개 handoff는
+`docs/runbooks/document-authorization-readiness.md`에 유지한다.
+
 ## UI 세부 사항
 
 `DocumentEditor`는 controlled title과 markdown state를 사용하며, 문서 선택이 바뀌면 `useEffect`로 title/content/completion state를 새 문서 값으로 재설정한다. Title input은 Obsidian-style reading surface에 맞춰 borderless heading-size control로 렌더링한다.
