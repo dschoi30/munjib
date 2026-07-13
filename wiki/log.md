@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #163 AI history review follow-up
+
+- AI history source parsing now destructures validated records before string narrowing, and tombstone serialization explicitly applies to assistant rows while preserving user-authored messages.
+- Source evidence: `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, PR #203 review threads.
+- Verification: AI history focused tests (10 passed), TypeScript, and staged wiki gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
