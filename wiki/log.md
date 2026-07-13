@@ -2911,3 +2911,11 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T19:00:00+09:00 - security-edge-bindings
+
+- Result: Issue #166 remains dependency-gated. Added a public-safe edge binding and continuous-probe contract plus an operator readiness handoff; no Caddy, DNS, TLS, firewall, monitoring, application route, or production mutation changed.
+- Contract: `deploy/security/edge-bindings-v1.json` pins required response headers, no-store path prefixes, loopback origin binding, public/loopback/unknown-host probes, bounded cadence/thresholds, and secret-free telemetry fields.
+- Gate: activation waits for Leaves 3, 4, 7, 8, 9, 10, 11v2, and 13B deployment, edge owner/TLS/DNS evidence, header/probe conformance evidence, and immutable broker attestation.
+- Pages: [[index|Wiki Index]], `docs/runbooks/edge-bindings-readiness.md`.
+- Source evidence: GitHub Issue #166, current `origin/main` Docker/CI bindings, and the public production origin contract.
