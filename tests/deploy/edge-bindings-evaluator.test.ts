@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   evaluateEdgeProbe,
@@ -9,8 +10,11 @@ import {
 } from "@/lib/deploy/edge-bindings";
 
 let contractJson = "";
+const contractPath = fileURLToPath(
+  new URL("../../deploy/security/edge-bindings-v1.json", import.meta.url),
+);
 beforeAll(() => {
-  contractJson = readFileSync("deploy/security/edge-bindings-v1.json", "utf8");
+  contractJson = readFileSync(contractPath, "utf8");
 });
 const requestFor = (probeId: string) =>
   probeId === "origin-loopback"

@@ -2928,6 +2928,11 @@ links:
 - Scope: Activation remains `DISABLED`; no edge or production mutation occurred.
 - Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), `pnpm exec tsc --noEmit`.
 
+## 2026-07-13T13:54:00+09:00 - security-edge-bindings-review
+
+- Result: The edge evaluator fixture now resolves the contract through `import.meta.url`/`fileURLToPath`, so it does not depend on the caller's working directory. The same 9-test suite passes when invoked from `/private/tmp` with the worktree as Vitest root.
+- Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), CWD-independent Vitest invocation (9 tests passed), `pnpm exec tsc --noEmit`.
+
 ## 2026-07-13T13:52:00+09:00 - security-edge-bindings-review
 
 - Result: Moved the edge contract fixture read into Vitest `beforeAll` so test module discovery stays independent of the working directory/file availability. No-store matching now covers the exact `/api` and `/workspaces` roots as well as descendants, while preserving the `/login` boundary.
