@@ -13,6 +13,7 @@ import {
 } from "@/lib/auth/abuse/runtime";
 
 const generatedSecret = () => randomBytes(32).toString("base64url");
+const canonicalBucket = "A".repeat(43);
 const productionEnv = () => ({
   MUNJIB_DEPLOYMENT_ENV: "production",
   MUNJIB_AUTH_GUARD_SECRET_FILE: AUTH_GUARD_SECRET_PATH,
@@ -33,7 +34,7 @@ function request(overrides: Partial<AuthGuardRequest> = {}): AuthGuardRequest {
       "sec-fetch-mode": "cors",
       "sec-fetch-dest": "empty",
     },
-    bucket: "login-bucket-1",
+    bucket: canonicalBucket,
     ...overrides,
   };
 }
@@ -151,7 +152,7 @@ describe("auth guard runtime", () => {
     const runtime = assertValidAuthGuardRuntimeEnv(productionEnv(), productionDeps());
     const store = { check: vi.fn(async () => "allow" as const) };
     expect(await authorizeAuthRequest({ runtime, request: request(), store })).toEqual({ allowed: true });
-    expect(store.check).toHaveBeenCalledWith({ bucket: "login-bucket-1" });
+    expect(store.check).toHaveBeenCalledWith({ bucket: canonicalBucket });
     const failingStore = { check: vi.fn(async () => { throw new Error("store unavailable"); }) };
     expect(await authorizeAuthRequest({ runtime, request: request(), store: failingStore })).toEqual({
       allowed: false,
@@ -167,6 +168,24 @@ describe("auth guard runtime", () => {
       code: "AUTH_GUARD_UNAVAILABLE",
     });
   });
+
+  it("rejects raw identifier-shaped buckets before reaching the durable store", async () => {
+    const runtime = assertValidAuthGuardRuntimeEnv(productionEnv(), productionDeps());
+    const store = { check: vi.fn(async () => "allow" as const) };
+    expect(
+      await authorizeAuthRequest({ runtime, request: request({ bucket: "203.0.113.7" }), store }),
+    ).toEqual({ allowed: false, code: "AUTH_GUARD_BUCKET_INVALID" });
+    expect(store.check).not.toHaveBeenCalled();
+  });
+
+  it("fails closed when the durable store does not settle within the bounded timeout", async () => {
+    const runtime = assertValidAuthGuardRuntimeEnv(productionEnv(), productionDeps());
+    const store = { check: vi.fn(() => new Promise<"allow">(() => undefined)) };
+    await expect(authorizeAuthRequest({ runtime, request: request(), store })).resolves.toEqual({
+      allowed: false,
+      code: "AUTH_GUARD_STORE_UNAVAILABLE",
+    });
+  }, 2_000);
 
   it("uses a domain-separated digest for bounded store buckets", () => {
     const runtime = assertValidAuthGuardRuntimeEnv(productionEnv(), productionDeps());

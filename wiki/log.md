@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T22:25:00+09:00 - Issue #162 opaque bucket boundary review fix
+
+- Result: `authorizeAuthRequest()` now admits only the exact 43-character base64url shape emitted by `deriveAuthGuardBucket()`. Raw IP/slug-shaped values are denied before the external store call, and a non-settling store fails closed after the bounded timeout.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 P1 review feedback.
+- Verification: focused auth/guard tests (28 total), TypeScript, and wiki sync gates.
+
 ## 2026-07-13T22:05:00+09:00 - Issue #162 Origin normalization review fix
 
 - Result: `evaluateAuthOrigin()` now reuses the canonical runtime Origin parser instead of comparing a raw header string to `URL.origin`, so equivalent casing/default-port representations are normalized before same-origin comparison while foreign origins remain denied.
