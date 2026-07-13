@@ -31,17 +31,17 @@ state, secret, operator evidence는 이 wiki와 GitHub-visible history에 기록
   still a separate open gate in #185.
 - Database-authority contracts are merged in PR #181; exact-digest runtime
   continuation is draft PR #188 and remains fail-closed on the #185 gate.
-- Draft readiness handoffs currently visible: #186, #187, #189, #190,
-  #191, #192, #193, #194, #195, and #196. These are not deployed controls and
+- Current implementation handoffs are draft PRs #198, #199, #200, #201, #202,
+  #203, #204, #195, #205, #206, and #207. They are not deployed controls and
   do not close their issues.
-- #165 is tracked by draft PR #195 (`7185ff8`), and #166 by draft PR #196. The
-  signup readiness branch/commit is prepared as `issue-161-security-signup-gate`
-  (`4b22bb2`) but no PR is currently visible; a separate anticipated #198 was
-  also not visible at this audit.
+- #139 is represented by PR #198 (`issue-139-embedding-readiness`); #156/#159/
+  #160/#162/#163/#164/#165/#166/#168/#161 are represented by PRs #199/#200/
+  #201/#202/#203/#204/#195/#205/#206/#207 respectively. Each remains
+  dependency-gated and carries its own explicit non-claim.
 
 ## Authoritative status map
 
-The full public-safe table, including every child dependency and explicit
+The full public-safe table, including every child implementation dependency and explicit
 non-claim, is in
 `docs/runbooks/security-hardening-status.md`. Keep that runbook and this page
 aligned when a PR/branch changes. A draft or branch head is a preparation

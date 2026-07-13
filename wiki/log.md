@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:50:00+09:00 - public security status refresh
+
+- Result: Refreshed the Issues #154/#167 status map from readiness-only handoffs to current draft implementation PRs #198, #199, #200, #201, #202, #203, #204, #195, #205, #206, and #207.
+- Coverage: Updated branch/head handles for embedding registry, journal/auth, active resolver, ACL, auth abuse, AI history, provider boundary, attachment lifecycle, edge evaluator, backup manifest, and invite-token slices while preserving dependency gates and production non-claims.
+- Pages: [[Security Hardening Public Status]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Companion runbook: docs/runbooks/security-hardening-status.md.
+- Source evidence: current GitHub PR metadata and CI status for the listed implementation branches; parent issues #154 and #167 remain open.
+- Verification: wiki manifest/lint/sync checks and focused wiki tests are required before commit; no issue closure or production mutation is claimed.
+
 ## 2026-07-13T11:29:29+09:00 - public security hardening status map
 
 - Result: Added a public-safe status/runbook map for parent Issues #154 and #167.
