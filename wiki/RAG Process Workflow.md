@@ -127,6 +127,8 @@ membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 �
 Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
 source-backed/source-free lineage를 명시하고, thread load, follow-up
 context, memory refresh, finalization, citation serialization 각각에서
+cross-platform runbook assertions remain whitespace-tolerant while preserving
+the same non-enumerating tombstone contract.
 현재 canonical actor/workspace/document authority를 재확인해야 한다. source가
 읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
 citation, document id/title/path, denial reason을 노출하지 않는

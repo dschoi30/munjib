@@ -37,7 +37,7 @@ describe("derived AI history authorization readiness contract", () => {
   it("requires non-enumerating whole-turn redaction", () => {
     expect(runbook).toContain("whole derived turn");
     expect(runbook).toContain("non-enumerating tombstone");
-    expect(runbook).toContain("no answer text,\n   citations, source ids");
+    expect(runbook).toMatch(/no answer text,\s+citations, source ids/);
     expect(runbook).toMatch(/must not\s+reveal whether a denied source existed/);
   });
 

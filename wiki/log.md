@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T15:05:00+09:00 - Issue #163 review follow-up
+
+- Result: derived-history readiness test now matches the non-enumerating tombstone phrase with whitespace-tolerant syntax across line endings.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: focused readiness test, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
