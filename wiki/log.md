@@ -2922,3 +2922,6 @@ links:
 
 - Follow-up: provider policy candidate inputs now require runtime string/boolean types before regex or catalog checks, and the destination guard recognizes IPv4-mapped IPv6 forms of private addresses.
 - Verification: focused provider-boundary tests (6 passed) and `pnpm exec tsc --noEmit --pretty false`.
+
+- Follow-up: endpoint origin/path/loopback flags now have explicit runtime type guards and malformed policy objects fail with the stable policy error rather than a coercion or TypeError path.
+- Verification: focused provider-boundary tests (6 passed) and `pnpm exec tsc --noEmit --pretty false`.
