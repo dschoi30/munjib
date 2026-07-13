@@ -24,7 +24,8 @@ links:
 - Result: Closed own-property, global duplicate-path, deterministic code-unit
   sorting, malformed receipt, impossible-timestamp, unsafe-path, and
   prototype-pollution test gaps in the pure v2 manifest boundary. Recovery
-  readiness contract keys now use the same own-property rule.
+  readiness contract keys now use the same own-property rule; top-level and
+  nested receipt/payload objects are exact-key and bounded before reads.
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Verification: focused manifest/recovery tests and TypeScript; no runtime or
   production operation was added.
