@@ -90,13 +90,16 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 function parseSource(value: unknown): AiHistorySource | null {
-  if (!isRecord(value) || !nonEmptyString(value.documentId) || !nonEmptyString(value.chunkId)) {
+  if (!isRecord(value)) {
     return null;
   }
 
+  const { documentId, chunkId } = value;
+  if (!nonEmptyString(documentId) || !nonEmptyString(chunkId)) return null;
+
   return {
-    documentId: value.documentId.trim(),
-    chunkId: value.chunkId.trim(),
+    documentId: documentId.trim(),
+    chunkId: chunkId.trim(),
   };
 }
 
@@ -191,20 +194,14 @@ export function toAiHistoryMessageDto(
   // USER rows visible even when a neighboring assistant turn is tombstoned;
   // this prevents the history filter from deleting the actor's own prompt.
   if (message.role === "USER") {
-    return {
-      visibility: "visible",
-      id: message.id,
-      role: message.role,
-      content: message.content,
-      citations: message.citations,
-      contextMeta: message.contextMeta,
-      model: message.model,
-      createdAt: message.createdAt.toISOString(),
-    };
+    return createVisibleAiHistoryMessageDto(message);
   }
 
   if (decision.visibility === "tombstone") {
-    return createAiHistoryTombstone(message.role);
+    if (message.role === "ASSISTANT") {
+      return createAiHistoryTombstone(message.role);
+    }
+    return createVisibleAiHistoryMessageDto(message);
   }
 
   // Source-backed lineage belongs to derived assistant output. The role guard
@@ -220,6 +217,10 @@ export function toAiHistoryMessageDto(
     return createAiHistoryTombstone(message.role);
   }
 
+  return createVisibleAiHistoryMessageDto(message);
+}
+
+function createVisibleAiHistoryMessageDto(message: AiHistoryMessageRecord): AiHistoryVisibleMessageDto {
   return {
     visibility: "visible",
     id: message.id,
