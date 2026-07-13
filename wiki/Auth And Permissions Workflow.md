@@ -199,8 +199,8 @@ and each encrypted JWT must resolve against a database registry row, user
 limiter identifiers, account identifiers, and client addresses must never enter
 logs, alerts, or persisted limiter records.
 
-Implementation is blocked until Leaf 2 supplies the canonical disabled-user,
-BigInt session-version, support-grant, and same-transaction deny-only security
+Implementation is blocked until Leaf 2 supplies the canonical `authDisabledAt`,
+BigInt `sessionVersion`, support-grant, and same-transaction deny-only security
 journal contracts, and Leaf 13 supplies the verified private binding/database
 role plus an attested delivery-broker host path (Issues #184 and #185). The
 current `Session` adapter table is not a substitute because runtime auth uses

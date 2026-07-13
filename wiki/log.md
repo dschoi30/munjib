@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:50:00+09:00 - Issue #162 review follow-up
+
+- Result: review wording now pins the `origin/main` snapshot, uses the canonical `support-grant` term, and names the exact `authDisabledAt`/`sessionVersion` fields in the runbook and readiness navigation.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, PR #191 review threads.
+- Verification: focused documentation diff, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T16:00:00+09:00 - Issue #162 auth-abuse/session-revocation readiness handoff
 
 - Result: Issue #162 is kept documentation-only on the current release line. The existing encrypted-JWT runtime has no database session registry, and the current schema lacks the Leaf 2 disabled-user/session-version and deny-only journal authorities required by the design. Leaf 13 private binding/database-role and broker attestation remain separate dependency gates.

@@ -7,7 +7,7 @@ production mutations.
 
 ## Current state
 
-- `origin/main` (`545e8cb`) has the Leaf 1 authentication runtime and the
+- As of commit `545e8cb` on `origin/main`, the branch has the Leaf 1 authentication runtime and the
   bounded, process-local password work guard, but it does not yet have a
   database-authoritative authentication limiter or revocable session registry.
 - `User` has no `authDisabledAt` or `sessionVersion` authority on this branch.
@@ -31,7 +31,7 @@ Rebase this branch against the dependency commits and collect the following
 public-safe evidence before implementing the first schema or route task:
 
 1. Leaf 2 has merged and deployed the canonical `authDisabledAt`, BigInt
-   `sessionVersion`, support-access, and same-transaction deny-only journal
+   `sessionVersion`, support-grant, and same-transaction deny-only journal
    contracts. The journal replay ownership map must remain disjoint from the
    Issue #162 credential/OAuth/session reducers.
 2. Leaf 13 has a verified private Web binding and database role, and the
@@ -40,7 +40,7 @@ public-safe evidence before implementing the first schema or route task:
    credentials or logs.
 3. The exact runtime image, migration identity, owner map, and protected Leaf 1
    hook slot are pinned on the rebased branch. No migration may create a second
-   disabled-user or session-version authority, and no route may call a process
+   `authDisabledAt` or `sessionVersion` authority, and no route may call a process
    memory fallback when PostgreSQL is unavailable.
 4. The canonical origin and trusted proxy proof contract are available for the
    authentication request wrapper. Direct app-port requests, spoofed forwarding
