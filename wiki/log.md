@@ -2931,3 +2931,10 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T18:00:00+09:00 - security
+
+- Result: Issue #160 adds a dependency-safe Leaf 6 document ACL decision seam on top of the reserved active-resource interfaces.
+- Coverage: `document-acl-entrypoint` resolves active authority before ACL access; the decision contract rejects missing, mismatched, and structurally forged proofs; explicit grants are capped by workspace role (`VIEWER` read, `EDITOR` write, `ADMIN`/`OWNER` manage). No duplicate membership resolver, schema/migration, journal, purge, or production mutation was added.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: `lib/authorization/active-resources.ts`, `lib/authorization/document-acl-entrypoint.ts`, `lib/authorization/document-acl.ts`, `lib/permissions/document.ts`, and the focused ACL/security tests.
+- Verification: focused ACL/permission/source-contract tests and TypeScript verification passed; the canonical active-membership/Leaf 6 providers remain fail closed until their dependency gates are installed.

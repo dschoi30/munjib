@@ -4,6 +4,7 @@ import {
   resolveActiveWorkspaceForActor,
   resolveActiveWorkspaceForActorForUpdate,
 } from "@/lib/authorization/active-resources";
+import { resolveDocumentAclForActor } from "@/lib/authorization/document-acl-entrypoint";
 
 describe("active-resource resolver boundary", () => {
   it("fails closed while the canonical database-time membership authority is unavailable", async () => {
@@ -24,6 +25,16 @@ describe("active-resource resolver boundary", () => {
         documentId: "document-id",
         actorId: "actor-id",
         access: "read",
+      }),
+    ).rejects.toThrow("ACTIVE_MEMBERSHIP_AUTHORITY_UNAVAILABLE");
+  });
+
+  it("runs active-resource authority before any Leaf 6 ACL decision", async () => {
+    await expect(
+      resolveDocumentAclForActor({} as never, {
+        documentId: "document-id",
+        actorId: "actor-id",
+        operation: "read",
       }),
     ).rejects.toThrow("ACTIVE_MEMBERSHIP_AUTHORITY_UNAVAILABLE");
   });
