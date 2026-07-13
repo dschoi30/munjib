@@ -272,13 +272,11 @@ export function evaluateAuthOrigin(input: {
   const header = boundedHeader(input.request.headers, "origin");
   if (header.code) return { allowed: false, code: header.code };
   if (!header.value) return { allowed: false, code: "AUTH_GUARD_ORIGIN_REQUIRED" };
-  let parsed: URL;
-  try {
-    parsed = new URL(header.value);
-  } catch {
+  const parsed = parseOrigin(header.value);
+  if (parsed.error || !parsed.origin) {
     return { allowed: false, code: "AUTH_GUARD_ORIGIN_INVALID" };
   }
-  if (parsed.origin !== header.value || parsed.origin !== input.runtime.canonicalOrigin) {
+  if (parsed.origin !== input.runtime.canonicalOrigin) {
     return { allowed: false, code: "AUTH_GUARD_ORIGIN_MISMATCH" };
   }
   return { allowed: true };
