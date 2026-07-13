@@ -50,6 +50,14 @@ describe("AI history lineage and visibility contract", () => {
         lineage: { version: 1, kind: "source-backed", sources: [] },
       }),
     ).toEqual({ kind: "legacy-unproven" });
+
+    const sparseSources: Array<unknown> = [];
+    sparseSources.length = 1;
+    expect(
+      parseAiHistoryLineage({
+        lineage: { version: 1, kind: "source-backed", sources: sparseSources },
+      }),
+    ).toEqual({ kind: "legacy-unproven" });
   });
 
   it("requires an explicit source-free proof instead of inferring it from missing citations", () => {
@@ -81,6 +89,18 @@ describe("AI history lineage and visibility contract", () => {
     ).toMatchObject({ visibility: "visible" });
     expect(
       decideAiHistoryVisibility({ lineage, authorizeSource: () => false }),
+    ).toEqual({ visibility: "tombstone" });
+  });
+
+  it("fails closed when the canonical source authority is unavailable", () => {
+    const lineage = parseAiHistoryLineage(message.contextMeta);
+    expect(
+      decideAiHistoryVisibility({
+        lineage,
+        authorizeSource: () => {
+          throw new Error("authority unavailable");
+        },
+      }),
     ).toEqual({ visibility: "tombstone" });
   });
 
@@ -134,6 +154,49 @@ describe("AI history lineage and visibility contract", () => {
       contextMeta: message.contextMeta,
       model: message.model,
       createdAt: "2026-07-13T00:00:00.000Z",
+    });
+  });
+
+  it("does not serialize a different message with a detached visible decision", () => {
+    const lineage = parseAiHistoryLineage(message.contextMeta);
+    const decision = decideAiHistoryVisibility({ lineage, authorizeSource: () => true });
+    const detachedMessage = {
+      ...message,
+      id: "different-message-id",
+      contextMeta: {
+        lineage: {
+          version: 1,
+          kind: "source-backed",
+          sources: [{ documentId: "other-document", chunkId: "other-chunk" }],
+        },
+      },
+      content: "Other confidential answer.",
+    };
+
+    expect(toAiHistoryMessageDto(detachedMessage, decision)).toEqual({
+      visibility: "tombstone",
+      role: "ASSISTANT",
+      content: "",
+      citations: [],
+      contextMeta: null,
+      model: null,
+      createdAt: null,
+    });
+  });
+
+  it("does not apply source-backed assistant visibility to USER rows", () => {
+    const lineage = parseAiHistoryLineage(message.contextMeta);
+    const decision = decideAiHistoryVisibility({ lineage, authorizeSource: () => true });
+    const userMessage = { ...message, role: "USER" as const, content: "User question" };
+
+    expect(toAiHistoryMessageDto(userMessage, decision)).toEqual({
+      visibility: "tombstone",
+      role: "USER",
+      content: "",
+      citations: [],
+      contextMeta: null,
+      model: null,
+      createdAt: null,
     });
   });
 });

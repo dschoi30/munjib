@@ -42,7 +42,7 @@ export type AiHistoryVisibilityDecision =
 
 export type AiHistoryMessageRecord = Readonly<{
   id: string;
-  role: string;
+  role: "USER" | "ASSISTANT";
   content: string;
   citations: unknown;
   contextMeta: unknown;
@@ -53,7 +53,7 @@ export type AiHistoryMessageRecord = Readonly<{
 export type AiHistoryVisibleMessageDto = Readonly<{
   visibility: "visible";
   id: string;
-  role: string;
+  role: "USER" | "ASSISTANT";
   content: string;
   citations: unknown;
   contextMeta: unknown;
@@ -69,7 +69,7 @@ export type AiHistoryVisibleMessageDto = Readonly<{
  */
 export type AiHistoryTombstoneDto = Readonly<{
   visibility: "tombstone";
-  role: "ASSISTANT";
+  role: "USER" | "ASSISTANT";
   content: "";
   citations: readonly [];
   contextMeta: null;
@@ -79,7 +79,7 @@ export type AiHistoryTombstoneDto = Readonly<{
 
 export type AiHistoryMessageDto = AiHistoryVisibleMessageDto | AiHistoryTombstoneDto;
 
-const LEGACY_UNPROVEN: AiHistoryLineage = { kind: "legacy-unproven" };
+const LEGACY_UNPROVEN: AiHistoryLineage = Object.freeze({ kind: "legacy-unproven" });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -129,15 +129,23 @@ export function parseAiHistoryLineage(contextMeta: unknown): AiHistoryLineage {
     return LEGACY_UNPROVEN;
   }
 
-  const sources = lineage.sources.map(parseSource);
-  if (sources.length === 0 || sources.some((source): source is null => source === null)) {
-    return LEGACY_UNPROVEN;
+  const sources: AiHistorySource[] = [];
+  for (let index = 0; index < lineage.sources.length; index += 1) {
+    // `Array.prototype.map`/`some` skip sparse holes. Check ownership first so
+    // an intentionally sparse JSON-like array cannot become valid lineage.
+    if (!Object.prototype.hasOwnProperty.call(lineage.sources, index)) {
+      return LEGACY_UNPROVEN;
+    }
+    const source = parseSource(lineage.sources[index]);
+    if (!source) return LEGACY_UNPROVEN;
+    sources.push(source);
   }
+  if (sources.length === 0) return LEGACY_UNPROVEN;
 
   return {
     kind: "source-backed",
     version: AI_HISTORY_LINEAGE_VERSION,
-    sources: sources as AiHistorySource[],
+    sources,
   };
 }
 
@@ -157,7 +165,13 @@ export function decideAiHistoryVisibility(input: {
     return { visibility: "visible", lineage: input.lineage };
   }
 
-  if (!input.lineage.sources.every(input.authorizeSource)) {
+  try {
+    if (!input.lineage.sources.every(input.authorizeSource)) {
+      return { visibility: "tombstone" };
+    }
+  } catch {
+    // An unavailable authority is not proof of access. Keep the history
+    // response fail-closed without logging or reflecting the source identity.
     return { visibility: "tombstone" };
   }
 
@@ -174,15 +188,20 @@ export function toAiHistoryMessageDto(
   decision: AiHistoryVisibilityDecision,
 ): AiHistoryMessageDto {
   if (decision.visibility === "tombstone") {
-    return {
-      visibility: "tombstone",
-      role: "ASSISTANT",
-      content: "",
-      citations: [],
-      contextMeta: null,
-      model: null,
-      createdAt: null,
-    };
+    return createAiHistoryTombstone(message.role);
+  }
+
+  // Source-backed lineage belongs to derived assistant output. Do not allow a
+  // detached/forged decision to reinterpret a USER row as derived output.
+  if (decision.lineage.kind === "source-backed" && message.role !== "ASSISTANT") {
+    return createAiHistoryTombstone(message.role);
+  }
+
+  // Bind a positive decision to the persisted row that is being serialized.
+  // This prevents a stale/detached visible decision from being reused for a
+  // different message or a row whose lineage changed after authorization.
+  if (!sameAiHistoryLineage(parseAiHistoryLineage(message.contextMeta), decision.lineage)) {
+    return createAiHistoryTombstone(message.role);
   }
 
   return {
@@ -195,4 +214,33 @@ export function toAiHistoryMessageDto(
     model: message.model,
     createdAt: message.createdAt.toISOString(),
   };
+}
+
+function createAiHistoryTombstone(role: "USER" | "ASSISTANT"): AiHistoryTombstoneDto {
+  return {
+    visibility: "tombstone",
+    role,
+    content: "",
+    citations: [],
+    contextMeta: null,
+    model: null,
+    createdAt: null,
+  };
+}
+
+function sameAiHistoryLineage(left: AiHistoryLineage, right: Exclude<AiHistoryLineage, { kind: "legacy-unproven" }>) {
+  if (left.kind === "legacy-unproven" || left.kind !== right.kind) return false;
+  if (left.kind === "source-free" && right.kind === "source-free") {
+    return left.version === right.version && left.proof === right.proof;
+  }
+  if (left.kind !== "source-backed" || right.kind !== "source-backed") return false;
+
+  const sourceKey = (source: AiHistorySource) => `${source.documentId}\u0000${source.chunkId}`;
+  const leftSources = left.sources.map(sourceKey).sort();
+  const rightSources = right.sources.map(sourceKey).sort();
+  return (
+    left.version === right.version &&
+    leftSources.length === rightSources.length &&
+    leftSources.every((source, index) => source === rightSources[index])
+  );
 }

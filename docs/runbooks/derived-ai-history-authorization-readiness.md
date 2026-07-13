@@ -15,6 +15,8 @@ mutation.
   source-authority callback. One denied source hides the whole turn.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
+- The serializer scopes source-backed decisions to `ASSISTANT` rows and keeps a
+  `USER` row from inheriting a detached assistant decision.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.
@@ -35,6 +37,12 @@ After those gates, the owning implementation must wire the same decision
 helper into thread load, follow-up context, memory refresh, finalization, and
 citation serialization, with revocation-race coverage. No direct membership
 fallback or citation-only inference is permitted.
+
+The eventual thread DTO must not add a hidden-message count, denied-source
+count, or other aggregate that lets a caller enumerate hidden history. This
+slice only defines the per-row tombstone shape; list-level filtering/count
+behavior remains an integration acceptance criterion for the dependency-
+complete owner.
 
 ## Public-safe evidence
 
