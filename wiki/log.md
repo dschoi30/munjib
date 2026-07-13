@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T11:20:00+09:00 - delivery bundle CLI argument handling
+
+- Result: The delivery bundle CLI wrappers now ignore the package-manager `--`
+  separator before reading artifact/output arguments, matching the CI invocation
+  and keeping the fail-closed builder/verifier path executable.
+- Source evidence: `scripts/deploy/build-delivery-bundle.ts`,
+  `scripts/deploy/verify-delivery-bundle.ts`, Issue #185.
+
 ## 2026-07-13T10:10:00+09:00 - delivery bundle packaging boundary
 
 - Result: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout and fail-closed TypeScript builder/verifier for the Leaf 13A broker, submitter, verifier, policies, systemd units, and forced-SSH fragment.

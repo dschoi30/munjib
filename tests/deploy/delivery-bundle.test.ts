@@ -18,6 +18,13 @@ afterEach(() => {
 });
 
 describe("delivery substrate bundle", () => {
+  it("accepts the pnpm argument separator in both CLI wrappers", () => {
+    const buildCli = readFileSync(join(rootDir, "scripts/deploy/build-delivery-bundle.ts"), "utf8");
+    const verifyCli = readFileSync(join(rootDir, "scripts/deploy/verify-delivery-bundle.ts"), "utf8");
+    expect(buildCli).toContain('argument !== "--"');
+    expect(verifyCli).toContain('argument !== "--"');
+  });
+
   it("builds a deterministic linux/arm64 manifest with fixed ownership and external trust input", () => {
     const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
     const outputDir = temporaryDirectory("munjib-delivery-output-");
