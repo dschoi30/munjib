@@ -2923,6 +2923,9 @@ links:
 - Safety gate: main deployment remains disabled until the installed root broker
   advertises `MIGRATE`/`PROMOTE` and the protected readiness variable is enabled;
   no host checkout/build or caller-selected operation is used as fallback.
+- Rollback evidence now records the committed generation as the expected live
+  generation and restores only an explicit rollback generation/digest/floor;
+  a missing or lower-floor rollback remains fail-closed.
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `Dockerfile`, `docker-compose.yml`,
   `docker-compose.candidate.yml`, `docker-compose.migrator.yml`,

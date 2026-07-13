@@ -158,17 +158,35 @@ export function advancePromotion(state: PromotionState, operation: PromotionOper
       rollbackDigest: state.currentDigest,
       floor: state.candidateFloor ?? state.floor,
       rollbackFloor: state.floor,
+      expectedCurrentGeneration: state.candidateGeneration,
+      rollbackGeneration: state.generation,
     };
   }
   if (operation === "ROLLBACK") {
+    if (state.phase !== "COMMITTED") throw new Error("rollback requires a committed generation");
     if ((state.rollbackFloor ?? 0) < state.floor) {
       throw new Error("rollback would lower the security floor");
     }
     if (!state.rollbackGeneration || state.rollbackGeneration === state.generation) {
       throw new Error("rollback generation evidence is missing or current");
     }
-    if (state.phase !== "COMMITTED") throw new Error("rollback requires a committed generation");
-    return { ...state, phase: "TRAFFIC_SWITCHED", publicSmokeVerified: false };
+    if (state.rollbackDigest === state.currentDigest) {
+      throw new Error("rollback digest evidence is missing or current");
+    }
+    return {
+      ...state,
+      phase: "TRAFFIC_SWITCHED",
+      generation: state.rollbackGeneration,
+      currentDigest: state.rollbackDigest,
+      candidateGeneration: state.generation,
+      candidateDigest: state.currentDigest,
+      floor: state.rollbackFloor ?? state.floor,
+      expectedCurrentGeneration: state.rollbackGeneration,
+      rollbackGeneration: state.generation,
+      rollbackDigest: state.currentDigest,
+      rollbackFloor: state.floor,
+      publicSmokeVerified: false,
+    };
   }
   return state;
 }

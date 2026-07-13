@@ -56,9 +56,39 @@ describe("crash-safe blue/green promotion", () => {
   });
 
   test("rejects rollback below the monotonic security floor", () => {
-    expect(() => advancePromotion({ ...base, floor: 42 }, "ROLLBACK")).toThrow(
+    expect(() => advancePromotion({ ...base, phase: "COMMITTED", floor: 42 }, "ROLLBACK")).toThrow(
       /floor/i,
     );
+  });
+
+  test("records the committed generation and restores explicit rollback evidence", () => {
+    const committed = advancePromotion(
+      { ...advancePromotion(base, "PREPARE"), publicSmokeVerified: true },
+      "SWITCH_TRAFFIC",
+    );
+    const promoted = advancePromotion(committed, "COMMIT");
+    expect(promoted).toMatchObject({
+      generation: "generation-42",
+      expectedCurrentGeneration: "generation-42",
+      currentDigest: base.candidateDigest,
+      rollbackGeneration: base.generation,
+      rollbackDigest: base.currentDigest,
+    });
+
+    const rollbackReady = {
+      ...promoted,
+      candidateFloor: promoted.floor,
+      rollbackFloor: promoted.floor,
+    };
+    const rolledBack = advancePromotion(rollbackReady, "ROLLBACK");
+    expect(rolledBack).toMatchObject({
+      phase: "TRAFFIC_SWITCHED",
+      generation: base.generation,
+      expectedCurrentGeneration: base.generation,
+      currentDigest: base.currentDigest,
+      candidateGeneration: "generation-42",
+      candidateDigest: base.candidateDigest,
+    });
   });
 
   test("runs the broker-owned migration, qualification, fsync, switch, and smoke order", async () => {
