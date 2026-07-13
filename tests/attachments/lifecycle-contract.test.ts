@@ -90,6 +90,23 @@ describe("attachment lifecycle readiness contract", () => {
     );
   });
 
+  test("requires canonical fields to be own properties", () => {
+    const inherited = Object.create({ format: ATTACHMENT_LIFECYCLE_CONTRACT_FORMAT }) as Record<
+      string,
+      unknown
+    >;
+    Object.assign(inherited, {
+      version: ATTACHMENT_LIFECYCLE_CONTRACT_VERSION,
+      phases: completeContract().phases,
+      invariants: completeContract().invariants,
+      deferred: completeContract().deferred,
+    });
+
+    expect(() => parseAttachmentLifecycleReadinessContract(inherited)).toThrow(
+      "contract.format is required",
+    );
+  });
+
   test("rejects dependency, invariant, action, and deferred ordering drift", () => {
     const contract = completeContract();
     expect(() =>

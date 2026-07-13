@@ -19,6 +19,17 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T13:40:00+09:00 - Issue #165 review hardening for malformed inventory input
+
+- Result: Tightened the preparation primitive after review. The lifecycle
+  contract parser now requires canonical fields to be own properties, blocking
+  inherited/prototype-polluted values. Inventory inputs accept unknown runtime
+  shapes, normalize non-string keys to a non-sensitive sentinel, classify them
+  as `invalid-key` without throwing, and sort using UTF-16 code units for
+  locale-independent deterministic output.
+- Verification: focused attachment contract/inventory/storage-key/route tests
+  (23 passed) and `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-07-13T13:20:00+09:00 - Issue #165 preparation inventory and storage-key guard
 
 - Result: Added a dependency-safe, non-destructive attachment lifecycle slice.

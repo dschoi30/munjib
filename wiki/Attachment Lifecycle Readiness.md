@@ -48,9 +48,11 @@ workspace-scoped canonical key가 아니면 `ATTACHMENT_STORAGE_KEY_INVALID`로
 fail closed한다. Inventory primitive는 DB metadata row와 broker-provided
 file manifest를 입력으로 받아 `referenced`, `missing-bytes`,
 `orphan-bytes`, `invalid-key`를 deterministic하게 분류하며, 반환값에
-`mutationAllowed: false`를 고정한다. 이 코드는 filesystem/DB를 직접 읽거나
-삭제하지 않으므로 candidate manifest를 준비하는 호출자와 production
-purge를 의도적으로 분리한다.
+`mutationAllowed: false`를 고정한다. null/object 같은 malformed runtime key는
+비민감 sentinel로 정규화해 `invalid-key`로 분류하고, 정렬은 locale이 아닌
+UTF-16 code unit 순서를 사용한다. 이 코드는 filesystem/DB를 직접 읽거나
+삭제하지 않으므로 candidate manifest를 준비하는 호출자와 production purge를
+의도적으로 분리한다.
 
 ## Dependency-gated phases
 

@@ -48,7 +48,11 @@ The preparation slice now supplies two reusable, side-effect-free boundaries:
   (`referenced`, `missing-bytes`, `orphan-bytes`, `invalid-key`) plus aggregate
   counts. The returned `mutationAllowed` flag is permanently `false`; the
   primitive never queries Prisma, reads the filesystem, deletes bytes, or
-  changes rows.
+  changes rows. Runtime callers cannot crash reconciliation with a null,
+  object, or non-string key: malformed values are normalized to a non-sensitive
+  sentinel and classified as `invalid-key`; output ordering uses UTF-16 code
+  units rather than locale state. The readiness contract parser likewise
+  requires every canonical field to be an own property.
 
 The inventory caller remains responsible for sourcing both inputs from the
 attested candidate snapshot described below. Do not pass a live production

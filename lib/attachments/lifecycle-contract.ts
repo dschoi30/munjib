@@ -114,7 +114,9 @@ function assertExactKeys(
     }
   }
   for (const key of expected) {
-    if (!(key in value)) fail(`${path}.${key} is required`);
+    if (!Object.prototype.hasOwnProperty.call(value, key)) {
+      fail(`${path}.${key} is required`);
+    }
   }
 }
 

@@ -14,12 +14,12 @@ export type AttachmentLifecycleClassification =
   (typeof ATTACHMENT_LIFECYCLE_CLASSIFICATIONS)[number];
 
 export type AttachmentLifecycleMetadataRow = Readonly<{
-  workspaceId: string;
-  storageKey: string;
+  workspaceId: unknown;
+  storageKey: unknown;
 }>;
 
 export type AttachmentLifecycleStorageFile = Readonly<{
-  storageKey: string;
+  storageKey: unknown;
 }>;
 
 export type AttachmentLifecycleInventoryEntry = Readonly<{
@@ -42,6 +42,32 @@ const emptyCounts = (): Record<AttachmentLifecycleClassification, number> => ({
   "invalid-key": 0,
 });
 
+function compareCodeUnits(left: string, right: string): number {
+  const length = Math.min(left.length, right.length);
+  for (let index = 0; index < length; index += 1) {
+    const difference = left.charCodeAt(index) - right.charCodeAt(index);
+    if (difference !== 0) return difference;
+  }
+  return left.length - right.length;
+}
+
+function normalizeStorageKey(value: unknown): { value: string; isString: boolean } {
+  return typeof value === "string"
+    ? { value, isString: true }
+    : { value: "[invalid-storage-key]", isString: false };
+}
+
+function validateMetadataKey(
+  storageKey: unknown,
+  workspaceId: unknown,
+): ReturnType<typeof validateAttachmentStorageKey> {
+  const normalized = normalizeStorageKey(storageKey);
+  if (!normalized.isString || typeof workspaceId !== "string") {
+    return { valid: false, issue: "invalid-storage-key" };
+  }
+  return validateAttachmentStorageKey(normalized.value, workspaceId);
+}
+
 /**
  * Reconcile attachment metadata against a file manifest without touching the
  * database or filesystem. Inputs and output are sorted by storage key so a
@@ -57,26 +83,31 @@ export function reconcileAttachmentLifecycleInventory(input: {
   const fileCounts = new Map<string, number>();
 
   for (const attachment of input.attachments) {
+    const storageKey = normalizeStorageKey(attachment.storageKey).value;
     attachmentCounts.set(
-      attachment.storageKey,
-      (attachmentCounts.get(attachment.storageKey) ?? 0) + 1,
+      storageKey,
+      (attachmentCounts.get(storageKey) ?? 0) + 1,
     );
   }
   for (const file of input.files) {
-    fileCounts.set(file.storageKey, (fileCounts.get(file.storageKey) ?? 0) + 1);
+    const storageKey = normalizeStorageKey(file.storageKey).value;
+    fileCounts.set(storageKey, (fileCounts.get(storageKey) ?? 0) + 1);
   }
 
   for (const attachment of [...input.attachments].sort((a, b) =>
-    a.storageKey.localeCompare(b.storageKey),
+    compareCodeUnits(
+      normalizeStorageKey(a.storageKey).value,
+      normalizeStorageKey(b.storageKey).value,
+    ),
   )) {
-    const validation = validateAttachmentStorageKey(attachment.storageKey, attachment.workspaceId);
+    const storageKey = normalizeStorageKey(attachment.storageKey).value;
+    const validation = validateMetadataKey(attachment.storageKey, attachment.workspaceId);
     const duplicate =
-      (attachmentCounts.get(attachment.storageKey) ?? 0) > 1 ||
-      (fileCounts.get(attachment.storageKey) ?? 0) > 1;
+      (attachmentCounts.get(storageKey) ?? 0) > 1 || (fileCounts.get(storageKey) ?? 0) > 1;
     const classification: AttachmentLifecycleClassification =
       !validation.valid || duplicate
         ? "invalid-key"
-        : fileCounts.has(attachment.storageKey)
+        : fileCounts.has(storageKey)
           ? "referenced"
           : "missing-bytes";
     const issue = !validation.valid
@@ -85,23 +116,28 @@ export function reconcileAttachmentLifecycleInventory(input: {
         ? "duplicate-storage-key"
         : undefined;
     entries.push({
-      storageKey: attachment.storageKey,
+      storageKey,
       classification,
       ...(issue ? { issue } : {}),
     });
     counts[classification] += 1;
   }
 
-  for (const file of [...input.files].sort((a, b) => a.storageKey.localeCompare(b.storageKey))) {
-    const validation = validateAttachmentStorageKey(file.storageKey);
-    const referenced = attachmentCounts.has(file.storageKey);
-    const duplicate = (fileCounts.get(file.storageKey) ?? 0) > 1;
+  for (const file of [...input.files].sort((a, b) =>
+    compareCodeUnits(normalizeStorageKey(a.storageKey).value, normalizeStorageKey(b.storageKey).value),
+  )) {
+    const storageKey = normalizeStorageKey(file.storageKey);
+    const validation = storageKey.isString
+      ? validateAttachmentStorageKey(storageKey.value)
+      : { valid: false as const, issue: "invalid-storage-key" as const };
+    const referenced = attachmentCounts.has(storageKey.value);
+    const duplicate = (fileCounts.get(storageKey.value) ?? 0) > 1;
     if (!referenced && validation.valid && !duplicate) {
-      entries.push({ storageKey: file.storageKey, classification: "orphan-bytes" });
+      entries.push({ storageKey: storageKey.value, classification: "orphan-bytes" });
       counts["orphan-bytes"] += 1;
     } else if (!validation.valid || duplicate) {
       entries.push({
-        storageKey: file.storageKey,
+        storageKey: storageKey.value,
         classification: "invalid-key",
         issue: !validation.valid ? validation.issue : "duplicate-storage-key",
       });
@@ -110,8 +146,8 @@ export function reconcileAttachmentLifecycleInventory(input: {
   }
 
   entries.sort((a, b) => {
-    const keyOrder = a.storageKey.localeCompare(b.storageKey);
-    return keyOrder || a.classification.localeCompare(b.classification);
+    const keyOrder = compareCodeUnits(a.storageKey, b.storageKey);
+    return keyOrder || compareCodeUnits(a.classification, b.classification);
   });
 
   return Object.freeze({

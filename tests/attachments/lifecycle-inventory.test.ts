@@ -60,4 +60,33 @@ describe("attachment lifecycle inventory", () => {
     });
     expect(second).toEqual(first);
   });
+
+  it("normalizes malformed runtime keys instead of throwing", () => {
+    const result = reconcileAttachmentLifecycleInventory({
+      attachments: [
+        { workspaceId: "cmworkspace", storageKey: null },
+        { workspaceId: 42, storageKey: referenced },
+      ],
+      files: [{ storageKey: undefined }, { storageKey: { key: referenced } }],
+    });
+
+    expect(result.counts["invalid-key"]).toBe(4);
+    expect(result.entries).toEqual([
+      { storageKey: "[invalid-storage-key]", classification: "invalid-key", issue: "invalid-storage-key" },
+      { storageKey: "[invalid-storage-key]", classification: "invalid-key", issue: "invalid-storage-key" },
+      { storageKey: "[invalid-storage-key]", classification: "invalid-key", issue: "invalid-storage-key" },
+      { storageKey: referenced, classification: "invalid-key", issue: "invalid-storage-key" },
+    ]);
+  });
+
+  it("sorts by UTF-16 code units rather than locale", () => {
+    const uppercase = "cmworkspace/550e8400-e29b-41d4-a716-446655440000-A.txt";
+    const lowercase = "cmworkspace/550e8400-e29b-41d4-a716-446655440000-a.txt";
+    const result = reconcileAttachmentLifecycleInventory({
+      attachments: [],
+      files: [{ storageKey: lowercase }, { storageKey: uppercase }],
+    });
+
+    expect(result.entries.map((entry) => entry.storageKey)).toEqual([uppercase, lowercase]);
+  });
 });
