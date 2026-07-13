@@ -2911,3 +2911,11 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T13:10:00+09:00 - security-ai-history
+
+- Result: Issue #163 implementation slice adds a dependency-safe source-lineage parser, all-sources visibility decision, and non-enumerating tombstone DTO contract for derived Workspace AI history.
+- Coverage: explicit v1 source-backed document/chunk pairs, explicit source-free proof, malformed/missing legacy lineage fail closed, one denied source hides the whole turn, and tombstones omit internal ids, timestamps, answer/citations, source metadata, model, counts, and denial reasons.
+- Scope: no Prisma migration, route wiring, purge, provider call, telemetry, or production mutation; the helper accepts a future canonical authority callback and remains gated on Leaves 2/4/6/13B.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
+- Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
