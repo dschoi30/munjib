@@ -2911,3 +2911,10 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T18:00:00+09:00 - security-archive-boundaries
+
+- Result: Issue #159 Task 1 remains dependency-gated. The current branch adds a public-safe readiness handoff only; no resolver, archive lock caller, schema, journal, purge, or production activation changed.
+- Gate: implementation waits for the canonical database-time membership authority, support-access row semantics, deny-only journal API, and immutable runtime/broker attestation. This prevents a direct-membership fallback from becoming an authorization source.
+- Pages: [[index|Wiki Index]], `docs/runbooks/active-resource-boundaries-readiness.md`.
+- Source evidence: GitHub Issue #159 and the current `origin/main` authority surface.
