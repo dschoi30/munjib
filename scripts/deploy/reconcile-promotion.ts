@@ -261,8 +261,13 @@ export function revalidateBrokerOperation(envelope: BrokerOperationEnvelope): { 
   if (!Object.values(["QUALIFY", "MIGRATE", "PROMOTE", "ROLLBACK", "RESCAN"]).includes(envelope.operation)) {
     return { ok: false, reason: "unknown broker operation" };
   }
-  if (!/^.+@sha256:[a-f0-9]{64}$/.test(envelope.appImage) || !/^.+@sha256:[a-f0-9]{64}$/.test(envelope.postgresImage) || !/^.+@sha256:[a-f0-9]{64}$/.test(envelope.storageInitImage) || !/^sha256:[a-f0-9]{64}$/.test(envelope.hostBundleDigest)) {
-    return { ok: false, reason: "broker accepts exact image digests only" };
+  if (
+    !/^ghcr\.io\/dschoi30\/munjib@sha256:[a-f0-9]{64}$/.test(envelope.appImage) ||
+    !/^pgvector\/pgvector@sha256:[a-f0-9]{64}$/.test(envelope.postgresImage) ||
+    !/^alpine@sha256:[a-f0-9]{64}$/.test(envelope.storageInitImage) ||
+    !/^sha256:[a-f0-9]{64}$/.test(envelope.hostBundleDigest)
+  ) {
+    return { ok: false, reason: "broker accepts only allowlisted exact image digests" };
   }
   if (envelope.project !== FIXED_PROJECT || envelope.network !== FIXED_NETWORK) {
     return { ok: false, reason: "project/network are fixed" };

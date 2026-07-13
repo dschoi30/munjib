@@ -2926,6 +2926,8 @@ links:
 - Rollback evidence now records the committed generation as the expected live
   generation and restores only an explicit rollback generation/digest/floor;
   a missing or lower-floor rollback remains fail-closed.
+- Broker image references are restricted to the fixed application, pgvector,
+  and Alpine registries in addition to exact SHA-256 digest syntax.
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `Dockerfile`, `docker-compose.yml`,
   `docker-compose.candidate.yml`, `docker-compose.migrator.yml`,

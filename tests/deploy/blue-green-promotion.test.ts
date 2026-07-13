@@ -127,6 +127,8 @@ describe("private blue/green candidate qualification", () => {
     };
     expect(revalidateBrokerOperation(envelope)).toEqual({ ok: true });
     expect(revalidateBrokerOperation({ ...envelope, appImage: "ghcr.io/dschoi30/munjib:latest" })).toMatchObject({ ok: false });
+    expect(revalidateBrokerOperation({ ...envelope, appImage: "docker.io/attacker/munjib@sha256:" + "a".repeat(64) })).toMatchObject({ ok: false });
+    expect(revalidateBrokerOperation({ ...envelope, storageInitImage: "busybox@sha256:" + "c".repeat(64) })).toMatchObject({ ok: false });
     expect(revalidateBrokerOperation({ ...envelope, hostPort: 3000 })).toMatchObject({ ok: false });
     expect(revalidateBrokerOperation({ ...envelope, command: ["docker compose up"] })).toMatchObject({ ok: false });
   });
