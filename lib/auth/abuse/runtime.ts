@@ -7,6 +7,8 @@ const MAX_HEADER_BYTES = 256;
 const MAX_BUCKET_BYTES = 128;
 const MAX_SCOPE_BYTES = 32;
 const MAX_VALUE_BYTES = 191;
+export const AUTH_GUARD_STORE_TIMEOUT_MS = 1_000;
+const CANONICAL_BUCKET_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const FALLBACK_MARKERS = [
   "obsidian-clone-development-secret",
   "development-secret",
@@ -318,7 +320,7 @@ function isValidBucket(bucket: unknown): bucket is string {
   return typeof bucket === "string" &&
     Buffer.byteLength(bucket, "utf8") > 0 &&
     Buffer.byteLength(bucket, "utf8") <= MAX_BUCKET_BYTES &&
-    /^[A-Za-z0-9._:-]+$/.test(bucket);
+    CANONICAL_BUCKET_PATTERN.test(bucket);
 }
 
 export async function authorizeAuthRequest(input: {
@@ -336,10 +338,17 @@ export async function authorizeAuthRequest(input: {
     return { allowed: false, code: "AUTH_GUARD_STORE_UNAVAILABLE" };
   }
   let result: "allow" | "deny";
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
-    result = await input.store.check({ bucket: input.request.bucket });
+    const storeCheck = Promise.resolve().then(() => input.store!.check({ bucket: input.request.bucket }));
+    const timeout = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => reject(new Error("AUTH_GUARD_STORE_TIMEOUT")), AUTH_GUARD_STORE_TIMEOUT_MS);
+    });
+    result = await Promise.race([storeCheck, timeout]);
   } catch {
     return { allowed: false, code: "AUTH_GUARD_STORE_UNAVAILABLE" };
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
   }
   if (result === "deny") return { allowed: false, code: "AUTH_GUARD_RATE_LIMITED" };
   if (result !== "allow") return { allowed: false, code: "AUTH_GUARD_STORE_UNAVAILABLE" };
