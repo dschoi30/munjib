@@ -2911,3 +2911,22 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T00:00:00+09:00 - security-signup-readiness
+
+- Result: Issue #161 (`issue-161-security-signup-gate`) has a public-safe
+  `PREPARATION_ONLY` readiness contract and immutable parser for Leaf 7's
+  invite-first signup handoff. The branch intentionally performs no auth schema,
+  route, middleware, OAuth, edge, or production mutation.
+- Boundary: Production remains effectively closed until the deployed Leaf 1
+  auth runtime, Leaf 2 journal/auth-tombstone authority, Issue #162 abuse/session
+  capability, and Leaf 13B/13A private runtime and broker gates (#180/#184/#185)
+  are independently attested. The future flow is verified-Google-only,
+  raw-bearer-zero fragment to opaque attempt, atomic invitation consumption,
+  no blind email linking or `OWNER` grants, and private/no-store bounded
+  mutations.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
+- Source evidence: `deploy/security/signup/invite-first-readiness-v1.json`,
+  `lib/auth/invite-readiness.ts`,
+  `docs/runbooks/invite-signup-gate-readiness.md`, and focused readiness tests.
+- Verification: `pnpm exec vitest run tests/auth/invite-readiness.test.ts
+  tests/security/invite-signup-readiness.test.ts --reporter=dot`.

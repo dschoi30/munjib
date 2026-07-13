@@ -128,6 +128,35 @@ one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
 
+### Invite-first signup readiness handoff
+
+Issue #161 (`issue-161-security-signup-gate`) is the reserved Leaf 7 follow-up
+for invite-first onboarding. Its public preparation contract is
+`deploy/security/signup/invite-first-readiness-v1.json`, and its effective
+production mode remains `closed` until the prerequisite capabilities are
+independently deployed and attested. The preparation branch deliberately adds
+no invitation schema, attempt cookie, link grant, route, middleware, OAuth
+behavior, migration, or production mutation.
+
+The future gate accepts only a provider-verified Google identity with one active
+workspace invitation. A raw invitation bearer must never enter a URL, cookie,
+database, server component prop, history entry, log, telemetry payload, or OAuth
+callback; only a short-lived opaque attempt and its domain-separated hash may
+cross the exchange boundary. Invitation consumption, role checks, invalidation,
+and the deny-only journal transition must be atomic, and invitation roles can
+never grant `OWNER`. Matching an invitation or email is not proof of a
+password account, so unauthenticated OAuth collisions must not perform blind
+email linking or create partial rows. Password signup stays closed and all
+responses remain private/no-store with bounded-body, canonical-Origin, and
+Fetch-Metadata checks inherited from the abuse-control owner.
+
+Before implementation starts, the branch must be rebased on the deployed Leaf 1
+auth runtime, Leaf 2 journal/auth-tombstone authority, Issue #162 auth-abuse and
+session capability, and the Leaf 13B/13A private runtime and delivery-broker
+gates tracked by Issues #180/#184/#185. The readiness note at
+`docs/runbooks/invite-signup-gate-readiness.md` records this dependency boundary
+without publishing capability contents or operational evidence.
+
 ### Leaf 1 downstream handoff and rollback contract
 
 The accepted Leaf 1 deployment evidence is the prerequisite for **Leaf 2**. Leaf 2

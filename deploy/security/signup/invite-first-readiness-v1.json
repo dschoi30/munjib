@@ -1,0 +1,31 @@
+{
+  "format": "munjib-invite-signup-readiness-v1",
+  "version": 1,
+  "leaf": 7,
+  "state": "PREPARATION_ONLY",
+  "requestedMode": "invite",
+  "fallbackMode": "closed",
+  "prerequisites": [
+    "auth-runtime-fail-closed@1",
+    "security-journal-auth-tombstones@1",
+    "issue-08-auth-abuse@1",
+    "immutable-private-runtime@1",
+    "delivery-broker-attested@1"
+  ],
+  "invariants": [
+    "verified-google-identity-only",
+    "raw-bearer-never-url-cookie-database-or-log",
+    "opaque-attempt-hash-only",
+    "atomic-invitation-consumption",
+    "no-blind-email-linking",
+    "no-owner-invitation-grant",
+    "password-signup-remains-closed",
+    "private-no-store-responses"
+  ],
+  "forbiddenOperations": [
+    "auth-schema-migration",
+    "signup-route-or-middleware-activation",
+    "production-mutation",
+    "unattested-capability-activation"
+  ]
+}
