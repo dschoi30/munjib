@@ -85,7 +85,7 @@ function assertExactKeys(value: Record<string, unknown>, expected: readonly stri
     }
   }
   for (const key of expected) {
-    if (!(key in value)) {
+    if (!Object.hasOwn(value, key)) {
       fail(`${path}.${key} is required`);
     }
   }
@@ -104,10 +104,7 @@ function assertCanonicalArray(value: unknown, expected: readonly string[], path:
   if (value.length !== expected.length || value.some((item, index) => item !== expected[index])) {
     fail(`${path} has a non-canonical order or value`);
   }
-  if (new Set(value).size !== value.length) {
-    fail(`${path} must not contain duplicates`);
-  }
-  return Object.freeze([...value]);
+  return expected;
 }
 
 function parsePhase(value: unknown, expectedMode: PhaseMode, expectedDependencies: readonly string[], path: string): RecoveryPhase {
@@ -122,8 +119,9 @@ function parsePhase(value: unknown, expectedMode: PhaseMode, expectedDependencie
 /**
  * Parse the checked-in public contract or a separately loaded copy of it.
  *
- * The parser is intentionally fail-closed and returns a fresh immutable value;
- * callers cannot mutate the contract to make a later phase appear satisfied.
+ * The parser is intentionally fail-closed and returns canonical immutable
+ * dependency/invariant arrays; callers cannot mutate the contract to make a
+ * later phase appear satisfied.
  */
 export function parseRecoveryReadinessContract(value: unknown): RecoveryReadinessContract {
   assertRecord(value, "contract");

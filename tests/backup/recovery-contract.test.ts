@@ -73,6 +73,14 @@ describe("encrypted recovery readiness contract", () => {
     expect(() => parseRecoveryReadinessContract(nestedSecret)).toThrow(/sensitive|unknown/i);
   });
 
+  test("requires own properties instead of accepting inherited prototype fields", () => {
+    const inherited = Object.create({ format: "munjib-recovery-readiness-v1" }) as Record<string, unknown>;
+    Object.assign(inherited, completeContract());
+    delete inherited.format;
+
+    expect(() => parseRecoveryReadinessContract(inherited)).toThrow(/format.*required/i);
+  });
+
   test("rejects objective drift and invariant drift", () => {
     expect(() =>
       parseRecoveryReadinessContract({

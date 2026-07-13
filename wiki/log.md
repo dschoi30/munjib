@@ -2926,3 +2926,9 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T14:40:00+09:00 - security recovery contract review follow-up
+
+- Result: Issue #168 recovery contract validation now rejects inherited required fields and returns canonical immutable dependency/invariant arrays after review feedback.
+- Pages: [[Project PRD]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/recovery-contract.ts`, `tests/backup/recovery-contract.test.ts`, PR #190 review threads.
+- Verification: focused recovery-contract tests (7 passed), TypeScript noEmit, wiki manifest/lint/sync checks.
