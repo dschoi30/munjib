@@ -2919,3 +2919,6 @@ links:
 - Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `lib/rag/provider-boundary.ts`, `tests/rag/provider-boundary.test.ts`.
 - Verification: `pnpm exec vitest run tests/rag/provider-boundary.test.ts`, `pnpm exec tsc --noEmit`.
+
+- Follow-up: provider policy candidate inputs now require runtime string/boolean types before regex or catalog checks, and the destination guard recognizes IPv4-mapped IPv6 forms of private addresses.
+- Verification: focused provider-boundary tests (6 passed) and `pnpm exec tsc --noEmit --pretty false`.

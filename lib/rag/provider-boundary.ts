@@ -71,9 +71,12 @@ export function createProviderBoundaryPolicy(input: {
   const selections = input.selections.map((candidate) => {
     if (
       !candidate ||
+      typeof candidate.selectionId !== "string" ||
       !SELECTION_ID_PATTERN.test(candidate.selectionId) ||
       seen.has(candidate.selectionId) ||
+      typeof candidate.provider !== "string" ||
       !PROVIDERS.has(candidate.provider) ||
+      typeof candidate.model !== "string" ||
       !MODEL_ID_PATTERN.test(candidate.model) ||
       (candidate.enabled !== undefined && typeof candidate.enabled !== "boolean")
     ) {
@@ -312,6 +315,10 @@ function hasLiteralAddress(hostname: string): boolean {
 
 function isPrivateOrMetadataHost(hostname: string): boolean {
   const normalized = hostname.replace(/^\[|\]$/g, "").toLowerCase().replace(/\.$/, "");
+  const mappedIpv4 = ipv4MappedIpv6(normalized);
+  if (mappedIpv4) {
+    return isPrivateOrMetadataHost(mappedIpv4);
+  }
   if (
     normalized === "localhost" ||
     normalized.endsWith(".localhost") ||
@@ -355,6 +362,33 @@ function isPrivateOrMetadataHost(hostname: string): boolean {
     );
   }
   return false;
+}
+
+function ipv4MappedIpv6(value: string): string | undefined {
+  if (!value.includes(":")) return undefined;
+  const pieces = value.split("::");
+  if (pieces.length > 2) return undefined;
+  const left = pieces[0] ? pieces[0].split(":") : [];
+  const right = pieces[1] ? pieces[1].split(":") : [];
+  if (left.length + right.length > 8) return undefined;
+  const groups = [
+    ...left,
+    ...Array.from({ length: 8 - left.length - right.length }, () => "0"),
+    ...right,
+  ];
+  if (
+    groups.length !== 8 ||
+    groups.slice(0, 5).some((group) => group !== "0") ||
+    groups[5] !== "ffff"
+  ) {
+    return undefined;
+  }
+  const high = Number.parseInt(groups[6], 16);
+  const low = Number.parseInt(groups[7], 16);
+  if (!Number.isInteger(high) || !Number.isInteger(low) || high > 0xffff || low > 0xffff) {
+    return undefined;
+  }
+  return `${high >> 8}.${high & 0xff}.${low >> 8}.${low & 0xff}`;
 }
 
 function isIpv4(value: string): boolean {

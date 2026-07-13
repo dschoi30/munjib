@@ -66,6 +66,27 @@ describe("AI provider boundary", () => {
       ],
     });
     expect(() => disabled.resolve("disabled-v1")).toThrow("AI_PROVIDER_SELECTION_FORBIDDEN");
+
+    for (const malformed of [
+      { selectionId: 123, provider: "openai", model: "gpt-5.4-mini" },
+      { selectionId: "numeric-model-v1", provider: "openai", model: 123 },
+    ]) {
+      expect(() =>
+        createProviderBoundaryPolicy({
+          environment: "test",
+          selections: [
+            {
+              ...malformed,
+              endpoint: {
+                id: "openai-official-v1",
+                origin: "https://api.openai.com",
+                path: "/v1",
+              },
+            } as never,
+          ],
+        }),
+      ).toThrow("AI_PROVIDER_POLICY_INVALID");
+    }
   });
 
   it("rejects credentials, alternate destinations, and production loopback/private addresses", () => {
@@ -89,6 +110,19 @@ describe("AI provider boundary", () => {
     expect(validateProviderDestination("https://api.openai.com/v1", endpoint, "production")).toBe(
       "https://api.openai.com/v1",
     );
+
+    const mappedPrivateEndpoint = {
+      id: "mapped-private-v1",
+      origin: "https://[::ffff:10.0.0.5]",
+      path: "/v1",
+    } as const;
+    expect(() =>
+      validateProviderDestination(
+        "https://[::ffff:10.0.0.5]/v1",
+        mappedPrivateEndpoint,
+        "development",
+      ),
+    ).toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
   });
 
   it("permits the fixed local endpoint only in non-production", () => {
