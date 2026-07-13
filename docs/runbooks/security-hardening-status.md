@@ -37,7 +37,7 @@ material do not belong here.
 | #165 | Draft readiness PR #195 | `issue-165-security-attachment-lifecycle` / PR #195 (`7185ff8`) | Preparation-only contract; no purge, file deletion, scheduler, production storage inspection, or attachment mutation. |
 | #168 | Draft recovery-readiness PR #190 | `issue-168-security-backup-restore` / PR #190 | No snapshot, restore, destructive purge, key rotation, or production operation. Depends on #184/#185 and the attachment/purge/journal leaves. |
 | #139 | Assessment only; no implementation PR | issue #139 | Safe independent slice is limited to a future embedding registry/config contract; schema/backfill/activation remain gated. |
-| #161 | Draft readiness PR #161 | `issue-161-security-signup-gate` / PR #161 (`4b22bb2`) | Preparation-only invite contract; no auth schema, route, middleware, OAuth, edge, migration, or production change. |
+| #161 | Branch/commit prepared; no PR currently visible | `issue-161-security-signup-gate` (`4b22bb2`) | Preparation-only invite contract; no auth schema, route, middleware, OAuth, edge, migration, or production change. |
 | #166 | Draft readiness PR #196 | `issue-166-security-edge-bindings` / PR #196 | Documentation/contract-only; no Caddy, DNS, TLS, firewall, host monitoring, route, or production traffic change. |
 
 ## Dependency order and non-claims
@@ -63,7 +63,8 @@ pnpm wiki:sync-check --staged
 ```
 
 Use the GitHub issue/PR pages named above for current state. The separately
-anticipated signup handle `#198` was not visible at this audit; signup
-readiness is currently tracked by draft PR #161. If a branch or PR
+anticipated signup handle `#198` and a PR for the current signup branch were
+not visible at this audit; the branch/commit is prepared but not yet a draft
+PR. If a branch or PR
 changes, update this map with the new public handle and preserve the explicit
 non-claim until independent deployment evidence exists.
