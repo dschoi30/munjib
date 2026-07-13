@@ -238,7 +238,7 @@ function assertExactKeys(value: Record<string, unknown>, expected: readonly stri
     }
   }
   for (const key of expected) {
-    if (!(key in value)) fail(`${path}.${key} is required`);
+    if (!Object.prototype.hasOwnProperty.call(value, key)) fail(`${path}.${key} is required`);
   }
 }
 
@@ -433,11 +433,12 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertDecimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
   if (!Array.isArray(value.attachments.entries) || value.attachments.entries.length > 100_000) fail("manifest.attachments.entries must be a bounded array");
   const entries = value.attachments.entries.map(parseAttachmentEntry);
+  const relativePaths = new Set<string>();
   for (let index = 1; index < entries.length; index += 1) {
     if (entries[index - 1].id >= entries[index].id) fail("manifest.attachments.entries must be sorted by id without duplicates");
-    if (entries[index - 1].relativePath !== null && entries[index].relativePath !== null && entries[index - 1].relativePath === entries[index].relativePath) {
-      fail("manifest.attachments.entries must not duplicate relative paths");
-    }
+  }
+  for (const entry of entries) {
+    if (entry.relativePath !== null && !relativePaths.add(entry.relativePath)) fail("manifest.attachments.entries must not duplicate relative paths");
   }
 
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
@@ -529,10 +530,18 @@ export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, act
 
   const expected = manifest.attachments.entries.filter((entry) => entry.status === "READY");
   if (expected.length !== actual.archive.entries.length) fail("attachment archive entries do not match manifest");
-  const actualEntries = [...actual.archive.entries].sort((left, right) => left.id.localeCompare(right.id));
+  const actualEntries = [...actual.archive.entries].sort((left, right) => left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  const actualIds = new Set<string>();
+  const actualPaths = new Set<string>();
   for (let index = 0; index < expected.length; index += 1) {
     const left = expected[index];
     const right = actualEntries[index];
+    if (right) {
+      assertId(right.id, `archive.entries[${index}].id`);
+      assertRelativePath(right.relativePath, `archive.entries[${index}].relativePath`);
+      assertDecimal(right.sizeBytes, `archive.entries[${index}].sizeBytes`);
+      if (!actualIds.add(right.id) || !actualPaths.add(right.relativePath)) fail("attachment archive entries must not contain duplicate ids or paths");
+    }
     if (!right || left.id !== right.id || left.relativePath !== right.relativePath || left.sizeBytes !== right.sizeBytes || left.contentSha256 !== right.contentSha256) {
       fail("attachment archive entry does not match manifest");
     }
