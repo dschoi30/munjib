@@ -1,0 +1,235 @@
+import { createHash } from "node:crypto";
+
+import { describe, expect, test } from "vitest";
+
+import {
+  SnapshotManifestError,
+  assertManifestPayloadIntegrity,
+  assertNoSensitiveKeys,
+  assertRecoveryCompatibility,
+  assertSnapshotImageEvidenceOnly,
+  migrationIdsSha256,
+  parseSnapshotEnvelope,
+  parseSnapshotManifest,
+  sha256Bytes,
+  snapshotCompatibilityContractSha256,
+  type SnapshotEnvelopeReceipts,
+  type SnapshotManifestV2,
+} from "../../lib/backup/manifest";
+
+const HASH = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+const HASH_2 = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+const IMAGE = `sha256:${HASH}` as const;
+const IMAGE_2 = `sha256:${HASH_2}` as const;
+const EPOCH = "2026-07-13T00:00:00.000Z";
+const CREATED = "2026-07-13T00:00:01.000Z";
+
+const completeManifest = (): SnapshotManifestV2 => {
+  const appliedIds = ["20260712000000_add_journal", "20260712120000_add_retention"];
+  const migrations = {
+    appliedIds,
+    orderedIdsSha256: migrationIdsSha256(appliedIds),
+    schemaFingerprintSha256: HASH,
+  } as const;
+  const manifestWithoutContract = {
+    format: "munjib-snapshot-manifest-v2" as const,
+    backupId: "b20260713-0001",
+    epochUtc: EPOCH,
+    databaseNameHash: HASH,
+    database: {
+      format: "postgres-custom" as const,
+      sha256: HASH,
+      sizeBytes: "1024",
+      excludedTableData: ["DocumentChunk"] as const,
+    },
+    attachments: {
+      archiveSha256: HASH_2,
+      archiveSizeBytes: "2048",
+      entries: [
+        {
+          id: "att-0001",
+          documentId: "doc-0001",
+          status: "READY" as const,
+          relativePath: "documents/att-0001.bin",
+          sizeBytes: "42",
+          contentSha256: HASH_2,
+        },
+        {
+          id: "att-0002",
+          documentId: "doc-0002",
+          status: "PENDING" as const,
+          relativePath: null,
+          sizeBytes: "0",
+          contentSha256: null,
+        },
+      ],
+    },
+    aggregateCounts: { organizations: "1", workspaces: "2", documents: "4", attachments: "2" },
+    migrations,
+    snapshotRuntime: {
+      imageDigest: IMAGE,
+      sourceCommit: "0123456789abcdef0123456789abcdef01234567",
+      capabilityFloorSha256: HASH,
+      releaseEvidenceSha256: HASH_2,
+    },
+    recoveryPointerAtCapture: {
+      recordSha256: HASH_2,
+      imageDigest: IMAGE_2,
+      capabilityFloorSha256: HASH,
+      releaseEvidenceSha256: HASH_2,
+      artifactSetSha256: HASH,
+      acceptedSnapshotContractSha256: HASH,
+    },
+    registeredWritersSha256: HASH,
+    captureSealPolicySha256: HASH_2,
+    journal: {
+      genesisHash: HASH,
+      chainAtSnapshot: { sequence: "8", entryHash: HASH_2 },
+      exportCheckpointAtSnapshot: {
+        sequence: "8",
+        entryHash: HASH_2,
+        latestExportBatchDigest: HASH,
+        containingBatchFirstSequence: "1",
+        containingBatchDigest: HASH_2,
+      },
+    },
+  };
+  const parsed = parseSnapshotManifest(manifestWithoutContract);
+  return {
+    ...parsed,
+    recoveryPointerAtCapture: {
+      ...parsed.recoveryPointerAtCapture,
+      acceptedSnapshotContractSha256: snapshotCompatibilityContractSha256(parsed),
+    },
+  };
+};
+
+const completeEnvelope = () => {
+  const manifest = completeManifest();
+  const envelope = {
+    format: "munjib-snapshot-envelope-v2" as const,
+    backupId: manifest.backupId,
+    epochUtc: EPOCH,
+    encryptedPayloadSha256: HASH,
+    encryptedPayloadSizeBytes: "4096",
+    ciphertextObject: {
+      keySha256: HASH_2,
+      providerGeneration: "generation-20260713-0001",
+      sha256: HASH,
+      sizeBytes: "4096",
+    },
+    manifestSha256: HASH_2,
+    snapshotImageDigest: IMAGE,
+    capabilityFloorSha256: HASH,
+    journalSequence: "8",
+    captureSealSha256: HASH_2,
+    decryptVerificationSha256: HASH,
+    createdAt: CREATED,
+    nonce: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+  };
+  const receipts: SnapshotEnvelopeReceipts = {
+    rootCiphertextSeal: {
+      backupId: manifest.backupId,
+      encryptedPayloadSha256: HASH,
+      sizeBytes: "4096",
+      captureSealSha256: HASH_2,
+      sealed: true,
+    },
+    exactRead: {
+      keySha256: HASH_2,
+      providerGeneration: "generation-20260713-0001",
+      sha256: HASH,
+      sizeBytes: "4096",
+    },
+    decryptVerification: {
+      verified: true,
+      sha256: HASH,
+      encryptedPayloadSha256: HASH,
+      manifestSha256: HASH_2,
+    },
+  };
+  return { envelope, receipts };
+};
+
+describe("snapshot manifest v2", () => {
+  test("accepts the exhaustive private manifest and freezes nested values", () => {
+    const parsed = parseSnapshotManifest(completeManifest());
+    expect(parsed.format).toBe("munjib-snapshot-manifest-v2");
+    expect(parsed.snapshotRuntime.imageDigest).not.toBe(parsed.recoveryPointerAtCapture.imageDigest);
+    expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.attachments.entries)).toBe(true);
+    expect(parsed.attachments.entries[0].status).toBe("READY");
+  });
+
+  test("rejects unknown and sensitive keys recursively", () => {
+    const manifest = completeManifest();
+    expect(() => parseSnapshotManifest({ ...manifest, password: "no" })).toThrow(/sensitive|unknown/i);
+    expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, nested: { apiToken: "no" } } })).toThrow(/sensitive|unknown/i);
+    expect(() => assertNoSensitiveKeys({ relativePath: "safe/file", nested: { providerSecret: "no" } })).toThrow(/sensitive/i);
+  });
+
+  test("rejects noncanonical decimals, hashes, timestamps, IDs, paths, and ordering", () => {
+    const manifest = completeManifest();
+    expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-07-13T00:00:00Z" })).toThrow(/timestamp/i);
+    expect(() => parseSnapshotManifest({ ...manifest, database: { ...manifest.database, sizeBytes: 1 } })).toThrow(/decimal/i);
+    expect(() => parseSnapshotManifest({ ...manifest, databaseNameHash: HASH.toUpperCase() })).toThrow(/hash/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "/absolute" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[1], manifest.attachments.entries[0]] } })).toThrow(/sorted/i);
+    expect(() => parseSnapshotManifest({ ...manifest, migrations: { ...manifest.migrations, appliedIds: [...manifest.migrations.appliedIds].reverse() } })).toThrow(/sorted/i);
+  });
+
+  test("enforces attachment state and duplicate rules", () => {
+    const manifest = completeManifest();
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "READY", sizeBytes: "0" }, manifest.attachments.entries[1]] } })).toThrow(/non-zero/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "PENDING", relativePath: "leak.bin" }, manifest.attachments.entries[1]] } })).toThrow(/non-READY/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[0], { ...manifest.attachments.entries[1], id: manifest.attachments.entries[0].id }] } })).toThrow(/sorted|duplicate/i);
+  });
+
+  test("checks migration compatibility, journal high-water, and payload receipts", () => {
+    const manifest = completeManifest();
+    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false })).toThrow(/floor/i);
+    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true })).not.toThrow();
+
+    expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "9" } } })).toThrow(/exceed/i);
+    expect(() => assertManifestPayloadIntegrity(manifest, {
+      database: { sha256: HASH, sizeBytes: "1024" },
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },
+    })).not.toThrow();
+    expect(() => assertManifestPayloadIntegrity(manifest, {
+      database: { sha256: HASH_2, sizeBytes: "1024" },
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: [] },
+    })).toThrow(/database/i);
+  });
+
+  test("uses constant-time hash helper inputs and canonical migration digest", () => {
+    const bytes = Buffer.from("manifest-bytes", "utf8");
+    expect(sha256Bytes(bytes)).toBe(createHash("sha256").update(bytes).digest("hex"));
+    expect(migrationIdsSha256(["a", "b"])).toBe(migrationIdsSha256(["a", "b"]));
+    expect(() => migrationIdsSha256(["b", "a"])).toThrow(/sorted/i);
+  });
+});
+
+describe("snapshot envelope v2", () => {
+  test("requires root seal, immutable exact-read, and decrypt verification receipts", () => {
+    const { envelope, receipts } = completeEnvelope();
+    expect(() => parseSnapshotEnvelope(envelope, receipts)).not.toThrow();
+    expect(() => parseSnapshotEnvelope(envelope, undefined as never)).toThrow(SnapshotManifestError);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: { ...receipts.rootCiphertextSeal, sealed: false as true } })).toThrow(/seal/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } })).toThrow(/match/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } })).toThrow(/decrypt/i);
+  });
+
+  test("rejects mutable generations, payload mismatches, and sensitive public fields", () => {
+    const { envelope, receipts } = completeEnvelope();
+    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "latest" } }, receipts)).toThrow(/generation/i);
+    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, sizeBytes: "4097" } }, receipts)).toThrow(/payload/i);
+    expect(() => parseSnapshotEnvelope({ ...envelope, apiToken: "no" }, receipts)).toThrow(/sensitive|unknown/i);
+  });
+
+  test("keeps snapshot image as evidence, never an executable restore selection", () => {
+    const { envelope, receipts } = completeEnvelope();
+    const parsed = parseSnapshotEnvelope(envelope, receipts);
+    expect(assertSnapshotImageEvidenceOnly(parsed)).toBeUndefined();
+    expect(Object.keys(parsed)).not.toContain("restoreImageDigest");
+  });
+});

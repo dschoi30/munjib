@@ -204,6 +204,16 @@ hooks, and Leaf 11 attachment lifecycle. A green contract test is not a snapshot
 restore, key, purge, or production acceptance result; Issue #168 remains open
 until those dependencies and independent restore evidence are complete.
 
+The dependency-safe v2 manifest slice adds recursive exact-key validation and
+constant-time receipt/integrity helpers in `lib/backup/manifest.ts`. It binds
+database/archive hashes, every attachment state and READY byte hash, ordered
+migrations, capability/evidence hashes, and the Leaf 2 checkpoint while keeping
+the private manifest data-only. The public envelope cannot be parsed for signing
+until root seal, immutable exact-read, and authenticated decrypt receipts match;
+`snapshotImageDigest` remains audit evidence and is never a restore selector. No
+builder, capture, restore, purge, key rotation, or host/provider operation is
+included in this slice.
+
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
 Secure cookies, canonical origin, disabled development login, production seed
