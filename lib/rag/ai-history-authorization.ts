@@ -187,12 +187,28 @@ export function toAiHistoryMessageDto(
   message: AiHistoryMessageRecord,
   decision: AiHistoryVisibilityDecision,
 ): AiHistoryMessageDto {
+  // User-authored questions are not derived assistant output. Keep ordinary
+  // USER rows visible even when a neighboring assistant turn is tombstoned;
+  // this prevents the history filter from deleting the actor's own prompt.
+  if (message.role === "USER") {
+    return {
+      visibility: "visible",
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      citations: message.citations,
+      contextMeta: message.contextMeta,
+      model: message.model,
+      createdAt: message.createdAt.toISOString(),
+    };
+  }
+
   if (decision.visibility === "tombstone") {
     return createAiHistoryTombstone(message.role);
   }
 
-  // Source-backed lineage belongs to derived assistant output. Do not allow a
-  // detached/forged decision to reinterpret a USER row as derived output.
+  // Source-backed lineage belongs to derived assistant output. The role guard
+  // above prevents a USER row from inheriting a detached assistant decision.
   if (decision.lineage.kind === "source-backed" && message.role !== "ASSISTANT") {
     return createAiHistoryTombstone(message.role);
   }

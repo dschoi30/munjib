@@ -15,8 +15,9 @@ mutation.
   source-authority callback. One denied source hides the whole turn.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
-- The serializer scopes source-backed decisions to `ASSISTANT` rows and keeps a
-  `USER` row from inheriting a detached assistant decision.
+- The serializer scopes tombstones to derived `ASSISTANT` rows. Normal
+  user-authored `USER` questions remain visible and never inherit a detached
+  assistant decision.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.

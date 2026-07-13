@@ -184,19 +184,37 @@ describe("AI history lineage and visibility contract", () => {
     });
   });
 
-  it("does not apply source-backed assistant visibility to USER rows", () => {
+  it("keeps ordinary USER rows visible when an assistant decision is tombstoned", () => {
     const lineage = parseAiHistoryLineage(message.contextMeta);
-    const decision = decideAiHistoryVisibility({ lineage, authorizeSource: () => true });
-    const userMessage = { ...message, role: "USER" as const, content: "User question" };
+    const userMessage = {
+      ...message,
+      role: "USER" as const,
+      content: "User question",
+      contextMeta: null,
+      citations: null,
+      model: null,
+    };
 
-    expect(toAiHistoryMessageDto(userMessage, decision)).toEqual({
-      visibility: "tombstone",
+    expect(toAiHistoryMessageDto(userMessage, { visibility: "tombstone" })).toEqual({
+      visibility: "visible",
+      id: "message-secret-id",
       role: "USER",
-      content: "",
-      citations: [],
+      content: "User question",
+      citations: null,
       contextMeta: null,
       model: null,
-      createdAt: null,
+      createdAt: "2026-07-13T00:00:00.000Z",
+    });
+
+    expect(
+      toAiHistoryMessageDto(
+        { ...userMessage, contextMeta: message.contextMeta },
+        decideAiHistoryVisibility({ lineage, authorizeSource: () => true }),
+      ),
+    ).toMatchObject({
+      visibility: "visible",
+      role: "USER",
+      content: "User question",
     });
   });
 });
