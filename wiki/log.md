@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T10:10:00+09:00 - delivery bundle packaging boundary
+
+- Result: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout and fail-closed TypeScript builder/verifier for the Leaf 13A broker, submitter, verifier, policies, systemd units, and forced-SSH fragment.
+- Coverage: The generated manifest records per-file SHA-256, fixed `root:root` ownership/modes, layout digest, and a separate manifest digest. Symlinked inputs, path escapes, duplicate destinations, tampered payloads, unexpected top-level files, and non-target bundles are rejected. The production `release-verify.pub` trust key is deliberately declared as a `root-bootstrap` external input and is not generated or bundled.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/delivery/bundle-layout-v1.json`, `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, Issue #185.
+- Verification: focused delivery-substrate and bundle tests pass; production host installation, key enrollment, and signed envelope verification remain external authority gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.

@@ -17,24 +17,34 @@ bundle or the root bootstrap material needed to install it safely. Adding an
 installer that guessed those values would weaken the fail-closed boundary and
 would not satisfy Issue #185's acceptance criteria.
 
-No production-facing code was added in this task.
+A safe, public code slice was added instead: the repository now contains a
+fixed Linux/ARM64 bundle layout and fail-closed builder/verifier for the
+non-secret substrate files. This does not change the production installation
+decision.
 
 ## Evidence inspected
 
 | Requirement | Current evidence | Result |
 | --- | --- | --- |
 | Fixed broker/submitter/verify programs | `cmd/munjib-release-broker/main.go`, `cmd/munjib-release-submit/main.go`, `cmd/munjib-release-verify/main.go` | Source contract exists; no compiled host artifact is tracked. |
-| Fixed destination allowlist | `deploy/delivery/manifest-v1.json` | Allowlist exists, but it contains destination strings only; it has no source mapping, SHA-256 digest, owner/mode metadata, or bundle digest. |
+| Fixed destination allowlist | `deploy/delivery/manifest-v1.json`, `deploy/delivery/bundle-layout-v1.json` | The original operation allowlist remains separate; the new bundle layout binds source/artifact names to destinations, owner/mode metadata, and fixed Linux/ARM64 target. Generated manifests add SHA-256 and bundle digest evidence. |
 | Principal and operation policy | `deploy/delivery/principal-policy-v1.json`, `deploy/delivery/broker-operations-v1.json` | Public policy exists. The broker admits `VERIFY_ONLY`; `INSTALL_SUBSTRATE` and `RECONCILE_SUBSTRATE` intentionally return `ROOT_HELPER_NOT_INSTALLED`. |
 | Socket and service units | `deploy/systemd/munjib-release-broker.{socket,service}` | Unit source exists. A live socket is not present in this environment, and the repository has no host installer or enable/reload procedure. |
 | Forced SSH boundary | `deploy/sshd/munjib-release-submit.conf` | Configuration fragment exists. No safe host-side deployment, `sshd -t`, or reload was performed. |
 | Trust root | Broker and verifier require `/var/lib/munjib/security/bootstrap/release-verify.pub` and an Ed25519 public key of the exact expected size. | The key is intentionally absent from the repository and no root-bootstrap handoff is available. |
-| Target build | `go.mod` and Linux-only Go commands | CI has no Go build/attestation job. Local environment is Darwin arm64 and has no `go` binary, so no target Linux artifact was produced or verified. |
+| Target build | `go.mod`, `deploy/delivery/bundle-layout-v1.json`, and builder tests | CI still has no Go build/attestation job. Local environment is Darwin arm64 and has no `go` binary, so no target Linux artifact was produced or verified; tests use fake artifacts only to exercise fail-closed packaging. |
 | Independent host verification | `tests/deploy/delivery-substrate-contract.test.ts` and the unit/source contracts | Static source tests pass in the merged PR lineage, but they cannot prove host ownership, socket activation, SSH parser acceptance, binary digest, or trust-key enrollment. |
 
 The repository-wide deployment workflow (`.github/workflows/ci-cd.yml`) builds
 the web/tools images and runs the application deploy. It does not build,
 package, sign, attest, transfer, or install the delivery-substrate programs.
+
+The safe packaging slice is intentionally not a host installer: it rejects
+symlinked inputs and path escapes, copies only the fixed eight substrate files,
+emits a per-file SHA-256 manifest plus a manifest digest, and declares
+`release-verify.pub` as a `root-bootstrap` external input without fabricating
+it. The verifier checks target, layout digest, ownership/mode metadata, payload
+digests, symlink absence, and unexpected top-level files.
 
 ## Why automation is not safe yet
 
@@ -65,8 +75,9 @@ selected checkout:
 
 1. Build the three Go programs for the declared production `GOOS/GOARCH` in a
    clean CI job; record reproducible build inputs and SHA-256 digests.
-2. Add a versioned bundle manifest containing source artifact digests,
-   destination allowlists, exact owners/groups/modes, and a bundle digest.
+2. Use the versioned bundle layout/builder to generate a signed bundle
+   manifest containing source artifact digests, destination allowlists, exact
+   owners/groups/modes, and a bundle digest.
 3. Sign the manifest/bundle with the delivery signer; enroll only its public
    key through the root bootstrap procedure. Keep private key material and
    production envelopes out of GitHub-visible artifacts.
@@ -104,8 +115,12 @@ production host is ready.
 - Reviewed the merged Leaf 13A files and the public runbook/wiki references.
 - Confirmed the manifest's listed destination paths do not exist as repository
   source artifacts.
-- Confirmed no delivery-substrate installer, bundle builder, Go build step,
-  signer, or attestation workflow is present.
+- Added and tested `deploy/delivery/bundle-layout-v1.json`,
+  `scripts/deploy/delivery-bundle.ts`, and the build/verify entrypoints. The
+  builder/verifier are public-safe packaging code and do not claim host
+  installation or key enrollment.
+- Confirmed no delivery-substrate installer, Go build step, signer, or
+  attestation workflow is present.
 - Confirmed the local environment has no `go` executable and no live broker
   socket.
 - Did not run a privileged installation or print secrets/remote logs.

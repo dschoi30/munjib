@@ -80,6 +80,18 @@ runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명�
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
 
+Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bundle
+layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
+(`scripts/deploy/{build,verify}-delivery-bundle.ts`)를 제공한다. 빌더는
+linux/arm64용 세 개의 사전 빌드된 Go artifact 이름과 repository 고정 파일만
+받고, symlink/path escape/중복 destination을 거부한다. 출력 manifest에는 각
+파일의 SHA-256, `root:root` ownership, mode, layout digest와 별도의
+`bundle.sha256`가 포함되며, `payload` 이외의 top-level 항목과 변조된 파일도
+검증기가 fail closed로 거부한다. `release-verify.pub`는 bundle에 포함하지
+않고 `root-bootstrap` external input으로만 선언한다. 따라서 이 코드는
+재현 가능한 artifact package/verification 경계를 제공할 뿐, production host
+설치나 trust-key enrollment를 주장하지 않는다.
+
 ## Security-critical runtime gate
 
 Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
