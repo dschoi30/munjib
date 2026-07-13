@@ -199,6 +199,22 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
+### Leaf 2 dependency gate (preparatory)
+
+Issue #156 adds `lib/security/leaf-dependencies.ts` as the narrow handoff seam
+for the future Trial-isolation rollout. `verifyLeaf2Dependencies()` accepts only
+the expected production source digest, Leaf 1's closed-password/unlinked-OAuth
+proofs, and Leaf 13's immutable-delivery, rollback, and database-role capability
+proof, then returns a branded value for later migration/apply commands. Signature
+and trust-anchor verification remain the responsibility of the delivery broker;
+the verifier does not manufacture deployment evidence.
+
+The production workflow does not invoke a Leaf 2 migration, Trial disable,
+membership cleanup, or support operation yet. Those commands remain blocked until
+the exact private-runtime gate and broker installation are independently accepted
+(Issues #184 and #185). This prevents a preparatory TypeScript seam from being
+mistaken for a production authorization proof.
+
 ### main deploy
 
 `deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.

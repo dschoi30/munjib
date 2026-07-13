@@ -2911,3 +2911,10 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T17:40:00+09:00 - security-trial-isolation
+
+- Result: Issue #156 preparatory Task 1 adds a branded `verifyLeaf2Dependencies()` seam that requires the exact production source digest, Leaf 1 closed-signup proofs, and Leaf 13 immutable-delivery/rollback/database-role capability proofs.
+- Boundary: The verifier consumes broker-verified proof fields but does not verify signatures or activate production migration, Trial quarantine, membership cleanup, support access, or journal mutation. Those operations remain deferred behind Issues #184 and #185.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, GitHub Issue #156.
+- Verification: `pnpm exec vitest run tests/security/leaf-dependencies.test.ts` (5 tests passed). Full TypeScript verification remains blocked by the existing generated Prisma client errors in the clean worktree.
