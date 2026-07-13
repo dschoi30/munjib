@@ -117,4 +117,9 @@ describe("encrypted recovery readiness contract", () => {
       }),
     ).toThrow(/order/i);
   });
+
+  test("requires own properties rather than inherited contract fields", () => {
+    const inherited = Object.create(completeContract()) as Record<string, unknown>;
+    expect(() => parseRecoveryReadinessContract(inherited)).toThrow(/required/i);
+  });
 });

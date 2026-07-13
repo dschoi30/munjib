@@ -18,7 +18,7 @@ const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
-const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._/-]{1,512}$/;
+const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const SENSITIVE_KEY = /(?:password|secret|token|cookie|email|name|path|query|url|body|content|provider|private|credential|database|host|slug|title|document|attachment)/i;
 const ALLOWED_SENSITIVE_KEYS = new Set([
   "format",
@@ -274,7 +274,14 @@ function decimal(value: string, path: string): bigint {
 }
 
 function assertUtc(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || !UTC.test(value) || new Date(value).toISOString() !== value) {
+  if (typeof value !== "string" || !UTC.test(value)) {
+    fail(`${path} must be a canonical UTC timestamp`);
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) fail(`${path} must be a canonical UTC timestamp`);
+  try {
+    if (new Date(parsed).toISOString() !== value) fail(`${path} must be a canonical UTC timestamp`);
+  } catch {
     fail(`${path} must be a canonical UTC timestamp`);
   }
 }
@@ -525,6 +532,22 @@ function equalHash(expected: string, actual: string): boolean {
  * represent only extracted READY files; non-READY rows remain inventory-only.
  */
 export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, actual: ManifestPayloadIntegrity): void {
+  assertNoSensitiveKeys(actual, "actual");
+  if (!isRecord(actual) || !isRecord(actual.database) || !isRecord(actual.archive)) fail("actual payload receipts must be objects");
+  assertHash(actual.database.sha256, "actual.database.sha256");
+  assertDecimal(actual.database.sizeBytes, "actual.database.sizeBytes");
+  assertHash(actual.archive.sha256, "actual.archive.sha256");
+  assertDecimal(actual.archive.sizeBytes, "actual.archive.sizeBytes");
+  if (!Array.isArray(actual.archive.entries)) fail("actual.archive.entries must be an array");
+  for (const [index, value] of actual.archive.entries.entries()) {
+    const path = `actual.archive.entries[${index}]`;
+    assertRecord(value, path);
+    assertExactKeys(value, ["id", "relativePath", "sizeBytes", "contentSha256"], path);
+    assertId(value.id, `${path}.id`);
+    assertRelativePath(value.relativePath, `${path}.relativePath`);
+    assertDecimal(value.sizeBytes, `${path}.sizeBytes`);
+    assertHash(value.contentSha256, `${path}.contentSha256`);
+  }
   if (!equalHash(manifest.database.sha256, actual.database.sha256) || manifest.database.sizeBytes !== actual.database.sizeBytes) fail("database payload does not match manifest");
   if (!equalHash(manifest.attachments.archiveSha256, actual.archive.sha256) || manifest.attachments.archiveSizeBytes !== actual.archive.sizeBytes) fail("attachment archive does not match manifest");
 
@@ -614,11 +637,27 @@ function parseEnvelopeBase(value: unknown): SnapshotEnvelopeV2 {
  */
 export function parseSnapshotEnvelope(value: unknown, receipts: SnapshotEnvelopeReceipts): SnapshotEnvelopeV2 {
   const envelope = parseEnvelopeBase(value);
+  assertNoSensitiveKeys(receipts, "receipts");
   assertRecord(receipts, "receipts");
   assertRecord(receipts.rootCiphertextSeal, "receipts.rootCiphertextSeal");
   assertRecord(receipts.exactRead, "receipts.exactRead");
   assertRecord(receipts.decryptVerification, "receipts.decryptVerification");
+  assertExactKeys(receipts.rootCiphertextSeal, ["backupId", "encryptedPayloadSha256", "sizeBytes", "captureSealSha256", "sealed"], "receipts.rootCiphertextSeal");
+  assertExactKeys(receipts.exactRead, ["keySha256", "providerGeneration", "sha256", "sizeBytes"], "receipts.exactRead");
+  assertExactKeys(receipts.decryptVerification, ["verified", "sha256", "encryptedPayloadSha256", "manifestSha256"], "receipts.decryptVerification");
+  assertId(receipts.rootCiphertextSeal.backupId, "receipts.rootCiphertextSeal.backupId");
+  assertHash(receipts.rootCiphertextSeal.encryptedPayloadSha256, "receipts.rootCiphertextSeal.encryptedPayloadSha256");
+  assertDecimal(receipts.rootCiphertextSeal.sizeBytes, "receipts.rootCiphertextSeal.sizeBytes");
+  assertHash(receipts.rootCiphertextSeal.captureSealSha256, "receipts.rootCiphertextSeal.captureSealSha256");
   assertLiteral(receipts.rootCiphertextSeal.sealed, true, "receipts.rootCiphertextSeal.sealed");
+  assertHash(receipts.exactRead.keySha256, "receipts.exactRead.keySha256");
+  assertGeneration(receipts.exactRead.providerGeneration, "receipts.exactRead.providerGeneration");
+  assertHash(receipts.exactRead.sha256, "receipts.exactRead.sha256");
+  assertDecimal(receipts.exactRead.sizeBytes, "receipts.exactRead.sizeBytes");
+  assertLiteral(receipts.decryptVerification.verified, true, "receipts.decryptVerification.verified");
+  assertHash(receipts.decryptVerification.sha256, "receipts.decryptVerification.sha256");
+  assertHash(receipts.decryptVerification.encryptedPayloadSha256, "receipts.decryptVerification.encryptedPayloadSha256");
+  assertHash(receipts.decryptVerification.manifestSha256, "receipts.decryptVerification.manifestSha256");
   if (receipts.rootCiphertextSeal.backupId !== envelope.backupId || receipts.rootCiphertextSeal.encryptedPayloadSha256 !== envelope.encryptedPayloadSha256 || receipts.rootCiphertextSeal.sizeBytes !== envelope.encryptedPayloadSizeBytes || receipts.rootCiphertextSeal.captureSealSha256 !== envelope.captureSealSha256) fail("root ciphertext seal does not match envelope");
   if (receipts.exactRead.keySha256 !== envelope.ciphertextObject.keySha256 || receipts.exactRead.providerGeneration !== envelope.ciphertextObject.providerGeneration || receipts.exactRead.sha256 !== envelope.ciphertextObject.sha256 || receipts.exactRead.sizeBytes !== envelope.ciphertextObject.sizeBytes) fail("exact immutable ciphertext read does not match envelope");
   if (receipts.decryptVerification.verified !== true || receipts.decryptVerification.sha256 !== envelope.decryptVerificationSha256 || receipts.decryptVerification.encryptedPayloadSha256 !== envelope.encryptedPayloadSha256 || receipts.decryptVerification.manifestSha256 !== envelope.manifestSha256) fail("authenticated decrypt verification does not match envelope");
