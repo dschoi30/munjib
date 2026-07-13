@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
+
+- Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
 ## 2026-07-13T14:38:00+09:00 - delivery bundle review documentation
 
 - Result: Clarified the Issue #185 delivery-bundle assessment's system entities, commands, target tuple, and manifest references with consistent inline-code boundaries.

@@ -67,7 +67,7 @@ submitter's exact host identity. Neither can be inferred from a checkout:
    principal `munjib-deploy`, and the release-submit group
    `munjib-release-submit`. These are
    host bootstrap inputs, not repository data.
-4. The signing key and a signed, short-lived `VERIFY_ONLY` envelope must be
+4. The signing key and a short-lived signed envelope for `VERIFY_ONLY` must be
    held outside the repository. No signer, key-enrollment record, or safe
    public fixture for the production trust root is present.
 5. Installing the systemd socket/service and SSH fragment requires a root
@@ -96,7 +96,7 @@ selected checkout:
    not invoke Docker, Compose, Git, or application migrations from the
    installer.
 6. Independently verify ownership/modes, socket activation, broker status,
-   submitter forced-command behavior, and a signed `VERIFY_ONLY` request that
+   submitter forced-command behavior, and a signed request carrying `VERIFY_ONLY` that
    returns `VERIFY_ONLY_OK`. Record only public-safe status, version, and
    digest evidence.
 
@@ -132,6 +132,6 @@ production host is ready.
   the deploy job's existing condition remains unchanged.
 - Confirmed no delivery-substrate installer, Go build step, signer, or
   attestation workflow is present.
-- Confirmed the local environment has no `go` executable and no live broker
+- Confirmed the local environment has no executable named `go` and no live broker
   socket.
 - Did not run a privileged installation or print secrets/remote logs.
