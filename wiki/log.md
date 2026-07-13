@@ -2927,3 +2927,8 @@ links:
 - Coverage: `tests/deploy/edge-bindings-evaluator.test.ts` now covers wrong host/path/connect address and malformed undefined/Symbol values.
 - Scope: Activation remains `DISABLED`; no edge or production mutation occurred.
 - Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), `pnpm exec tsc --noEmit`.
+
+## 2026-07-13T13:52:00+09:00 - security-edge-bindings-review
+
+- Result: Moved the edge contract fixture read into Vitest `beforeAll` so test module discovery stays independent of the working directory/file availability. No-store matching now covers the exact `/api` and `/workspaces` roots as well as descendants, while preserving the `/login` boundary.
+- Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), `pnpm exec tsc --noEmit`.
