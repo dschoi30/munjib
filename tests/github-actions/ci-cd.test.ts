@@ -81,6 +81,33 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(runCommands).toContain("docker build --target runner");
   });
 
+  test("builds and verifies only public Linux ARM64 delivery metadata", () => {
+    const ci = workflow.jobs.ci;
+    const setupGo = ci.steps.find(
+      (step: { name?: string }) => step.name === "Set up Go for delivery bundle",
+    );
+    expect(setupGo?.uses).toBe(
+      "actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5",
+    );
+    expect(setupGo?.with).toMatchObject({
+      "go-version": "1.22.12",
+      cache: false,
+    });
+
+    const build = ci.steps.find(
+      (step: { name?: string }) => step.name === "Build and verify Linux ARM64 delivery bundle",
+    );
+    const script = build?.run as string;
+    expect(script).toContain("GOOS=linux GOARCH=arm64");
+    expect(script).toContain("CGO_ENABLED=0");
+    expect(script).toContain("go build");
+    expect(script).toContain("pnpm delivery:build-bundle");
+    expect(script).toContain("pnpm delivery:verify-bundle");
+    expect(script).toContain("sha256sum");
+    expect(script).toContain("GITHUB_STEP_SUMMARY");
+    expect(script).not.toMatch(/ed25519|sign|private.?key|ssh|sudo|docker|compose/i);
+  });
+
   test("does not publish GHCR images before deploy", () => {
     const workflowText = read(".github/workflows/ci-cd.yml");
 

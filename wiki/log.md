@@ -27,6 +27,14 @@ links:
 - Source evidence: `deploy/delivery/bundle-layout-v1.json`, `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, Issue #185.
 - Verification: focused delivery-substrate and bundle tests pass; production host installation, key enrollment, and signed envelope verification remain external authority gates.
 
+## 2026-07-13T11:05:00+09:00 - delivery bundle CI cross-compile
+
+- Result: Issue #185's `ci` job now uses SHA-pinned `actions/setup-go` v5.5.0 with Go 1.22.12 to cross-compile the fixed broker, submitter, and verifier for Linux/ARM64, run the bundle builder/verifier, and emit only public SHA-256 metadata in the job summary.
+- Coverage: The step uses `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=arm64`, runner-temporary paths, and no artifact upload, signing, trust-key enrollment, SSH, Docker, or host mutation. The existing deploy job and its push-only gate are unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, Issue #185.
+- Verification: focused GitHub Actions, delivery-substrate, and bundle tests pass locally; the GitHub-hosted cross-compile is the CI acceptance gate.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
