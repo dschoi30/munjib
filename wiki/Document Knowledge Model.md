@@ -283,6 +283,16 @@ erDiagram
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
+Issue #159의 active-resource 경계는 이 모델 위에 별도 membership 권위를
+추가하지 않는다. `lib/workspaces/active-membership.ts`는 향후 DB-time
+`workspaceId + userId` resolver를 위한 계약이며 현재는 fail closed한다.
+`lib/authorization/active-resource-locks.ts`는 이미 존재하는 Workspace,
+Folder, Document의 `archivedAt`/`status` 컬럼만 사용해 actor advisory lock과
+정렬된 row lock을 제공한다. SupportAccessGrant와 archive-operation provenance
+컬럼은 해당 스키마 migration 전에는 조회하지 않는다. 따라서 active-resource
+resolver, Leaf 6 document ACL slot, Leaf 14 purge readiness seam은 production
+mutation이나 archive/purge state를 아직 활성화하지 않는다.
+
 Issue #119 adds `Workspace.archivedDocumentRetentionPolicy` as a workspace-wide archived document retention policy. Values are `NEVER`, `DAYS_7`, `DAYS_30`, and `DAYS_90`, with `DAYS_30` as the default for new and existing workspaces. The policy is DB-backed rather than browser-local and is used by the archived document purge CLI to calculate each workspace's `archivedAt` cutoff. When purge hard-deletes archived documents, incoming `DocumentLink` rows are first kept as broken unresolved edges instead of silent `targetDocumentId=null` non-broken links, then affected active source documents are reconciled so a matching active replacement can become the new target.
 
 ## 폴더, 문서, 버전
