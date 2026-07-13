@@ -61,10 +61,11 @@ submitter's exact host identity. Neither can be inferred from a checkout:
    architecture. Building on or executing the checkout on the host would
    violate the issue's no-checkout-execution acceptance boundary.
 2. A bundle must bind each destination to an exact artifact digest and mode.
-   `manifest-v1.json` is not such a bundle manifest; it is only an operation
+   The `manifest-v1.json` file is not such a bundle manifest; it is only an operation
    contract/allowlist.
-3. The root operator must provision the trust public key, the
-   `munjib-deploy` principal, and the `munjib-release-submit` group. These are
+3. The root operator must provision the trust public key, the deployment
+   principal `munjib-deploy`, and the release-submit group
+   `munjib-release-submit`. These are
    host bootstrap inputs, not repository data.
 4. The signing key and a signed, short-lived `VERIFY_ONLY` envelope must be
    held outside the repository. No signer, key-enrollment record, or safe
@@ -79,7 +80,7 @@ The smallest acceptable follow-up is a CI-produced, signed delivery bundle and
 a root-only installer that consumes that bundle without reading a caller-
 selected checkout:
 
-1. Build the three Go programs for the declared production `GOOS/GOARCH` in a
+1. Build the three Go programs for the declared production `GOOS`/`GOARCH` pair in a
    clean CI job; record reproducible build inputs and SHA-256 digests.
 2. Use the versioned bundle layout/builder to generate a signed bundle
    manifest containing source artifact digests, destination allowlists, exact
@@ -89,7 +90,8 @@ selected checkout:
    production envelopes out of GitHub-visible artifacts.
 4. Have a root-only installer stage files atomically, reject symlinks,
    unexpected paths, duplicate destinations, digest mismatches, and unsafe
-   modes, then run `systemd-analyze verify` and `sshd -t` before any reload.
+   modes, then run the parser checks `systemd-analyze verify` and `sshd -t`
+   before any reload.
 5. Enable/restart only the fixed socket/service after all checks succeed. Do
    not invoke Docker, Compose, Git, or application migrations from the
    installer.
@@ -103,11 +105,11 @@ selected checkout:
 Issue #185 can proceed after the following are supplied through the restricted
 operator channel (not GitHub issue/PR text):
 
-- approved production host `GOOS/GOARCH` and a CI build/attestation result;
+- approved production host `GOOS`/`GOARCH` pair and a CI build/attestation result;
 - signed bundle manifest with per-file digests and an immutable artifact
   location;
 - root-approved Ed25519 public-key enrollment and key-rotation record;
-- root-bootstrap confirmation for the `munjib-deploy` user and
+- root-bootstrap confirmation for the `munjib-deploy` user and the
   `munjib-release-submit` group, without exposing credentials;
 - explicit authorization for the host-side root installation and its
   post-install verification window.
