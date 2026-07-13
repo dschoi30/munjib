@@ -139,7 +139,9 @@ secret; cookie names and attributes are intentionally outside this module.
 returns an immutable object, rejecting workspace ids, revisions, and unknown
 metadata. Validation errors are generic and never echo credentials. This is a
 pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
-activation, or production behavior. Atomic invitation consumption, revision
+activation, or production behavior. The exchange parser checks `Reflect.ownKeys`
+so non-enumerable and symbol own metadata cannot bypass the exact shape. Atomic
+invitation consumption, revision
 invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
 follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.
 

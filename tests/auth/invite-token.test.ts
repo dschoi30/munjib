@@ -73,6 +73,16 @@ describe("invite token primitives", () => {
     expect(() => parseInvitationExchangeBody({ bearer: `${bearer}x` })).toThrow(/bearer/i);
   });
 
+  test("rejects non-enumerable and symbol own fields in the exchange body", () => {
+    const bearer = createInvitationBearer(() => bytes(INVITATION_BEARER_BYTES));
+    const nonEnumerable = { bearer } as Record<string, unknown>;
+    Object.defineProperty(nonEnumerable, "revision", { value: 2 });
+    expect(() => parseInvitationExchangeBody(nonEnumerable)).toThrow(/unknown field/i);
+
+    const symbolField = { bearer, [Symbol("metadata")]: "unexpected" };
+    expect(() => parseInvitationExchangeBody(symbolField)).toThrow(/unknown field/i);
+  });
+
   test("does not expose raw credentials in the persisted hash envelope", () => {
     const bearer = createInvitationBearer(() => bytes(INVITATION_BEARER_BYTES));
     const attempt = createAttemptSecret(() => bytes(ATTEMPT_SECRET_BYTES));

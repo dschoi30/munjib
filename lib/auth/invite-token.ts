@@ -39,8 +39,8 @@ function fail(message: string): never {
   throw new InviteTokenError(message);
 }
 
-function encodeOpaqueSecret(bytes: Uint8Array, label: string): string {
-  if (bytes.byteLength !== INVITATION_BEARER_BYTES) {
+function encodeOpaqueSecret(bytes: Uint8Array, expectedBytes: number, label: string): string {
+  if (bytes.byteLength !== expectedBytes) {
     fail(`${label} source returned an invalid length`);
   }
   return Buffer.from(bytes).toString("base64url");
@@ -48,34 +48,35 @@ function encodeOpaqueSecret(bytes: Uint8Array, label: string): string {
 
 function createOpaqueSecret<T extends string>(
   source: RandomBytesSource,
+  expectedBytes: number,
   label: string,
 ): T {
   let bytes: Uint8Array;
   try {
-    bytes = source(INVITATION_BEARER_BYTES);
+    bytes = source(expectedBytes);
   } catch {
     fail(`${label} generation failed`);
   }
-  const encoded = encodeOpaqueSecret(bytes, label);
+  const encoded = encodeOpaqueSecret(bytes, expectedBytes, label);
   if (encoded.length !== OPAQUE_SECRET_LENGTH || !OPAQUE_SECRET_PATTERN.test(encoded)) {
     fail(`${label} generation failed`);
   }
   return encoded as T;
 }
 
-function decodeOpaqueSecret(value: unknown, label: string): Buffer {
+function decodeOpaqueSecret(value: unknown, expectedBytes: number, label: string): Buffer {
   if (typeof value !== "string" || !OPAQUE_SECRET_PATTERN.test(value)) {
     fail(`${label} is invalid`);
   }
   const decoded = Buffer.from(value, "base64url");
-  if (decoded.length !== INVITATION_BEARER_BYTES || decoded.toString("base64url") !== value) {
+  if (decoded.length !== expectedBytes || decoded.toString("base64url") !== value) {
     fail(`${label} is invalid`);
   }
   return decoded;
 }
 
-function digest(domain: Buffer, value: string, label: string): string {
-  const bytes = decodeOpaqueSecret(value, label);
+function digest(domain: Buffer, value: string, expectedBytes: number, label: string): string {
+  const bytes = decodeOpaqueSecret(value, expectedBytes, label);
   return createHash("sha256").update(domain).update(bytes).digest("base64url");
 }
 
@@ -92,22 +93,22 @@ function decodeHash(value: unknown, label: string): Buffer | null {
 
 /** Generate a raw invitation bearer for the one-time manager response boundary. */
 export function createInvitationBearer(source: RandomBytesSource = randomBytes): InvitationBearer {
-  return createOpaqueSecret<InvitationBearer>(source, "invitation bearer");
+  return createOpaqueSecret<InvitationBearer>(source, INVITATION_BEARER_BYTES, "invitation bearer");
 }
 
 /** Persist only this domain-separated digest; never persist the raw bearer. */
 export function hashInvitationBearer(value: InvitationBearer | string): InvitationBearerHash {
-  return digest(INVITATION_BEARER_DOMAIN, value, "invitation bearer") as InvitationBearerHash;
+  return digest(INVITATION_BEARER_DOMAIN, value, INVITATION_BEARER_BYTES, "invitation bearer") as InvitationBearerHash;
 }
 
 /** Generate the opaque secret carried by the short-lived attempt cookie. */
 export function createAttemptSecret(source: RandomBytesSource = randomBytes): AttemptSecret {
-  return createOpaqueSecret<AttemptSecret>(source, "attempt secret");
+  return createOpaqueSecret<AttemptSecret>(source, ATTEMPT_SECRET_BYTES, "attempt secret");
 }
 
 /** Persist only this domain-separated digest for an attempt. */
 export function hashAttemptSecret(value: AttemptSecret): AttemptSecretHash {
-  return digest(ATTEMPT_SECRET_DOMAIN, value, "attempt secret") as AttemptSecretHash;
+  return digest(ATTEMPT_SECRET_DOMAIN, value, ATTEMPT_SECRET_BYTES, "attempt secret") as AttemptSecretHash;
 }
 
 /** Compare durable hashes without falling back to a non-constant-time string comparison. */
@@ -122,12 +123,12 @@ export function compareInvitationBearerHashes(
 
 /** The cookie value is exactly one canonical opaque secret; attributes belong to the route layer. */
 export function serializeAttemptCookie(value: AttemptSecret): string {
-  decodeOpaqueSecret(value, "attempt cookie");
+  decodeOpaqueSecret(value, ATTEMPT_SECRET_BYTES, "attempt cookie");
   return value;
 }
 
 export function parseAttemptCookie(value: unknown): AttemptSecret {
-  decodeOpaqueSecret(value, "attempt cookie");
+  decodeOpaqueSecret(value, ATTEMPT_SECRET_BYTES, "attempt cookie");
   return value as AttemptSecret;
 }
 
@@ -138,11 +139,11 @@ export function parseInvitationExchangeBody(value: unknown): InvitationExchangeB
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     fail("invitation exchange body must contain a bearer");
   }
-  const keys = Object.keys(value);
+  const keys = Reflect.ownKeys(value);
   if (keys.length !== 1 || keys[0] !== "bearer") {
     fail("invitation exchange body must contain only the bearer field (unknown field)");
   }
   const bearer = (value as { bearer?: unknown }).bearer;
-  decodeOpaqueSecret(bearer, "invitation bearer");
+  decodeOpaqueSecret(bearer, INVITATION_BEARER_BYTES, "invitation bearer");
   return Object.freeze({ bearer: bearer as InvitationBearer });
 }
