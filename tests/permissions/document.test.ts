@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canReadDocument, canWriteDocument, highestPermissionLevel } from "@/lib/permissions/document";
+import {
+  canReadDocument,
+  canWriteDocument,
+  highestPermissionLevel,
+  workspacePermissionCeilings,
+} from "@/lib/permissions/document";
 
 describe("document permissions", () => {
   it("uses workspace access when a document has no explicit permissions", () => {
@@ -79,5 +84,14 @@ describe("document permissions", () => {
 
   it("selects the highest user permission", () => {
     expect(highestPermissionLevel(["READ", "MANAGE", "WRITE"])).toBe("MANAGE");
+  });
+
+  it("publishes the canonical workspace-role permission ceilings", () => {
+    expect(workspacePermissionCeilings).toEqual({
+      OWNER: "MANAGE",
+      ADMIN: "MANAGE",
+      EDITOR: "WRITE",
+      VIEWER: "READ",
+    });
   });
 });

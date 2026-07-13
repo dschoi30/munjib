@@ -42,7 +42,9 @@ export async function lockFolderBoundaries(
     ORDER BY "id" ASC
     FOR UPDATE
   `);
-  if (rows.length !== ids.length) throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
+  if (rows.length !== ids.length || rows.some((row) => row.archivedAt !== null)) {
+    throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
+  }
   return rows;
 }
 
