@@ -2911,3 +2911,12 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T19:00:00+09:00 - security-ai-history
+
+- Result: Issue #163 remains dependency-gated. The branch records a public-safe readiness handoff for source-backed/source-free AI history lineage and current reauthorization at thread load, follow-up, memory refresh, finalization, and citation navigation.
+- Safety contract: unreadable or unproven derived turns are hidden as non-enumerating whole-turn tombstones and excluded from memory/retrieval input; no schema, route, purge, migration, broker, or production behavior changed.
+- Gate: implementation waits for Leaves 2/4/6/13B to provide canonical membership/session, AI output/egress, document authority, and immutable migration contracts.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], `docs/runbooks/derived-ai-history-authorization-readiness.md`.
+- Source evidence: GitHub Issue #163, `prisma/schema.prisma`, `lib/rag/workspace-chat.ts`, authenticated assistant routes, and current `origin/main` authorization surfaces.
+- Verification: `tests/security/derived-ai-history-authorization-readiness.test.ts` asserts the dependency gates, lineage classes, all replay boundaries, non-enumerating redaction, and out-of-scope destructive operations.

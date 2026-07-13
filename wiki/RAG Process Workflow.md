@@ -115,6 +115,26 @@ Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 �
 
 Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
+### Derived AI history authorization readiness (Issue #163)
+
+현재 `AiChatThread`/`AiChatMessage` history는 actor의 active workspace
+membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 권한이
+나중에 철회되었는지까지 재검증하지 않는다. Answer body와 rolling
+`memorySummary`도 derived content이므로 citation link만 검사해서는 충분하지
+않다. 자세한 public-safe handoff는
+`docs/runbooks/derived-ai-history-authorization-readiness.md`에 둔다.
+
+Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
+source-backed/source-free lineage를 명시하고, thread load, follow-up
+context, memory refresh, finalization, citation serialization 각각에서
+현재 canonical actor/workspace/document authority를 재확인해야 한다. source가
+읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
+citation, document id/title/path, denial reason을 노출하지 않는
+non-enumerating tombstone으로 숨기고 follow-up/memory 입력에서도 제외한다.
+Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
+immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
+migration, route, purge, production activation을 시작하지 않는다.
+
 ## Steps
 
 Ask AI direct-context request:
