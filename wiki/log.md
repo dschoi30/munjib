@@ -35,6 +35,17 @@ links:
   `docs/runbooks/invite-token-primitives.md`.
 - Verification: focused invite-token tests, TypeScript, and wiki sync gates.
 
+## 2026-07-13T18:15:00+09:00 - Issue #161 invite-token review hardening
+
+- Result: The invite token primitive now passes the expected byte length through
+  each typed generation/hash path, and exchange-body exact-shape validation uses
+  `Reflect.ownKeys` to reject non-enumerable and symbol own metadata.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/invite-token.ts` and
+  `tests/auth/invite-token.test.ts`.
+- Verification: focused invite-token/source-contract tests, TypeScript, and
+  wiki sync gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
