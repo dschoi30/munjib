@@ -2911,3 +2911,18 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T18:00:00+09:00 - security-leaf2-contract
+
+- Result: Issue #156's safe implementation slice adds the canonical typed security-journal parser, UUIDv5 operation-id derivation, language-independent binary hash preimage, parameterized DB append seam, and a fail-closed durable auth-state resolver with an injectable Leaf 2 hook factory.
+- Scope: No Prisma migration, extension/role DDL, journal genesis, Trial disable, credential/session cleanup, support grant, purge, or production operation was performed. The reserved default auth hook remains version 0 until deployed Leaf 1/13B and broker evidence are available.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: Issue #156 implementation branch `issue-156-security-trial-isolation-implementation`, `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, and focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T18:05:00+09:00 - security-leaf2-contract-followup
+
+- Result: The Leaf 2 journal module now also exports the branded isolated-restore replay context and reducer type so later recovery leaves consume one shared interface without mutating production journal state. The durable-auth hook factory stays outside the protected version-0 Leaf 2 slot.
+- Scope: Type-only handoff; no replay implementation, restore, migration, or production operation.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]].
+- Source evidence: `lib/security/journal.ts` and its focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.

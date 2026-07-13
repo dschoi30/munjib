@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 69
+source_count: 70
 tags:
   - munjib
   - auth
@@ -92,6 +92,34 @@ avatar resolution uses `getReadableAttachment()` with the current user's
 workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
+
+### Leaf 2 durable auth-state and journal handoff (Issue #156)
+
+The reviewed Leaf 2 implementation slice defines a fail-closed durable-auth
+boundary in `lib/auth/durable-auth-state.ts`. Callers provide only an immutable
+user id and an authoritative database interface; the helper reloads
+`authDisabledAt` and `sessionVersion` by `User.id`, rejects email-shaped or
+malformed identities before querying, and treats a missing column, missing user,
+malformed version, or database error as an unavailable/denied state. The
+injectable `createDurableAuthStateHook()` factory exposes this resolver to a
+future Leaf 2 hook without changing the protected version-0 slot while the
+database migration and runtime capability remain pending.
+
+The same slice defines the language-independent `lib/security/journal.ts`
+contract. It closes the twenty-six deny-only event kinds to their allowed
+subject types and `{stateCode, stateVersion: 1}` payload, preserves BIGINT
+sequence values as canonical decimal strings, rejects unknown keys/noncanonical
+UTC microseconds/invalid hashes or UUIDs, derives retry-stable UUIDv5 operation
+ids from a length-delimited tuple, and mirrors the PostgreSQL binary hash
+preimage. `appendSecurityJournalEvent()` only calls the fixed
+`public.security_journal_append(...)` function through a parameterized query;
+it does not create tables, roles, extensions, or perform a production mutation.
+
+This is a pre-migration handoff only. The default auth hook remains unchanged,
+the `User` columns and journal tables are not present on `origin/main`, and
+Trial disable, credential/session cleanup, journal genesis, support access, and
+production migration stay gated on the deployed Leaf 1/13B proofs and the
+privileged broker. Evidence is tracked in Issue #156's implementation branch.
 
 ## Versioned and bounded password verification
 
