@@ -325,6 +325,8 @@ workspace/document resolver와 transaction-safe membership boundary를 선행
 조건으로 한다. 그 전에는 직접 membership 조회나 별도 ACL helper를 추가하지
 않으며, 공개 handoff와 다음 구현 검증 목록은
 `docs/runbooks/document-authorization-readiness.md`에 기록한다.
+해당 runbook은 검증 항목을 문장부호가 있는 문장으로 유지하고, 내부 식별자는
+`ID`처럼 표준 표기로 기록한다.
 
 ## 문서 service에서의 권한 적용
 
