@@ -76,6 +76,8 @@ links:
 
 ## 상태판
 
+- Issue #162의 첫 구현 slice는 `lib/auth/abuse/runtime.ts`에 strict file-backed guard runtime, bounded canonical-Origin/Fetch-Metadata primitives, 외부 durable-store 위임과 fail-closed stable codes를 추가한다. Prisma/session registry·라우트 활성화·Leaf 1/2 protected path·production mutation은 dependency gate 뒤 후속 작업으로 남긴다. 상세 contract는 [[Auth And Permissions Workflow]]에 기록한다.
+
 - Secure runtime: Leaf 3 pins the Next.js 15.5.18 runtime with exact matching ESLint configuration, a paginated advisory gate, a deterministic protected dependency projection, and a local production-like auth/RSC smoke via `pnpm run test:security-runtime`; see [[CI CD And Monitoring Workflow]] and [[Local Development Workflow]].
 - Immutable database authority: Leaf 13B adds append-only migration name/checksum admission, explicit expand/contract classification, NOLOGIN schema ownership, least-privilege Web/RAG roles, fixed libpq credential-file entrypoints, and a PRE_JOURNAL `database-role-v1` manifest/builder; see [[CI CD And Monitoring Workflow]].
 - Production dependency audit: Issue #171 pins the reviewed transitive production floors (`postcss` 8.5.10, `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, and scoped `minimatch@10.2.5>brace-expansion` 5.0.6) through exact pnpm overrides, preserves minimatch 3 compatibility, and runs the unfiltered `pnpm audit --prod` gate alongside Next.js 15.5.18. Issue #174 additionally scopes `tsx>esbuild` to patched `esbuild` 0.28.1 so the production auth-preflight path is clean without changing the dev-only Vite resolution; see [[CI CD And Monitoring Workflow]].

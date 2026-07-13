@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T21:00:00+09:00 - Issue #162 bounded auth guard runtime slice
+
+- Result: Added the dependency-safe `lib/auth/abuse/runtime.ts` contract. Strict staging/production guard secrets are file-backed, canonical Origin and Fetch-Metadata checks are bounded, and durable store errors fail closed without a local-memory limiter or raw identifier persistence.
+- Boundary: No Prisma migration/session registry, auth route activation, Leaf 1/2 protected-path change, host installation, secret rotation, or production mutation.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and Issue #162 dependency gates.
+- Verification: focused guard contract tests (10 tests) and TypeScript passed; full repository checks remain subject to the existing branch baseline.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
