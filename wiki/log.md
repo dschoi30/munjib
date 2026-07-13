@@ -36,7 +36,8 @@ links:
   `lib/authorization/downstream/leaf6-document-access.ts`,
   `lib/retention/downstream/leaf14-production-readiness.ts`, and
   `deploy/security/protected-artifact-owners.json`.
-- Verification: focused resolver/lock/downstream contract tests and TypeScript
+- Verification: focused resolver/lock/downstream contract tests (including the
+  protected Leaf 6 delegation assertion) and TypeScript
   verification pass; no production behavior is activated by this slice.
 
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
