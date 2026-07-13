@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T11:29:29+09:00 - public security hardening status map
+
+- Result: Added a public-safe status/runbook map for parent Issues #154 and #167.
+- Coverage: Maps merged P0 releases, draft readiness PRs, branch handles, dependency gates, and explicit non-claims without host details, secrets, account state, or restricted plan material.
+- Pages: [[Security Hardening Public Status]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Companion runbook: `docs/runbooks/security-hardening-status.md`.
+- Source evidence: `origin/main` `545e8cb`, GitHub-visible issues/PRs #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167, #168, #169, #180, #184, #185 and readiness PRs #170, #172, #178, #181, #186, #187, #189, #190, #191, #192, #193, #194.
+- Verification: Wiki manifest/lint/sync gates and focused wiki tests are required before commit; this page does not close any issue or claim deployment/host attestation.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.

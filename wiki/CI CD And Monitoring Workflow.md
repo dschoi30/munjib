@@ -80,6 +80,16 @@ runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명�
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
 
+## Security hardening status map
+
+Public-safe parent/child status, branch and PR handles, dependency gates, and
+explicit non-claims are maintained in [[Security Hardening Public Status]] and
+the companion `docs/runbooks/security-hardening-status.md` runbook.
+The map is anchored to the checked-in `origin/main` release line and must not
+be read as deployment or host-attestation evidence: draft readiness PRs remain
+open, and the immutable runtime path remains fail-closed until the delivery
+broker is installed and independently attested.
+
 ## Security-critical runtime gate
 
 Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
