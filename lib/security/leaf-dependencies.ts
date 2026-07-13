@@ -31,6 +31,10 @@ type Leaf13Proof = {
   databaseRoleCapabilitySha256: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export type Leaf2DependencyInput = {
   expectedEnvironment: "production";
   expectedSourceDigest: string;
@@ -47,6 +51,10 @@ export type Leaf2DependencyInput = {
 export function verifyLeaf2Dependencies(
   input: Leaf2DependencyInput,
 ): VerifiedLeaf2Dependencies {
+  if (!isRecord(input) || !isRecord(input.leaf1) || !isRecord(input.leaf13)) {
+    throw new Error("LEAF2_INPUT_INVALID");
+  }
+
   if (!SOURCE_DIGEST_PATTERN.test(input.expectedSourceDigest)) {
     throw new Error("LEAF2_SOURCE_DIGEST_INVALID");
   }

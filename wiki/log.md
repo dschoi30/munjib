@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #156 dependency verifier review follow-up
+
+- Leaf 2 dependency verification now rejects nullish or partial parsed proof objects with `LEAF2_INPUT_INVALID` before nested access, preserving the fail-closed handoff boundary.
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, PR #187 review thread.
+- Verification: dependency verifier focused tests (6 passed); full TypeScript remains blocked by the pre-existing generated Prisma client baseline in this worktree.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.

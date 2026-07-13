@@ -95,4 +95,14 @@ describe("Leaf 2 dependencies", () => {
       }),
     ).toThrow("LEAF13_CAPABILITY_REQUIRED");
   });
+
+  it("rejects nullish or partial parsed input with a controlled error", () => {
+    expect(() => verifyLeaf2Dependencies(null as never)).toThrow("LEAF2_INPUT_INVALID");
+    expect(() =>
+      verifyLeaf2Dependencies({ ...validInput, leaf1: undefined } as never),
+    ).toThrow("LEAF2_INPUT_INVALID");
+    expect(() =>
+      verifyLeaf2Dependencies({ ...validInput, leaf13: undefined } as never),
+    ).toThrow("LEAF2_INPUT_INVALID");
+  });
 });
