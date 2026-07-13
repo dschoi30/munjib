@@ -1,0 +1,39 @@
+{
+  "format": "munjib-recovery-readiness-v1",
+  "version": 1,
+  "objectives": {
+    "rpoSeconds": 86400,
+    "rtoSeconds": 14400,
+    "retention": {
+      "daily": 7,
+      "weekly": 4,
+      "monthly": 3
+    }
+  },
+  "phases": {
+    "phaseA": {
+      "mode": "MANUAL_ISOLATED",
+      "required": true,
+      "dependencies": [
+        "leaf-13-broker-installed"
+      ]
+    },
+    "phaseB": {
+      "mode": "CANDIDATE_ISOLATED",
+      "required": true,
+      "dependencies": [
+        "leaf-13b-deployed",
+        "leaf-2-journal-ready",
+        "leaf-9-purge-hooks",
+        "leaf-11-attachment-lifecycle"
+      ]
+    }
+  },
+  "invariants": [
+    "same-quiesced-epoch",
+    "ciphertext-before-signature",
+    "restore-never-production",
+    "no-production-private-key",
+    "snapshot-image-is-evidence-only"
+  ]
+}

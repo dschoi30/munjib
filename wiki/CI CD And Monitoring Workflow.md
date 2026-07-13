@@ -191,6 +191,19 @@ token-bearing Google row remains. Cleanup appends the existing
 failure rolls back the transaction and replay is deny-only/idempotent. The canonical
 twenty-six-kind journal union is unchanged.
 
+### Issue #168 encrypted recovery readiness
+
+Issue #168 currently contributes only the public readiness contract at
+`deploy/backup/recovery-readiness-v1.json` and its side-effect-free parser/tests.
+The contract fixes RPO 24 hours, RTO 4 hours, 7/4/3 retention, the isolated Phase
+A/Phase B boundary, and the invariants that restore never targets production and
+the snapshot image is evidence only. Phase A cannot proceed until the Leaf 13
+delivery broker is installed and attested (#185). Phase B additionally waits for
+the exact-digest Leaf 13B runtime (#184), Leaf 2 journal readiness, Leaf 9 purge
+hooks, and Leaf 11 attachment lifecycle. A green contract test is not a snapshot,
+restore, key, purge, or production acceptance result; Issue #168 remains open
+until those dependencies and independent restore evidence are complete.
+
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
 Secure cookies, canonical origin, disabled development login, production seed
