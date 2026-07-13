@@ -56,7 +56,7 @@ Do not edit `/etc/caddy/Caddyfile`, DNS, TLS state, firewall rules, or host
 monitoring until all of the following are attached to the same release
 evidence:
 
-1. Leaves 3, 4, 7, 8, 9, 10, 11v2, and 13B are merged and deployed, with their
+1. Leaves 3, 4, 7, 8, 9, 10, 11, and 13B are merged and deployed, with their
    protected artifact owners and database/runtime contracts attested.
 2. The edge owner has recorded certificate/DNS ownership and the exact
    loopback upstream binding; no alternate public origin is accepted.

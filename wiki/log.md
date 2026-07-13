@@ -2933,6 +2933,11 @@ links:
 - Result: The edge evaluator fixture now resolves the contract through `import.meta.url`/`fileURLToPath`, so it does not depend on the caller's working directory. The same 9-test suite passes when invoked from `/private/tmp` with the worktree as Vitest root.
 - Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), CWD-independent Vitest invocation (9 tests passed), `pnpm exec tsc --noEmit`.
 
+## 2026-07-13T13:56:00+09:00 - security-edge-bindings-review
+
+- Result: Normalized the runbook activation dependency label to numeric Leaf `11`, matching the machine-readable contract and parser dependency list exactly.
+- Verification: edge evaluator 9 tests passed, `pnpm exec tsc --noEmit`, `pnpm wiki:manifest`, and `pnpm wiki:lint` (existing unresolved image warning only).
+
 ## 2026-07-13T13:52:00+09:00 - security-edge-bindings-review
 
 - Result: Moved the edge contract fixture read into Vitest `beforeAll` so test module discovery stays independent of the working directory/file availability. No-store matching now covers the exact `/api` and `/workspaces` roots as well as descendants, while preserving the `/login` boundary.
