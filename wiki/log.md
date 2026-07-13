@@ -2911,3 +2911,11 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T18:00:00+09:00 - security-ai-provider-policy
+
+- Result: Added the public-safe Issue #164 AI provider policy readiness handoff. The current release keeps credentials, base URLs, and embedding identity server-owned, while documenting that provider availability is UI-only and model/destination allowlists are not yet enforced before model construction.
+- Scope: No provider, schema, migration, deployment, credential, or production behavior changed. The handoff gates activation on Issues #139, #160, #163, #184, and #185 and requires shared fail-closed policy resolution, destination controls, and telemetry redaction.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #164, `lib/rag/model-config.ts`, `lib/rag/client-model-settings.ts`, Ask AI and Workspace AI request routes, `docs/runbooks/ai-provider-policy-readiness.md`, `tests/security/ai-provider-policy-readiness.test.ts`.
+- Verification: Focused readiness contract test and wiki gates.
