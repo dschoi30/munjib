@@ -350,6 +350,12 @@ Issue #158의 Leaf 4는 Auth.js identity DTO와 JWT/session callback에서 provi
 
 Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI answer가 외부 image URL을 자동 fetch/render하지 않는지 실제 Next/Node 경로에서 확인한다. test-only provider transport와 egress calibration은 명시적 test/development gate 뒤에만 열리고 production/staging에서는 거부된다.
 
+## Issue #162 bounded auth guard runtime slice
+
+`lib/auth/abuse/runtime.ts`는 아직 라우트에 연결하지 않은 Leaf 8 소유 경계다. staging/production에서 `MUNJIB_AUTH_GUARD_SECRET_FILE=/run/secrets/munjib_auth_guard_secret`만 허용하고 `readStrictSecretFile()`의 파일 권한·소유자·내용 검증을 통과한 경우에만 runtime snapshot을 만든다. 직접 secret 환경값, 누락/실패한 파일, 비 HTTPS canonical origin은 `AUTH_GUARD_UNAVAILABLE`로 분류되며 secret 값은 오류·로그·store 입력에 포함하지 않는다.
+
+`evaluateAuthOrigin()`과 `evaluateFetchMetadata()`는 unsafe method의 canonical Origin, `Sec-Fetch-Site`, 선택적 mode/dest를 각각 bounded header로 검사하고, 누락·교차 사이트·형식 오류를 stable deny code로 반환한다. `authorizeAuthRequest()`는 raw identifier나 process-local map을 만들지 않고 opaque bucket을 외부 durable store에 위임하며 store 오류와 알 수 없는 결과를 fail-closed 처리한다. `deriveAuthGuardBucket()`은 runtime secret으로 scope/value를 domain-separated HMAC digest로 바꿔 persisted key가 원문이 되지 않도록 한다. 이 slice는 Prisma migration, session registry, Leaf 1/2 protected path, route activation, host mutation을 포함하지 않는다.
+
 ## 근거
 
 - `lib/auth/config.ts`
