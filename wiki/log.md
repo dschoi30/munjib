@@ -19,6 +19,15 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T22:20:00+09:00 - Issue #168 manifest exactness follow-up
+
+- Result: Closed own-property, global duplicate-path, deterministic code-unit
+  sorting, malformed receipt, and prototype-pollution test gaps in the pure v2
+  manifest boundary.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Verification: focused manifest/recovery tests and TypeScript; no runtime or
+  production operation was added.
+
 ## 2026-07-13T22:00:00+09:00 - Issue #168 snapshot manifest v2 contract
 
 - Result: Added the pure `SnapshotManifestV2`/`SnapshotEnvelopeV2` parser and

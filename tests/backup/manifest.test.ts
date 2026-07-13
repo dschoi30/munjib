@@ -168,6 +168,15 @@ describe("snapshot manifest v2", () => {
     expect(() => assertNoSensitiveKeys({ relativePath: "safe/file", nested: { providerSecret: "no" } })).toThrow(/sensitive/i);
   });
 
+  test("requires own properties and rejects prototype-provided manifest fields", () => {
+    const manifest = completeManifest();
+    const inherited = Object.create(manifest) as Record<string, unknown>;
+    expect(() => parseSnapshotManifest(inherited)).toThrow(/required/i);
+    const withPrototypeSecret = { ...manifest } as Record<string, unknown>;
+    Object.setPrototypeOf(withPrototypeSecret, { apiToken: "must-not-be-read" });
+    expect(() => parseSnapshotManifest(withPrototypeSecret)).not.toThrow();
+  });
+
   test("rejects noncanonical decimals, hashes, timestamps, IDs, paths, and ordering", () => {
     const manifest = completeManifest();
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-07-13T00:00:00Z" })).toThrow(/timestamp/i);
@@ -199,6 +208,14 @@ describe("snapshot manifest v2", () => {
       database: { sha256: HASH_2, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [] },
     })).toThrow(/database/i);
+
+    expect(() => assertManifestPayloadIntegrity(manifest, {
+      database: { sha256: HASH, sizeBytes: "1024" },
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: [
+        { id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 },
+        { id: "att-0001", relativePath: "documents/other.bin", sizeBytes: "42", contentSha256: HASH_2 },
+      ] },
+    })).toThrow(/entries|match/i);
   });
 
   test("uses constant-time hash helper inputs and canonical migration digest", () => {
