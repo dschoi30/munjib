@@ -19,6 +19,7 @@ const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
+const EXCLUDED_TABLE_DATA = Object.freeze(["DocumentChunk"] as const);
 const SENSITIVE_KEY = /(?:password|secret|token|cookie|email|name|path|query|url|body|content|provider|private|credential|database|host|slug|title|document|attachment)/i;
 const ALLOWED_SENSITIVE_KEYS = new Set([
   "format",
@@ -485,7 +486,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
     backupId: value.backupId,
     epochUtc: value.epochUtc,
     databaseNameHash: value.databaseNameHash,
-    database: freeze({ format: "postgres-custom", sha256: value.database.sha256, sizeBytes: value.database.sizeBytes, excludedTableData: ["DocumentChunk"] as const }),
+    database: freeze({ format: "postgres-custom", sha256: value.database.sha256, sizeBytes: value.database.sizeBytes, excludedTableData: EXCLUDED_TABLE_DATA }),
     attachments: freeze({ archiveSha256: value.attachments.archiveSha256, archiveSizeBytes: value.attachments.archiveSizeBytes, entries: Object.freeze(entries) }),
     aggregateCounts: freeze({ organizations: value.aggregateCounts.organizations as string, workspaces: value.aggregateCounts.workspaces as string, documents: value.aggregateCounts.documents as string, attachments: value.aggregateCounts.attachments as string }),
     migrations: freeze({ appliedIds, orderedIdsSha256: value.migrations.orderedIdsSha256, schemaFingerprintSha256: value.migrations.schemaFingerprintSha256 }),

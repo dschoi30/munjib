@@ -157,6 +157,7 @@ describe("snapshot manifest v2", () => {
     expect(parsed.format).toBe("munjib-snapshot-manifest-v2");
     expect(parsed.snapshotRuntime.imageDigest).not.toBe(parsed.recoveryPointerAtCapture.imageDigest);
     expect(Object.isFrozen(parsed)).toBe(true);
+    expect(Object.isFrozen(parsed.database.excludedTableData)).toBe(true);
     expect(Object.isFrozen(parsed.attachments.entries)).toBe(true);
     expect(parsed.attachments.entries[0].status).toBe("READY");
   });
