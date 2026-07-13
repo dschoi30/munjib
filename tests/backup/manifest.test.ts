@@ -180,9 +180,11 @@ describe("snapshot manifest v2", () => {
   test("rejects noncanonical decimals, hashes, timestamps, IDs, paths, and ordering", () => {
     const manifest = completeManifest();
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-07-13T00:00:00Z" })).toThrow(/timestamp/i);
+    expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-02-30T00:00:00.000Z" })).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotManifest({ ...manifest, database: { ...manifest.database, sizeBytes: 1 } })).toThrow(/decimal/i);
     expect(() => parseSnapshotManifest({ ...manifest, databaseNameHash: HASH.toUpperCase() })).toThrow(/hash/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "/absolute" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "documents/" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[1], manifest.attachments.entries[0]] } })).toThrow(/sorted/i);
     expect(() => parseSnapshotManifest({ ...manifest, migrations: { ...manifest.migrations, appliedIds: [...manifest.migrations.appliedIds].reverse() } })).toThrow(/sorted/i);
   });
@@ -232,8 +234,10 @@ describe("snapshot envelope v2", () => {
     expect(() => parseSnapshotEnvelope(envelope, receipts)).not.toThrow();
     expect(() => parseSnapshotEnvelope(envelope, undefined as never)).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: { ...receipts.rootCiphertextSeal, sealed: false as true } })).toThrow(/seal/i);
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } })).toThrow(/match/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } })).toThrow(/generation/i);
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } })).toThrow(/decrypt/i);
+    const inheritedRoot = Object.create(receipts.rootCiphertextSeal) as Record<string, unknown>;
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: inheritedRoot as never })).toThrow(/required/i);
   });
 
   test("rejects mutable generations, payload mismatches, and sensitive public fields", () => {
@@ -241,6 +245,10 @@ describe("snapshot envelope v2", () => {
     expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "latest" } }, receipts)).toThrow(/generation/i);
     expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, sizeBytes: "4097" } }, receipts)).toThrow(/payload/i);
     expect(() => parseSnapshotEnvelope({ ...envelope, apiToken: "no" }, receipts)).toThrow(/sensitive|unknown/i);
+    expect(() => assertManifestPayloadIntegrity(completeManifest(), {
+      database: { sha256: HASH, sizeBytes: "1024" },
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: [null as never] },
+    })).toThrow(SnapshotManifestError);
   });
 
   test("keeps snapshot image as evidence, never an executable restore selection", () => {

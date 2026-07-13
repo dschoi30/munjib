@@ -85,7 +85,7 @@ function assertExactKeys(value: Record<string, unknown>, expected: readonly stri
     }
   }
   for (const key of expected) {
-    if (!(key in value)) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) {
       fail(`${path}.${key} is required`);
     }
   }
