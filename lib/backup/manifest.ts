@@ -454,7 +454,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
     if (entries[index - 1].id >= entries[index].id) fail("manifest.attachments.entries must be sorted by id without duplicates");
   }
   for (const entry of entries) {
-    if (entry.relativePath !== null && !relativePaths.add(entry.relativePath)) fail("manifest.attachments.entries must not duplicate relative paths");
+    if (entry.relativePath === null) continue;
+    if (relativePaths.has(entry.relativePath)) fail("manifest.attachments.entries must not duplicate relative paths");
+    relativePaths.add(entry.relativePath);
   }
 
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");

@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T16:25:00+09:00 - Issue #168 manifest review follow-up
+
+- Result: backup manifest tests now lock non-adjacent duplicate-path rejection and invalid UTC input handling; the parser retains deterministic code-unit archive ordering and strict unknown-record typing.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review threads.
+- Verification: focused manifest/recovery-contract suites, TypeScript, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T22:20:00+09:00 - Issue #168 manifest exactness follow-up
 
 - Result: Closed own-property, global duplicate-path, deterministic code-unit
