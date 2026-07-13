@@ -238,6 +238,7 @@ describe("snapshot envelope v2", () => {
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } })).toThrow(/decrypt/i);
     const inheritedRoot = Object.create(receipts.rootCiphertextSeal) as Record<string, unknown>;
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: inheritedRoot as never })).toThrow(/required/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, unexpected: true } as never)).toThrow(/unknown/i);
   });
 
   test("rejects mutable generations, payload mismatches, and sensitive public fields", () => {
@@ -249,6 +250,10 @@ describe("snapshot envelope v2", () => {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [null as never] },
     })).toThrow(SnapshotManifestError);
+    expect(() => assertManifestPayloadIntegrity(completeManifest(), {
+      database: { sha256: HASH, sizeBytes: "1024", inherited: true } as never,
+      archive: { sha256: HASH_2, sizeBytes: "2048", entries: [] },
+    })).toThrow(/unknown/i);
   });
 
   test("keeps snapshot image as evidence, never an executable restore selection", () => {

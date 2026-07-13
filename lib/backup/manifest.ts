@@ -534,11 +534,14 @@ function equalHash(expected: string, actual: string): boolean {
 export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, actual: ManifestPayloadIntegrity): void {
   assertNoSensitiveKeys(actual, "actual");
   if (!isRecord(actual) || !isRecord(actual.database) || !isRecord(actual.archive)) fail("actual payload receipts must be objects");
+  assertExactKeys(actual, ["database", "archive"], "actual");
+  assertExactKeys(actual.database, ["sha256", "sizeBytes"], "actual.database");
+  assertExactKeys(actual.archive, ["sha256", "sizeBytes", "entries"], "actual.archive");
   assertHash(actual.database.sha256, "actual.database.sha256");
   assertDecimal(actual.database.sizeBytes, "actual.database.sizeBytes");
   assertHash(actual.archive.sha256, "actual.archive.sha256");
   assertDecimal(actual.archive.sizeBytes, "actual.archive.sizeBytes");
-  if (!Array.isArray(actual.archive.entries)) fail("actual.archive.entries must be an array");
+  if (!Array.isArray(actual.archive.entries) || actual.archive.entries.length > 100_000) fail("actual.archive.entries must be a bounded array");
   for (const [index, value] of actual.archive.entries.entries()) {
     const path = `actual.archive.entries[${index}]`;
     assertRecord(value, path);
@@ -639,6 +642,7 @@ export function parseSnapshotEnvelope(value: unknown, receipts: SnapshotEnvelope
   const envelope = parseEnvelopeBase(value);
   assertNoSensitiveKeys(receipts, "receipts");
   assertRecord(receipts, "receipts");
+  assertExactKeys(receipts, ["rootCiphertextSeal", "exactRead", "decryptVerification"], "receipts");
   assertRecord(receipts.rootCiphertextSeal, "receipts.rootCiphertextSeal");
   assertRecord(receipts.exactRead, "receipts.exactRead");
   assertRecord(receipts.decryptVerification, "receipts.decryptVerification");
