@@ -99,6 +99,12 @@ describe("auth guard runtime", () => {
     const runtime = assertValidAuthGuardRuntimeEnv(productionEnv(), productionDeps());
     expect(evaluateAuthOrigin({ runtime, request: request() })).toEqual({ allowed: true });
     expect(
+      evaluateAuthOrigin({
+        runtime,
+        request: request({ headers: { ...request().headers, origin: "HTTPS://MUNJIB.EXAMPLE:443" } }),
+      }),
+    ).toEqual({ allowed: true });
+    expect(
       evaluateAuthOrigin({ runtime, request: request({ headers: { ...request().headers, origin: "https://evil.example" } }) }),
     ).toEqual({ allowed: false, code: "AUTH_GUARD_ORIGIN_MISMATCH" });
     expect(

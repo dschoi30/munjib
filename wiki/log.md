@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T22:05:00+09:00 - Issue #162 Origin normalization review fix
+
+- Result: `evaluateAuthOrigin()` now reuses the canonical runtime Origin parser instead of comparing a raw header string to `URL.origin`, so equivalent casing/default-port representations are normalized before same-origin comparison while foreign origins remain denied.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 review feedback.
+- Verification: red-green focused guard test, TypeScript, and wiki sync gates.
+
 ## 2026-07-13T21:00:00+09:00 - Issue #162 bounded auth guard runtime slice
 
 - Result: Added the dependency-safe `lib/auth/abuse/runtime.ts` contract. Strict staging/production guard secrets are file-backed, canonical Origin and Fetch-Metadata checks are bounded, and durable store errors fail closed without a local-memory limiter or raw identifier persistence.
