@@ -97,8 +97,16 @@ function assertLiteral<T extends string | number | boolean>(value: unknown, expe
   }
 }
 
+function assertDenseArray<T = unknown>(value: unknown, path: string): asserts value is T[] {
+  if (!Array.isArray(value)) fail(`${path} must be an array`);
+  for (let index = 0; index < value.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(value, index)) fail(`${path} must be a dense array`);
+  }
+}
+
 function assertCanonicalArray(value: unknown, expected: readonly string[], path: string): readonly string[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+  assertDenseArray<string>(value, path);
+  if (value.some((item) => typeof item !== "string")) {
     fail(`${path} must be an array of strings`);
   }
   if (value.length !== expected.length || value.some((item, index) => item !== expected[index])) {
