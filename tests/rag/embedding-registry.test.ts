@@ -68,6 +68,22 @@ describe("embedding profile registry", () => {
     ).toThrow(EMBEDDING_REGISTRY_ERROR_CODES.INVALID_PROFILE);
   });
 
+  it("rejects a nullish identity with the registry error", () => {
+    expect(() =>
+      buildEmbeddingProfileId(null as unknown as Parameters<typeof buildEmbeddingProfileId>[0]),
+    ).toThrow(EMBEDDING_REGISTRY_ERROR_CODES.INVALID_PROFILE);
+  });
+
+  it("rejects non-string providers instead of coercing them", () => {
+    expect(() =>
+      buildEmbeddingProfileId({
+        provider: null as unknown as "ollama",
+        model: "bge-m3",
+        dimensions: EMBEDDING_PROFILE_DIMENSIONS,
+      }),
+    ).toThrow(EMBEDDING_REGISTRY_ERROR_CODES.INVALID_PROFILE);
+  });
+
   it("looks up profiles by versioned id or exact embedding identity", () => {
     expect(findEmbeddingProfile(CURRENT_EMBEDDING_PROFILE.profileId)).toBe(
       CURRENT_EMBEDDING_PROFILE,

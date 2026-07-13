@@ -52,6 +52,10 @@ export const EMBEDDING_PROFILE_REGISTRY: readonly EmbeddingProfile[] = Object.fr
 ]);
 
 export function buildEmbeddingProfileId(identity: EmbeddingProfileIdentity): string {
+  if (!identity || typeof identity !== "object") {
+    throw new Error(EMBEDDING_REGISTRY_ERROR_CODES.INVALID_PROFILE);
+  }
+
   const provider = normalizeProvider(identity.provider);
   const model = normalizeModel(identity.model);
   validateDimensions(identity.dimensions);
@@ -91,7 +95,11 @@ export function listEmbeddingProfiles(
 }
 
 function normalizeProvider(provider: RagProvider): RagProvider {
-  const normalized = String(provider).trim().toLowerCase();
+  if (typeof provider !== "string") {
+    throw new Error(EMBEDDING_REGISTRY_ERROR_CODES.INVALID_PROFILE);
+  }
+
+  const normalized = provider.trim().toLowerCase();
   if (
     normalized !== "ollama" &&
     normalized !== "openai" &&
