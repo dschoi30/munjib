@@ -9,6 +9,27 @@ import {
 } from "@/lib/deploy/edge-bindings";
 
 const contractJson = readFileSync("deploy/security/edge-bindings-v1.json", "utf8");
+const requestFor = (probeId: string) =>
+  probeId === "origin-loopback"
+    ? {
+        transport: "http-loopback",
+        connectAddress: "127.0.0.1:3000",
+        host: "munjib.example.invalid",
+        path: "/api/auth/providers",
+      }
+    : probeId === "unknown-host-rejection"
+      ? {
+          transport: "https",
+          connectAddress: "munjib.example.invalid",
+          host: "unknown.invalid",
+          path: "/api/auth/providers",
+        }
+      : {
+          transport: "https",
+          connectAddress: "munjib.example.invalid",
+          host: "munjib.example.invalid",
+          path: "/api/auth/providers",
+        };
 
 describe("edge bindings contract evaluator", () => {
   it("parses the preparatory contract and keeps production activation disabled", () => {
@@ -39,6 +60,7 @@ describe("edge bindings contract evaluator", () => {
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Cache-Control": "no-store",
       },
+      request: requestFor("public-https"),
     });
     expect(valid.ok).toBe(true);
 
@@ -53,6 +75,7 @@ describe("edge bindings contract evaluator", () => {
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Cache-Control": "no-store",
       },
+      request: requestFor("public-https"),
     });
     expect(missing.ok).toBe(false);
     expect(missing.reasons).toContain("HEADER_MISSING:permissions-policy");
@@ -69,6 +92,7 @@ describe("edge bindings contract evaluator", () => {
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Cache-Control": "no-store",
       },
+      request: requestFor("public-https"),
     });
     expect(nonExact.ok).toBe(false);
     expect(nonExact.reasons).toContain(
@@ -90,6 +114,7 @@ describe("edge bindings contract evaluator", () => {
       latencyMs: 4,
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: {},
+      request: requestFor("origin-loopback"),
     });
     expect(noStoreMissing.ok).toBe(false);
     expect(noStoreMissing.reasons).toContain("CACHE_CONTROL_NO_STORE_MISSING");
@@ -99,6 +124,7 @@ describe("edge bindings contract evaluator", () => {
       latencyMs: 4,
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: { "cache-control": "private, no-store" },
+      request: requestFor("origin-loopback"),
     });
     expect(noStorePresent.ok).toBe(true);
   });
@@ -110,6 +136,7 @@ describe("edge bindings contract evaluator", () => {
       latencyMs: 18,
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: { "cache-control": "no-store" },
+      request: requestFor("unknown-host-rejection"),
     });
     expect(rejected.ok).toBe(true);
 
@@ -118,6 +145,7 @@ describe("edge bindings contract evaluator", () => {
       latencyMs: 18,
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: { "cache-control": "no-store" },
+      request: requestFor("unknown-host-rejection"),
     });
     expect(accepted.ok).toBe(false);
     expect(accepted.reasons).toContain("STATUS_CLASS_MISMATCH:4xx");
@@ -139,6 +167,7 @@ describe("edge bindings contract evaluator", () => {
         Authorization: "Bearer should-never-appear",
         Cookie: "session=should-never-appear",
       },
+      request: requestFor("public-https"),
       responseBody: "secret response body",
       clientIp: "192.0.2.1",
     });
@@ -180,5 +209,140 @@ describe("edge bindings contract evaluator", () => {
         },
       }),
     ).toThrow(/origin|public/i);
+  });
+
+  it("binds every observation to the configured transport, connect address, host, and path", () => {
+    const contract = parseEdgeBindingsContractJson(contractJson);
+    const valid = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "munjib.example.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(valid.ok).toBe(true);
+
+    const wrongHost = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "attacker.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(wrongHost.ok).toBe(false);
+    expect(wrongHost.reasons).toContain("REQUEST_HOST_MISMATCH");
+
+    const wrongPath = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "munjib.example.invalid",
+        path: "/login",
+      },
+    });
+    expect(wrongPath.ok).toBe(false);
+    expect(wrongPath.reasons).toContain("REQUEST_PATH_MISMATCH");
+  });
+
+  it("pins the unknown-host negative probe to the canonical connect address", () => {
+    const contract = parseEdgeBindingsContractJson(contractJson);
+    const valid = evaluateEdgeProbe(contract, "unknown-host-rejection", {
+      status: 421,
+      latencyMs: 18,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": "no-store" },
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "unknown.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(valid.ok).toBe(true);
+
+    const directDns = evaluateEdgeProbe(contract, "unknown-host-rejection", {
+      status: 421,
+      latencyMs: 18,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": "no-store" },
+      request: {
+        transport: "https",
+        connectAddress: "unknown.invalid",
+        host: "unknown.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(directDns.ok).toBe(false);
+    expect(directDns.reasons).toContain("REQUEST_CONNECT_ADDRESS_MISMATCH");
+  });
+
+  it("returns a failure result instead of throwing on malformed observation values", () => {
+    const contract = parseEdgeBindingsContractJson(contractJson);
+    const malformedHeaders = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: undefined as never,
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "munjib.example.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(malformedHeaders.ok).toBe(false);
+    expect(malformedHeaders.reasons).toContain("HEADERS_INVALID");
+
+    const malformedDateAndPath = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: Symbol("date") as never,
+      headers: {},
+      request: {
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "munjib.example.invalid",
+        path: Symbol("path") as never,
+      },
+    });
+    expect(malformedDateAndPath.ok).toBe(false);
+    expect(malformedDateAndPath.reasons).toEqual(
+      expect.arrayContaining(["OBSERVED_AT_INVALID", "REQUEST_PATH_INVALID"]),
+    );
   });
 });

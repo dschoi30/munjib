@@ -38,6 +38,7 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "munjib.example.invalid",
+      "connectAddress": "munjib.example.invalid",
       "expectedStatus": 200,
       "requiredHeaders": [
         "strict-transport-security",
@@ -70,6 +71,7 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "unknown.invalid",
+      "connectAddress": "munjib.example.invalid",
       "expectedStatusClass": "4xx",
       "cadenceSeconds": 300,
       "timeoutSeconds": 10,
