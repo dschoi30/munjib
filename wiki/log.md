@@ -2911,3 +2911,12 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T13:35:00+09:00 - security-edge-bindings
+
+- Result: Issue #166 now has a dependency-safe edge binding/probe evaluator. The parser rejects activation, public origins, unsafe loopback values, altered required headers, unbounded probes, and incomplete redaction policy. The evaluator checks exact public security headers, no-store cache directives on the contract paths, expected statuses, and unknown-host 4xx behavior.
+- Scope: The contract remains `PREPARATORY` with `activation: DISABLED` and `productionMutationAllowed: false`. No Caddy, DNS, TLS, firewall, host monitoring, application route, or production traffic was changed.
+- Telemetry: `redactProbeTelemetry()` returns only `probeId`, `status`, `latencyMs`, `observedAt`, and `outcome`; response bodies, authorization, cookies, query strings, request bodies, and client IPs are not emitted.
+- Pages: [[index|Wiki Index]], `docs/runbooks/edge-bindings-readiness.md`.
+- Source evidence: `lib/deploy/edge-bindings.ts`, `deploy/security/edge-bindings-v1.json`, `tests/deploy/edge-bindings-evaluator.test.ts`.
+- Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (6 tests passed).
