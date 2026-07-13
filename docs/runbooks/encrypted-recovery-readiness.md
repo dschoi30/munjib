@@ -26,6 +26,28 @@ It accepts only the exact public contract, rejects unknown or sensitive fields,
 and returns an immutable value. It does not read a database, fetch an object,
 start a container, or report that a recovery is accepted.
 
+## Snapshot manifest v2 contract slice
+
+`lib/backup/manifest.ts` now provides a second, dependency-safe boundary for the
+private `SnapshotManifestV2` and public `SnapshotEnvelopeV2` records. It performs
+recursive exact-key validation, canonical lowercase SHA-256/digest/decimal/UTC
+checks, bounded IDs and safe relative paths, deterministic migration and
+attachment ordering, and the attachment state rules that keep non-`READY` rows
+inventory-only. `assertManifestPayloadIntegrity` compares database/archive/file
+receipts without opening a database or storage path. `assertRecoveryCompatibility`
+requires an independently supplied capability-floor verifier and a deterministic
+current migration/schema compatibility digest.
+
+The public envelope parser accepts no signing path until a root ciphertext seal,
+immutable exact-read receipt, and authenticated decrypt verification receipt all
+match the envelope. The `snapshotImageDigest` field is audit evidence only; the
+parser exposes no executable restore-image selector. The parser and helpers never
+perform backup, restore, key rotation, purge, provider access, or host mutation.
+
+The v2 builder, capture coordinator, decryptor, restore loader, and production
+acceptance evidence remain intentionally out of scope until their Leaf 13/13B,
+Leaf 2, Leaf 9, and Leaf 11 dependency gates are independently deployed.
+
 ## Dependency gate
 
 This branch does not perform a snapshot, restore, destructive purge, key

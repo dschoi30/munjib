@@ -19,6 +19,22 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T22:00:00+09:00 - Issue #168 snapshot manifest v2 contract
+
+- Result: Added the pure `SnapshotManifestV2`/`SnapshotEnvelopeV2` parser and
+  constant-time payload/receipt integrity helpers. Validation is recursive and
+  exact-key, rejects sensitive fields and unsafe attachment metadata, requires
+  canonical hashes/decimals/timestamps/IDs/order, and keeps snapshot image
+  digests non-executable.
+- Boundary: Envelope parsing requires matching root-seal, immutable exact-read,
+  and authenticated-decrypt receipts before signing. No DB, storage, provider,
+  host, restore, purge, or key-rotation operation is performed.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, and
+  `docs/runbooks/encrypted-recovery-readiness.md`.
+- Verification: focused manifest/recovery tests; full TypeScript remains subject
+  to the repository's generated Prisma client gate.
+
 ## 2026-07-13T18:00:00+09:00 - Issue #168 recovery readiness contract
 
 - Result: Added the dependency-safe public recovery contract and immutable parser
