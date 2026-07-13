@@ -2911,3 +2911,11 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T13:15:00+09:00 - security
+
+- Result: Issue #164 pre-gate implementation adds a dependency-free server boundary for opaque AI provider selections, exact endpoint validation, and allowlisted metadata-only telemetry. It is not wired into Ask AI/Workspace AI routes and does not activate providers, change schema, read secrets, or modify deployment configuration.
+- Coverage: client-owned provider/model/credential/base URL/embedding/policy-bypass fields, disabled/raw selections, userinfo/query/fragment/alternate-port/scheme/path destinations, production private/metadata/loopback/literal addresses, fixed non-production Ollama endpoint, and telemetry content/identity leakage.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/provider-boundary.ts`, `tests/rag/provider-boundary.test.ts`.
+- Verification: `pnpm exec vitest run tests/rag/provider-boundary.test.ts`, `pnpm exec tsc --noEmit`.
