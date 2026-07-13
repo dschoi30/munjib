@@ -297,7 +297,7 @@ function assertGeneration(value: unknown, path: string): asserts value is string
 }
 
 function assertRelativePath(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || !SAFE_RELATIVE_PATH.test(value)) fail(`${path} must be a safe relative path`);
+  if (typeof value !== "string" || value.length > 512 || !SAFE_RELATIVE_PATH.test(value)) fail(`${path} must be a safe relative path`);
 }
 
 function assertCanonicalAscending(values: readonly string[], path: string): readonly string[] {
