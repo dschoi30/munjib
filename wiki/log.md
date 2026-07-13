@@ -19,6 +19,27 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T13:20:00+09:00 - Issue #165 preparation inventory and storage-key guard
+
+- Result: Added a dependency-safe, non-destructive attachment lifecycle slice.
+  `storage-key.ts` validates workspace-scoped UUID keys and path containment on
+  every attachment service read/write; malformed persisted keys fail closed as
+  `ATTACHMENT_STORAGE_KEY_INVALID` and the API route returns the same 404 as a
+  missing attachment. `lifecycle-inventory.ts` deterministically reconciles
+  broker-provided metadata/file manifests into referenced, missing-bytes,
+  orphan-bytes, and invalid-key counts with `mutationAllowed: false`.
+- Boundary: No Prisma query, filesystem enumeration, delete, scheduler,
+  migration, production volume access, or ACL bypass was added. Candidate
+  callers must still satisfy the Phase A dependency attestation.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Knowledge Model]],
+  [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]],
+  [[log|Wiki Log]].
+- Source evidence: `lib/attachments/storage-key.ts`,
+  `lib/attachments/lifecycle-inventory.ts`, `lib/attachments/service.ts`,
+  `app/api/attachments/[attachmentId]/route.ts`, and attachment tests.
+- Verification: focused attachment lifecycle/route tests and
+  `pnpm exec tsc --noEmit --pretty false`.
+
 ## 2026-07-13T11:25:00+09:00 - Issue #165 attachment lifecycle readiness handoff
 
 - Result: Added a public-safe, preparation-only attachment lifecycle contract and runbook. The contract records the current transaction/ACL/preview boundaries, the orphan-byte and abandoned-paste gaps, dependency gates for Issues #2/#4/#5/#6 and Leaf 13B, and the later Issue #164 provider-policy v2 boundary without enabling deletion, schema changes, or production scheduling.

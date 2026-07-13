@@ -32,6 +32,28 @@ document also have no expiry or reconciliation job. These are the lifecycle
 gaps tracked by Issue #165; they are intentionally not changed by this
 preparation slice.
 
+## Implemented preparation primitives
+
+The preparation slice now supplies two reusable, side-effect-free boundaries:
+
+- `lib/attachments/storage-key.ts` validates the canonical
+  `<workspaceId>/<uuid>-<safeFileName>` key, rejects absolute/parent paths and
+  Windows separators, checks the owning workspace, and resolves a path only
+  after containment validation. The attachment service uses this guard for
+  every write and read, so malformed persisted rows fail closed with
+  `ATTACHMENT_STORAGE_KEY_INVALID` (the HTTP route normalizes it to the same
+  non-enumerating 404 used for missing bytes).
+- `lib/attachments/lifecycle-inventory.ts` accepts attachment metadata rows
+  and a broker-provided file manifest and returns stable, sorted classifications
+  (`referenced`, `missing-bytes`, `orphan-bytes`, `invalid-key`) plus aggregate
+  counts. The returned `mutationAllowed` flag is permanently `false`; the
+  primitive never queries Prisma, reads the filesystem, deletes bytes, or
+  changes rows.
+
+The inventory caller remains responsible for sourcing both inputs from the
+attested candidate snapshot described below. Do not pass a live production
+volume or publish the returned keys/entries to a public issue or PR comment.
+
 ## Dependency gates
 
 The checked-in contract is
@@ -114,6 +136,7 @@ remains open and the implementation remains preparation-only.
 
 ```bash
 pnpm exec vitest run tests/attachments/lifecycle-contract.test.ts --reporter=dot
+pnpm exec vitest run tests/attachments/storage-key.test.ts tests/attachments/lifecycle-inventory.test.ts tests/attachments/route.test.ts --reporter=dot
 pnpm exec tsc --noEmit --pretty false
 pnpm wiki:manifest
 pnpm wiki:lint

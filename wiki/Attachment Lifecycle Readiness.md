@@ -39,6 +39,19 @@ paste의 수명 관리를 다음 hardening leaf로 분리한다.
 - Attachment read는 workspace/document ACL과 internal preview allowlist를
   통과해야 하며 missing bytes는 404로 정규화한다.
 
+## Preparation-only implementation slice
+
+Issue #165의 preparation slice는 `lib/attachments/storage-key.ts`의 공통
+storage-key/path 검증과 `lib/attachments/lifecycle-inventory.ts`의 순수
+reconciliation primitive를 제공한다. 서비스의 모든 write/read path는 이제
+workspace-scoped canonical key가 아니면 `ATTACHMENT_STORAGE_KEY_INVALID`로
+fail closed한다. Inventory primitive는 DB metadata row와 broker-provided
+file manifest를 입력으로 받아 `referenced`, `missing-bytes`,
+`orphan-bytes`, `invalid-key`를 deterministic하게 분류하며, 반환값에
+`mutationAllowed: false`를 고정한다. 이 코드는 filesystem/DB를 직접 읽거나
+삭제하지 않으므로 candidate manifest를 준비하는 호출자와 production
+purge를 의도적으로 분리한다.
+
 ## Dependency-gated phases
 
 `deploy/attachments/attachment-lifecycle-readiness-v1.json`이 canonical

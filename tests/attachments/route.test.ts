@@ -33,4 +33,17 @@ describe("attachment route", () => {
     await expect(response.json()).resolves.toEqual({ error: "ATTACHMENT_NOT_FOUND" });
     expect(response.status).toBe(404);
   });
+
+  it("normalizes a malformed persisted storage key to the same 404", async () => {
+    vi.mocked(getReadableAttachment).mockRejectedValueOnce(
+      new Error("ATTACHMENT_STORAGE_KEY_INVALID"),
+    );
+
+    const response = await GET(new Request("http://test.local/api/attachments/unsafe"), {
+      params: Promise.resolve({ attachmentId: "unsafe" }),
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "ATTACHMENT_NOT_FOUND" });
+    expect(response.status).toBe(404);
+  });
 });
