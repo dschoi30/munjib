@@ -87,6 +87,31 @@ describe("AI provider boundary", () => {
         }),
       ).toThrow("AI_PROVIDER_POLICY_INVALID");
     }
+
+    for (const endpoint of [
+      { id: "bad-origin-v1", origin: 123, path: "/v1" },
+      { id: "bad-path-v1", origin: "https://api.openai.com", path: 123 },
+      {
+        id: "bad-loopback-v1",
+        origin: "http://ollama:11434",
+        path: "/api",
+        allowLoopback: "yes",
+      },
+    ]) {
+      expect(() =>
+        createProviderBoundaryPolicy({
+          environment: "test",
+          selections: [
+            {
+              selectionId: "bad-endpoint-v1",
+              provider: "openai",
+              model: "gpt-5.4-mini",
+              endpoint: endpoint as never,
+            },
+          ],
+        }),
+      ).toThrow("AI_PROVIDER_POLICY_INVALID");
+    }
   });
 
   it("rejects credentials, alternate destinations, and production loopback/private addresses", () => {

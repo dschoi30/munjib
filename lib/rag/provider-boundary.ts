@@ -248,7 +248,10 @@ function normalizeEndpointPolicy(endpoint: ProviderEndpointPolicy): ProviderEndp
   if (
     !endpoint ||
     typeof endpoint.id !== "string" ||
-    !ENDPOINT_ID_PATTERN.test(endpoint.id)
+    !ENDPOINT_ID_PATTERN.test(endpoint.id) ||
+    typeof endpoint.origin !== "string" ||
+    typeof endpoint.path !== "string" ||
+    (endpoint.allowLoopback !== undefined && typeof endpoint.allowLoopback !== "boolean")
   ) {
     throw new Error("AI_PROVIDER_POLICY_INVALID");
   }
