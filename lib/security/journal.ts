@@ -124,6 +124,7 @@ export type SecurityJournalReplayReducer<K extends SecurityJournalEventKind> = (
 export const SECURITY_JOURNAL_OPERATION_NAMESPACE = "0f7b3d90-0a7a-5f28-9a0d-7e2c9a1c6d40";
 
 const MAX_INT64 = BigInt("9223372036854775807");
+const TEXT_ENCODER = new TextEncoder();
 const EVENT_KEY_SET = [
   "schemaVersion",
   "sequence",
@@ -255,7 +256,7 @@ function uuidToBytes(value: string): Uint8Array {
 }
 
 function lengthPrefix(value: string): Uint8Array {
-  const bytes = new TextEncoder().encode(value);
+  const bytes = TEXT_ENCODER.encode(value);
   if (bytes.byteLength > 0xffff_ffff) throw new Error("SECURITY_JOURNAL_FIELD_TOO_LARGE");
   const prefix = new Uint8Array(4);
   new DataView(prefix.buffer).setUint32(0, bytes.byteLength, false);
@@ -304,7 +305,7 @@ export function parseSecurityJournalEvent(value: unknown): SecurityJournalEvent 
 export function encodeSecurityJournalHashPreimage(event: SecurityJournalEvent): Uint8Array {
   const parsed = parseSecurityJournalEvent(event);
   return concatBytes(
-    new TextEncoder().encode("munjib-security-journal-event-v1\0"),
+    TEXT_ENCODER.encode("munjib-security-journal-event-v1\0"),
     hexToBytes(parsed.previousHash, "SECURITY_JOURNAL_PREVIOUS_HASH_INVALID"),
     canonicalSequenceBytes(parsed.sequence),
     lengthPrefix(parsed.kind),
