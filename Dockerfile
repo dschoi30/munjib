@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:22-alpine@sha256:d51cff3fa44ab8a368ae8708ae974480165be1b699b19527b7c0d2523433b271 AS base
 
 WORKDIR /app
 
@@ -31,13 +31,27 @@ ENV NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_REPLAYS_S
 ENV NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE
 ENV SENTRY_RELEASE=$SENTRY_RELEASE
 
-COPY . .
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY prisma ./prisma
+COPY public ./public
+COPY scripts ./scripts
+COPY types ./types
+COPY instrumentation-client.ts instrumentation.ts next-env.d.ts next.config.mjs postcss.config.mjs sentry.edge.config.ts sentry.server.config.ts tailwind.config.ts tsconfig.json ./
 RUN pnpm run db:generate
 RUN pnpm run build
 
 FROM deps AS tools
 
-COPY . .
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY prisma ./prisma
+COPY public ./public
+COPY scripts ./scripts
+COPY types ./types
+COPY instrumentation-client.ts instrumentation.ts next-env.d.ts next.config.mjs postcss.config.mjs sentry.edge.config.ts sentry.server.config.ts tailwind.config.ts tsconfig.json ./
 RUN pnpm run db:generate
 
 FROM deps AS runner
@@ -79,6 +93,8 @@ RUN pnpm run db:generate \
   && rm -rf /tmp/prisma-client \
   && chown -R 10001:10001 /tmp/.cache
 
+USER 10001:10001
+
 EXPOSE 3000
 
 CMD ["pnpm", "start"]
@@ -90,7 +106,14 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-COPY . .
+COPY app ./app
+COPY components ./components
+COPY lib ./lib
+COPY prisma ./prisma
+COPY public ./public
+COPY scripts ./scripts
+COPY types ./types
+COPY instrumentation-client.ts instrumentation.ts next-env.d.ts next.config.mjs postcss.config.mjs sentry.edge.config.ts sentry.server.config.ts tailwind.config.ts tsconfig.json ./
 RUN pnpm run db:generate
 
 EXPOSE 3000

@@ -33,6 +33,7 @@ import {
 } from "@/lib/auth/runtime";
 import { authorizePasswordCredential } from "@/lib/auth/password-credentials";
 import { readStrictSecretFile } from "@/lib/security/strict-secret-file";
+import { isPrivateCandidateRuntime } from "@/lib/runtime/private-candidate";
 
 function readProcessEnv(name: string, env: Record<string, string | undefined> = process.env): string | undefined {
   return env[name];
@@ -121,6 +122,7 @@ export function resolveGoogleAuthCredentials(
   env: Record<string, string | undefined> = process.env,
   deps: AuthRuntimeDependencies = { readStrictSecretFile },
 ) {
+  if (isPrivateCandidateRuntime(env)) return null;
   const clientId = readProcessEnv("GOOGLE_CLIENT_ID", env)?.trim();
   if (!clientId) return null;
 

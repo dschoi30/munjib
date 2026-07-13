@@ -1,6 +1,6 @@
 services:
   tools:
-    image: ${WEB_IMAGE:?immutable image digest required}
+    image: ${WEB_IMAGE:?exact application digest required}
     user: "10001:10001"
     environment:
       NODE_ENV: production
@@ -15,20 +15,54 @@ services:
     secrets:
       - source: munjib_rag_credential
         target: munjib_rag_credential
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
     depends_on:
       postgres:
         condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    networks:
+      - private
 
   postgres:
-    image: ${POSTGRES_IMAGE:?immutable postgres digest required}
+    image: ${POSTGRES_IMAGE:?exact postgres digest required}
     environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_bootstrap_credential
       POSTGRES_DB: obsidian_clone
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - private
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d obsidian_clone"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    secrets:
+      - source: postgres_bootstrap_credential
+        target: postgres_bootstrap_credential
+        uid: "999"
+        gid: "999"
+        mode: "0400"
 
 volumes:
   postgres_data:
 
+networks:
+  private:
+    internal: true
+
 secrets:
   munjib_rag_credential:
     file: /etc/munjib/secrets/rag-current
+  postgres_bootstrap_credential:
+    file: /etc/munjib/secrets/postgres-bootstrap-current

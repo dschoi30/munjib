@@ -6,6 +6,7 @@ import { getRagModelConfig } from "@/lib/rag/config";
 import { embedText as defaultEmbedText } from "@/lib/rag/embedding-client";
 import { chunkMarkdownDocument } from "@/lib/rag/chunk-markdown";
 import { replaceDocumentChunks as defaultReplaceDocumentChunks } from "@/lib/rag/vector-store";
+import { assertIndexingAllowed, isPrivateCandidateRuntime } from "@/lib/runtime/private-candidate";
 
 export type SavedDocumentForIndex = {
   id: string;
@@ -40,6 +41,7 @@ type ScheduleSavedDocumentIndexInput = SafeIndexSavedDocumentInput & {
 };
 
 export async function indexSavedDocument(input: IndexSavedDocumentInput) {
+  assertIndexingAllowed();
   const document = input.document;
   const embeddingModel = input.embeddingModel ?? getRagModelConfig().embedding.indexId;
   const embedText = input.embedText ?? defaultEmbedText;
@@ -98,6 +100,7 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
 }
 
 export function scheduleSavedDocumentIndex(input: ScheduleSavedDocumentIndexInput) {
+  if (isPrivateCandidateRuntime()) return;
   if (shouldSkipDefaultScheduledIndex(input)) return;
   const { scheduleAfter = scheduleAfterRequest, ...indexInput } = input;
   scheduleAfter(() => safeIndexSavedDocument(indexInput));

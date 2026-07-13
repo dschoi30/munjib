@@ -15,6 +15,11 @@ const readCompose = () =>
         profiles?: string[];
         image?: string;
         user?: string;
+        read_only?: boolean;
+        cap_drop?: string[];
+        security_opt?: string[];
+        tmpfs?: string[];
+        ports?: string[];
         network_mode?: string;
         command?: string | string[];
         depends_on?: unknown;
@@ -31,20 +36,20 @@ const readGoogleCompose = () =>
   };
 
 describe("Docker web service configuration", () => {
-  test("default compose runs web with the existing postgres service", () => {
+  test("default compose runs exact-digest private runtime services", () => {
     const compose = read("docker-compose.yml");
     const composeConfig = readCompose();
     const web = composeConfig.services.web;
     const tools = composeConfig.services.tools;
+    const postgres = composeConfig.services.postgres;
 
     expect(compose).toContain("postgres:");
     expect(compose).toContain("web:");
-    expect(compose).toContain("WEB_IMAGE");
-    expect(compose).toContain("ghcr.io/dschoi30/munjib:latest");
-    expect(compose).toContain("target: runner");
-    expect(compose).toContain("target: tools");
+    expect(compose).toContain("WEB_IMAGE:?exact application digest required");
+    expect(compose).toContain("POSTGRES_IMAGE:?exact postgres digest required");
+    expect(compose).not.toContain("build:");
+    expect(compose).not.toContain(":latest");
     expect(compose).toContain("condition: service_healthy");
-    expect(compose).toContain("DOCKER_DATABASE_URL");
     expect(compose).toContain("postgres:5432");
     expect(compose).toContain("NEXTAUTH_URL");
     expect(compose).toContain("127.0.0.1:${WEB_PORT:-3000}:3000");
@@ -55,66 +60,19 @@ describe("Docker web service configuration", () => {
       MUNJIB_DEPLOYMENT_ENV: "production",
     });
     expect(tools.environment).toMatchObject({
-      MUNJIB_DEPLOYMENT_ENV: "${MUNJIB_DEPLOYMENT_ENV:-development}",
-    });
-    expect(web.build?.args).toMatchObject({
-      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
-      NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
-      NEXT_PUBLIC_SENTRY_RELEASE: "${NEXT_PUBLIC_SENTRY_RELEASE:-}",
-      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}",
-      NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE:-0}",
-      NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE:-0}",
-      SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
+      MUNJIB_DEPLOYMENT_ENV: "production",
     });
     expect(web.environment).toMatchObject({
       MUNJIB_ENABLE_DEV_LOGIN: "false",
-      SENTRY_DSN: "${SENTRY_DSN:-}",
-      SENTRY_ENVIRONMENT: "${SENTRY_ENVIRONMENT:-production}",
-      SENTRY_RELEASE: "${SENTRY_RELEASE:-}",
-      SENTRY_TRACES_SAMPLE_RATE: "${SENTRY_TRACES_SAMPLE_RATE:-0.05}",
-      SENTRY_RUNTIME_METRICS_ENABLED: "${SENTRY_RUNTIME_METRICS_ENABLED:-false}",
-      SENTRY_RUNTIME_METRICS_INTERVAL_MS:
-        "${SENTRY_RUNTIME_METRICS_INTERVAL_MS:-60000}",
-      NEXT_PUBLIC_SENTRY_DSN: "${NEXT_PUBLIC_SENTRY_DSN:-}",
-      NEXT_PUBLIC_SENTRY_ENVIRONMENT: "${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}",
-      NEXT_PUBLIC_SENTRY_RELEASE: "${NEXT_PUBLIC_SENTRY_RELEASE:-}",
-      NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}",
-      NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE:-0}",
-      NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE:
-        "${NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE:-0}",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
     });
-    for (const key of [
-      "SENTRY_DSN",
-      "SENTRY_ENVIRONMENT",
-      "SENTRY_RELEASE",
-      "SENTRY_TRACES_SAMPLE_RATE",
-      "SENTRY_RUNTIME_METRICS_ENABLED",
-      "SENTRY_RUNTIME_METRICS_INTERVAL_MS",
-      "NEXT_PUBLIC_SENTRY_DSN",
-      "NEXT_PUBLIC_SENTRY_ENVIRONMENT",
-      "NEXT_PUBLIC_SENTRY_RELEASE",
-      "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
-      "NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE",
-      "NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE",
-    ]) {
-      expect(tools.environment).not.toHaveProperty(key);
-    }
-    expect(compose).toContain("MUNJIB_OLLAMA_BASE_URL");
-    expect(compose).toContain("host.docker.internal:11434");
-    expect(compose).toContain("MUNJIB_RAG_CHAT_MODEL");
-    expect(compose).toContain("gemma4:e4b");
-    expect(compose).toContain("MUNJIB_RAG_EMBED_MODEL");
-    expect(compose).toContain("bge-m3");
-    expect(compose).toContain("MUNJIB_RAG_EMBED_DIMENSIONS");
-    expect(compose).toContain("host.docker.internal:host-gateway");
-    expect(compose).toContain('"127.0.0.1:${WEB_PORT:-3000}:3000"');
-    expect(compose).toContain("web_storage:/app/storage");
-    expect(compose).toContain("web_storage:");
+    expect(web.user).toBe("10001:10001");
+    expect(web.read_only).toBe(true);
+    expect(web.cap_drop).toEqual(["ALL"]);
+    expect(web.security_opt).toEqual(["no-new-privileges:true"]);
+    expect(web.tmpfs).toEqual(["/tmp", "/run"]);
+    expect(postgres.ports).toBeUndefined();
+    expect(compose).toContain("private:");
   });
 
   test("initializes the named storage volume before the non-root web service", () => {
@@ -126,7 +84,7 @@ describe("Docker web service configuration", () => {
       : storageInit.command;
 
     expect(storageInit).toMatchObject({
-      image: "alpine:3.22",
+      image: "${STORAGE_INIT_IMAGE:?exact storage-init digest required}",
       user: "0:0",
       command: ["/bin/sh", "-ec", expect.any(String)],
       volumes: ["web_storage:/app/storage"],
@@ -140,10 +98,11 @@ describe("Docker web service configuration", () => {
     });
   });
 
-  test("uses a pgvector-enabled postgres image", () => {
+  test("uses an exact-digest pgvector postgres image", () => {
     const compose = read("docker-compose.yml");
 
-    expect(compose).toContain("pgvector/pgvector:0.8.2-pg16");
+    expect(compose).toContain("POSTGRES_IMAGE:?exact postgres digest required");
+    expect(compose).toContain("pg_isready -U postgres -d obsidian_clone");
   });
 
   test("production auth uses fixed file-backed secrets and a loopback web port", () => {

@@ -14,18 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  IMAGE_TAG: ${{ github.sha }}
   PNPM_VERSION: 10.28.1
 
 jobs:
   ci:
     name: Test and build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     env:
       DATABASE_URL: postgresql://obsidian:obsidian@localhost:5432/obsidian_clone?schema=public
     services:
       postgres:
-        image: pgvector/pgvector:0.8.2-pg16
+        image: pgvector/pgvector:0.8.2-pg16@sha256:b759abdeb144e561a4dbfe9863b5ac58cdd3fb6350cee7e68035baffdbca9693
         env:
           POSTGRES_USER: obsidian
           POSTGRES_PASSWORD: obsidian
@@ -39,7 +38,7 @@ jobs:
           --health-retries 10
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
 
       - name: Enable pnpm
         run: |
@@ -47,7 +46,7 @@ jobs:
           corepack prepare pnpm@${PNPM_VERSION} --activate
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: "22"
           cache: pnpm
@@ -77,86 +76,57 @@ jobs:
       - name: Build app
         run: pnpm run build
 
-      - name: Build runtime image
-        run: docker build --target runner --tag munjib-ci:${IMAGE_TAG} .
+      - name: Build exact ARM64 runtime image
+        run: |
+          docker build --platform linux/arm64 --target runner --iidfile /tmp/munjib-runtime.iid .
+          runtime_id="$(cat /tmp/munjib-runtime.iid)"
+          printf '%s' "$runtime_id" | grep -Eq '^sha256:[a-f0-9]{64}$'
 
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
     needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # The deployed Leaf 13A broker must advertise the PROMOTE/MIGRATE fixed
+    # operation set before this release path can mutate production. Keep the
+    # merge safe while that root-owned broker extension is being installed.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.MUNJIB_PRIVATE_RUNTIME_BROKER_READY == 'true'
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
+      - name: Submit signed release to the root broker
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         env:
-          WEB_IMAGE: munjib-web:latest
-          DEPLOY_SHA: ${{ github.sha }}
+          APP_IMAGE_DIGEST: ${{ secrets.MUNJIB_APP_IMAGE_DIGEST }}
+          POSTGRES_IMAGE_DIGEST: ${{ secrets.MUNJIB_POSTGRES_IMAGE_DIGEST }}
+          HOST_BUNDLE_DIGEST: ${{ secrets.MUNJIB_HOST_BUNDLE_DIGEST }}
+          STORAGE_INIT_IMAGE_DIGEST: ${{ secrets.MUNJIB_STORAGE_INIT_IMAGE_DIGEST }}
+          RELEASE_ENVELOPE: ${{ secrets.MUNJIB_RELEASE_ENVELOPE }}
           SENTRY_RELEASE: ${{ github.sha }}
           NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
-          DEPLOY_ENV_FILE: /etc/munjib/env
           DEPLOY_HEALTHCHECK_URL: http://127.0.0.1:3000
           DEPLOY_HEALTHCHECK_HOST: munjib.andrewchoi.link
-          DEPLOY_REPOSITORY: ${{ github.repository }}
-          DEPLOY_GIT_TOKEN: ${{ github.token }}
-          DEPLOY_NEXTAUTH_SECRET: ${{ secrets.MUNJIB_NEXTAUTH_SECRET }}
-          DEPLOY_GOOGLE_CLIENT_SECRET: ${{ secrets.MUNJIB_GOOGLE_CLIENT_SECRET }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN,DEPLOY_NEXTAUTH_SECRET,DEPLOY_GOOGLE_CLIENT_SECRET
+          envs: APP_IMAGE_DIGEST,POSTGRES_IMAGE_DIGEST,HOST_BUNDLE_DIGEST,STORAGE_INIT_IMAGE_DIGEST,RELEASE_ENVELOPE,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST
           script: |
             set -euo pipefail
-            cd "${{ secrets.DEPLOY_PATH }}"
-            git_auth_header="$(printf 'x-access-token:%s' "$DEPLOY_GIT_TOKEN" | base64 | tr -d '\n')"
-            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_header" fetch --force "https://github.com/$DEPLOY_REPOSITORY.git" main
-            git checkout --detach "$DEPLOY_SHA"
-            test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
-            sudo test -r "$DEPLOY_ENV_FILE"
-            umask 077
-            secret_dir=/etc/munjib/secrets
-            sudo install -d -o root -g root -m 0755 "$secret_dir"
-            install_secret() {
-              secret_name="$1"
-              secret_value="$2"
-              test -n "$secret_value"
-              secret_tmp="$(sudo mktemp "$secret_dir/.${secret_name}.XXXXXX")"
-              printf '%s' "$secret_value" | sudo tee "$secret_tmp" >/dev/null
-              sudo chown 10001:10001 "$secret_tmp"
-              sudo chmod 0400 "$secret_tmp"
-              sudo mv -fT "$secret_tmp" "$secret_dir/${secret_name}"
-            }
-            install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
-            compose_files="-f docker-compose.yml"
-            google_client_id="$(
-              sudo awk -v key=GOOGLE_CLIENT_ID '
-                $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-                  value=$0
-                  sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
-                  sub("[[:space:]]*(#.*)?$", "", value)
-                  single=sprintf("%c", 39)
-                  if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
-                      (substr(value, 1, 1) == single && substr(value, length(value), 1) == single)) {
-                    value=substr(value, 2, length(value)-2)
-                  }
-                  sub("^[[:space:]]*", "", value)
-                  sub("[[:space:]]*$", "", value)
-                  print value
-                  exit
-                }
-              ' "$DEPLOY_ENV_FILE"
-            )"
-            if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then
-              install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"
-              compose_files="$compose_files -f docker-compose.google.yml"
-            fi
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web
+            test -n "$APP_IMAGE_DIGEST"
+            test -n "$POSTGRES_IMAGE_DIGEST"
+            test -n "$HOST_BUNDLE_DIGEST"
+            test -n "$STORAGE_INIT_IMAGE_DIGEST"
+            test -n "$RELEASE_ENVELOPE"
+            printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+            printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+            printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+            printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+            printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+            printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+            printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+            test -S /run/munjib/release-broker.sock
+            test -r /etc/munjib/security/broker-operations-v1.json
+            grep -Eq '"PROMOTE"|"MIGRATE"' /etc/munjib/security/broker-operations-v1.json
+            printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
               if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
                 break
@@ -166,7 +136,6 @@ jobs:
               fi
               sleep 3
             done
-            sudo docker image prune -f
 
       - name: Verify public deployment
         run: curl --fail --silent --show-error --location --max-time 20 https://munjib.andrewchoi.link >/dev/null

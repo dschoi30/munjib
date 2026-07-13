@@ -35,11 +35,13 @@ Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용해 같은 ref
 공통 workflow env:
 
 ```text
-IMAGE_TAG=${{ github.sha }}
 PNPM_VERSION=10.28.1
 ```
 
-Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
+Production runtime entry point는 `docker-compose.yml`이다. Production
+`web`, `migrator`, and `tools` require exact digest image variables; tags and
+fallback images are rejected. `docker-compose.dev.yml`은 local development
+override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
 
 ### Leaf 13B database authority gate
 
@@ -199,38 +201,46 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
-### main deploy
+### main deploy (retired legacy path)
 
-`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
-
-Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
+The checkout/native-build/Compose mutation path described in the historical
+notes below is retired and is not an authorization path. The current workflow
+submits a bounded, signed exact-digest envelope through the root broker only;
+the production host performs no checkout or source build. The deploy job is
+also skipped until the protected broker-readiness gate is enabled.
 
 Deploy job env:
 
 ```text
-WEB_IMAGE=munjib-web:latest
-DEPLOY_SHA=${{ github.sha }}
+APP_IMAGE_DIGEST=<protected exact app digest>
+POSTGRES_IMAGE_DIGEST=<protected exact PostgreSQL digest>
+HOST_BUNDLE_DIGEST=<protected exact host-bundle digest>
+STORAGE_INIT_IMAGE_DIGEST=<protected exact storage-init digest>
+RELEASE_ENVELOPE=<protected signed broker envelope>
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_ENV_FILE=/etc/munjib/env
 DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
-DEPLOY_REPOSITORY=${{ github.repository }}
-DEPLOY_GIT_TOKEN=${{ github.token }}
-DEPLOY_NEXTAUTH_SECRET=<GitHub protected secret>
-DEPLOY_GOOGLE_CLIENT_SECRET=<GitHub protected secret when Google overlay is enabled>
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
+Browser SDK 값은 Next.js build time에 bundle된다. The exact application
+artifact is built and attested before submission; the host does not rebuild it.
+Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay
+`0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
 
-Required GitHub secrets:
+Required protected inputs:
 
 ```text
-DEPLOY_HOST=146.56.170.25
-DEPLOY_USER=ubuntu
-DEPLOY_SSH_KEY=<OCI private key>
-DEPLOY_PATH=/home/ubuntu/munjib
-DEPLOY_PORT=22
+DEPLOY_HOST=<protected deployment host>
+DEPLOY_USER=<restricted deploy principal>
+DEPLOY_SSH_KEY=<protected SSH key>
+DEPLOY_PORT=<protected SSH port>
+MUNJIB_APP_IMAGE_DIGEST=<exact digest>
+MUNJIB_POSTGRES_IMAGE_DIGEST=<exact digest>
+MUNJIB_HOST_BUNDLE_DIGEST=<exact digest>
+MUNJIB_STORAGE_INIT_IMAGE_DIGEST=<exact digest>
+MUNJIB_RELEASE_ENVELOPE=<signed envelope>
+MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true
 ```
 
 Current OCI production domain:
@@ -240,6 +250,35 @@ https://munjib.andrewchoi.link
 ```
 
 Remote deploy 순서:
+
+Current broker-only flow:
+
+```bash
+test -n "$APP_IMAGE_DIGEST"
+test -n "$POSTGRES_IMAGE_DIGEST"
+test -n "$HOST_BUNDLE_DIGEST"
+test -n "$STORAGE_INIT_IMAGE_DIGEST"
+test -n "$RELEASE_ENVELOPE"
+printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+test -S /run/munjib/release-broker.sock
+test -r /etc/munjib/security/broker-operations-v1.json
+grep -Eq '"PROMOTE"|"MIGRATE"' /etc/munjib/security/broker-operations-v1.json
+printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
+```
+
+The submit account performs only bounded validation and forwards the original
+frame to the fixed Unix socket. The root broker independently revalidates the
+signed envelope, exact operation descriptor, migration prefix, private
+bindings, smoke evidence, and pointer/floor state before any system mutation.
+
+<details>
+<summary>Retired legacy checkout/native-build flow (historical, do not use)</summary>
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -321,6 +360,11 @@ NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
 NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ```
 
+Secret/evidence contents from the retired flow are not authoritative and must
+not be copied into a release operation. The current broker-only flow above is
+the sole production procedure.
+</details>
+
 ### Docker runtime
 
 Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다. runner image는 non-root web/auth-preflight가 Corepack의 기본 `/.cache`에 쓰지 않도록 `HOME=/tmp`와 `COREPACK_HOME=/tmp/.cache/node/corepack`을 사용한다. 이 cache에는 애플리케이션 secret이 들어가지 않으며, production prune 뒤에도 `pnpm start`와 isolated preflight가 같은 UID로 실행된다.
@@ -334,13 +378,17 @@ dependency로 유지하며, 최종 image build는 `require("@prisma/client")` gu
 성공해야 끝난다. 따라서 package-manager virtual-store version을 고정하지 않고,
 생성 client가 빠진 image는 publish 전에 fail-closed 된다.
 
-- `postgres`: `pgvector/pgvector:0.8.2-pg16`, named volume `postgres_data`, configurable host port `POSTGRES_PORT`.
-- `storage-init`: 고정 `alpine:3.22` root one-shot service. `web_storage:/app/storage`를 마운트하고 `/app/storage/attachments`를 만든 뒤 전체 storage tree를 UID/GID `10001:10001`로 소유권 정리한다. `web`은 `service_completed_successfully` 조건으로 이 단계가 끝난 뒤에만 시작한다.
-- `web`: `runner` target 기반 production app, named volume `web_storage:/app/storage`, configurable host port `WEB_PORT`.
-- `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
+- `postgres`: exact `pgvector` digest, internal-only network, no host port, and a root bootstrap credential file.
+- `storage-init`: exact digest root one-shot service; it prepares the read-only Web storage mount.
+- `web`: exact application digest, loopback-only port, non-root `10001:10001`, read-only filesystem, `CAP_DROP=ALL`, `no-new-privileges`, and `/tmp`/`/run` tmpfs.
+- `candidate`: a distinct private service with no published port, no writable attachment volume, and all side-effect flags disabled.
+- `migrator`/`tools`: the same exact application digest with distinct role credential files, fixed `pg_catalog`-first search path, and no host port.
 
 `web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정, 그리고 선택적 Langfuse `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` credential을 받는다. Langfuse secret은 명시적으로 full capture를 켠 운영 환경에서도 callback/exporter가 동작하도록 Compose env passthrough를 유지한다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
-`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate다. Production-style `web`은 `false`를 literal로 고정하고, local development override만 이 값을 직접 설정한다.
+`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate다. Production-style
+`web`과 candidate는 `false`를 literal로 고정하고, local development override만 이 값을
+직접 설정한다. Candidate startup and runtime boundaries additionally enforce
+disabled email/OAuth/background/indexing/provider/attachment side effects.
 
 Dockerfile stages:
 
@@ -397,11 +445,39 @@ Privacy contract:
 
 ## Failure modes
 
+### Immutable private runtime gate (Leaf 13B)
+
+Production release admission now consumes exact application/PostgreSQL/
+host-bundle digests and native ARM64 evidence through the root broker. The
+production Compose projection has no host PostgreSQL port; Web is loopback-only,
+non-root, read-only, capability-dropped, and limited to `/tmp`/`/run` tmpfs
+writes. Web, migrator, and tools use separate `0400` file credentials. The
+candidate is a private side-effect-disabled service with no live port or
+writable attachment volume.
+
+The broker revalidates a fixed envelope for every privileged operation. Tags,
+checkout/build paths, arbitrary Compose/network/port/environment/entrypoint/
+command values, and unverified evidence fail closed. Candidate qualification
+requires migration-prefix and private-binding evidence before the durable
+`PREPARED → TRAFFIC_SWITCHED → COMMITTED` promotion sequence. A pre-switch
+failure removes the candidate; rollback cannot lower the recorded capability
+floor.
+
+The main deploy job is merge-safe while the Leaf 13A broker is still being
+extended: it requires the protected repository variable
+`MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, a readable broker operation policy
+advertising `MIGRATE` and `PROMOTE`, and a signed envelope whose exact artifact
+digests are structurally matched before submission. Until those checks pass,
+the deploy job is skipped rather than falling back to checkout/build or a
+caller-selected operation.
+
 CI failure는 deploy를 막는다. Test, Next build, Docker `runner` build 중 하나라도 실패하면 production deploy가 일어나지 않는다.
 
 Deploy secret이 빠지거나 SSH 접속이 실패하면 deploy job이 실패한다. PR validation에는 deploy secrets가 필요하지 않다.
 
-Server checkout에서 Actions token 기반 repository fetch나 `DEPLOY_SHA` detached checkout이 실패하면 deploy가 source sync 단계에서 멈춘다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
+Broker socket이 없거나 signed exact-digest envelope/attestation/private
+bindings/migration-prefix evidence가 없으면 deploy submit이 fail-closed로
+멈춘다. Production host는 checkout/build를 수행하지 않는다.
 
 GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 과거 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패했다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꾸는 중간 fix였고, Issue #98은 long-running QEMU publish를 제거해 OCI host에서 ARM64 image를 직접 build하도록 바꾼 현재 fix다.
 
@@ -420,7 +496,12 @@ pnpm exec vitest run tests/github-actions/ci-cd.test.ts tests/docker/compose.tes
 pnpm exec vitest run tests/observability/sentry-config.test.ts tests/observability/sentry-scrub-event.test.ts tests/observability/sentry-files.test.ts tests/observability/application-metrics.test.ts tests/observability/ai-unavailable.test.ts
 ```
 
-Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target build가 실행된다. `main` deploy path에서는 OCI host의 `docker compose build web tools`, Prisma migration deploy, RAG vector index setup, public HTTPS health check가 실행된다. Local wiki maintenance 후에는 `pnpm wiki:manifest`와 `pnpm wiki:lint`로 frontmatter, manifest, link 구조를 확인한다.
+Full CI path에서는 native ARM64에서 `pnpm test`, `pnpm run build`, exact
+digest Docker `runner` build가 실행된다. `main` deploy path는 root broker에
+bounded release frame을 submit하고, broker가 migration/qualification/
+promotion/public smoke 순서를 수행한다. Local wiki maintenance 후에는
+`pnpm wiki:manifest`와 `pnpm wiki:lint`로 frontmatter, manifest, link 구조를
+확인한다.
 
 ## 근거
 

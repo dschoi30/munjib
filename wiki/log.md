@@ -2911,3 +2911,23 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-13T18:00:00+09:00 - security-runtime
+
+- Result: Leaf 13B Task 6 adds an exact-digest private blue/green runtime gate.
+- Coverage: native ARM64 image admission, private side-effect-disabled candidate,
+  loopback Web/PostgreSQL boundaries, non-root read-only capability drop,
+  distinct `0400` file credentials, broker operation revalidation, and
+  crash-safe `PREPARED` → `TRAFFIC_SWITCHED` → `COMMITTED` promotion with
+  floor-aware rollback.
+- Safety gate: main deployment remains disabled until the installed root broker
+  advertises `MIGRATE`/`PROMOTE` and the protected readiness variable is enabled;
+  no host checkout/build or caller-selected operation is used as fallback.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `Dockerfile`, `docker-compose.yml`,
+  `docker-compose.candidate.yml`, `docker-compose.migrator.yml`,
+  `docker-compose.tools.yml`, `.github/workflows/ci-cd.yml`,
+  `scripts/deploy/qualify-candidate.ts`,
+  `scripts/deploy/verify-private-bindings.ts`,
+  `scripts/deploy/reconcile-promotion.ts`, and focused Docker/deploy/workflow
+  tests.

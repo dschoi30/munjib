@@ -74,3 +74,39 @@ pnpm exec vitest run \
   tests/deploy/database-role-bundle.test.ts --reporter=dot
 pnpm exec tsc --noEmit --pretty false
 ```
+
+## Exact-digest private blue/green gate
+
+The production Compose source is an immutable security projection. Web,
+migrator, and tools consume the same exact application image digest while the
+PostgreSQL and storage-init images are independently digest-pinned. The base
+runtime has no PostgreSQL host port, binds Web only to loopback, runs as
+`10001:10001` read-only with `CAP_DROP=ALL`, `no-new-privileges`, and `/tmp`
+and `/run` tmpfs writes. Runtime credentials are separate file-backed secrets
+with uid/gid `10001` and mode `0400`.
+
+Candidate Web is a distinct private service. It publishes no port, has no
+attachment volume, and disables email, OAuth callbacks, background jobs,
+indexing, external providers, and attachment writes. Candidate qualification
+requires native `linux/arm64`, exact app/PostgreSQL/host-bundle digests,
+attestation and fresh evidence, an exact migration prefix, candidate smoke
+evidence, private-binding verification, and an independently revalidated
+broker envelope.
+
+The GitHub deploy job remains fail-closed until the installed root broker
+advertises the fixed `MIGRATE` and `PROMOTE` operations and the repository
+variable `MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true` is enabled. Leaf 13A's
+current policy intentionally contains only substrate operations; enabling this
+flag before the broker extension is installed would be unsafe.
+
+Promotion is crash-safe and monotonic: `PREPARED` → `TRAFFIC_SWITCHED` →
+`COMMITTED`. The broker owns fixed Compose/network/command descriptors; callers
+cannot select tags, paths, host ports, environment keys, entrypoints, or
+commands. Pre-switch interruption removes the candidate. A rollback is
+admitted only when its recorded capability floor is not below the current
+floor; otherwise maintenance/fix-forward is required.
+
+```bash
+pnpm exec tsx scripts/deploy/verify-private-bindings.ts <private-bindings.json>
+pnpm exec tsx scripts/deploy/qualify-candidate.ts <candidate.json>
+```

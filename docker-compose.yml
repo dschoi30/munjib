@@ -1,33 +1,28 @@
 services:
   postgres:
-    image: pgvector/pgvector:0.8.2-pg16
+    image: ${POSTGRES_IMAGE:?exact postgres digest required}
     environment:
-      POSTGRES_USER: obsidian
-      POSTGRES_PASSWORD: obsidian
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_bootstrap_credential
       POSTGRES_DB: obsidian_clone
-    ports:
-      - "${POSTGRES_PORT:-55432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - private
+    secrets:
+      - source: postgres_bootstrap_credential
+        target: postgres_bootstrap_credential
+        uid: "999"
+        gid: "999"
+        mode: "0400"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U obsidian -d obsidian_clone"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d obsidian_clone"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   web:
-    image: ${WEB_IMAGE:-ghcr.io/dschoi30/munjib:latest}
-    build:
-      context: .
-      target: runner
-      args:
-        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
-        NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}
-        NEXT_PUBLIC_SENTRY_RELEASE: ${NEXT_PUBLIC_SENTRY_RELEASE:-}
-        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.05}
-        NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE:-0}
-        NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE:-0}
-        SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+    image: ${WEB_IMAGE:?exact application digest required}
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +32,6 @@ services:
     environment:
       NODE_ENV: production
       MUNJIB_DEPLOYMENT_ENV: production
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
       NEXTAUTH_URL: ${NEXTAUTH_URL:?nextauth url required}
       NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
       NEXTAUTH_COOKIE_SECURE: "true"
@@ -74,21 +68,47 @@ services:
       MUNJIB_LANGFUSE_ENABLED: ${MUNJIB_LANGFUSE_ENABLED:-}
       MUNJIB_LANGFUSE_CAPTURE_MODE: ${MUNJIB_LANGFUSE_CAPTURE_MODE:-}
       MUNJIB_LANGFUSE_CAPTURE: ${MUNJIB_LANGFUSE_CAPTURE:-metadata}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGSSLMODE PGSSLROOTCERT PGSSLCERT PGSSLKEY PGAPPNAME PGCHANNELBINDING
+        credential_encoded="$$(node -e 'const chunks=[];process.stdin.on("data",c=>chunks.push(c)).on("end",()=>process.stdout.write(encodeURIComponent(Buffer.concat(chunks).toString("utf8"))))' < /run/secrets/munjib_web_credential)"
+        test -n "$$credential_encoded"
+        export DATABASE_URL="postgresql://munjib_web:$${credential_encoded}@postgres:5432/obsidian_clone?schema=public&options=$$(node -e 'process.stdout.write(encodeURIComponent("-c search_path=pg_catalog,public,munjib_extensions"))')"
+        exec pnpm start
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - web_storage:/app/storage
+      - web_storage:/app/storage:ro
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    networks:
+      - private
     secrets:
       - source: munjib_nextauth_secret
         target: munjib_nextauth_secret
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
+      - source: munjib_web_credential
+        target: munjib_web_credential
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
 
   # The production web image is intentionally non-root. Initialize the named
   # volume once per `up` so fresh and previously root-owned attachment trees
   # are writable by the pinned runtime UID before Next.js starts.
   storage-init:
-    image: alpine:3.22
+    image: ${STORAGE_INIT_IMAGE:?exact storage-init digest required}
     user: "0:0"
     command:
       - /bin/sh
@@ -99,9 +119,11 @@ services:
         chmod 0750 /app/storage /app/storage/attachments
     volumes:
       - web_storage:/app/storage
+    networks:
+      - private
 
   auth-preflight:
-    image: ${WEB_IMAGE:-ghcr.io/dschoi30/munjib:latest}
+    image: ${WEB_IMAGE:?exact application digest required}
     profiles:
       - auth-preflight
     user: "10001:10001"
@@ -117,31 +139,62 @@ services:
     secrets:
       - source: munjib_nextauth_secret
         target: munjib_nextauth_secret
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
 
   tools:
-    build:
-      context: .
-      target: tools
+    image: ${WEB_IMAGE:?exact application digest required}
     profiles:
       - tools
     depends_on:
       postgres:
         condition: service_healthy
     environment:
-      NODE_ENV: development
-      MUNJIB_DEPLOYMENT_ENV: ${MUNJIB_DEPLOYMENT_ENV:-development}
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://obsidian:obsidian@postgres:5432/obsidian_clone?schema=public}
-      MUNJIB_OLLAMA_BASE_URL: ${MUNJIB_OLLAMA_BASE_URL:-http://host.docker.internal:11434}
-      MUNJIB_RAG_CHAT_MODEL: ${MUNJIB_RAG_CHAT_MODEL:-gemma4:e4b}
-      MUNJIB_RAG_EMBED_MODEL: ${MUNJIB_RAG_EMBED_MODEL:-bge-m3}
-      MUNJIB_RAG_EMBED_DIMENSIONS: ${MUNJIB_RAG_EMBED_DIMENSIONS:-1024}
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      NODE_ENV: production
+      MUNJIB_DEPLOYMENT_ENV: production
+      MUNJIB_RAG_CHAT_PROVIDER: ollama
+      MUNJIB_RAG_EMBED_PROVIDER: ollama
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGSSLMODE PGSSLROOTCERT PGSSLCERT PGSSLKEY PGAPPNAME PGCHANNELBINDING
+        credential_encoded="$$(node -e 'const chunks=[];process.stdin.on("data",c=>chunks.push(c)).on("end",()=>process.stdout.write(encodeURIComponent(Buffer.concat(chunks).toString("utf8"))))' < /run/secrets/munjib_rag_credential)"
+        test -n "$$credential_encoded"
+        export DATABASE_URL="postgresql://munjib_rag:$${credential_encoded}@postgres:5432/obsidian_clone?schema=public&options=$$(node -e 'process.stdout.write(encodeURIComponent("-c search_path=pg_catalog,public,munjib_extensions"))')"
+        exec pnpm run db:rag:index
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    networks:
+      - private
+    secrets:
+      - source: munjib_rag_credential
+        target: munjib_rag_credential
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
 
 volumes:
   postgres_data:
   web_storage:
 
+networks:
+  private:
+    internal: true
+
 secrets:
   munjib_nextauth_secret:
     file: /etc/munjib/secrets/nextauth-current
+  munjib_web_credential:
+    file: /etc/munjib/secrets/web-current
+  munjib_rag_credential:
+    file: /etc/munjib/secrets/rag-current
+  postgres_bootstrap_credential:
+    file: /etc/munjib/secrets/postgres-bootstrap-current

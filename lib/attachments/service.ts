@@ -15,6 +15,7 @@ import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
+import { assertAttachmentWritesAllowed } from "@/lib/runtime/private-candidate";
 
 const maxAttachmentBytes = 5 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -40,6 +41,7 @@ export type UploadDocumentAttachmentInput = {
 };
 
 export async function uploadDocumentAttachment(input: UploadDocumentAttachmentInput) {
+  assertAttachmentWritesAllowed();
   if (input.bytes.byteLength === 0) throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_EMPTY);
   if (input.bytes.byteLength > maxAttachmentBytes) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);
@@ -147,6 +149,7 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
 }
 
 export async function uploadPastedDocumentImageAttachment(input: UploadDocumentAttachmentInput) {
+  assertAttachmentWritesAllowed();
   if (input.bytes.byteLength === 0) throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_EMPTY);
   if (input.bytes.byteLength > maxAttachmentBytes) {
     throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_TOO_LARGE);

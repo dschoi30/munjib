@@ -6,6 +6,9 @@ services:
     secrets:
       - source: munjib_google_client_secret
         target: munjib_google_client_secret
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
 
   auth-preflight:
     environment:
@@ -14,6 +17,9 @@ services:
     secrets:
       - source: munjib_google_client_secret
         target: munjib_google_client_secret
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
 
 secrets:
   munjib_google_client_secret:

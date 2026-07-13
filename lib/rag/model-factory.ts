@@ -4,6 +4,7 @@ import type {
   RagChatModelConfig,
   RagEmbeddingModelConfig,
 } from "@/lib/rag/model-config";
+import { assertExternalProvidersAllowed } from "@/lib/runtime/private-candidate";
 
 export type RagModelProvider = "ollama" | "openai" | "openai-compatible";
 export type RagEmbeddingFactoryConfig = Pick<
@@ -40,6 +41,7 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
   config: RagChatModelConfig,
   constructors?: C,
 ): ConstructorInstance<C["ChatOllama"]> | ConstructorInstance<C["ChatOpenAI"]> {
+  assertExternalProvidersAllowed();
   const resolved = constructors ?? getDefaultConstructors();
 
   if (config.provider === "ollama") {
@@ -70,6 +72,7 @@ export function createEmbeddingModel<C extends EmbeddingConstructors = Embedding
   config: RagEmbeddingFactoryConfig,
   constructors?: C,
 ): ConstructorInstance<C["OllamaEmbeddings"]> | ConstructorInstance<C["OpenAIEmbeddings"]> {
+  assertExternalProvidersAllowed();
   const resolved = constructors ?? getDefaultConstructors();
 
   if (config.provider === "ollama") {

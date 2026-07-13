@@ -331,6 +331,15 @@ describe("authOptions", () => {
     expect(resolveGoogleAuthCredentials()).toBeNull();
   });
 
+  it("disables Google callbacks for the private candidate even when credentials exist", () => {
+    expect(resolveGoogleAuthCredentials({
+      MUNJIB_CANDIDATE: "true",
+      MUNJIB_DISABLE_OAUTH_CALLBACKS: "true",
+      GOOGLE_CLIENT_ID: "client-id",
+      GOOGLE_CLIENT_SECRET: "provider-secret",
+    })).toBeNull();
+  });
+
   it("resolves Google credentials from the validated production secret file", () => {
     const env = {
       MUNJIB_DEPLOYMENT_ENV: "production",

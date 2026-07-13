@@ -1,0 +1,69 @@
+# Exact-digest candidate overlay. It deliberately uses a distinct service so
+# current web traffic remains live until the broker switches the fixed Caddy
+# backend after all qualification gates have passed.
+services:
+  candidate:
+    image: ${WEB_IMAGE:?exact application digest required}
+    profiles:
+      - candidate
+    user: "10001:10001"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+      - /run
+    expose:
+      - "3000"
+    ports: []
+    networks:
+      private:
+        aliases:
+          - candidate-web
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      MUNJIB_DEPLOYMENT_ENV: production
+      MUNJIB_CANDIDATE: "true"
+      MUNJIB_DISABLE_EMAIL: "true"
+      MUNJIB_DISABLE_OAUTH_CALLBACKS: "true"
+      MUNJIB_DISABLE_BACKGROUND_JOBS: "true"
+      MUNJIB_DISABLE_INDEXING: "true"
+      MUNJIB_DISABLE_EXTERNAL_PROVIDERS: "true"
+      MUNJIB_ATTACHMENTS_WRITABLE: "false"
+      MUNJIB_ENABLE_EMAIL: "false"
+      MUNJIB_ENABLE_OAUTH_CALLBACKS: "false"
+      MUNJIB_BACKGROUND_JOBS: "false"
+      MUNJIB_RAG_INDEXING: "false"
+      MUNJIB_EXTERNAL_PROVIDERS: "false"
+      NEXTAUTH_COOKIE_SECURE: "true"
+      MUNJIB_ENABLE_DEV_LOGIN: "false"
+      NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
+      NEXTAUTH_URL: ${NEXTAUTH_URL:?nextauth url required}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        unset PGUSER PGPASSWORD PGHOST PGPORT PGDATABASE PGSERVICE PGSERVICEFILE PGOPTIONS PGSSLMODE PGSSLROOTCERT PGSSLCERT PGSSLKEY PGAPPNAME PGCHANNELBINDING
+        credential_encoded="$$(node -e 'const chunks=[];process.stdin.on("data",c=>chunks.push(c)).on("end",()=>process.stdout.write(encodeURIComponent(Buffer.concat(chunks).toString("utf8"))))' < /run/secrets/munjib_web_credential)"
+        test -n "$$credential_encoded"
+        export DATABASE_URL="postgresql://munjib_web:$${credential_encoded}@postgres:5432/obsidian_clone?schema=public&options=$$(node -e 'process.stdout.write(encodeURIComponent("-c search_path=pg_catalog,public,munjib_extensions"))')"
+        exec pnpm start
+    secrets:
+      - source: munjib_nextauth_secret
+        target: munjib_nextauth_secret
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
+      - source: munjib_web_credential
+        target: munjib_web_credential
+        uid: "10001"
+        gid: "10001"
+        mode: "0400"
+
+networks:
+  private:
+    internal: true
