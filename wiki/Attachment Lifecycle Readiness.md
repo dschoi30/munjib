@@ -53,6 +53,8 @@ file manifest를 입력으로 받아 `referenced`, `missing-bytes`,
 UTF-16 code unit 순서를 사용한다. 이 코드는 filesystem/DB를 직접 읽거나
 삭제하지 않으므로 candidate manifest를 준비하는 호출자와 production purge를
 의도적으로 분리한다.
+Lifecycle contract parsing checks required fields as own properties, so inherited
+prototype members cannot satisfy a fail-closed readiness contract.
 
 ## Dependency-gated phases
 

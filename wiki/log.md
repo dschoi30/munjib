@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
+
+- Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
+- Pages: [[Attachment Lifecycle Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/lifecycle-contract.ts`, `tests/attachments/lifecycle-contract.test.ts`, PR #195 review thread.
+- Verification: focused lifecycle-contract tests, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T13:40:00+09:00 - Issue #165 review hardening for malformed inventory input
 
 - Result: Tightened the preparation primitive after review. The lifecycle
