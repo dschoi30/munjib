@@ -248,6 +248,16 @@ pnpm delivery:build-bundle -- dist/delivery/linux-arm64 .artifacts/delivery-subs
 pnpm delivery:verify-bundle -- .artifacts/delivery-substrate-v1
 ```
 
+The `ci` job runs the same contract on GitHub-hosted Linux: a SHA-pinned
+`actions/setup-go` (`v5.5.0`) provisions Go `1.22.12`, the three fixed Go
+programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
+`GOARCH=arm64`, and the builder/verifier run before the CI summary receives
+only target, artifact names, and SHA-256 lines. The binaries and bundle are
+kept in the runner's temporary directory; no binary upload, signing key,
+trust-key enrollment, SSH mutation, or host install occurs. This step is part
+of `ci` so a failed artifact contract blocks a main deploy, while the deploy
+job's existing push-only condition and host gate remain unchanged.
+
 Required GitHub secrets:
 
 ```text

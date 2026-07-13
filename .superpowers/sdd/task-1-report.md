@@ -46,6 +46,12 @@ emits a per-file SHA-256 manifest plus a manifest digest, and declares
 it. The verifier checks target, layout digest, ownership/mode metadata, payload
 digests, symlink absence, and unexpected top-level files.
 
+The CI workflow now cross-compiles the three fixed Go programs for Linux/ARM64
+with SHA-pinned `actions/setup-go` v5.5.0 and Go 1.22.12, runs the same
+build/verify commands, and emits only public SHA-256 metadata in the job
+summary. It does not upload binaries, sign a manifest, enroll a key, or alter
+the existing deploy gate.
+
 ## Why automation is not safe yet
 
 The broker's trust decision is tied to a root-managed public key and the
@@ -119,6 +125,9 @@ production host is ready.
   `scripts/deploy/delivery-bundle.ts`, and the build/verify entrypoints. The
   builder/verifier are public-safe packaging code and do not claim host
   installation or key enrollment.
+- Added the CI cross-compile/metadata step and its workflow contract test; the
+  step is part of `ci`, so a failed artifact contract blocks a main deploy while
+  the deploy job's existing condition remains unchanged.
 - Confirmed no delivery-substrate installer, Go build step, signer, or
   attestation workflow is present.
 - Confirmed the local environment has no `go` executable and no live broker
