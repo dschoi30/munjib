@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T16:05:00+09:00 - Issue #166 edge evaluator review follow-up
+
+- Result: the existing edge evaluator follow-up is retained and documented: contract loading runs in `beforeAll`, and no-store matching covers `/api` and `/workspaces` roots plus descendants without broadening `/login` boundaries.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/deploy/edge-bindings-evaluator.test.ts`, `lib/deploy/edge-bindings.ts`, PR #205 review threads.
+- Verification: focused edge evaluator suite (9 tests), CWD-independent fixture invocation, and TypeScript verification recorded in the branch.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
