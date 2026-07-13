@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T15:20:00+09:00 - Issue #164 review follow-up
+
+- Result: AI provider readiness tests now reject bare `baseUrl`, `apiKey`, `embeddingProvider`, and `embeddingModel` names in both request routes, covering nested `body.value` payload shapes.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/security/ai-provider-policy-readiness.test.ts`, PR #194 review thread.
+- Verification: focused readiness test, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.

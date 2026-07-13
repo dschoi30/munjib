@@ -28,10 +28,10 @@ describe("Issue #164 AI provider policy readiness", () => {
     for (const source of [askRoute, workspaceRoute]) {
       expect(source).toContain("validateChatProvider");
       expect(source).toContain("validateChatModelId");
-      expect(source).not.toContain("body.baseUrl");
-      expect(source).not.toContain("body.apiKey");
-      expect(source).not.toContain("body.embeddingProvider");
-      expect(source).not.toContain("body.embeddingModel");
+      expect(source).not.toContain("baseUrl");
+      expect(source).not.toContain("apiKey");
+      expect(source).not.toContain("embeddingProvider");
+      expect(source).not.toContain("embeddingModel");
     }
   });
 });
