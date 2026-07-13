@@ -188,6 +188,29 @@ before the transactional upsert, matching the password login normalizer.
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
 
+## Issue #162 auth-abuse/session-revocation readiness
+
+Issue #162 (`issue-162-security-auth-abuse-sessions`) remains a dependency-gated
+readiness handoff on the current release line. The eventual authority is
+PostgreSQL, not the existing process-local password work limiter: every
+authentication entry point must fail closed when the guard store is unavailable,
+and each encrypted JWT must resolve against a database registry row, user
+`sessionVersion`, disabled state, and expiry on every request. Raw session IDs,
+limiter identifiers, account identifiers, and client addresses must never enter
+logs, alerts, or persisted limiter records.
+
+Implementation is blocked until Leaf 2 supplies the canonical disabled-user,
+BigInt session-version, support-grant, and same-transaction deny-only security
+journal contracts, and Leaf 13 supplies the verified private binding/database
+role plus an attested delivery-broker host path (Issues #184 and #185). The
+current `Session` adapter table is not a substitute because runtime auth uses
+encrypted JWTs. Leaf 1's config/password/adapter/session-image paths remain
+protected seams; Issue #162 must compose the reserved downstream slot without
+claiming those files or adding a second session decoder.
+
+The public-safe handoff and gate checklist live in
+`docs/runbooks/auth-abuse-sessions-readiness.md`.
+
 ## Cookie namespace
 
 NextAuth session cookie는 `munjib.session-token` 이름을 사용한다. 이 이름은 이전 `obsidian-clone.session-token` stale cookie가 `/login`에서 `JWT_SESSION_ERROR`를 일으키던 문제를 피하기 위해 분리된 것이다.

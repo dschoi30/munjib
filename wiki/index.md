@@ -76,6 +76,8 @@ links:
 
 ## 상태판
 
+- Issue #162 auth-abuse/session-revocation은 Leaf 2의 disabled-user/session-version/journal authority와 Leaf 13의 private binding/database-role/broker attestation이 준비될 때까지 readiness handoff로 유지한다. 공개 안전한 게이트와 다음 구현 순서는 `docs/runbooks/auth-abuse-sessions-readiness.md`와 [[Auth And Permissions Workflow]]에 기록한다.
+
 - Secure runtime: Leaf 3 pins the Next.js 15.5.18 runtime with exact matching ESLint configuration, a paginated advisory gate, a deterministic protected dependency projection, and a local production-like auth/RSC smoke via `pnpm run test:security-runtime`; see [[CI CD And Monitoring Workflow]] and [[Local Development Workflow]].
 - Immutable database authority: Leaf 13B adds append-only migration name/checksum admission, explicit expand/contract classification, NOLOGIN schema ownership, least-privilege Web/RAG roles, fixed libpq credential-file entrypoints, and a PRE_JOURNAL `database-role-v1` manifest/builder; see [[CI CD And Monitoring Workflow]].
 - Production dependency audit: Issue #171 pins the reviewed transitive production floors (`postcss` 8.5.10, `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, and scoped `minimatch@10.2.5>brace-expansion` 5.0.6) through exact pnpm overrides, preserves minimatch 3 compatibility, and runs the unfiltered `pnpm audit --prod` gate alongside Next.js 15.5.18. Issue #174 additionally scopes `tsx>esbuild` to patched `esbuild` 0.28.1 so the production auth-preflight path is clean without changing the dev-only Vite resolution; see [[CI CD And Monitoring Workflow]].

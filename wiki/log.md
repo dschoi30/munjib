@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T16:00:00+09:00 - Issue #162 auth-abuse/session-revocation readiness handoff
+
+- Result: Issue #162 is kept documentation-only on the current release line. The existing encrypted-JWT runtime has no database session registry, and the current schema lacks the Leaf 2 disabled-user/session-version and deny-only journal authorities required by the design. Leaf 13 private binding/database-role and broker attestation remain separate dependency gates.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, `prisma/schema.prisma`, `lib/auth/config.ts`, `lib/auth/downstream/leaf2.ts`, and Issues #162, #184, and #185.
+- Verification: public-safe source/authority review only; no schema migration, secret rotation, route activation, host installation, or production mutation was performed.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
