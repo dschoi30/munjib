@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T20:00:00+09:00 - Issue #139 embedding profile readiness
+
+- Result: Added a side-effect-free embedding profile registry contract for the existing Ollama `bge-m3` 1024 index. The versioned profile id is forward-looking while the legacy `indexId` remains `bge-m3`; no runtime index, schema, provider, workspace, or production behavior changed.
+- Coverage: deterministic profile id encoding, exact 1024-dimension validation, registry lookup, caller-supplied provider availability filtering, and absence of secrets/base URLs in registry metadata.
+- Pages: [[RAG Process Workflow]], [[Embedding Profile Registry Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #139 assessment, `lib/rag/model-config.ts`, `lib/rag/embedding-registry.ts`, `tests/rag/embedding-registry.test.ts`.
+- Verification: focused registry/model-config tests, TypeScript, and wiki manifest/lint/sync checks.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
