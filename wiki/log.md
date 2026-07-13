@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #160 ACL review follow-up
+
+- Folder locks reject archived rows; document ACL uses the exported canonical workspace-role permission ceiling map so Leaf 6 decisions cannot drift from shared permission policy.
+- Source evidence: `lib/authorization/active-resource-locks.ts`, `lib/permissions/document.ts`, `lib/authorization/document-acl.ts`, focused authorization tests, PR #201 review threads.
+- Verification: ACL/permission/active-resource focused tests (16 passed), TypeScript, and staged wiki gates.
+
 ## 2026-07-13T21:15:00+09:00 - Issue #159 schema-safe resolver and lock contract
 
 - Result: Added the shared active-resource resolver boundary with a deliberate

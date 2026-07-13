@@ -11,7 +11,7 @@ const permissionRanks: Record<PermissionLevel, number> = {
   MANAGE: 3,
 };
 
-const workspacePermissionCeilings: Record<WorkspaceRole, PermissionLevel> = {
+export const workspacePermissionCeilings: Record<WorkspaceRole, PermissionLevel> = {
   OWNER: "MANAGE",
   ADMIN: "MANAGE",
   EDITOR: "WRITE",

@@ -54,6 +54,13 @@ describe("active-resource lock order", () => {
     expect(calls).toHaveLength(1);
   });
 
+  it("rejects archived folders instead of returning an active boundary", async () => {
+    const archived = fakeTx([[{ id: "folder-a", archivedAt: new Date() }]]);
+    await expect(
+      lockFolderBoundaries(archived.tx, "workspace-id", ["folder-a"]),
+    ).rejects.toThrow("FOLDER_NOT_FOUND");
+  });
+
   it("locks only an active document belonging to the already locked workspace", async () => {
     const { tx } = fakeTx([
       [

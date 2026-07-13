@@ -3,6 +3,7 @@ import {
   canReadDocument,
   canWriteDocument,
   capDocumentPermissionByWorkspaceRole,
+  workspacePermissionCeilings,
 } from "@/lib/permissions/document";
 import {
   isActiveDocumentResource,
@@ -71,7 +72,7 @@ export function decideDocumentAcl(input: {
       allowed: true,
       reason: "AUTHORIZED",
       effectivePermission:
-        effectivePermission ?? (workspaceRole === "VIEWER" ? "READ" : workspaceRole === "EDITOR" ? "WRITE" : "MANAGE"),
+        effectivePermission ?? workspacePermissionCeilings[workspaceRole],
     };
   }
 
