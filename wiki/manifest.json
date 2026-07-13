@@ -1,7 +1,32 @@
 {
   "version": 1,
-  "updated": "2026-07-12",
+  "updated": "2026-07-13",
   "pages": [
+    {
+      "id": "workflow-attachment-lifecycle-readiness",
+      "path": "wiki/Attachment Lifecycle Readiness.md",
+      "title": "Attachment Lifecycle Readiness",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Issue #165 첨부 파일 lifecycle hardening의 현재 contract, dependency gate, preparation-only evidence 경계.",
+      "tags": [
+        "munjib",
+        "security",
+        "attachments",
+        "lifecycle",
+        "readiness"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Document Editing Workflow]]",
+        "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Document Knowledge Model]]",
+        "[[CI CD And Monitoring Workflow]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 8,
+      "searchPriority": 50
+    },
     {
       "id": "workflow-auth-and-permissions",
       "path": "wiki/Auth And Permissions Workflow.md",
@@ -107,7 +132,8 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]",
-        "[[Markdown Import And Clipboard Paste Workflow]]"
+        "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Attachment Lifecycle Readiness]]"
       ],
       "source_count": 101,
       "searchPriority": 50
@@ -195,6 +221,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Attachment Lifecycle Readiness]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
         "[[RAG Process Workflow]]",

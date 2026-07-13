@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-07-09
+updated: 2026-07-13
 source_count: 101
 tags:
   - munjib
@@ -20,6 +20,7 @@ links:
   - "[[Wiki Links And Backlinks]]"
   - "[[Auth And Permissions Workflow]]"
   - "[[Markdown Import And Clipboard Paste Workflow]]"
+  - "[[Attachment Lifecycle Readiness]]"
 ---
 
 # Document Editing Workflow
@@ -125,6 +126,13 @@ Issue #20 구현에서 `createDocument()`는 `folderId`를 받을 수 있다. To
 `restoreDocumentVersion()`은 선택한 `DocumentVersion`의 title과 markdown으로 현재 문서를 되돌린다. 복원도 새 version을 생성하고 `document.version_restored` audit log를 남기며, links와 metadata를 다시 reconcile한다. 복원된 title/path가 기존 broken link target으로 resolve되면 해당 `DocumentLink` rows도 repair한다. Commit 뒤에는 복원된 saved content로 RAG chunk refresh를 예약하고, indexing latency나 failure는 복원 성공을 막지 않는다.
 
 `uploadDocumentAttachmentAction()`은 file upload를 받아 `uploadDocumentAttachment()`로 넘긴다. service는 5MB 이하의 허용 MIME type만 받아 `storage/attachments/`에 저장하고, image는 `![file](/api/attachments/<id>)`, 그 외 파일은 `[file](/api/attachments/<id>)` markdown link를 본문 끝에 append한다. DB transaction 실패 시 이미 쓴 파일은 삭제한다. Manual attachment upload는 saved markdown을 변경하므로 transaction commit 뒤 해당 문서의 RAG chunk refresh를 예약한다.
+
+Issue #165의 attachment lifecycle readiness는 이 write/read contract를
+변경하지 않는다. Archived document purge 뒤 남는 storage bytes와 Save되지
+않은 paste-only image의 expiry는 별도 dependency-gated mutation leaf다.
+현재는 `[[Attachment Lifecycle Readiness]]`의 Phase A read-only inventory와
+dry-run reconciliation만 허용하며, broker/database authority attestation
+전에는 파일 cleanup이나 production scheduler를 실행하지 않는다.
 
 Attachment read는 DB row 권한 확인 뒤 `storage/attachments/<storageKey>` file을 읽는다. DB의 `Attachment` row는 남아 있지만 local/Docker storage file이 없어진 경우 `ENOENT`/`ENOTDIR`를 raw 500으로 노출하지 않고 `ATTACHMENT_NOT_FOUND`로 매핑하며, `/api/attachments/<id>` route는 이 오류와 read-forbidden 오류를 404 JSON response로 정규화한다. Markdown preview는 선택 문서에 연결된 `Attachment` id 목록과 현재 editor session에서 성공한 paste-upload attachment id를 받아 `/api/attachments/<id>` 이미지 링크가 이 allow-list에 없으면 `<img>`로 렌더하지 않고 alt text만 남긴다. 따라서 stale internal image URL은 브라우저 요청을 만들지 않고, valid attached image, route refresh 전의 freshly pasted image, external image URL은 기존처럼 preview에 표시된다.
 

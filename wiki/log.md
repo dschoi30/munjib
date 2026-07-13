@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T11:25:00+09:00 - Issue #165 attachment lifecycle readiness handoff
+
+- Result: Added a public-safe, preparation-only attachment lifecycle contract and runbook. The contract records the current transaction/ACL/preview boundaries, the orphan-byte and abandoned-paste gaps, dependency gates for Issues #2/#4/#5/#6 and Leaf 13B, and the later Issue #164 provider-policy v2 boundary without enabling deletion, schema changes, or production scheduling.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/service.ts`, `app/api/attachments/[attachmentId]/route.ts`, `lib/documents/purge-archived.ts`, `components/document-editor/markdown-preview.tsx`, `deploy/attachments/attachment-lifecycle-readiness-v1.json`, `lib/attachments/lifecycle-contract.ts`, and attachment/purge tests.
+- Verification: focused lifecycle contract tests, TypeScript, and wiki manifest/lint/sync gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
