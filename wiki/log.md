@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T15:50:00+09:00 - Issue #166 review follow-up
+
+- Result: edge bindings contract and focused test now use the canonical `11v2` dependency identifier consistently with the runbook and activation gate.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/security/edge-bindings-v1.json`, `tests/deploy/edge-bindings-contract.test.ts`, PR #196 review threads.
+- Verification: focused edge-bindings contract test, wiki manifest/lint/sync checks.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.

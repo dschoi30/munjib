@@ -21,7 +21,7 @@ describe("Issue #166 edge bindings readiness contract", () => {
       },
     });
     expect(contract.activationGates.productionMutationAllowed).toBe(false);
-    expect(contract.activationGates.dependencies).toEqual([3, 4, 7, 8, 9, 10, 11, "13B"]);
+    expect(contract.activationGates.dependencies).toEqual([3, 4, 7, 8, 9, 10, "11v2", "13B"]);
   });
 
   it("pins the required security headers and no-store boundary", () => {

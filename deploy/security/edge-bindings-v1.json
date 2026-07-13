@@ -91,7 +91,7 @@
     "retainResponseBody": false
   },
   "activationGates": {
-    "dependencies": [3, 4, 7, 8, 9, 10, 11, "13B"],
+    "dependencies": [3, 4, 7, 8, 9, 10, "11v2", "13B"],
     "requiredEvidence": [
       "edge-owner-approval",
       "tls-certificate-and-dns-binding",
