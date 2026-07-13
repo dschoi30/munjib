@@ -19,6 +19,21 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T18:00:00+09:00 - Issue #168 recovery readiness contract
+
+- Result: Added the dependency-safe public recovery contract and immutable parser
+  for Issue #168. It records fixed RPO/RTO and 7/4/3 retention objectives plus
+  isolated Phase A/Phase B ordering without executing backup, restore, purge, key,
+  or production operations.
+- Dependency boundary: Phase A waits for the attested Leaf 13 broker (#185).
+  Phase B also waits for exact-digest Leaf 13B (#184), Leaf 2 journal readiness,
+  Leaf 9 purge hooks, and Leaf 11 attachment lifecycle. Issue #168 remains open.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/backup/recovery-readiness-v1.json`,
+  `lib/backup/recovery-contract.ts`, and backup contract/runbook tests.
+- Verification: focused Vitest contract/runbook tests and wiki manifest/lint/sync
+  gates on the isolated branch.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
