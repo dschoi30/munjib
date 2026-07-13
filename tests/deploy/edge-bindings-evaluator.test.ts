@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import {
   evaluateEdgeProbe,
   isNoStorePath,
@@ -8,7 +8,10 @@ import {
   redactProbeTelemetry,
 } from "@/lib/deploy/edge-bindings";
 
-const contractJson = readFileSync("deploy/security/edge-bindings-v1.json", "utf8");
+let contractJson = "";
+beforeAll(() => {
+  contractJson = readFileSync("deploy/security/edge-bindings-v1.json", "utf8");
+});
 const requestFor = (probeId: string) =>
   probeId === "origin-loopback"
     ? {
@@ -104,8 +107,10 @@ describe("edge bindings contract evaluator", () => {
     const contract = parseEdgeBindingsContractJson(contractJson);
 
     expect(isNoStorePath(contract, "/api/auth/providers")).toBe(true);
+    expect(isNoStorePath(contract, "/api")).toBe(true);
     expect(isNoStorePath(contract, "/login?callbackUrl=%2F")).toBe(true);
     expect(isNoStorePath(contract, "/workspaces/acme")).toBe(true);
+    expect(isNoStorePath(contract, "/workspaces")).toBe(true);
     expect(isNoStorePath(contract, "/login-help")).toBe(false);
     expect(isNoStorePath(contract, "https://munjib.example.invalid/api/auth/providers")).toBe(true);
 

@@ -489,9 +489,10 @@ export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: un
   } catch {
     pathname = path.split(/[?#]/, 1)[0] ?? path;
   }
-  return contract.cachePolicy.noStorePathPrefixes.some((prefix) =>
-    pathname === prefix || pathname.startsWith(prefix.endsWith("/") ? prefix : `${prefix}/`),
-  );
+  return contract.cachePolicy.noStorePathPrefixes.some((prefix) => {
+    const root = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+    return pathname === root || pathname.startsWith(`${root}/`);
+  });
 }
 
 const hasNoStoreDirective = (value: string | undefined): boolean =>
