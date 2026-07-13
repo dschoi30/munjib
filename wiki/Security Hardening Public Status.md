@@ -31,11 +31,12 @@ state, secret, operator evidence는 이 wiki와 GitHub-visible history에 기록
   still a separate open gate in #185.
 - Database-authority contracts are merged in PR #181; exact-digest runtime
   continuation is draft PR #188 and remains fail-closed on the #185 gate.
-- Draft readiness handoffs currently visible: #186, #187, #189, #190, #191,
-  #192, #193, #194. These are not deployed controls and do not close their
-  issues.
-- #165 has a public readiness branch head (`7185ff8`) but no linked PR was found
-  in this audit. #161 and #166 have no current public-safe readiness PR found.
+- Draft readiness handoffs currently visible: #161, #186, #187, #189, #190,
+  #191, #192, #193, #194, #195, and #196. These are not deployed controls and
+  do not close their issues.
+- #165 is tracked by draft PR #195 (`7185ff8`), and #166 by draft PR #196. The
+  signup readiness work is currently draft PR #161 (`4b22bb2`); a separate
+  anticipated #198 was not visible at this audit.
 
 ## Authoritative status map
 
