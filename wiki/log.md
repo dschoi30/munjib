@@ -2920,3 +2920,10 @@ links:
 - Pages: [[index|Wiki Index]], `docs/runbooks/edge-bindings-readiness.md`.
 - Source evidence: `lib/deploy/edge-bindings.ts`, `deploy/security/edge-bindings-v1.json`, `tests/deploy/edge-bindings-evaluator.test.ts`.
 - Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (6 tests passed).
+
+## 2026-07-13T13:48:00+09:00 - security-edge-bindings-review
+
+- Result: Added review hardening to the #166 evaluator. Every observation now carries normalized transport, canonical connect address, Host, and exact path metadata; the unknown-host probe pins its HTTPS connection to `munjib.andrewchoi.link` before applying the `unknown.invalid` Host override. Malformed headers, timestamps, request paths, and metadata return a failure result instead of throwing.
+- Coverage: `tests/deploy/edge-bindings-evaluator.test.ts` now covers wrong host/path/connect address and malformed undefined/Symbol values.
+- Scope: Activation remains `DISABLED`; no edge or production mutation occurred.
+- Verification: `pnpm exec vitest run tests/deploy/edge-bindings-evaluator.test.ts` (9 tests passed), `pnpm exec tsc --noEmit`.

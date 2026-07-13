@@ -38,6 +38,7 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
       "expectedStatus": 200,
       "requiredHeaders": [
         "strict-transport-security",
@@ -70,6 +71,7 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "unknown.invalid",
+      "connectAddress": "munjib.andrewchoi.link",
       "expectedStatusClass": "4xx",
       "cadenceSeconds": 300,
       "timeoutSeconds": 10,

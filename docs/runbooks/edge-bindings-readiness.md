@@ -43,6 +43,12 @@ The public HTTPS and loopback probes run every 60 seconds with a 10-second and
 unknown-host negative probe runs every five minutes and must remain a 4xx.
 Probe requests use no cookies or credentials and discard response bodies. Alert
 payloads contain only `probeId`, status, latency, timestamp, and outcome.
+The evaluator also requires normalized request metadata (transport, canonical
+connect address, Host header, and exact path) to match the configured probe.
+The unknown-host negative probe connects to `munjib.andrewchoi.link` and only
+overrides the Host header to `unknown.invalid`; a DNS/TLS failure cannot count
+as a successful 4xx rejection. Malformed headers, timestamps, paths, or request
+metadata fail closed.
 
 ## Activation gates
 

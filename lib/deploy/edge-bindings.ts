@@ -40,6 +40,7 @@ export type EdgeProbe = {
   path: string;
   host: string;
   address?: string;
+  connectAddress?: string;
   expectedStatus?: number;
   expectedStatusClass?: "4xx";
   requiredHeaders?: string[];
@@ -89,7 +90,15 @@ export type EdgeProbeObservation = {
   latencyMs: number;
   observedAt: string;
   headers: EdgeProbeHeaders;
+  request: EdgeProbeRequestMetadata;
   [field: string]: unknown;
+};
+
+export type EdgeProbeRequestMetadata = {
+  transport: string;
+  connectAddress: string;
+  host: string;
+  path: string;
 };
 
 export type EdgeProbeEvaluation = {
@@ -201,6 +210,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
     "path",
     "host",
     "address",
+    "connectAddress",
     "expectedStatus",
     "expectedStatusClass",
     "requiredHeaders",
@@ -233,6 +243,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       base.transport !== "https" ||
       base.path !== "/api/auth/providers" ||
       base.host !== "munjib.andrewchoi.link" ||
+      probe.connectAddress !== "munjib.andrewchoi.link" ||
       base.cadenceSeconds !== 60 ||
       base.timeoutSeconds !== 10 ||
       base.failureThreshold !== 3 ||
@@ -250,6 +261,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       id: "public-https",
       transport: "https",
       method: "GET",
+      connectAddress: "munjib.andrewchoi.link",
       expectedStatus: 200,
       requiredHeaders,
       bodyPolicy: "discard",
@@ -265,6 +277,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       base.timeoutSeconds !== 5 ||
       base.failureThreshold !== 3 ||
       probe.address !== "127.0.0.1:3000" ||
+      probe.connectAddress !== undefined ||
       probe.expectedStatus !== 200
     ) {
       return fail("origin-loopback probe does not match the bounded contract");
@@ -285,6 +298,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       base.transport !== "https" ||
       base.path !== "/api/auth/providers" ||
       base.host !== "unknown.invalid" ||
+      probe.connectAddress !== "munjib.andrewchoi.link" ||
       base.cadenceSeconds !== 300 ||
       base.timeoutSeconds !== 10 ||
       base.failureThreshold !== 1 ||
@@ -297,6 +311,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       id: "unknown-host-rejection",
       transport: "https",
       method: "GET",
+      connectAddress: "munjib.andrewchoi.link",
       expectedStatusClass: "4xx",
       bodyPolicy: "discard",
     };
@@ -430,21 +445,44 @@ export function parseEdgeBindingsContractJson(raw: string): Readonly<EdgeBinding
   }
 }
 
-const headerMap = (headers: EdgeProbeHeaders): { values: Map<string, string>; duplicates: Set<string> } => {
+const headerMap = (
+  headers: unknown,
+): { values: Map<string, string>; duplicates: Set<string>; invalid: boolean } => {
   const values = new Map<string, string>();
   const duplicates = new Set<string>();
-  const entries = headers instanceof Headers ? [...headers.entries()] : Object.entries(headers);
+  if (typeof Headers !== "undefined" && headers instanceof Headers) {
+    for (const [rawName, rawValue] of headers.entries()) {
+      const name = rawName.trim().toLowerCase();
+      if (!name) return { values, duplicates, invalid: true };
+      if (values.has(name)) duplicates.add(name);
+      values.set(name, rawValue);
+    }
+    return { values, duplicates, invalid: false };
+  }
+  if (!isRecord(headers)) return { values, duplicates, invalid: true };
+  const entries = Object.entries(headers);
   for (const [rawName, rawValue] of entries) {
+    if (typeof rawName !== "string" || rawName.trim().length === 0) {
+      return { values, duplicates, invalid: true };
+    }
+    if (rawValue === null || rawValue === undefined) continue;
+    const value = Array.isArray(rawValue)
+      ? rawValue.every((part) => typeof part === "string")
+        ? rawValue.join(", ")
+        : null
+      : typeof rawValue === "string"
+        ? rawValue
+        : null;
+    if (value === null) return { values, duplicates, invalid: true };
     const name = rawName.trim().toLowerCase();
-    if (!name || rawValue === null || rawValue === undefined) continue;
-    const value = Array.isArray(rawValue) ? rawValue.join(", ") : String(rawValue);
     if (values.has(name)) duplicates.add(name);
     values.set(name, value);
   }
-  return { values, duplicates };
+  return { values, duplicates, invalid: false };
 };
 
-export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: string): boolean {
+export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: unknown): boolean {
+  if (typeof path !== "string") return false;
   let pathname = path;
   try {
     pathname = new URL(path, contract.canonicalOrigin).pathname;
@@ -469,9 +507,10 @@ export function evaluateEdgeProbe(
 ): EdgeProbeEvaluation {
   const reasons: string[] = [];
   const probe = contract.probes.find((candidate) => candidate.id === probeId);
-  const status = observation.status;
-  const latencyMs = observation.latencyMs;
-  const observedAt = observation.observedAt;
+  const source: Record<string, unknown> = isRecord(observation) ? observation : {};
+  const status = typeof source.status === "number" ? source.status : Number.NaN;
+  const latencyMs = typeof source.latencyMs === "number" ? source.latencyMs : Number.NaN;
+  const observedAt = typeof source.observedAt === "string" ? source.observedAt : "";
   if (!probe) {
     return { probeId, ok: false, status, latencyMs, observedAt, reasons: ["UNKNOWN_PROBE"] };
   }
@@ -485,7 +524,33 @@ export function evaluateEdgeProbe(
     reasons.push("STATUS_CLASS_MISMATCH:4xx");
   }
 
-  const headers = headerMap(observation.headers);
+  const request = source.request;
+  if (!isRecord(request)) {
+    reasons.push("REQUEST_INVALID");
+  } else {
+    if (typeof request.transport !== "string" || request.transport !== probe.transport) {
+      reasons.push("REQUEST_TRANSPORT_MISMATCH");
+    }
+    const expectedConnectAddress =
+      probe.connectAddress ?? probe.address ?? new URL(contract.canonicalOrigin).host;
+    if (
+      typeof request.connectAddress !== "string" ||
+      request.connectAddress !== expectedConnectAddress
+    ) {
+      reasons.push("REQUEST_CONNECT_ADDRESS_MISMATCH");
+    }
+    if (typeof request.host !== "string" || request.host !== probe.host) {
+      reasons.push("REQUEST_HOST_MISMATCH");
+    }
+    if (typeof request.path !== "string") {
+      reasons.push("REQUEST_PATH_INVALID");
+    } else if (request.path !== probe.path) {
+      reasons.push("REQUEST_PATH_MISMATCH");
+    }
+  }
+
+  const headers = headerMap(source.headers);
+  if (headers.invalid) reasons.push("HEADERS_INVALID");
   for (const duplicate of headers.duplicates) reasons.push(`HEADER_DUPLICATE:${duplicate}`);
   if (probe.requiredHeaders) {
     for (const requiredName of probe.requiredHeaders) {
