@@ -58,8 +58,24 @@ describe("invite-first signup readiness contract", () => {
     expect(() =>
       parseInviteSignupReadinessContract({ ...contract, prerequisites: [...prerequisites, prerequisites[0]] }),
     ).toThrow(/contract\.prerequisites/);
+    const sparsePrerequisites = [...prerequisites];
+    delete sparsePrerequisites[2];
+    expect(() =>
+      parseInviteSignupReadinessContract({ ...contract, prerequisites: sparsePrerequisites }),
+    ).toThrow(/contract\.prerequisites/);
     expect(() => parseInviteSignupReadinessContract({ ...contract, capabilitySha256: "a".repeat(64) })).toThrow(
       /unknown field/,
+    );
+  });
+
+  test("requires own contract keys instead of inheriting them from a prototype", () => {
+    const contract = loadContract() as Record<string, unknown>;
+    const inherited = Object.create({ forbiddenOperations: contract.forbiddenOperations }) as Record<string, unknown>;
+    Object.assign(inherited, contract);
+    delete inherited.forbiddenOperations;
+
+    expect(() => parseInviteSignupReadinessContract(inherited)).toThrow(
+      /contract\.forbiddenOperations is required/,
     );
   });
 

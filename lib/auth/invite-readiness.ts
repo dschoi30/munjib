@@ -76,7 +76,7 @@ function assertExactKeys(value: Record<string, unknown>, expected: readonly stri
     }
   }
   for (const key of expected) {
-    if (!(key in value)) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) {
       fail(`${path}.${key} is required`);
     }
   }
@@ -89,16 +89,26 @@ function assertLiteral<T extends string | number>(value: unknown, expected: T, p
 }
 
 function assertCanonicalArray<T extends string>(value: unknown, expected: readonly T[], path: string): readonly T[] {
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string")) {
+  if (!Array.isArray(value)) {
     fail(`${path} must be an array of strings`);
   }
-  if (value.length !== expected.length || value.some((item, index) => item !== expected[index])) {
+  const arr: readonly unknown[] = value;
+  for (let index = 0; index < arr.length; index += 1) {
+    if (!Object.prototype.hasOwnProperty.call(arr, index)) {
+      fail(`${path} must be a dense array`);
+    }
+  }
+  if (arr.some((item) => typeof item !== "string")) {
+    fail(`${path} must be an array of strings`);
+  }
+  const stringArr = arr as readonly string[];
+  if (stringArr.length !== expected.length || stringArr.some((item, index) => item !== expected[index])) {
     fail(`${path} has a non-canonical order or value`);
   }
-  if (new Set(value).size !== value.length) {
+  if (new Set(stringArr).size !== stringArr.length) {
     fail(`${path} must not contain duplicates`);
   }
-  return Object.freeze([...value] as T[]);
+  return Object.freeze([...stringArr] as T[]);
 }
 
 /**
@@ -125,17 +135,17 @@ export function parseInviteSignupReadinessContract(value: unknown): InviteSignup
     ],
     "contract",
   );
-  assertLiteral(value.format, INVITE_SIGNUP_READINESS_FORMAT, "contract.format");
-  assertLiteral(value.version, INVITE_SIGNUP_READINESS_VERSION, "contract.version");
-  assertLiteral(value.leaf, 7, "contract.leaf");
-  assertLiteral(value.state, "PREPARATION_ONLY", "contract.state");
-  assertLiteral(value.requestedMode, "invite", "contract.requestedMode");
-  assertLiteral(value.fallbackMode, "closed", "contract.fallbackMode");
+  assertLiteral(value["format"], INVITE_SIGNUP_READINESS_FORMAT, "contract.format");
+  assertLiteral(value["version"], INVITE_SIGNUP_READINESS_VERSION, "contract.version");
+  assertLiteral(value["leaf"], 7, "contract.leaf");
+  assertLiteral(value["state"], "PREPARATION_ONLY", "contract.state");
+  assertLiteral(value["requestedMode"], "invite", "contract.requestedMode");
+  assertLiteral(value["fallbackMode"], "closed", "contract.fallbackMode");
 
-  const prerequisites = assertCanonicalArray(value.prerequisites, INVITE_SIGNUP_PREREQUISITES, "contract.prerequisites");
-  const invariants = assertCanonicalArray(value.invariants, INVITE_SIGNUP_INVARIANTS, "contract.invariants");
+  const prerequisites = assertCanonicalArray(value["prerequisites"], INVITE_SIGNUP_PREREQUISITES, "contract.prerequisites");
+  const invariants = assertCanonicalArray(value["invariants"], INVITE_SIGNUP_INVARIANTS, "contract.invariants");
   const forbiddenOperations = assertCanonicalArray(
-    value.forbiddenOperations,
+    value["forbiddenOperations"],
     INVITE_SIGNUP_FORBIDDEN_OPERATIONS,
     "contract.forbiddenOperations",
   );

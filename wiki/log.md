@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #161 readiness parser review follow-up
+
+- Invite readiness parsing now requires own object keys, dense canonical arrays, and bracket-safe validated field access; inherited or sparse JSON-like contracts fail closed.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review threads.
+- Verification: invite readiness focused tests (5 passed), TypeScript, and staged wiki gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
