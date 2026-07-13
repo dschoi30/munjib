@@ -19,6 +19,22 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T18:00:00+09:00 - Issue #161 invite token primitive boundary
+
+- Result: Added the dependency-safe Leaf 7 credential boundary. Invitation and
+  attempt values are independent 256-bit opaque base64url secrets; each gets a
+  distinct domain-separated SHA-256 hash before durable persistence. The attempt
+  cookie contains only the opaque secret, and the exchange parser accepts one
+  bounded `bearer` field with immutable output.
+- Scope: No invitation schema, route, middleware, OAuth behavior, signup
+  activation, migration, or production mutation. Leaf 2, Leaf 8, private
+  runtime, and delivery-broker gates remain open.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/invite-token.ts`,
+  `tests/auth/invite-token.test.ts`, and
+  `docs/runbooks/invite-token-primitives.md`.
+- Verification: focused invite-token tests, TypeScript, and wiki sync gates.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
