@@ -103,6 +103,7 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(script).toContain("go build");
     expect(script).toContain("pnpm delivery:build-bundle");
     expect(script).toContain("pnpm delivery:verify-bundle");
+    expect(script).toContain("bundle_format=munjib-delivery-bundle-manifest-v2");
     expect(script).toContain("sha256sum");
     expect(script).toContain("GITHUB_STEP_SUMMARY");
     expect(script).not.toMatch(/ed25519|sign|private.?key|ssh|sudo|docker|compose/i);

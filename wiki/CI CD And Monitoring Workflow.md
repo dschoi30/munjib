@@ -84,7 +84,10 @@ Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bu
 layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
 (`scripts/deploy/{build,verify}-delivery-bundle.ts`)를 제공한다. 빌더는
 linux/arm64용 세 개의 사전 빌드된 Go artifact 이름과 repository 고정 파일만
-받고, symlink/path escape/중복 destination을 거부한다. 출력 manifest에는 각
+받고, 각 binary가 ELF64 little-endian AArch64인지 확인하며
+symlink/path escape/중복 destination을 거부한다. Generated manifest는 기존
+static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 않도록
+`munjib-delivery-bundle-manifest-v2`를 사용한다. 출력 manifest에는 각
 파일의 SHA-256, `root:root` ownership, mode, layout digest와 별도의
 `bundle.sha256`가 포함되며, `payload` 이외의 top-level 항목과 변조된 파일도
 검증기가 fail closed로 거부한다. `release-verify.pub`는 bundle에 포함하지
@@ -252,7 +255,7 @@ The `ci` job runs the same contract on GitHub-hosted Linux: a SHA-pinned
 `actions/setup-go` (`v5.5.0`) provisions Go `1.22.12`, the three fixed Go
 programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
 `GOARCH=arm64`, and the builder/verifier run before the CI summary receives
-only target, artifact names, and SHA-256 lines. The binaries and bundle are
+only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
 kept in the runner's temporary directory; no binary upload, signing key,
 trust-key enrollment, SSH mutation, or host install occurs. This step is part
 of `ci` so a failed artifact contract blocks a main deploy, while the deploy
