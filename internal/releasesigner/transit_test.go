@@ -28,8 +28,8 @@ func newTestTransitClient(t *testing.T, address, token string) TransitClient {
 func TestTransitClientSign(t *testing.T) {
 	signature := bytes.Repeat([]byte{0x42}, ed25519.SignatureSize)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost || r.URL.Path != "/v1/transit/sign/munjib-release-lab-v1" {
-			t.Fatalf("unexpected request: %s %s", r.Method, r.URL.Path)
+		if r.Method != http.MethodPost || r.URL.Path != "/v1/transit/sign/munjib-release-lab-v1" || r.URL.RawQuery != "" {
+			t.Fatalf("unexpected request: %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
 		}
 		if r.Header.Get("X-Vault-Token") != "test-token" {
 			t.Fatal("missing token")
@@ -45,7 +45,11 @@ func TestTransitClientSign(t *testing.T) {
 		if body.Input != base64.StdEncoding.EncodeToString([]byte("message")) || body.Prehashed || body.SignatureAlgorithm != "ed25519" {
 			t.Fatalf("bad body: %#v", body)
 		}
-		json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"signature": "vault:v3:" + base64.StdEncoding.EncodeToString(signature)}})
+		json.NewEncoder(w).Encode(map[string]any{
+			"request_id": "request-id", "lease_id": "", "renewable": false, "lease_duration": 0,
+			"data":      map[string]any{"signature": "vault:v3:" + base64.StdEncoding.EncodeToString(signature)},
+			"wrap_info": nil, "warnings": nil, "auth": nil, "mount_type": "transit",
+		})
 	}))
 	defer server.Close()
 	got, version, err := newTestTransitClient(t, server.URL, "test-token").Sign(context.Background(), "munjib-release-lab-v1", []byte("message"))
@@ -117,12 +121,45 @@ func TestTransitClientRejectsRedirectAndHonorsContext(t *testing.T) {
 	}
 }
 
+func TestTransitClientStalledServerHonorsContextTimeout(t *testing.T) {
+	release := make(chan struct{})
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case <-r.Context().Done():
+		case <-release:
+		}
+	}))
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, _, err := newTestTransitClient(t, s.URL, "t").Sign(ctx, "key", nil)
+	close(release)
+	s.Close()
+	if err == nil || err.Error() != "VAULT_REQUEST" || time.Since(started) > time.Second {
+		t.Fatalf("timeout result after %v: %v", time.Since(started), err)
+	}
+}
+
 func TestTransitClientPublicKeyRawAndDER(t *testing.T) {
 	pub, _, _ := ed25519.GenerateKey(rand.Reader)
 	der, _ := x509.MarshalPKIXPublicKey(pub)
 	for _, encoded := range []string{base64.StdEncoding.EncodeToString(pub), base64.StdEncoding.EncodeToString(der)} {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"keys": map[string]any{"3": map[string]any{"public_key": encoded}}}})
+			if r.Method != http.MethodGet || r.URL.Path != "/v1/transit/keys/key" || r.URL.RawQuery != "" {
+				t.Fatalf("unexpected request: %s %s?%s", r.Method, r.URL.Path, r.URL.RawQuery)
+			}
+			json.NewEncoder(w).Encode(map[string]any{
+				"request_id": "request-id", "lease_id": "", "renewable": false, "lease_duration": 0,
+				"wrap_info": nil, "warnings": []string{"representative warning"}, "auth": nil, "mount_type": "transit",
+				"data": map[string]any{
+					"allow_plaintext_backup": false, "auto_rotate_period": 0, "deletion_allowed": false,
+					"derived": false, "exportable": false, "imported_key": false,
+					"keys":           map[string]any{"3": map[string]any{"creation_time": "2026-07-18T00:00:00Z", "name": "ed25519", "public_key": encoded}},
+					"latest_version": 3, "min_available_version": 0, "min_decryption_version": 1, "min_encryption_version": 0,
+					"name": "key", "supports_decryption": false, "supports_derivation": true,
+					"supports_encryption": false, "supports_signing": true, "type": "ed25519",
+				},
+			})
 		}))
 		got, err := newTestTransitClient(t, s.URL, "t").PublicKey(context.Background(), "key", 3)
 		s.Close()
@@ -148,13 +185,25 @@ func TestTransitClientPublicKeyRejectsInvalidForms(t *testing.T) {
 		base64.StdEncoding.EncodeToString(rsaDER),
 	} {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"keys": map[string]any{"2": map[string]any{"public_key": encoded}}}})
+			json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"keys": map[string]any{"3": map[string]any{"public_key": encoded}}}})
 		}))
 		_, err := newTestTransitClient(t, s.URL, "t").PublicKey(context.Background(), "key", 3)
 		s.Close()
 		if err == nil || err.Error() != "VAULT_PUBLIC_KEY" {
 			t.Fatalf("got %v", err)
 		}
+	}
+}
+
+func TestTransitClientPublicKeyRejectsWrongVersion(t *testing.T) {
+	pub, _, _ := ed25519.GenerateKey(rand.Reader)
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]any{"data": map[string]any{"keys": map[string]any{"2": map[string]any{"public_key": base64.StdEncoding.EncodeToString(pub)}}}})
+	}))
+	defer s.Close()
+	_, err := newTestTransitClient(t, s.URL, "t").PublicKey(context.Background(), "key", 3)
+	if err == nil || err.Error() != "VAULT_PUBLIC_KEY" {
+		t.Fatalf("got %v", err)
 	}
 }
 
