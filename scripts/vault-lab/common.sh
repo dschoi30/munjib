@@ -4,6 +4,7 @@ set -euo pipefail
 
 VAULT_LAB_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VAULT_LAB_COMPOSE="$VAULT_LAB_ROOT/deploy/vault-lab/compose.yml"
+VAULT_LAB_TEARDOWN_IMAGE="invalid.local/vault:teardown@sha256:0000000000000000000000000000000000000000000000000000000000000000"
 export VAULT_ADDR="http://127.0.0.1:18200"
 export COMPOSE_PROJECT_NAME="munjib-vault-lab"
 
@@ -52,6 +53,8 @@ vault_lab_compose() {
 }
 
 vault_lab_cleanup() {
+  VAULT_LAB_IMAGE="${VAULT_LAB_IMAGE:-$VAULT_LAB_TEARDOWN_IMAGE}"
+  export VAULT_LAB_IMAGE
   if [[ -n "${VAULT_LAB_OVERRIDE:-}" && -f "$VAULT_LAB_OVERRIDE" ]]; then
     docker compose -f "$VAULT_LAB_COMPOSE" -f "$VAULT_LAB_OVERRIDE" down --volumes --remove-orphans >/dev/null 2>&1 || true
   else

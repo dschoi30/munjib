@@ -22,4 +22,12 @@ describe("local Vault release signer lab", () => {
       "vault:lab:down": "bash scripts/vault-lab/down.sh",
     });
   });
+
+  it("allows teardown from a fresh shell without weakening startup image validation", () => {
+    const common = readFileSync("scripts/vault-lab/common.sh", "utf8");
+    const down = readFileSync("scripts/vault-lab/down.sh", "utf8");
+    expect(down).not.toContain("vault_lab_require_image");
+    expect(common).toContain("VAULT_LAB_TEARDOWN_IMAGE");
+    expect(common).toContain('VAULT_LAB_IMAGE="${VAULT_LAB_IMAGE:-$VAULT_LAB_TEARDOWN_IMAGE}"');
+  });
 });
