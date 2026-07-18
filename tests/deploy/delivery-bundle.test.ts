@@ -26,10 +26,13 @@ function linuxArm64Elf(label: string): Buffer {
   bytes.writeUInt16LE(64, 58);
   bytes.writeBigUInt64LE(BigInt(64), 32);
   bytes.writeUInt32LE(1, 64);
+  bytes.writeUInt32LE(1, 68);
   bytes.writeBigUInt64LE(BigInt(0), 72);
+  bytes.writeBigUInt64LE(BigInt(0), 80);
   bytes.writeBigUInt64LE(BigInt(bytes.length), 96);
   bytes.writeBigUInt64LE(BigInt(bytes.length), 104);
-  bytes.write(label.slice(0, 4), 24, "utf8");
+  bytes.writeBigUInt64LE(BigInt(24), 24);
+  bytes.write(label.slice(0, 4), 112, "utf8");
   return bytes;
 }
 
@@ -119,6 +122,47 @@ describe("delivery substrate bundle", () => {
     const emptySegment = linuxArm64Elf("fake");
     emptySegment.writeBigUInt64LE(BigInt(0), 96);
     writeFileSync(join(artifactDir, "munjib-release-broker"), emptySegment);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
+  it("rejects a non-executable PT_LOAD segment", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const dataOnlySegment = linuxArm64Elf("fake");
+    dataOnlySegment.writeUInt32LE(0, 68);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), dataOnlySegment);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
+  it("rejects an entrypoint outside the executable PT_LOAD segment", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const detachedEntrypoint = linuxArm64Elf("fake");
+    detachedEntrypoint.writeBigUInt64LE(BigInt(detachedEntrypoint.length), 24);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), detachedEntrypoint);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
+  it("rejects a PT_LOAD virtual-address range that overflows ELF64", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const overflowingSegment = linuxArm64Elf("fake");
+    const nearUint64Max = (BigInt(1) << BigInt(64)) - BigInt(16);
+    overflowingSegment.writeBigUInt64LE(nearUint64Max, 24);
+    overflowingSegment.writeBigUInt64LE(nearUint64Max, 80);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), overflowingSegment);
 
     expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
   });
