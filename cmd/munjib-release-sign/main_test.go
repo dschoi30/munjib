@@ -57,7 +57,7 @@ func vaultServer(t *testing.T, publicKey ed25519.PublicKey, privateKey ed25519.P
 			if err != nil {
 				t.Fatal(err)
 			}
-			writeVaultJSON(t, w, map[string]any{"signature": "vault:v1:" + base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, message))})
+			writeVaultJSON(t, w, map[string]any{"key_version": 1, "signature": "vault:v1:" + base64.StdEncoding.EncodeToString(ed25519.Sign(privateKey, message))})
 		case r.Method == http.MethodGet && r.URL.Path == "/v1/transit/keys/munjib-release-lab-v1":
 			writeVaultJSON(t, w, map[string]any{
 				"allow_plaintext_backup": false, "auto_rotate_period": 0, "deletion_allowed": false,

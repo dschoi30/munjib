@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-18
-source_count: 344
+updated: 2026-07-19
+source_count: 351
 tags:
   - log
   - munjib
@@ -18,6 +18,15 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-19T00:30:00+09:00 - Vault Transit local integration lab
+
+- Result: Implemented Issue #208 Phase A with a digest-pinned Vault Community 2.0.3 Compose lab, loopback-only `127.0.0.1:18200` publication, explicit `vault:lab:*` lifecycle commands, and a generated mode-`0600` token override confined to private temporary state.
+- Evidence: Real Docker integration emitted only `VAULT_LAB_VERIFY_OK`, `VAULT_LAB_TAMPER_REJECT_OK`, `VAULT_LAB_EXPIRY_REJECT_OK`, `VAULT_LAB_GENERATION_REJECT_OK`, and `VAULT_LAB_WRONG_KEY_REJECT_OK`; no token, key, signature, request body, response body, or temporary path was public output.
+- Compatibility: The strict Transit decoder now models Vault 2.0.3 `key_version`, `certificate_chain`, and `hybrid_public_key`, cross-checks the response key version against the signature prefix, and retains unknown-field/trailing-data rejection.
+- Scope: Local-only evidence does not mutate production OCI, Cloudflare, or production keys and does not close Issue #185. Same-OCI bootstrap, host trust-key enrollment, host `VERIFY_ONLY_OK`, and current/rollback/recovery attestation remain incomplete.
+- Pages: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, `tests/deploy/vault-lab-contract.test.ts`, `internal/releasesigner/transit.go`, and `internal/releasesigner/transit_test.go`.
 
 ## 2026-07-18T21:05:00+09:00 - canonical release envelope boundary
 

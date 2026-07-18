@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-07-18
-source_count: 159
+updated: 2026-07-19
+source_count: 161
 tags:
   - index
   - munjib
@@ -78,6 +78,7 @@ links:
 
 ## 상태판
 
+- Vault local signer lab: Issue #208 Phase A provides explicit `vault:lab:*` lifecycle commands, a digest-pinned Vault 2.0.3 loopback-only container, ephemeral mode-`0600` dev-token override, raw mode-`0400` public-key output, and real positive/tamper/expiry/generation/wrong-key integration evidence. Same-OCI production bootstrap, host `VERIFY_ONLY_OK`, recovery evidence, and Issue #185 independent attestation remain incomplete; see [[Release Signer And Vault Workflow]] and [[CI CD And Monitoring Workflow]].
 - Secure runtime: Leaf 3 pins the Next.js 15.5.18 runtime with exact matching ESLint configuration, a paginated advisory gate, a deterministic protected dependency projection, and a local production-like auth/RSC smoke via `pnpm run test:security-runtime`; see [[CI CD And Monitoring Workflow]] and [[Local Development Workflow]].
 - Immutable database authority: Leaf 13B adds append-only migration name/checksum admission, explicit expand/contract classification, NOLOGIN schema ownership, least-privilege Web/RAG roles, fixed libpq credential-file entrypoints, and a PRE_JOURNAL `database-role-v1` manifest/builder; see [[CI CD And Monitoring Workflow]].
 - Delivery substrate packaging: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout plus SHA-256 manifest/builder/verifier for the Leaf 13A broker, validates binary payloads as ELF64 little-endian AArch64, and uses generated manifest v2 to avoid the legacy static v1 schema collision while keeping `release-verify.pub` as a root-bootstrap external input. This is artifact packaging evidence only; production host installation and trust enrollment remain pending; see [[CI CD And Monitoring Workflow]].

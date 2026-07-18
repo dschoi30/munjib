@@ -47,7 +47,7 @@ func TestTransitClientSign(t *testing.T) {
 		}
 		json.NewEncoder(w).Encode(map[string]any{
 			"request_id": "request-id", "lease_id": "", "renewable": false, "lease_duration": 0,
-			"data":      map[string]any{"signature": "vault:v3:" + base64.StdEncoding.EncodeToString(signature)},
+			"data":      map[string]any{"key_version": 3, "signature": "vault:v3:" + base64.StdEncoding.EncodeToString(signature)},
 			"wrap_info": nil, "warnings": nil, "auth": nil, "mount_type": "transit",
 		})
 	}))
@@ -154,7 +154,10 @@ func TestTransitClientPublicKeyRawAndDER(t *testing.T) {
 				"data": map[string]any{
 					"allow_plaintext_backup": false, "auto_rotate_period": 0, "deletion_allowed": false,
 					"derived": false, "exportable": false, "imported_key": false,
-					"keys":           map[string]any{"3": map[string]any{"creation_time": "2026-07-18T00:00:00Z", "name": "ed25519", "public_key": encoded}},
+					"keys": map[string]any{"3": map[string]any{
+						"certificate_chain": "", "creation_time": "2026-07-18T00:00:00Z",
+						"hybrid_public_key": "", "name": "ed25519", "public_key": encoded,
+					}},
 					"latest_version": 3, "min_available_version": 0, "min_decryption_version": 1, "min_encryption_version": 0,
 					"name": "key", "supports_decryption": false, "supports_derivation": true,
 					"supports_encryption": false, "supports_signing": true, "type": "ed25519",
