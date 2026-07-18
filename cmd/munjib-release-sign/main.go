@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -23,6 +24,26 @@ const (
 	exitUnavailable = 69
 	exitOutput      = 74
 )
+
+type publicKeyTempFile interface {
+	io.Writer
+	Name() string
+	Chmod(os.FileMode) error
+	Sync() error
+	Close() error
+}
+
+type publicKeyPublishOps struct {
+	createTemp func(string, string) (publicKeyTempFile, error)
+	link       func(string, string) error
+	remove     func(string) error
+}
+
+var osPublicKeyPublishOps = publicKeyPublishOps{
+	createTemp: func(dir, pattern string) (publicKeyTempFile, error) { return os.CreateTemp(dir, pattern) },
+	link:       os.Link,
+	remove:     os.Remove,
+}
 
 func main() {
 	os.Exit(run(context.Background(), os.Args[1:], os.Getenv, os.Stdin, os.Stdout, os.Stderr, func() time.Time { return time.Now().UTC() }, rand.Reader))
@@ -138,36 +159,42 @@ func runPublicKey(ctx context.Context, client releasesigner.TransitClient, args 
 		fmt.Fprintln(stderr, "Vault public key unavailable")
 		return exitUnavailable
 	}
-	file, err := os.OpenFile(*out, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0400)
+	if err := publishPublicKeyAtomically(*out, publicKey, osPublicKeyPublishOps); err != nil {
+		fmt.Fprintln(stderr, "failed to publish public key output")
+		return exitOutput
+	}
+	return 0
+}
+
+func publishPublicKeyAtomically(output string, publicKey []byte, ops publicKeyPublishOps) error {
+	directory, base := filepath.Dir(output), filepath.Base(output)
+	file, err := ops.createTemp(directory, "."+base+".*")
 	if err != nil {
-		fmt.Fprintln(stderr, "failed to create public key output")
-		return exitOutput
+		return err
 	}
-	keep := false
-	defer func() {
+	temporary := file.Name()
+	defer func() { _ = ops.remove(temporary) }()
+	closeWithError := func(cause error) error {
 		_ = file.Close()
-		if !keep {
-			_ = os.Remove(*out)
-		}
-	}()
-	if err := file.Chmod(0400); err != nil {
-		fmt.Fprintln(stderr, "failed to set public key output mode")
-		return exitOutput
+		return cause
 	}
-	if _, err := file.Write(publicKey); err != nil {
-		fmt.Fprintln(stderr, "failed to write public key output")
-		return exitOutput
+	if err := file.Chmod(0400); err != nil {
+		return closeWithError(err)
+	}
+	written, err := file.Write(publicKey)
+	if err != nil {
+		return closeWithError(err)
+	}
+	if written != len(publicKey) {
+		return closeWithError(io.ErrShortWrite)
 	}
 	if err := file.Sync(); err != nil {
-		fmt.Fprintln(stderr, "failed to sync public key output")
-		return exitOutput
+		return closeWithError(err)
 	}
 	if err := file.Close(); err != nil {
-		fmt.Fprintln(stderr, "failed to close public key output")
-		return exitOutput
+		return err
 	}
-	keep = true
-	return 0
+	return ops.link(temporary, output)
 }
 
 func usageError(stderr io.Writer) int {
