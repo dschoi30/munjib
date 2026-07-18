@@ -3004,3 +3004,10 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-18T00:00:00+09:00 - release-security
+
+- Result: Added a fail-closed standard-library Vault Transit client with loopback-only plaintext HTTP, HTTPS elsewhere, a 10-second default timeout, rejected redirects, strict bounded JSON responses, and redacted stable error codes.
+- Coverage: Exact Ed25519 signing requests, strict `vault:vN` signature parsing, 64-byte signature enforcement, exact key-name validation, and version-bound raw or PKIX DER Ed25519 public-key normalization.
+- Source evidence: `internal/releasesigner/transit.go`, `internal/releasesigner/transit_test.go`.
+- Verification: `CGO_ENABLED=0 go test -race ./internal/releasesigner -v`.
