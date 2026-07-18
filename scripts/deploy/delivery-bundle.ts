@@ -173,7 +173,17 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
       const end = start + programHeaderSize * programHeaderCount;
       if (start >= 64 && Number.isSafeInteger(end) && end <= bytes.length) {
         for (let index = 0; index < programHeaderCount; index += 1) {
-          if (bytes.readUInt32LE(start + index * programHeaderSize) === 1) {
+          const header = start + index * programHeaderSize;
+          const segmentOffset = bytes.readBigUInt64LE(header + 8);
+          const segmentFileSize = bytes.readBigUInt64LE(header + 32);
+          const segmentMemorySize = bytes.readBigUInt64LE(header + 40);
+          const segmentEnd = segmentOffset + segmentFileSize;
+          if (
+            bytes.readUInt32LE(header) === 1 &&
+            segmentFileSize > BigInt(0) &&
+            segmentMemorySize >= segmentFileSize &&
+            segmentEnd <= BigInt(bytes.length)
+          ) {
             hasLoadableSegment = true;
             break;
           }
