@@ -26,6 +26,13 @@ links:
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, PR #186 review threads.
 
+## 2026-07-18T20:26:00+09:00 - PR #186 current deploy documentation correction
+
+- Result: Corrected the delivery workflow page to distinguish the active `main` SSH checkout/native-build deploy from the future broker-only exact-digest path. The current workflow has no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` gate, so broker installation and attestation remain future gates rather than current production behavior.
+- Coverage: Active `appleboy/ssh-action` deploy sequence, target broker-only inputs, and the transition condition that must be implemented before claiming checkout-free production delivery.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, Issue #185, PR #186 review threads.
+
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
 
 - Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.

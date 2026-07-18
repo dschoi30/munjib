@@ -15,14 +15,17 @@ function temporaryDirectory(prefix: string): string {
 }
 
 function linuxArm64Elf(label: string): Buffer {
-  const bytes = Buffer.alloc(64);
+  const bytes = Buffer.alloc(120);
   bytes.set([0x7f, 0x45, 0x4c, 0x46, 2, 1, 1], 0);
   bytes.writeUInt16LE(2, 16);
   bytes.writeUInt16LE(183, 18);
   bytes.writeUInt32LE(1, 20);
   bytes.writeUInt16LE(64, 52);
   bytes.writeUInt16LE(56, 54);
+  bytes.writeUInt16LE(1, 56);
   bytes.writeUInt16LE(64, 58);
+  bytes.writeBigUInt64LE(BigInt(64), 32);
+  bytes.writeUInt32LE(1, 64);
   bytes.write(label.slice(0, 4), 24, "utf8");
   return bytes;
 }
@@ -88,6 +91,18 @@ describe("delivery substrate bundle", () => {
     }
     const incomplete = linuxArm64Elf("fake").subarray(0, 20);
     writeFileSync(join(artifactDir, "munjib-release-broker"), incomplete);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
+  it("rejects a header-only ELF without a complete loadable program segment", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const headerOnly = linuxArm64Elf("fake").subarray(0, 64);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), headerOnly);
 
     expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
   });

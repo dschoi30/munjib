@@ -214,15 +214,16 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
-### main deploy (retired legacy path)
+### Main deploy: current SSH checkout/native-build path
 
-The checkout/native-build/Compose mutation path documented below is historical
-only and is not an authorization path. The current workflow submits a bounded,
-signed exact-digest envelope through the root broker; production performs no
-checkout or source build. The deploy job is skipped until the protected broker
-readiness gate and the required host installation/attestation evidence exist.
+The current `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
+every `main` push. It uses `appleboy/ssh-action`, fetches and checks out the exact
+`github.sha` on the OCI host, then runs the native Docker Compose build,
+migration, RAG index, service replacement, and health checks documented below.
+There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
+the broker-only exact-digest submission path is not active production behavior.
 
-Current broker-only inputs:
+Target broker-only inputs (not active yet):
 
 ```text
 APP_IMAGE_DIGEST=<protected exact app digest>
@@ -236,11 +237,10 @@ DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
 ```
 
-Required protected inputs include the exact digests above,
+The future broker-only path requires the exact digests above,
 `MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, the restricted deploy channel, and
-the signed envelope. Browser SDK values are built into the attested application
-artifact; the host does not rebuild it. Issue #135's low-cost steady state
-remains the default for tracing and Replay.
+the signed envelope. Only after the workflow implements and verifies that gate
+may operators claim that the host no longer performs checkout or source builds.
 
 Before a restricted operator signs or installs a bundle, CI can build and verify
 the public-safe package from the fixed layout. These commands do not sign,
@@ -258,8 +258,8 @@ programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
 only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
 kept in the runner's temporary directory; no binary upload, signing key,
 trust-key enrollment, SSH mutation, or host install occurs. This step is part
-of `ci` so a failed artifact contract blocks a main deploy, while the deploy
-job's existing push-only condition and host gate remain unchanged.
+of `ci` so a failed artifact contract blocks a main deploy, while the current
+SSH checkout/native-build deploy job remains unchanged.
 
 Required GitHub secrets:
 
@@ -277,7 +277,7 @@ Current OCI production domain:
 https://munjib.example.invalid
 ```
 
-Current broker-only submit (host install is still an external gate):
+Target broker-only submit (not active; host install is still an external gate):
 
 ```bash
 test -n "$APP_IMAGE_DIGEST"
@@ -304,9 +304,9 @@ present in this repository/host context, so this flow is documented but cannot
 be claimed as production-ready.
 
 <details>
-<summary>Retired checkout/native-build flow (historical, do not use)</summary>
+<summary>Current checkout/native-build flow implemented by ci-cd.yml</summary>
 
-Historical deploy sequence:
+Current deploy sequence:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
