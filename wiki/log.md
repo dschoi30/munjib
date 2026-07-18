@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 341
+updated: 2026-07-19
+source_count: 351
 tags:
   - log
   - munjib
@@ -18,6 +18,36 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-19T00:30:00+09:00 - Vault Transit local integration lab
+
+- Result: Implemented Issue #208 Phase A with a digest-pinned Vault Community 2.0.3 Compose lab, loopback-only `127.0.0.1:18200` publication, explicit `vault:lab:*` lifecycle commands, and a generated mode-`0600` token override confined to private temporary state.
+- Evidence: Real Docker integration emitted only `VAULT_LAB_VERIFY_OK`, `VAULT_LAB_TAMPER_REJECT_OK`, `VAULT_LAB_EXPIRY_REJECT_OK`, `VAULT_LAB_GENERATION_REJECT_OK`, and `VAULT_LAB_WRONG_KEY_REJECT_OK`; no token, key, signature, request body, response body, or temporary path was public output.
+- Compatibility: The strict Transit decoder now models Vault 2.0.3 `key_version`, `certificate_chain`, and `hybrid_public_key`, cross-checks the response key version against the signature prefix, and retains unknown-field/trailing-data rejection.
+- Review follow-up: Transit client construction preserves a wrapped default `http.RoundTripper` without a panic-prone type assertion, missing Vault env reports the exact required variable without CLI usage noise, and canonical signing accepts every verifier-admitted operation while `NewUnsignedEnvelope` remains restricted to `VERIFY_ONLY`.
+- Rotation review follow-up: Sign requests now require an explicit Vault `key_version`, send it to Transit, and cross-check the response field plus `vault:vN` prefix against that pinned version. The CLI exposes `--key-version` separately from Munjib generation so a key rotation cannot silently sign against a newer key than the bootstrapped raw public key.
+- Teardown review follow-up: `vault:lab:down` no longer requires the original image env in a fresh shell. Cleanup supplies a non-pullable digest-shaped placeholder only for Compose parsing, while startup/bootstrap/test keep strict image validation.
+- Portability review follow-up: Lab helper binaries use pure-Go builds on Linux and other non-Darwin hosts; the external-link/cgo workaround is scoped only to Darwin's current `LC_UUID` loader requirement.
+- Custody review follow-up: Public-key bootstrap now rejects non-Ed25519/non-signing, derived, exportable, imported, plaintext-backup-enabled, or deletion-enabled Transit key metadata before writing any raw trust key.
+- Lifecycle review follow-up: documented `vault:lab:up` as the foreground self-bootstrapping wrapper and `vault:lab:bootstrap` as an internal private-environment step, removing the non-functional fresh-shell sequence.
+- Independent Vault lab review: narrowed the root token to override/bootstrap/signer calls, moved every generated integration artifact outside the checkout, made five custody booleans presence-aware, and changed all four negative verifier oracles to exact stable-code equality.
+- Payload review follow-up: signer now canonicalizes valid JSON before both hashing and embedding, preserving verifier compatibility for pretty and HTML-sensitive payloads.
+- Foreground lifecycle review: `vault:lab:up` now exits 130/143 on INT/TERM through the single EXIT cleanup path and preserves arbitrary child exit status.
+- Integration signal review: the integration harness now preserves normal EXIT status, exits 130/143 on INT/TERM, and routes each path through one cleanup invocation without secret output.
+- Inherited-token review: both lab entry scripts unset any caller-exported `VAULT_TOKEN` before generating the lab token, preventing Bash export-attribute inheritance into builds, helpers, verifiers, or arbitrary children.
+- Trust-key publication review: public-key output now uses a synced mode-0400 destination-directory temp inode and atomic hard-link no-replace publication, so partial final files are never visible and existing paths remain protected.
+- Override-path review: both lab harnesses delete the token-bearing generated Compose override and unset its exported path immediately after container creation, before bootstrap-independent builds, helpers, or arbitrary children run.
+- Cleanup/durability review: lab entrypoints discard inherited private-dir/override paths before cleanup, and trust-key publication now syncs the destination directory or removes its owned final link on durability failure.
+- Scope: Local-only evidence does not mutate production OCI, Cloudflare, or production keys and does not close Issue #185. Same-OCI bootstrap, host trust-key enrollment, host `VERIFY_ONLY_OK`, and current/rollback/recovery attestation remain incomplete.
+- Pages: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, `tests/deploy/vault-lab-contract.test.ts`, `internal/releasesigner/transit.go`, and `internal/releasesigner/transit_test.go`.
+
+## 2026-07-18T21:05:00+09:00 - canonical release envelope boundary
+
+- Result: Added `delivery.UnsignedEnvelopeInput`, `delivery.NewUnsignedEnvelope`, and `delivery.SignedMessage` as the canonical unsigned `VERIFY_ONLY` envelope and signed-message API, with fail-closed input validation. Broker admission now uses the shared `delivery.ValidateExpectedGeneration` policy instead of an inline integer comparison.
+- Coverage: Deterministic signed-message construction, unsafe payload/key/generation/nonce/expiry rejection, and generation match/mismatch behavior.
+- Source evidence: `internal/delivery/envelope.go`, `internal/delivery/envelope_test.go`, `cmd/munjib-release-broker/main.go`, Issue #208.
+- Scope: This refactor does not add Vault integration, production signing, host installation, or trust-key enrollment.
 
 ## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
 
@@ -46,6 +76,25 @@ links:
 - Coverage: Builder/verifier executable segment validation, zero-sized segment regression, and public-safe CI evidence wording.
 - Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.superpowers/sdd/task-1-report.md`, `.github/workflows/ci-cd.yml`, PR #186 review threads.
+
+## 2026-07-18T12:30:00+09:00 - security/release-signer
+
+- Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
+- Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
+- Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
+
+## 2026-07-18T00:00:00+09:00 - security/release-signer
+
+- Result: 초기 production signer 배치를 현재 Munjib production과 같은 OCI VM의 Docker Compose Vault Community로 조정했다. 단일 노드 Raft, TLS, ACL, audit, snapshot/restore를 운영 계약으로 추가하고, 같은 호스트 경계 때문에 #185 독립 attestation 전에는 임시 gate로 표시했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Same-OCI threat boundary, Compose image/config evidence, public port 차단, optional Cloudflare Tunnel/Access, dedicated signer VM 승격 절차.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault production hardening, Cloudflare Tunnel/Access documentation, 사용자 결정.
+
+## 2026-07-17T00:00:00+09:00 - security/release-signer
+
+- Result: 1인 메인테이너 사이드 프로젝트의 delivery signer 권장안을 위키에 기록했다. Vault Community를 local Mac Docker lab과 signer adapter 개발에만 사용하고, production에서는 signer와 Munjib OCI host를 분리한다. HCP Vault Dedicated Development는 non-production only로 분류하고, Essentials 비용·OCI cross-cloud 경계·Community self-host 운영 책임을 함께 기록했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Vault Transit Ed25519, raw public-key bootstrap, Vault signature 변환, key version/generation 매핑, 1인 운영의 인간 독립성 한계, local lab/production bootstrap/attestation/rotation gate.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault Transit API, Vault edition comparison, HCP Vault tier/pricing/deployment documentation, 사용자 결정.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
 
@@ -2961,6 +3010,7 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
+
 ## 2026-07-13T17:10:00+09:00 - security-runtime
 
 - Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` with the BusyBox-compatible `find ... -print | head -n 1` form without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
@@ -2977,3 +3027,19 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-18T00:00:00+09:00 - release-security
+
+- Result: Added a fail-closed standard-library Vault Transit client with loopback-only plaintext HTTP, HTTPS elsewhere, a 10-second default timeout, rejected redirects, strict bounded JSON responses, and redacted stable error codes.
+- Coverage: Exact Ed25519 signing requests, strict `vault:vN` signature parsing, 64-byte signature enforcement, exact key-name validation, and version-bound raw or PKIX DER Ed25519 public-key normalization.
+- Review follow-up: Standard Vault response-envelope fields and Transit key/key-version metadata are explicitly modeled without weakening unknown-field or trailing-data rejection; endpoint shape, requested-version invalid key forms, and stalled-request context cancellation have direct regression coverage.
+- Source evidence: `internal/releasesigner/transit.go`, `internal/releasesigner/transit_test.go`.
+- Verification: `CGO_ENABLED=0 go test -race ./internal/releasesigner -v`.
+
+## 2026-07-19T00:00:00+09:00 - release-security
+
+- Result: Added the testable `munjib-release-sign` adapter with `sign` and `public-key` subcommands backed by Vault Transit.
+- Security contract: Vault address and token are environment-only inputs; signed-envelope stdout is machine-only JSON, errors are redacted, payload and expiry bounds fail closed, and raw Ed25519 public-key output uses exclusive mode-`0400` creation without overwrite, symlink, or directory traversal behavior.
+- Review follow-up: Present-but-invalid Vault configuration is classified as unavailable (`69`), public-key creation explicitly reapplies mode `0400` after exclusive creation to defeat restrictive umasks, and signed-envelope output writer failures remain output errors (`74`) without secret-bearing diagnostics.
+- Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
+- Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
