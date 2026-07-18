@@ -3,6 +3,7 @@
 set -euo pipefail
 source "$(dirname "$0")/common.sh"
 vault_lab_require_image
+unset VAULT_LAB_PRIVATE_DIR VAULT_LAB_OVERRIDE
 
 VAULT_LAB_PRIVATE_DIR="$(vault_lab_private_dir)"
 export VAULT_LAB_PRIVATE_DIR

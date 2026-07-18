@@ -306,7 +306,8 @@ size: 32 bytes
 
 OpenSSH 한 줄 public key나 PEM 파일을 그대로 설치하지 않는다. adapter/root-bootstrap 단계에서 raw 32-byte Ed25519 key로 정규화하고, public key SHA-256과 key ID를 registry에 기록한다.
 Raw trust key publication은 destination directory의 mode-`0400` temporary inode에 exact
-bytes를 write/sync/close한 뒤 hard-link no-replace로 final path를 원자 publish한다. 기존
+bytes를 write/sync/close한 뒤 hard-link no-replace로 final path를 원자 publish하고 destination
+directory도 sync한다. directory durability가 실패하면 이 invocation이 만든 final link를 제거한다. 기존
 file, directory, symlink는 덮어쓰지 않으며 실패 시 temporary path를 정리한다.
 Public-key bootstrap은 Vault metadata도 fail closed로 검사한다. key type은 Ed25519,
 signing support는 enabled, derived/exportable/imported/plaintext-backup/deletion은 모두 disabled여야

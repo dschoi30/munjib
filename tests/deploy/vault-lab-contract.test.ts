@@ -53,6 +53,7 @@ describe("local Vault release signer lab", () => {
     const common = readFileSync("scripts/vault-lab/common.sh", "utf8");
     const down = readFileSync("scripts/vault-lab/down.sh", "utf8");
     expect(down).not.toContain("vault_lab_require_image");
+    expect(down).toContain("unset VAULT_LAB_PRIVATE_DIR VAULT_LAB_OVERRIDE");
     expect(common).toContain("VAULT_LAB_TEARDOWN_IMAGE");
     expect(common).toContain('VAULT_LAB_IMAGE="${VAULT_LAB_IMAGE:-$VAULT_LAB_TEARDOWN_IMAGE}"');
   });
