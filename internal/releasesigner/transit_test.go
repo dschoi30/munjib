@@ -227,6 +227,31 @@ func TestTransitClientPublicKeyRejectsWrongVersion(t *testing.T) {
 	}
 }
 
+func TestTransitClientPublicKeyRejectsUnsafeCustodyMetadata(t *testing.T) {
+	pub, _, _ := ed25519.GenerateKey(rand.Reader)
+	for _, unsafe := range []map[string]any{
+		{"exportable": true},
+		{"allow_plaintext_backup": true},
+		{"deletion_allowed": true},
+	} {
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			data := map[string]any{
+				"type": "ed25519", "supports_signing": true,
+				"keys": map[string]any{"1": map[string]any{"public_key": base64.StdEncoding.EncodeToString(pub)}},
+			}
+			for key, value := range unsafe {
+				data[key] = value
+			}
+			json.NewEncoder(w).Encode(map[string]any{"data": data})
+		}))
+		_, err := newTestTransitClient(t, s.URL, "t").PublicKey(context.Background(), "key", 1)
+		s.Close()
+		if err == nil || err.Error() != "VAULT_PUBLIC_KEY" {
+			t.Fatalf("unsafe=%v err=%v", unsafe, err)
+		}
+	}
+}
+
 func TestTransitClientDefaultTimeout(t *testing.T) {
 	c := newTestTransitClient(t, "https://example.com", "t")
 	if c.HTTPClient.Timeout != 10*time.Second {

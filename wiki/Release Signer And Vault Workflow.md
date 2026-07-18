@@ -293,6 +293,9 @@ size: 32 bytes
 ```
 
 OpenSSH 한 줄 public key나 PEM 파일을 그대로 설치하지 않는다. adapter/root-bootstrap 단계에서 raw 32-byte Ed25519 key로 정규화하고, public key SHA-256과 key ID를 registry에 기록한다.
+Public-key bootstrap은 Vault metadata도 fail closed로 검사한다. key type은 Ed25519,
+signing support는 enabled, derived/exportable/plaintext-backup/deletion은 모두 disabled여야
+하며 하나라도 어긋나면 raw key를 기록하지 않는다.
 
 ## Execution phases
 
