@@ -1,0 +1,102 @@
+{
+  "slots": {
+    "leaf11-external-image-import": {
+      "version": 0,
+      "state": "RESERVED",
+      "reservedOwner": "attachment-integrity-lifecycle"
+    }
+  },
+  "artifacts": {
+    "components/markdown/safe-media.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "8a4617e61d70ef19860cf7e83e19160b439e98a0bc13747cd8c49e479b3ae6ba"
+    },
+    "components/markdown/external-media-interstitial.tsx": {
+      "owner": "zero-ambient-media-egress",
+      "sha256": "c51b365c0b6ba09ae9c7e98c7ebc6d78fef041c21e68b162a19463e2ea48f663"
+    }
+  },
+  "transitions": [
+    {
+      "from": 0,
+      "to": 1,
+      "owner": "attachment-integrity-lifecycle"
+    }
+  ],
+  "format": "munjib-protected-artifact-owners-v1",
+  "version": 1,
+  "release": "auth-runtime-fail-closed@1",
+  "owners": [
+    {
+      "selector": "path:scripts/security/check-next-advisories.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:tests/security/next-advisories.test.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:scripts/test/security-runtime-fixture.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:tests/e2e/security-runtime.spec.ts",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:Dockerfile",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "path:scripts/test/run-security-runtime-smoke.sh",
+      "kind": "FULL_PATH",
+      "owner": "secure-next-runtime",
+      "version": 1
+    },
+    {
+      "selector": "projection:next-runtime-dependencies-v1",
+      "kind": "NORMALIZED_PROJECTION",
+      "owner": "secure-next-runtime",
+      "version": 1,
+      "status": "ACTIVE"
+    },
+    {
+      "selector": "path:lib/auth/downstream/leaf2.ts",
+      "kind": "FULL_PATH",
+      "owner": "security-journal-auth-tombstones",
+      "version": 0,
+      "sha256": "5c58a978fd6ff0bc950df8fd57298e0ed5293c0822e53baccb851ac9fa446268"
+    },
+    {
+      "selector": "path:lib/auth/downstream/leaf4.ts",
+      "kind": "FULL_PATH",
+      "owner": "zero-ambient-media-egress",
+      "version": 0,
+      "sha256": "e0816ac62759864295041eb07f47bb016e124ff0ddfae3387f42ac4cea579242"
+    },
+    {
+      "selector": "path:lib/auth/downstream/leaf8.ts",
+      "kind": "FULL_PATH",
+      "owner": "issue-08-auth-abuse",
+      "version": 0,
+      "sha256": "8aed027ee32c936025d2ad3e02291e06df04b1f45c4fa89452569a22f9e0c8ad"
+    },
+    {
+      "selector": "path:lib/auth/downstream/leaf7.ts",
+      "kind": "FULL_PATH",
+      "owner": "invite-signup-gate",
+      "version": 0,
+      "sha256": "c10903345d620f35d78c2b212dfecb54a2ce5d2e90b39e80497bf7f97de16c8d"
+    }
+  ]
+}

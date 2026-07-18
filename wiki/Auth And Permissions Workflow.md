@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-08
-source_count: 58
+updated: 2026-07-13
+source_count: 69
 tags:
   - munjib
   - auth
@@ -21,14 +21,16 @@ links:
 
 # Auth And Permissions Workflow
 
-Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 계속 gate되어 production에서는 명시 env 없이 열리지 않는다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
+Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 개발 환경 전용이며 production에서는 항상 닫혀 있다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
 
 ## Development login gate
 
 Issue #143 keeps the email-only `development-login` Credentials provider for
 development but gates authentication with `MUNJIB_ENABLE_DEV_LOGIN`. Local development
 defaults to enabled so seed users can keep signing in, while production defaults
-to disabled unless an operator explicitly sets `MUNJIB_ENABLE_DEV_LOGIN=true`.
+to disabled in production; the production Compose contract hard-codes
+`MUNJIB_ENABLE_DEV_LOGIN=false`, while the development override defaults it to
+enabled.
 When disabled, the provider returns `null` before querying `User`, and the login
 form does not render the development shortcut section.
 
@@ -37,12 +39,150 @@ gate rather than a statically baked build-time value. `/`, `/login`, and the
 unauthenticated `/workspaces/[workspaceSlug]` entry point all pass the server
 gate into `LoginForm`.
 
-Production-style Docker also forwards `MUNJIB_ENABLE_DEV_LOGIN` into the `web`
-service environment, so a host-local `/etc/munjib/env` override can reach the
-runtime auth helper when operators intentionally enable the temporary
-development login path.
+Production-style Docker sets `MUNJIB_ENABLE_DEV_LOGIN=false` literally. A
+host-local `/etc/munjib/env` override cannot enable the temporary development
+login path; the strict production runtime validator rejects an attempted
+`true` value. Only `docker-compose.dev.yml` forwards a direct development
+override.
 
 이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
+
+### Fail-closed auth runtime
+
+`MUNJIB_DEPLOYMENT_ENV` selects one strict runtime contract. Staging and production
+load `NEXTAUTH_SECRET_FILE` and optional `GOOGLE_CLIENT_SECRET_FILE` through the
+same no-follow, same-FD, owner/mode/size-bounded reader; direct secret environment
+values are forbidden. The runtime also requires one canonical origin, Secure cookies,
+disabled development login, and closed password/OAuth signup.
+The reader also compares the pre-open path identity with the opened descriptor to
+reject a path swap before consuming the bounded secret bytes, and treats Unicode
+line separators and all C1 controls as content violations alongside ASCII
+controls/newlines. A leading UTF-8 BOM is preserved during decoding so it cannot
+be normalized into an accepted secret. The
+descriptor also uses close-on-exec semantics on Linux and Darwin.
+
+Local development may leave `NEXTAUTH_SECRET` empty: `docker-compose.dev.yml`
+passes an empty optional override and `resolveAuthSecret()` supplies the stable
+development compatibility value. The value is assembled from non-contiguous
+source fragments so a production-source secret scan cannot mistake it for a
+deployable credential. Strict staging/production validation never uses that
+fallback and rejects its decoded value, as well as the other known local fallback
+vectors, with `AUTH_SECRET_FALLBACK`.
+
+## Closed signup covers OAuth
+
+Closed mode allows Google only when the exact provider account identifier already
+exists in `Account` and every legacy token/expiry column is SQL `NULL`.
+`email_verified` alone cannot create or link a user. A guarded adapter rejects
+`createUser` and new `linkAccount` calls before delegate persistence, so callback
+ordering cannot turn a verified email into signup. Password signup returns the
+stable `403 SIGNUP_NOT_ALLOWED` response and the login form keeps password sign-in
+and already-linked Google controls while omitting account creation.
+The frozen downstream hook contract also reserves durable-state, password-admission,
+OAuth start/identity, JWT/session-output, auth-mutation, and candidate policy slots;
+Leaf 1 owns their call order and final media postcondition.
+
+The callback boundary projects Google account/profile input to only
+`provider`/`providerAccountId` and `email`/`email_verified` before any downstream
+hook runs. Linked Google sign-in, JWT creation, and session projection each call
+the durable-auth-state hook before returning protected state. JWT output is
+sanitized again after downstream claims resolution and restores the original
+validated `sub`, so hooks cannot add provider media or replace identity. Session
+avatar resolution uses `getReadableAttachment()` with the current user's
+workspace/document ACL; missing, malformed, or unauthorized attachment images
+fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
+gate, and the component default is also fail closed.
+
+## Versioned and bounded password verification
+
+`User.passwordHash` accepts only the reviewed v1 envelope
+`munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$<22-char-salt>$<86-char-key>`
+or the exact legacy `scrypt:<salt>:<key>` envelope. Every base64url token is
+decoded and re-encoded before use; fixed `N=16384`, `r=8`, `p=1`, 64-byte key,
+UTF-8 bytes of the canonical salt token, and 64 MiB `maxmem` are never selected
+from stored data. Password inputs are strings of 1-256 UTF-8 bytes and stored
+envelopes are ASCII and at most 256 bytes.
+
+`authorizePasswordCredential()` queries a normalized email, then selects either
+the validated account envelope or one process-random valid v1 dummy envelope.
+Every valid-shaped attempt performs one fixed scrypt and one equal-length
+constant-time comparison under `withPasswordWorkPermit()`: two calls may run,
+eight may queue, and queued work expires after two seconds. The permit is a
+resource guard only; saturation has a stable non-sensitive cause code and does
+not emit account, email, password, hash, salt, path, or duration data.
+
+Successful current hashes are not rewritten. A verified legacy value is wrapped
+with the same salt/key into v1 and conditionally updated with `WHERE id AND the
+exact old passwordHash`; a zero-row compare-and-swap or database failure returns
+no user before session issuance. Seed and one-shot provisioning use `hashPassword()`
+so new rows are v1, while `/api/auth/signup` remains a stable `403
+SIGNUP_NOT_ALLOWED` closed boundary.
+
+Production signup invariant: password account creation and unlinked OAuth are both
+closed. Google `email_verified` is checked, then the exact provider account must
+already exist. Callback denial plus the adapter persistence guard produce zero new
+User/Account rows. Google credentials and profile media are never persisted; only a
+canonical internal attachment URL whose exact ID is server-authorized for the current
+user/request may appear in a session. Password verification uses
+one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope before
+session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
+synthetic `example.test` identities only; it never calls Google.
+
+### Leaf 1 downstream handoff and rollback contract
+
+The accepted Leaf 1 deployment evidence is the prerequisite for **Leaf 2**. Leaf 2
+may change only the reserved `lib/auth/downstream/leaf2.ts` baseline from version 0
+to `security-journal-auth-tombstones@1`; Leaf 1 config, callback, password,
+candidate-context, session-image, and adapter paths remain byte-identical. **Leaf 7**
+may replace the closed OAuth behavior only through its guarded invitation/link
+contract and the Leaf 1 minimal Account/session-image helpers. **Leaf 13** must
+preserve loopback-only Web binding, strict file-backed generated secrets, exact-image
+selection, and the closed-signup preflight.
+
+**Leaf 8** must preserve the canonical scrypt v1 parser, dummy work,
+compare-and-swap-before-session rule, and local resource guard while adding PostgreSQL
+admission authority. The four downstream slot baselines and their reserved owners are
+machine-checked in `deploy/security/protected-artifact-owners.json`; a downstream
+fragment cannot name a Leaf 1 core path and a slot cannot move from version 0 without
+its reserved owner.
+
+Google start/callback containment remains at the edge after Leaf 1. After a verified
+recovery gate and `JOURNAL_READY`, a bounded transaction may lock each legacy
+token-bearing Google Account, append the existing `AUTH_OAUTH_ACCOUNT_REVOKED` event
+with subject type `OAUTH_ACCOUNT`, and revoke/remove that Account in the same
+transaction. Journal failure rolls back revocation; replay is deny-only and idempotent.
+Only a fresh boolean proof that no token-bearing Google row remains permits
+containment removal. Evidence contains no row count, Account/user ID, provider
+payload, or token, and the canonical twenty-six-kind journal union does not change.
+
+Rollback retains the current root-managed signing/provider secret files and their
+owner/mode/mount contract, closed password signup, closed unlinked OAuth, Secure
+cookies, canonical origin, disabled development login, production seed prohibition,
+token/profile-media zero persistence, and v1 password-hash readability. No rollback
+image may rely only on `email_verified`; once any canonical v1 password row exists,
+an image unable to parse it is rollback-ineligible. The exact `auth-runtime-fail-closed`
+v1 capability fragment lists the evidence tests and required `secure-next-runtime@1`
+capability. Generated candidate envelopes remain untracked and are published only by
+Leaf 13A's dispatcher.
+
+The closed production invariant is intentionally explicit: Google accepts only the
+**exact linked Google Account**, and callback denial plus the adapter guard produce
+**zero User or Account creation**. Provider credentials and an **external profile image**
+are not persisted or copied into session state. These terms are the stable
+handoff language for Leaf 2, Leaf 7, Leaf 8, and Leaf 13.
+
+### Runtime-backed login availability
+
+The server-rendered login surfaces use the same validated runtime snapshot as
+NextAuth for Google availability. In staging/production, `GOOGLE_CLIENT_SECRET`
+must remain absent from the environment; `resolveGoogleAuthCredentials()` reads
+the fixed secret file through the strict reader and returns only a boolean-safe
+credential projection for provider registration/UI gating. A blank direct Google
+secret is treated as disabled in development, while strict runtimes remain
+fail-closed. The trial provider and its `Explore demo` button are both limited to
+the development deployment gate, so production/staging never advertise an
+unregistered provider. The root-gated owner bootstrap normalizes email addresses
+before the transactional upsert, matching the password login normalizer.
 
 ## Session helper
 
@@ -84,15 +224,16 @@ and Korean strings live in `lib/i18n/messages.ts`.
 
 `lib/auth/config.ts` now exposes distinct NextAuth providers:
 
-- `password`: credentials provider that finds `User.passwordHash` by normalized email and verifies it with `verifyPassword()`.
+- `password`: credentials provider that finds `User.passwordHash` by normalized email and delegates to `authorizePasswordCredential()` for bounded dummy work, fixed verification, and legacy compare-and-swap migration.
 - `trial`: credentials provider with no browser-visible secret; it signs in the seeded `legacy-account-2@example.invalid` account.
 - `development-login`: gated seed-user shortcut controlled by `MUNJIB_ENABLE_DEV_LOGIN`.
 - `google`: OAuth provider added only when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present. The `signIn` callback rejects Google profiles whose email is not verified.
 
-`/api/auth/signup` creates email/password accounts through
-`createPasswordSignup()`. It normalizes email, enforces an 8-character minimum
-password, hashes the password with the existing `scrypt` helper, creates the
-`User`, and provisions a personal organization plus default workspace. The
+`createPasswordSignup()` remains the one-shot provisioning helper for internal
+callers: it normalizes email, enforces an 8-character minimum password, hashes
+with the versioned helper, creates the `User`, and provisions a personal
+organization plus default workspace. The public `/api/auth/signup` route is
+closed with `403 SIGNUP_NOT_ALLOWED`. The
 workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
 launch membership bootstrap so the new user is `OWNER`, `legacy-account-1@example.invalid`
@@ -184,9 +325,9 @@ Issue #20의 folder hierarchy MVP에서 folder 생성, 이름 변경, 이동, ar
 
 ## Launch account foundation
 
-Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores a server-generated `scrypt:<salt>:<derived-key>` password hash, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
+Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables. `User.passwordHash` stores the reviewed versioned `munjib-scrypt` envelope described above, `User.emailVerified` is the NextAuth-compatible timestamp used by email/password and OAuth flows, and Prisma `User.image` maps to the existing `avatarUrl` database column so adapter-backed OAuth can use the expected field name. `Account`, `Session`, and `VerificationToken` are present so Google OAuth account linking can use normal adapter rows.
 
-`lib/auth/passwords.ts` owns password hashing and verification. It generates a random salt for each hash, uses Node `scrypt`, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate hashes.
+`lib/auth/passwords.ts` owns the canonical parser, fixed-cost hashing, and constant-time verification. It generates a random salt for each hash, uses Node `scrypt` with explicit options, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate v1 rows.
 
 `lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `legacy-account-1@example.invalid` as `ADMIN` plus `legacy-account-2@example.invalid` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. Existing launch-account `OWNER` rows also stay `OWNER` during backfill. The backfill helper fetches launch users once and applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
 
@@ -203,6 +344,12 @@ Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables
 
 Seed reruns preserve existing launch account hashes and email verification timestamps, preserve the local development fixture users, and upsert launch memberships so each existing workspace has one admin launch row and one trial viewer row unless a launch account is already an explicit `OWNER`. 테스트나 수동 검증에서 이 seed data를 기준으로 역할별 동작을 확인할 수 있다.
 
+## Leaf 4 zero-media boundary
+
+Issue #158의 Leaf 4는 Auth.js identity DTO와 JWT/session callback에서 provider·adapter가 제공한 ambient media를 출력하지 않는 경계를 유지한다. `lib/auth/downstream/leaf4.ts`의 `leaf4AuthUserOutput()`은 `image: null`인 identity-only shape를 만들고 `leaf4SessionMediaHook()`은 Auth.js `picture`/`image` claims를 제거한다. 이 훅은 Leaf 1의 downstream contract와 합성되며, 저장 attachment가 session에 투영되는 경우에도 `getReadableAttachment()` ACL 검증과 canonical internal path sanitizer를 통과한 값만 허용한다.
+
+Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI answer가 외부 image URL을 자동 fetch/render하지 않는지 실제 Next/Node 경로에서 확인한다. test-only provider transport와 egress calibration은 명시적 test/development gate 뒤에만 열리고 production/staging에서는 거부된다.
+
 ## 근거
 
 - `lib/auth/config.ts`
@@ -216,6 +363,9 @@ Seed reruns preserve existing launch account hashes and email verification times
 - `app/api/auth/signup/route.ts`
 - `app/api/auth/landing/route.ts`
 - `lib/auth/provisioning.ts`
+- `lib/auth/passwords.ts`
+- `lib/auth/password-credentials.ts`
+- `lib/auth/password-work-limit.ts`
 - `lib/workspaces/management-service.ts`
 - `lib/workspaces/page-query.ts`
 - `lib/documents/service.ts`

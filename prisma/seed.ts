@@ -1,5 +1,6 @@
 import { PrismaClient, WorkspaceRole } from "@prisma/client";
-import { hashPassword } from "../lib/auth/passwords";
+import { hashPassword, parsePasswordHash } from "../lib/auth/passwords";
+import { assertProductionSeedForbidden } from "../lib/security/production-seed-guard";
 import {
   backfillLaunchMembershipsForAllWorkspaces,
   ensureWorkspaceLaunchMemberships,
@@ -7,6 +8,7 @@ import {
 } from "../lib/workspaces/membership-bootstrap";
 import { reconcileDocumentLinks } from "../lib/wiki-links/reconcile";
 
+assertProductionSeedForbidden(process.env);
 const prisma = new PrismaClient();
 
 const launchAccountPasswords = {
@@ -20,8 +22,13 @@ async function main() {
       where: { email: account.email },
       select: { passwordHash: true, emailVerified: true },
     });
+    const existingCurrentHash = existingUser?.passwordHash
+      ? parsePasswordHash(existingUser.passwordHash)
+      : null;
     const passwordHash =
-      existingUser?.passwordHash ?? (await hashPassword(launchAccountPasswords[account.email]));
+      existingCurrentHash?.format === "v1"
+        ? existingUser!.passwordHash!
+        : await hashPassword(launchAccountPasswords[account.email]);
     const emailVerified = existingUser?.emailVerified ?? new Date();
 
     await prisma.user.upsert({
@@ -29,7 +36,7 @@ async function main() {
       update: {
         name: account.name,
         emailVerified,
-        ...(existingUser?.passwordHash ? {} : { passwordHash }),
+        ...(existingCurrentHash?.format === "v1" ? {} : { passwordHash }),
       },
       create: {
         email: account.email,

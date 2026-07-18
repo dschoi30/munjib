@@ -1,0 +1,12 @@
+[Unit]
+Description=Munjib least-authority release broker socket
+
+[Socket]
+ListenStream=/run/munjib/release-broker.sock
+SocketUser=root
+SocketGroup=munjib-release-submit
+SocketMode=0620
+RemoveOnStop=true
+
+[Install]
+WantedBy=sockets.target

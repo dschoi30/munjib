@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-07-18
-source_count: 54
+source_count: 58
 tags:
   - munjib
   - workflow
@@ -42,10 +42,98 @@ PNPM_VERSION=10.28.1
 
 Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
 
+### Leaf 13B database authority gate
+
+Leaf 13B는 production migration history를 append-only exact
+name/checksum prefix로 admission하고, 실패·롤백·미완료·수정 checksum·비단조
+pending migration을 거부한다. `scripts/deploy/check-migration-history.ts`는
+현재 Prisma migration bytes와 `deploy/security/migration-ledger.json`을
+대조하고, `scripts/deploy/check-expand-contract.ts`는 additive `EXPAND`와
+명시적 `CONTRACT` 경계를 검사한다.
+
+`deploy/postgres/roles-only.sql`은 `NOLOGIN` schema owner와 제한된 migration,
+Web, RAG 역할을 준비한다. `finalize-ownership.sql`은 Web/RAG에 필요한
+application DML/read만 주고 DDL·truncate·owner/journal authority를 차단한다.
+모든 entrypoint는 caller libpq 변수를 지운 뒤 고정 credential file과
+`pg_catalog` 우선 `search_path`를 사용하며, owner role을 설정하는 것은
+고정 migrator operation 하나뿐이다.
+
+`database-role-v1` manifest는 PRE_JOURNAL 단계의 manifest-listed regular SQL
+파일과 SHA-256/mode/destination을 고정한다. 이 단계에서는 `pgcrypto`, journal
+objects, genesis rows를 만들지 않는다. 세부 운영 절차는
+`docs/runbooks/immutable-deploy.md`에 기록한다.
+
+Production Compose auth 경계는 root-managed fixed descriptor를 사용한다. `web`과 일회성 `auth-preflight`는 `/run/secrets/munjib_nextauth_secret`를 읽고 host source는 `/etc/munjib/secrets/nextauth-current`로 고정된다. Google auth를 켤 때도 임의 overlay 대신 repository의 `docker-compose.google.yml`만 추가하며 `/etc/munjib/secrets/google-client-current`를 `/run/secrets/munjib_google_client_secret`으로 마운트한다. 두 production service는 pinned non-root UID `10001:10001`로 실행되고 descriptor는 owner `10001`, mode `0400`이어야 한다. Web host port는 `127.0.0.1:${WEB_PORT:-3000}:3000`으로만 publish한다.
+
 Monitoring entry point는 두 갈래다.
 
 - Docker stdout/stderr: startup, env, DB connection, PostgreSQL process log, Sentry init 이전 failure.
 - Sentry SaaS: Next.js App Router request error, global error, browser runtime error, low sample rate tracing, opt-in Node runtime metrics, error-only Replay, low-cardinality application metrics.
+
+## Least-authority delivery substrate
+
+Leaf 13A의 delivery substrate는 parent Issue #167 (`issue-167-security-immutable-deploy`) 아래
+child Issue #169 (`issue-169-delivery-substrate`)가 추적하는 비대화형 forced-SSH submitter가 고정 Unix socket
+broker에 bounded envelope만 전달하는 구조를 사용한다. Broker는 kernel peer
+credential, root-owned trust policy, 서명, nonce, expiry, generation, operation
+schema를 매 요청 다시 검증한다. 이 단계에는 application capability나 실행 중인
+runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명령을 선택할 수
+없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
+없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
+
+Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bundle
+layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
+(`scripts/deploy/{build,verify}-delivery-bundle.ts`)를 제공한다. 빌더는
+linux/arm64용 세 개의 사전 빌드된 Go artifact 이름과 repository 고정 파일만
+받고, 각 binary가 ELF64 little-endian AArch64인지 확인하며
+symlink/path escape/중복 destination을 거부한다. Generated manifest는 기존
+static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 않도록
+`munjib-delivery-bundle-manifest-v2`를 사용한다. 출력 manifest에는 각
+파일의 SHA-256, `root:root` ownership, mode, layout digest와 별도의
+`bundle.sha256`가 포함되며, `payload` 이외의 top-level 항목과 변조된 파일도
+검증기가 fail closed로 거부한다. `release-verify.pub`는 bundle에 포함하지
+않고 `root-bootstrap` external input으로만 선언한다. 따라서 이 코드는
+재현 가능한 artifact package/verification 경계를 제공할 뿐, production host
+설치나 trust-key enrollment를 주장하지 않는다.
+
+## Security-critical runtime gate
+
+Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
+`eslint-config-next` 15.5.18 specifications. The repository contract checks the
+resolved pnpm graph, a deterministic projection of the Next.js/React runtime
+roots, and a paginated advisory gate without persisting advisory response bodies.
+Production runtime smoke fixtures read passwords only from a file and emit no
+credential material.
+
+The fixture-gated Playwright spec skips during ordinary E2E discovery when the
+dedicated smoke variables are absent, so `pnpm run test:e2e` remains usable;
+`run-security-runtime.sh` supplies the fixture variables and still executes the
+security smoke tests.
+
+The smoke launcher also keeps the generated auth secret out of process argv and
+installs cleanup before fixture/password setup; RSC body bounds are captured in
+a route interception before response fulfillment. Static contract tests cover
+these review-critical lifecycle guarantees.
+
+Issue #171 adds a production dependency audit gate for the same runtime graph.
+`package.json` uses exact pnpm overrides for `postcss` 8.5.10, `uuid` 11.1.1,
+`minimatch@10.2.5>brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0.
+The scoped brace override preserves the callable `minimatch@3` development
+path while patching the production/Sentry `minimatch@10` path. The lockfile
+must resolve those patched versions on production paths while keeping the
+Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
+generation, minimatch major compatibility, and Sentry/OpenTelemetry module
+loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
+paginated Next.js advisory checker, both immediately after the frozen install.
+The checker receives only the workflow's read-only `GH_TOKEN` for GitHub's
+advisory API.
+
+Issue #174 closes the production `tsx` audit path without changing the
+development Vite/esbuild graph: the lockfile scopes an exact
+`tsx>esbuild` override to patched `esbuild` 0.28.1, while the dev-only Vite
+path remains on its compatible 0.21.5 resolution. `pnpm audit --prod` must
+remain clean after this override, and the same pruned runner image continues
+to execute the network-isolated `auth-preflight` command.
 
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 
@@ -74,29 +162,105 @@ CI service database는 `pgvector/pgvector:0.8.2-pg16` image를 사용하고 `pg_
 9. `pnpm run build`
 10. `docker build --target runner --tag munjib-ci:${IMAGE_TAG} .`
 
+The runtime dependency gate pins Next.js and `eslint-config-next` to the same
+reviewed secure patch and rejects an older lockfile resolution. Runtime upgrades run
+the full Vitest suite, TypeScript, production build, runner/tools Docker builds,
+auth/RSC browser smoke, and `pnpm audit --prod` before deployment.
+
 현재 PR CI는 Vitest, Next build, runtime image build까지 검증한다. Playwright e2e는 mandatory GitHub Actions gate에 포함되어 있지 않다.
 
-### main deploy
+Auth runtime browser oracle는 `pnpm exec tsx scripts/security/run-auth-runtime-e2e.ts`로
+별도 실행할 수 있다. Runner는 secret 값을 환경변수나 argv에 넣지 않고 0700 임시
+디렉터리의 0400 파일을 fixed `/run/secrets/munjib_nextauth_secret`로 mount하며, host
+uid/gid와 같은 non-root identity로 production container를 실행한다. `auth-runtime.spec.ts`는
+production-like provider discovery, password signup closed, exact linked Google
+policy, unlinked OAuth zero rows, token/profile media zero egress, Secure cookie,
+canonical origin, current/legacy password migration 및 CAS loss를 synthetic
+`example.test` identity로 검증한다. Google endpoint 호출은 없다. 이 oracle은
+배포 전 수동/운영 smoke 단계에 두며, 기존 mutable seeded workspace E2E와 분리한다. 실행
+때마다 별도 pgvector PostgreSQL container/network를 만들고 migration 후 같은 disposable
+DB를 production runner와 Playwright에 연결한다. DB 준비 실패는 fail-closed이며 기존
+`DATABASE_URL`은 사용하지 않는다.
 
-`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
+### Leaf 1 rollout, downstream handoff, and rollback
 
-Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
+Leaf 1 rollout is accepted only when startup/auth preflight, fixed secret-file
+owner/mode/no-follow/content checks, Compose binding checks, and the synthetic browser
+oracle all pass. Record only pass/fail and stable codes in GitHub-visible evidence:
+secret values, row counts, Account/user IDs, provider payloads, and tokens never enter
+logs. The exact handoff fixture is
+`deploy/security/capabilities/auth-runtime-fail-closed.json`; its protected slot
+owner map is `deploy/security/protected-artifact-owners.json`.
 
-Deploy job env:
+Leaf 2 starts only after this deployment evidence is accepted and may change only its
+reserved version-0 downstream slot. Leaf 7 remains closed until its guarded
+invitation/link contract is reviewed. Leaf 8 preserves the canonical scrypt v1
+parser, dummy work, compare-and-swap-before-session rule, and local resource guard.
+Leaf 13 preserves loopback-only Web binding, strict file-backed generated secrets,
+exact-image selection, and closed-signup preflight. The current four downstream
+baselines are immutable at version 0 until their named owners replace them.
+
+Google start/callback containment remains edge-controlled after Leaf 1. Removal
+requires the recovery gate, `JOURNAL_READY`, and a fresh boolean proof that no
+token-bearing Google row remains. Cleanup appends the existing
+`AUTH_OAUTH_ACCOUNT_REVOKED` event in a bounded transaction before revocation; journal
+failure rolls back the transaction and replay is deny-only/idempotent. The canonical
+twenty-six-kind journal union is unchanged.
+
+Rollback is eligible only for an image that keeps root-managed signing/provider secret
+files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
+Secure cookies, canonical origin, disabled development login, production seed
+prohibition, token/profile-media zero persistence, and canonical v1 password-hash
+readability. A rollback image that cannot parse an existing v1 row is ineligible, and
+`email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
+exact-candidate envelopes; they are not committed to this repository.
+
+### Main deploy: current SSH checkout/native-build path
+
+The current `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
+every `main` push. It uses `appleboy/ssh-action`, fetches and checks out the exact
+`github.sha` on the OCI host, then runs the native Docker Compose build,
+migration, RAG index, service replacement, and health checks documented below.
+There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
+the broker-only exact-digest submission path is not active production behavior.
+
+Target broker-only inputs (not active yet):
 
 ```text
-WEB_IMAGE=munjib-web:latest
-DEPLOY_SHA=${{ github.sha }}
+APP_IMAGE_DIGEST=<protected exact app digest>
+POSTGRES_IMAGE_DIGEST=<protected exact PostgreSQL digest>
+HOST_BUNDLE_DIGEST=<protected exact host-bundle digest>
+STORAGE_INIT_IMAGE_DIGEST=<protected exact storage-init digest>
+RELEASE_ENVELOPE=<protected signed broker envelope>
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_ENV_FILE=/etc/munjib/env
 DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
-DEPLOY_REPOSITORY=${{ github.repository }}
-DEPLOY_GIT_TOKEN=${{ github.token }}
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
+The future broker-only path requires the exact digests above,
+`MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, the restricted deploy channel, and
+the signed envelope. Only after the workflow implements and verifies that gate
+may operators claim that the host no longer performs checkout or source builds.
+
+Before a restricted operator signs or installs a bundle, CI can build and verify
+the public-safe package from the fixed layout. These commands do not sign,
+install, enroll the trust key, or mutate a host:
+
+```bash
+pnpm delivery:build-bundle -- dist/delivery/linux-arm64 .artifacts/delivery-substrate-v1
+pnpm delivery:verify-bundle -- .artifacts/delivery-substrate-v1
+```
+
+The `ci` job runs the same contract on GitHub-hosted Linux: a SHA-pinned
+`actions/setup-go` (`v5.5.0`) provisions Go `1.22.12`, the three fixed Go
+programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
+`GOARCH=arm64`, and the builder/verifier run before the CI summary receives
+only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
+kept in the runner's temporary directory; no binary upload, signing key,
+trust-key enrollment, SSH mutation, or host install occurs. This step is part
+of `ci` so a failed artifact contract blocks a main deploy, while the current
+SSH checkout/native-build deploy job remains unchanged.
 
 Required GitHub secrets:
 
@@ -114,7 +278,36 @@ Current OCI production domain:
 https://munjib.example.invalid
 ```
 
-Remote deploy 순서:
+Target broker-only submit (not active; host install is still an external gate):
+
+```bash
+test -n "$APP_IMAGE_DIGEST"
+test -n "$POSTGRES_IMAGE_DIGEST"
+test -n "$HOST_BUNDLE_DIGEST"
+test -n "$STORAGE_INIT_IMAGE_DIGEST"
+test -n "$RELEASE_ENVELOPE"
+printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+test -S /run/munjib/release-broker.sock
+test -r /etc/munjib/security/broker-operations-v1.json
+printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
+```
+
+The submit account only forwards a bounded frame to the fixed Unix socket; the
+root broker independently revalidates the envelope and evidence before any
+system mutation. A broker socket, signed envelope, or root trust key is not
+present in this repository/host context, so this flow is documented but cannot
+be claimed as production-ready.
+
+<details>
+<summary>Current checkout/native-build flow implemented by ci-cd.yml</summary>
+
+Current deploy sequence:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -123,10 +316,36 @@ git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_head
 git checkout --detach "$DEPLOY_SHA"
 test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
 sudo test -r "$DEPLOY_ENV_FILE"
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
-sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
-sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web
+install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
+compose_files="-f docker-compose.yml"
+google_client_id="$(
+  sudo awk -v key=GOOGLE_CLIENT_ID '
+    $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+      value=$0
+      sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
+      sub("[[:space:]]*(#.*)?$", "", value)
+      single=sprintf("%c", 39)
+      if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+          (substr(value, 1, 1) == single && substr(value, length(value), 1) == single)) {
+        value=substr(value, 2, length(value)-2)
+      }
+      sub("^[[:space:]]*", "", value)
+      sub("[[:space:]]*$", "", value)
+      print value
+      exit
+    }
+  ' "$DEPLOY_ENV_FILE"
+)"
+if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then
+  install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"
+  compose_files="$compose_files -f docker-compose.google.yml"
+fi
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
+sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
+sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web
 for attempt in 1 2 3 4 5 6 7 8 9 10; do
   if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
     break
@@ -141,11 +360,13 @@ sudo docker image prune -f
 
 이 deploy는 server checkout에서 Actions-provided ephemeral `github.token`을 Git HTTP extraheader로 사용해 repository `main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. 이 fetch 방식은 OCI server checkout의 stored HTTPS credential/token에 의존하지 않으며 token을 remote `.git/config`에 저장하지 않는다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Remote script 안에서는 hairpin NAT 영향을 피하기 위해 `http://127.0.0.1:3000`에 `Host: munjib.example.invalid` header를 붙인 local health check를 최대 10회 재시도하고, 성공 후 dangling image 정리를 위해 `sudo docker image prune -f`를 실행한다. SSH deploy step 뒤에는 GitHub-hosted runner에서 `https://munjib.example.invalid` public health check를 별도 실행해 DNS/TLS/Caddy public path를 확인한다.
 
+Secret install은 `umask 077` 아래에서 protected SSH channel의 process environment를 root-only temporary descriptor에 pipe하고 `chown 10001:10001`, `chmod 0400`, atomic `mv` 순서로 완료한다. 값은 argv, shell trace, GitHub output, Compose interpolation, checked-in env 파일에 쓰지 않는다. `auth-preflight`가 같은 runtime image에서 strict auth environment를 검사하고 성공한 뒤에만 service를 제거하고 Prisma migration, RAG index, Web replacement를 시작한다. Preflight 실패는 `set -euo pipefail`로 migration이나 current-container replacement를 중단한다. `docker-compose.dev.yml`만 direct `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET`와 development flags를 허용하며 production workflow에서는 사용하지 않는다.
+
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
 OCI server production env는 repository checkout 안의 `.env`나 `.env.docker`가 아니라 host-local secret file `/etc/munjib/env`가 기준이다. Deploy workflow는 모든 remote Compose 명령에 `docker compose --env-file "$DEPLOY_ENV_FILE"`를 명시하고, 실제 compose interpolation은 이 파일과 workflow가 넘기는 release env를 함께 사용한다. `docker-compose.yml`의 `environment:` 항목은 `${VAR:-}` 형태라서 service-level `env_file`만 추가하면 빈 문자열이 우선되어 provider credentials가 계속 비는 문제가 생길 수 있다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
 
-Issue #143의 email-only development login은 production에서 기본 disabled다. Controlled temporary access가 필요할 때만 `/etc/munjib/env`에 `MUNJIB_ENABLE_DEV_LOGIN=true`를 명시하며, `docker-compose.yml`은 이 값을 `web` service runtime env로 전달한다.
+Issue #143의 email-only development login은 production에서 항상 disabled다. Production `docker-compose.yml`은 `MUNJIB_ENABLE_DEV_LOGIN=false`를 literal로 고정하고, strict auth runtime validator도 production의 `true` 값을 거부한다. 따라서 `/etc/munjib/env`에서 이 값을 바꿔도 production의 temporary login path는 열리지 않는다. 개발용 direct env와 기본 `true` 값은 `docker-compose.dev.yml`에만 남긴다.
 
 ```text
 NEXTAUTH_URL="https://munjib.example.invalid"
@@ -168,16 +389,28 @@ NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
 NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ```
 
+</details>
+
 ### Docker runtime
 
-Production compose는 `postgres`, `web`, `tools` service를 가진다.
+Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다. runner image는 non-root web/auth-preflight가 Corepack의 기본 `/.cache`에 쓰지 않도록 `HOME=/tmp`와 `COREPACK_HOME=/tmp/.cache/node/corepack`을 사용한다. 이 cache에는 애플리케이션 secret이 들어가지 않으며, production prune 뒤에도 `pnpm start`와 isolated preflight가 같은 UID로 실행된다.
+
+Issue #182는 production dependency prune 뒤에도 generated Prisma client를 보존하는
+runner build contract를 추가한다. Runner는 BusyBox 호환 `find ... -print | head -n 1`로
+production prune 전에 생성된
+`.prisma/client` directory를 찾아 임시 build-only 경로에 복사하고, prune 뒤 root
+`node_modules/.prisma/client`로 복원한다. Prisma CLI는 계속 development-only
+dependency로 유지하며, 최종 image build는 `require("@prisma/client")` guard가
+성공해야 끝난다. 따라서 package-manager virtual-store version을 고정하지 않고,
+생성 client가 빠진 image는 publish 전에 fail-closed 된다.
 
 - `postgres`: `pgvector/pgvector:0.8.2-pg16`, named volume `postgres_data`, configurable host port `POSTGRES_PORT`.
+- `storage-init`: 고정 `alpine:3.22` root one-shot service. `web_storage:/app/storage`를 마운트하고 `/app/storage/attachments`를 만든 뒤 전체 storage tree를 UID/GID `10001:10001`로 소유권 정리한다. `web`은 `service_completed_successfully` 조건으로 이 단계가 끝난 뒤에만 시작한다.
 - `web`: `runner` target 기반 production app, named volume `web_storage:/app/storage`, configurable host port `WEB_PORT`.
 - `tools`: `tools` target 기반 maintenance command runner, `profiles: ["tools"]`.
 
-`web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정을 받는다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
-`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate이므로 production-style `web` runtime env에만 전달한다.
+`web` runtime env는 DB, NextAuth, Sentry error/tracing/runtime metrics, Browser Sentry build-time values, local Ollama/RAG 설정, 그리고 선택적 Langfuse `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` credential을 받는다. Langfuse secret은 명시적으로 full capture를 켠 운영 환경에서도 callback/exporter가 동작하도록 Compose env passthrough를 유지한다. `tools` service는 DB, NextAuth, local Ollama/RAG 설정은 받지만 현재 Sentry env는 받지 않는다.
+`MUNJIB_ENABLE_DEV_LOGIN`은 request-time auth helper가 읽는 launch gate다. Production-style `web`은 `false`를 literal로 고정하고, local development override만 이 값을 직접 설정한다.
 
 Dockerfile stages:
 

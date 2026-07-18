@@ -1,0 +1,32 @@
+{
+  "format": "munjib-migration-ledger-v1",
+  "version": 1,
+  "history": "append-only",
+  "prefixPolicy": "successful production rows are an exact name/checksum prefix of image history",
+  "migrations": [
+    { "leaf": "baseline", "migrationName": "20260427135317_init", "checksum": "78d76f1dcb2dee07ce23f2df8e2457ba06b5ecc82a441711c6619807b4003700" },
+    { "leaf": "baseline", "migrationName": "20260427153400_add_document_links", "checksum": "e1db325afaa353ceef0648b21b1cbd950bc0c147929d000a8d46a8d923944497" },
+    { "leaf": "baseline", "migrationName": "20260429114500_add_document_metadata", "checksum": "b6bd4066f30f81fdc88d6299d9f3894ab3fc510954fc7ea5dd2754b7a4117837" },
+    { "leaf": "baseline", "migrationName": "20260429123000_add_attachments", "checksum": "f7f7ac200482fb4f03ce79bbcb748a1cfe626b7fe5f5a7656aa16b1a79bb4fc5" },
+    { "leaf": "baseline", "migrationName": "20260429124500_add_comments", "checksum": "381f047bee4c648b564850e58ba5c67d07473254613bf8e2b2fb7cd85bf87ebc" },
+    { "leaf": "baseline", "migrationName": "20260504122500_add_document_property_sort_order", "checksum": "7c77f9ad9d201373e59cb4c5067dab8154c1bcb08d4252fce18cb47e26c94241" },
+    { "leaf": "baseline", "migrationName": "20260504123500_add_document_link_sort_order", "checksum": "8c46e0edbe9a4a7fb2393e2f8ae9c1aad15fe0f8dbd08a8b8cba4d23e43c62e1" },
+    { "leaf": "baseline", "migrationName": "20260505001000_add_folder_hierarchy", "checksum": "a6eecaebce80fc09fdde61763d76236016f318194d76afdff3634eda3151ab4c" },
+    { "leaf": "baseline", "migrationName": "20260530023000_add_document_chunks_pgvector", "checksum": "4e54bf4d28b8419d014892372da358f9db014e62786cc9ea98142adc72b30b5e" },
+    { "leaf": "baseline", "migrationName": "20260615120000_add_ai_chat_threads", "checksum": "b2111d725a848e619d3547d9ad817d080eebb56b38f2e200c4117945e9d0bfe4" },
+    { "leaf": "baseline", "migrationName": "20260617002000_add_ai_chat_thread_memory", "checksum": "2d4128d5104ef8d95e0eff0d343dc9511ebf5ebcfe55b8bb8360bfa90b08b042" },
+    { "leaf": "baseline", "migrationName": "20260620140000_add_archived_document_retention_policy", "checksum": "ce83d2a09a4af109627923827a2400d66f8d11b1b4f157acffaf54424ea90d69" },
+    { "leaf": "baseline", "migrationName": "20260705090000_add_auth_accounts_foundation", "checksum": "e3121910b1cdc7d013f5d36cf3f89c7bdac7ec159aa96a2252e81de26fa30ff3" },
+    { "leaf": "baseline", "migrationName": "20260707013000_add_workspace_archive", "checksum": "589c3160e6dd9103f409372115171437eab49c309c3b94cd71bd5e563e2bc841" }
+  ],
+  "allocations": [
+    { "leaf": 2, "migrationName": "20260712000000_security_journal_and_auth_tombstones" },
+    { "leaf": 2, "migrationName": "20260712003000_support_access_capability" },
+    { "leaf": 5, "migrationName": "20260712010000_active_resource_boundaries" },
+    { "leaf": 8, "migrationName": "20260712020000_add_auth_abuse_and_session_registry" },
+    { "leaf": 7, "migrationName": "20260712030000_add_secure_workspace_invitations" },
+    { "leaf": 9, "migrationName": "20260712040000_ai_history_reauthorization" },
+    { "leaf": 11, "migrationName": "20260712050000_attachment_lifecycle_transition" },
+    { "leaf": 10, "migrationName": "20260712060000_ai_provider_policy" }
+  ]
+}

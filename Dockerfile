@@ -45,14 +45,39 @@ FROM deps AS runner
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
+# The non-root web/auth-preflight UID cannot write the default Corepack cache
+# under /.cache. Keep package-manager metadata in the writable /tmp path instead;
+# this contains no application secrets and makes both `pnpm start` and the
+# isolated preflight command deterministic after production pruning.
+ENV HOME=/tmp
+ENV COREPACK_HOME=/tmp/.cache/node/corepack
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/next.config.mjs ./next.config.mjs
+# The production auth-preflight service runs from this same image. Keep only
+# the small source surface needed by its strict runtime validator; tsx is a
+# production dependency so pruning devDependencies cannot remove the command.
+COPY --from=builder /app/scripts/security ./scripts/security
+COPY --from=builder /app/lib/auth ./lib/auth
+COPY --from=builder /app/lib/runtime ./lib/runtime
+COPY --from=builder /app/lib/security ./lib/security
+COPY --from=builder /app/tsconfig.json ./tsconfig.json
 
 RUN pnpm run db:generate \
-  && pnpm prune --prod
+  && generated_prisma_client="$(find node_modules -type d -path '*/.prisma/client' -print | head -n 1)" \
+  && test -n "$generated_prisma_client" \
+  && rm -rf /tmp/prisma-client \
+  && mkdir -p /tmp/prisma-client \
+  && cp -a "$generated_prisma_client/." /tmp/prisma-client/ \
+  && CI=true pnpm prune --prod \
+  && rm -rf node_modules/.prisma \
+  && mkdir -p node_modules/.prisma/client \
+  && cp -a /tmp/prisma-client/. node_modules/.prisma/client/ \
+  && node -e 'require("@prisma/client")' \
+  && rm -rf /tmp/prisma-client \
+  && chown -R 10001:10001 /tmp/.cache
 
 EXPOSE 3000
 
