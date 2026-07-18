@@ -30,6 +30,7 @@ links:
 - Portability review follow-up: Lab helper binaries use pure-Go builds on Linux and other non-Darwin hosts; the external-link/cgo workaround is scoped only to Darwin's current `LC_UUID` loader requirement.
 - Custody review follow-up: Public-key bootstrap now rejects non-Ed25519/non-signing, derived, exportable, imported, plaintext-backup-enabled, or deletion-enabled Transit key metadata before writing any raw trust key.
 - Lifecycle review follow-up: documented `vault:lab:up` as the foreground self-bootstrapping wrapper and `vault:lab:bootstrap` as an internal private-environment step, removing the non-functional fresh-shell sequence.
+- Independent Vault lab review: narrowed the root token to override/bootstrap/signer calls, moved every generated integration artifact outside the checkout, made five custody booleans presence-aware, and changed all four negative verifier oracles to exact stable-code equality.
 - Scope: Local-only evidence does not mutate production OCI, Cloudflare, or production keys and does not close Issue #185. Same-OCI bootstrap, host trust-key enrollment, host `VERIFY_ONLY_OK`, and current/rollback/recovery attestation remain incomplete.
 - Pages: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, `tests/deploy/vault-lab-contract.test.ts`, `internal/releasesigner/transit.go`, and `internal/releasesigner/transit_test.go`.

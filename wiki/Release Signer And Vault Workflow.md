@@ -87,14 +87,17 @@ Local lab rules:
 - local signature는 production attestation으로 보고하지 않는다.
 
 Issue #208 Phase A local lab은 구현되어 있다. lifecycle entry point는
-`pnpm vault:lab:up`, `pnpm vault:lab:bootstrap`, `pnpm vault:lab:test`,
-`pnpm vault:lab:down`이고, base Compose는 token을 포함하지 않으며
+foreground self-bootstrapping `pnpm vault:lab:up`, 독립 integration gate
+`pnpm vault:lab:test`, teardown `pnpm vault:lab:down`이다. `vault:lab:bootstrap`은
+wrapper가 만든 private child environment에서만 실행하는 내부 단계다. base Compose는 token을 포함하지 않으며
 `127.0.0.1:18200`에만 publish한다. 검증한 image record는
 `docker.io/hashicorp/vault:2.0.3@sha256:a296a888b118615dc01d5f1a6846e6d4a7277946caaed5b447008fff5fe06b54`이다.
 
 `vault:lab:test`는 실행마다 private temporary directory와 random dev token을
-만들고, token은 mode `0600` generated Compose override와 child process environment에만
-둔다. raw public key는 mode `0400` temporary file에 기록하며 command body, token,
+만들고, token은 mode `0600` generated Compose override와 Vault bootstrap/signer invocation의
+scoped environment에만 둔다. build, Node mutation helper, verifier, arbitrary `up` child에는
+전달하지 않는다. 모든 generated source, binary, payload, envelope, public key, log artifact는
+checkout 밖의 같은 mode-`0700` private directory 아래에 둔다. raw public key는 mode `0400` temporary file에 기록하며 command body, token,
 signature, key, temporary path와 Vault response body를 출력하지 않는다. 실패 stderr는
 stable generic message로 redaction하고 성공 stdout은 다음 다섯 줄만 허용한다.
 
@@ -295,7 +298,7 @@ size: 32 bytes
 OpenSSH 한 줄 public key나 PEM 파일을 그대로 설치하지 않는다. adapter/root-bootstrap 단계에서 raw 32-byte Ed25519 key로 정규화하고, public key SHA-256과 key ID를 registry에 기록한다.
 Public-key bootstrap은 Vault metadata도 fail closed로 검사한다. key type은 Ed25519,
 signing support는 enabled, derived/exportable/imported/plaintext-backup/deletion은 모두 disabled여야
-하며 하나라도 어긋나면 raw key를 기록하지 않는다.
+하며 이 다섯 custody boolean이 하나라도 누락되거나 어긋나면 raw key를 기록하지 않는다.
 
 ## Execution phases
 

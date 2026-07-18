@@ -45,4 +45,31 @@ describe("local Vault release signer lab", () => {
     expect(integration).toContain("CGO_ENABLED=0 go build");
     expect(integration).toContain("CGO_ENABLED=1 go build -ldflags=-linkmode=external");
   });
+
+  it("keeps the root token scoped away from unrelated child processes", () => {
+    const integration = readFileSync("scripts/vault-lab/integration.sh", "utf8");
+    const up = readFileSync("scripts/vault-lab/up.sh", "utf8");
+    const verifier = readFileSync("cmd/munjib-vault-lab-verify/main.go", "utf8");
+    expect(integration).not.toContain("export VAULT_TOKEN");
+    expect(up).not.toContain("export VAULT_TOKEN");
+    expect(integration).toContain('VAULT_TOKEN="$VAULT_TOKEN" bash');
+    expect(verifier).toContain('os.LookupEnv("VAULT_TOKEN")');
+    expect(integration).toContain("process.env.VAULT_TOKEN");
+  });
+
+  it("keeps all integration artifacts in the private temporary directory", () => {
+    const integration = readFileSync("scripts/vault-lab/integration.sh", "utf8");
+    expect(integration).toContain('work="$VAULT_LAB_PRIVATE_DIR/artifacts"');
+    expect(integration).not.toContain('$VAULT_LAB_ROOT/.vault-lab.');
+    expect(integration).not.toContain('cat >"$work/verify.go"');
+  });
+
+  it("compares negative verifier outcomes as exact stable error codes", () => {
+    const integration = readFileSync("scripts/vault-lab/integration.sh", "utf8");
+    const verifier = readFileSync("cmd/munjib-vault-lab-verify/main.go", "utf8");
+    expect(verifier).not.toContain('"strings"');
+    expect(verifier).not.toContain("strings.Contains");
+    expect(verifier).toContain('err.Error() == *wantError');
+    expect(integration.match(/--want-error /g)).toHaveLength(4);
+  });
 });

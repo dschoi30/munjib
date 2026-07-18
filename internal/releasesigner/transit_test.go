@@ -229,6 +229,10 @@ func TestTransitClientPublicKeyRejectsWrongVersion(t *testing.T) {
 
 func TestTransitClientPublicKeyRejectsUnsafeCustodyMetadata(t *testing.T) {
 	pub, _, _ := ed25519.GenerateKey(rand.Reader)
+	safe := map[string]any{
+		"derived": false, "exportable": false, "allow_plaintext_backup": false,
+		"deletion_allowed": false, "imported_key": false,
+	}
 	for _, unsafe := range []map[string]any{
 		{"exportable": true},
 		{"allow_plaintext_backup": true},
@@ -240,6 +244,9 @@ func TestTransitClientPublicKeyRejectsUnsafeCustodyMetadata(t *testing.T) {
 				"type": "ed25519", "supports_signing": true,
 				"keys": map[string]any{"1": map[string]any{"public_key": base64.StdEncoding.EncodeToString(pub)}},
 			}
+			for key, value := range safe {
+				data[key] = value
+			}
 			for key, value := range unsafe {
 				data[key] = value
 			}
@@ -249,6 +256,27 @@ func TestTransitClientPublicKeyRejectsUnsafeCustodyMetadata(t *testing.T) {
 		s.Close()
 		if err == nil || err.Error() != "VAULT_PUBLIC_KEY" {
 			t.Fatalf("unsafe=%v err=%v", unsafe, err)
+		}
+	}
+}
+
+func TestTransitClientPublicKeyRejectsMissingCustodyMetadata(t *testing.T) {
+	pub, _, _ := ed25519.GenerateKey(rand.Reader)
+	for _, missing := range []string{"derived", "exportable", "allow_plaintext_backup", "deletion_allowed", "imported_key"} {
+		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			data := map[string]any{
+				"type": "ed25519", "supports_signing": true,
+				"derived": false, "exportable": false, "allow_plaintext_backup": false,
+				"deletion_allowed": false, "imported_key": false,
+				"keys": map[string]any{"1": map[string]any{"public_key": base64.StdEncoding.EncodeToString(pub)}},
+			}
+			delete(data, missing)
+			json.NewEncoder(w).Encode(map[string]any{"data": data})
+		}))
+		_, err := newTestTransitClient(t, s.URL, "t").PublicKey(context.Background(), "key", 1)
+		s.Close()
+		if err == nil || err.Error() != "VAULT_PUBLIC_KEY" {
+			t.Fatalf("missing=%s err=%v", missing, err)
 		}
 	}
 }
