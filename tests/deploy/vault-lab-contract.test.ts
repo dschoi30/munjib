@@ -31,6 +31,14 @@ describe("local Vault release signer lab", () => {
     expect(up.indexOf('bootstrap.sh"')).toBeLessThan(up.indexOf("while :"));
   });
 
+  it("exits foreground up after signal cleanup", () => {
+    const up = readFileSync("scripts/vault-lab/up.sh", "utf8");
+    expect(up).toContain("trap vault_lab_cleanup EXIT");
+    expect(up).toContain("trap 'exit 130' INT");
+    expect(up).toContain("trap 'exit 143' TERM");
+    expect(up).not.toContain("trap vault_lab_cleanup EXIT INT TERM");
+  });
+
   it("allows teardown from a fresh shell without weakening startup image validation", () => {
     const common = readFileSync("scripts/vault-lab/common.sh", "utf8");
     const down = readFileSync("scripts/vault-lab/down.sh", "utf8");

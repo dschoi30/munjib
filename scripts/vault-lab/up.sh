@@ -10,7 +10,9 @@ VAULT_TOKEN="$(vault_lab_token)"
 VAULT_LAB_OVERRIDE="$VAULT_LAB_PRIVATE_DIR/compose.override.yml"
 export VAULT_LAB_OVERRIDE
 vault_lab_write_override "$VAULT_LAB_OVERRIDE"
-trap vault_lab_cleanup EXIT INT TERM
+trap vault_lab_cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 vault_lab_compose up -d --wait
 VAULT_TOKEN="$VAULT_TOKEN" bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh"

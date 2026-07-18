@@ -65,6 +65,9 @@ pnpm vault:lab:down
 
 `vault:lab:bootstrap` package command는 `up`/integration wrapper가 생성한 private
 `VAULT_TOKEN` 환경 안에서만 호출하는 내부 단계이며 fresh shell용 command가 아니다.
+Foreground `vault:lab:up`은 SIGINT에서 130, SIGTERM에서 143으로 종료하며 `EXIT`
+handler가 Compose와 private credential state를 한 번 정리한다. command 인자를 준 child
+mode는 child exit status를 그대로 전파한다.
 
 Lab은 `127.0.0.1:18200`에만 publish하고 dev token은 private temporary
 mode-`0600` override에만 둔다. `vault:lab:test`의 public stdout contract와
