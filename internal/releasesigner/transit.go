@@ -173,7 +173,8 @@ func (c TransitClient) PublicKey(ctx context.Context, keyName string, version ui
 		return nil, err
 	}
 	if response.Data.Type != "ed25519" || !response.Data.SupportsSigning || response.Data.Derived ||
-		response.Data.Exportable || response.Data.AllowPlaintextBackup || response.Data.DeletionAllowed {
+		response.Data.Exportable || response.Data.AllowPlaintextBackup || response.Data.DeletionAllowed ||
+		response.Data.ImportedKey {
 		return nil, errors.New("VAULT_PUBLIC_KEY")
 	}
 	entry, ok := response.Data.Keys[strconv.FormatUint(version, 10)]

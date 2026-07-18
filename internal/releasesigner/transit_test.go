@@ -233,6 +233,7 @@ func TestTransitClientPublicKeyRejectsUnsafeCustodyMetadata(t *testing.T) {
 		{"exportable": true},
 		{"allow_plaintext_backup": true},
 		{"deletion_allowed": true},
+		{"imported_key": true},
 	} {
 		s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			data := map[string]any{
