@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 157
+updated: 2026-07-18
+source_count: 158
 tags:
   - index
   - munjib
@@ -23,6 +23,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[RAG Process Workflow]]"
   - "[[CI CD And Monitoring Workflow]]"
+  - "[[Release Signer And Vault Workflow]]"
   - "[[Production Observability Workflow]]"
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
@@ -57,6 +58,7 @@ links:
 - [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 - [[RAG Process Workflow]] - Ask AI RAG의 saved-content-only request, provider/env, indexing, retrieval, LangChain answer, Langfuse/Sentry observability 흐름.
 - [[CI CD And Monitoring Workflow]] - GitHub Actions PR/main CI, OCI native Compose deploy, Docker/Sentry monitoring 구성.
+- [[Release Signer And Vault Workflow]] - 1인 운영에서 Vault Community를 local signer lab과 초기 same-OCI Docker Compose signer로 사용하고, #185 독립 attestation을 위해 dedicated signer VM으로 승격하는 workflow.
 - [[Production Observability Workflow]] - production-style Docker 로그 확인, Sentry error/tracing/runtime metrics/Replay, handled AI 503, low-cardinality app metrics 관측성 흐름.
 - [[Wiki Maintenance Automation]] - Feature Start, Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
 
