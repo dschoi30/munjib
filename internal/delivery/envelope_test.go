@@ -1,0 +1,83 @@
+package delivery
+
+import (
+	"encoding/base64"
+	"encoding/json"
+	"strings"
+	"testing"
+	"time"
+)
+
+func TestNewUnsignedEnvelopeAndSignedMessage(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	var nonce [32]byte
+	for index := range nonce {
+		nonce[index] = byte(index)
+	}
+	envelope, err := NewUnsignedEnvelope(UnsignedEnvelopeInput{
+		Operation: "VERIFY_ONLY", Payload: json.RawMessage(`{"bundle":"sha256:abc"}`),
+		KeyID: "munjib-release-lab-v1", ExpectedGeneration: 1,
+		Nonce: nonce, ExpiresAt: now.Add(2 * time.Minute),
+	}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := SignedMessage(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := strings.Join([]string{
+		"munjib-release-envelope-v1", "VERIFY_ONLY",
+		base64.RawURLEncoding.EncodeToString(nonce[:]), envelope.ExpiresAt,
+		"1", envelope.PayloadSHA256, "munjib-release-lab-v1",
+	}, "\x00")
+	if string(message) != expected {
+		t.Fatalf("message mismatch: %q", message)
+	}
+}
+
+func TestNewUnsignedEnvelopeRejectsUnsafeInput(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	var nonce [32]byte
+	nonce[0] = 1
+	valid := UnsignedEnvelopeInput{
+		Operation: "VERIFY_ONLY", Payload: json.RawMessage(`{"bundle":"sha256:abc"}`),
+		KeyID: "munjib-release-lab-v1", ExpectedGeneration: 1,
+		Nonce: nonce, ExpiresAt: now.Add(2 * time.Minute),
+	}
+	tests := []struct {
+		name   string
+		mutate func(*UnsignedEnvelopeInput)
+	}{
+		{name: "non-VERIFY_ONLY operation", mutate: func(input *UnsignedEnvelopeInput) { input.Operation = "INSTALL_SUBSTRATE" }},
+		{name: "empty payload", mutate: func(input *UnsignedEnvelopeInput) { input.Payload = nil }},
+		{name: "oversized payload", mutate: func(input *UnsignedEnvelopeInput) {
+			input.Payload = json.RawMessage(strings.Repeat(" ", MaxPayloadBytes+1))
+		}},
+		{name: "invalid JSON payload", mutate: func(input *UnsignedEnvelopeInput) { input.Payload = json.RawMessage(`{"bundle":`) }},
+		{name: "empty key ID", mutate: func(input *UnsignedEnvelopeInput) { input.KeyID = "" }},
+		{name: "zero generation", mutate: func(input *UnsignedEnvelopeInput) { input.ExpectedGeneration = 0 }},
+		{name: "zero nonce", mutate: func(input *UnsignedEnvelopeInput) { input.Nonce = [32]byte{} }},
+		{name: "expired expiry", mutate: func(input *UnsignedEnvelopeInput) { input.ExpiresAt = now }},
+		{name: "expiry beyond five minutes", mutate: func(input *UnsignedEnvelopeInput) { input.ExpiresAt = now.Add(5*time.Minute + time.Nanosecond) }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			input := valid
+			test.mutate(&input)
+			if _, err := NewUnsignedEnvelope(input, now); err == nil {
+				t.Fatal("unsafe input accepted")
+			}
+		})
+	}
+}
+
+func TestValidateExpectedGeneration(t *testing.T) {
+	envelope := Envelope{ExpectedGeneration: 2}
+	if ValidateExpectedGeneration(envelope, 2) != nil {
+		t.Fatal("matching generation rejected")
+	}
+	if ValidateExpectedGeneration(envelope, 1) == nil {
+		t.Fatal("mismatch accepted")
+	}
+}
