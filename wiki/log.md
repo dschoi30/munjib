@@ -3017,5 +3017,6 @@ links:
 
 - Result: Added the testable `munjib-release-sign` adapter with `sign` and `public-key` subcommands backed by Vault Transit.
 - Security contract: Vault address and token are environment-only inputs; signed-envelope stdout is machine-only JSON, errors are redacted, payload and expiry bounds fail closed, and raw Ed25519 public-key output uses exclusive mode-`0400` creation without overwrite, symlink, or directory traversal behavior.
+- Review follow-up: Present-but-invalid Vault configuration is classified as unavailable (`69`), public-key creation explicitly reapplies mode `0400` after exclusive creation to defeat restrictive umasks, and signed-envelope output writer failures remain output errors (`74`) without secret-bearing diagnostics.
 - Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
 - Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
