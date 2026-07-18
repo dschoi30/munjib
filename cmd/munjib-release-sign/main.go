@@ -40,7 +40,7 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdin i
 	client, err := releasesigner.NewTransitClient(address, token)
 	if err != nil {
 		fmt.Fprintln(stderr, "invalid Vault configuration")
-		return exitUsage
+		return exitUnavailable
 	}
 	switch args[0] {
 	case "sign":
@@ -144,6 +144,10 @@ func runPublicKey(ctx context.Context, client releasesigner.TransitClient, args 
 			_ = os.Remove(*out)
 		}
 	}()
+	if err := file.Chmod(0400); err != nil {
+		fmt.Fprintln(stderr, "failed to set public key output mode")
+		return exitOutput
+	}
 	if _, err := file.Write(publicKey); err != nil {
 		fmt.Fprintln(stderr, "failed to write public key output")
 		return exitOutput

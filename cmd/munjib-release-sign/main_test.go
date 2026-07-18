@@ -7,11 +7,13 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -19,6 +21,10 @@ import (
 )
 
 var fixedNow = time.Date(2026, 7, 19, 1, 2, 3, 0, time.UTC)
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
 
 func env(address string) func(string) string {
 	return func(name string) string {
@@ -139,6 +145,41 @@ func TestRunPublicKeyWritesRawKeyAtomically(t *testing.T) {
 	}
 }
 
+func TestRunPublicKeyForcesExactModeDespiteUmask(t *testing.T) {
+	publicKey, privateKey, _ := ed25519.GenerateKey(rand.Reader)
+	server := vaultServer(t, publicKey, privateKey)
+	defer server.Close()
+	out := filepath.Join(t.TempDir(), "release-verify.pub")
+	previousUmask := syscall.Umask(0777)
+	exit := run(context.Background(), []string{"public-key", "--key-name", "munjib-release-lab-v1", "--version", "1", "--out", out}, env(server.URL), strings.NewReader(""), io.Discard, io.Discard, func() time.Time { return fixedNow }, rand.Reader)
+	syscall.Umask(previousUmask)
+	if exit != 0 {
+		t.Fatalf("exit = %d", exit)
+	}
+	info, err := os.Stat(out)
+	if err != nil || info.Mode().Perm() != 0400 {
+		t.Fatalf("mode = %v, err = %v", info.Mode().Perm(), err)
+	}
+}
+
+func TestRunSignReturnsOutputFailureWithoutLeakingSecrets(t *testing.T) {
+	publicKey, privateKey, _ := ed25519.GenerateKey(rand.Reader)
+	server := vaultServer(t, publicKey, privateKey)
+	defer server.Close()
+	payloadPath := filepath.Join(t.TempDir(), "payload.json")
+	if err := os.WriteFile(payloadPath, []byte(`{}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	var stderr bytes.Buffer
+	exit := run(context.Background(), []string{"sign", "--payload", payloadPath, "--key-name", "munjib-release-lab-v1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env(server.URL), strings.NewReader(""), failingWriter{}, &stderr, func() time.Time { return fixedNow }, bytes.NewReader(bytes.Repeat([]byte{1}, 32)))
+	if exit != 74 {
+		t.Fatalf("exit = %d, stderr = %q", exit, stderr.String())
+	}
+	if strings.Contains(stderr.String(), "test-token-secret") || strings.Contains(stderr.String(), "vault:v1:") || strings.Contains(stderr.String(), base64.StdEncoding.EncodeToString(privateKey)) {
+		t.Fatalf("secret leaked: %q", stderr.String())
+	}
+}
+
 func TestRunRejectsUnsafeInputsWithStableExitCodes(t *testing.T) {
 	dir := t.TempDir()
 	validPayload := filepath.Join(dir, "payload.json")
@@ -157,6 +198,7 @@ func TestRunRejectsUnsafeInputsWithStableExitCodes(t *testing.T) {
 		{"secret token flag", append(append([]string{}, base...), "--vault-token", "secret"), env("http://127.0.0.1:1"), 64},
 		{"secret addr flag", append(append([]string{}, base...), "--vault-addr", "https://example.com"), env("http://127.0.0.1:1"), 64},
 		{"missing env", base, func(string) string { return "" }, 64},
+		{"invalid present vault address", base, env("http://example.com"), 69},
 		{"non-json", []string{"sign", "--payload", badPayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
 		{"oversized", []string{"sign", "--payload", largePayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
 		{"generation zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-id", "id", "--generation", "0", "--ttl", "2m"}, env("http://127.0.0.1:1"), 64},
