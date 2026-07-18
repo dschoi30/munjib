@@ -151,7 +151,7 @@ function ensureRegularFile(path: string, label: string): void {
 function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
   const osAbi = bytes[7];
   const fileType = bytes.length >= 18 ? bytes.readUInt16LE(16) : 0;
-  const isArm64Elf =
+  const hasArm64Header =
     bytes.length >= 64 &&
     bytes[0] === 0x7f &&
     bytes.subarray(1, 4).toString("ascii") === "ELF" &&
@@ -163,7 +163,25 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
     bytes.readUInt16LE(18) === 183 &&
     bytes.readUInt32LE(20) === 1 &&
     bytes.readUInt16LE(52) === 64;
-  if (!isArm64Elf) throw new Error(`${label} must be an ELF64 little-endian AArch64 binary`);
+  let hasLoadableSegment = false;
+  if (hasArm64Header) {
+    const programHeaderOffset = bytes.readBigUInt64LE(32);
+    const programHeaderSize = bytes.readUInt16LE(54);
+    const programHeaderCount = bytes.readUInt16LE(56);
+    if (programHeaderOffset <= BigInt(Number.MAX_SAFE_INTEGER) && programHeaderSize >= 56 && programHeaderCount > 0) {
+      const start = Number(programHeaderOffset);
+      const end = start + programHeaderSize * programHeaderCount;
+      if (start >= 64 && Number.isSafeInteger(end) && end <= bytes.length) {
+        for (let index = 0; index < programHeaderCount; index += 1) {
+          if (bytes.readUInt32LE(start + index * programHeaderSize) === 1) {
+            hasLoadableSegment = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+  if (!hasArm64Header || !hasLoadableSegment) throw new Error(`${label} must be an ELF64 little-endian AArch64 binary`);
 }
 
 function copyFixedFile(source: string, destination: string, mode: string): void {
