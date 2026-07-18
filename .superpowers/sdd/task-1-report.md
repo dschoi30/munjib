@@ -32,12 +32,13 @@ decision.
 | Socket and service units | `deploy/systemd/munjib-release-broker.{socket,service}` | Unit source exists. A live socket is not present in this environment, and the repository has no host installer or enable/reload procedure. |
 | Forced SSH boundary | `deploy/sshd/munjib-release-submit.conf` | Configuration fragment exists. No safe host-side deployment, `sshd -t`, or reload was performed. |
 | Trust root | Broker and verifier require `/var/lib/munjib/security/bootstrap/release-verify.pub` and an Ed25519 public key of the exact expected size. | The key is intentionally absent from the repository and no root-bootstrap handoff is available. |
-| Target build | `go.mod`, `deploy/delivery/bundle-layout-v1.json`, and builder tests | CI still has no Go build/attestation job. Local environment is Darwin arm64 and has no `go` binary, so no target Linux artifact was produced or verified; tests use fake artifacts only to exercise fail-closed packaging. |
+| Target build | `go.mod`, `.github/workflows/ci-cd.yml`, `deploy/delivery/bundle-layout-v1.json`, and builder tests | CI uses SHA-pinned `actions/setup-go` v5.5.0 with Go 1.22.12 to cross-compile the three programs for Linux/ARM64, package them, verify the bundle, and emit public SHA-256 metadata. It does not sign, attest, transfer, install, or enroll trust. |
 | Independent host verification | `tests/deploy/delivery-substrate-contract.test.ts` and the unit/source contracts | Static source tests pass in the merged PR lineage, but they cannot prove host ownership, socket activation, SSH parser acceptance, binary digest, or trust-key enrollment. |
 
-The repository-wide deployment workflow (`.github/workflows/ci-cd.yml`) builds
-the web/tools images and runs the application deploy. It does not build,
-package, sign, attest, transfer, or install the delivery-substrate programs.
+The repository-wide deployment workflow (`.github/workflows/ci-cd.yml`) builds,
+packages, and verifies public Linux/ARM64 delivery-substrate metadata before the
+web/tools application build and deploy. It does not sign, attest, transfer,
+install, or enroll trust for the delivery-substrate programs.
 
 The safe packaging slice is intentionally not a host installer: it rejects
 symlinked inputs and path escapes, copies only the fixed eight substrate files,
@@ -130,8 +131,9 @@ production host is ready.
 - Added the CI cross-compile/metadata step and its workflow contract test; the
   step is part of `ci`, so a failed artifact contract blocks a main deploy while
   the deploy job's existing condition remains unchanged.
-- Confirmed no delivery-substrate installer, Go build step, signer, or
-  attestation workflow is present.
+- Confirmed no delivery-substrate installer, signer, transfer, trust enrollment,
+  or host attestation workflow is present; the CI Go cross-build/package/verify
+  step produces public metadata only.
 - Confirmed the local environment has no executable named `go` and no live broker
   socket.
 - Did not run a privileged installation or print secrets/remote logs.

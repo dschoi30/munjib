@@ -26,6 +26,9 @@ function linuxArm64Elf(label: string): Buffer {
   bytes.writeUInt16LE(64, 58);
   bytes.writeBigUInt64LE(BigInt(64), 32);
   bytes.writeUInt32LE(1, 64);
+  bytes.writeBigUInt64LE(BigInt(0), 72);
+  bytes.writeBigUInt64LE(BigInt(bytes.length), 96);
+  bytes.writeBigUInt64LE(BigInt(bytes.length), 104);
   bytes.write(label.slice(0, 4), 24, "utf8");
   return bytes;
 }
@@ -103,6 +106,19 @@ describe("delivery substrate bundle", () => {
     }
     const headerOnly = linuxArm64Elf("fake").subarray(0, 64);
     writeFileSync(join(artifactDir, "munjib-release-broker"), headerOnly);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
+  it("rejects an empty PT_LOAD segment that cannot describe executable bytes", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const emptySegment = linuxArm64Elf("fake");
+    emptySegment.writeBigUInt64LE(BigInt(0), 96);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), emptySegment);
 
     expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
   });
