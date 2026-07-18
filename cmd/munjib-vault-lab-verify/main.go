@@ -19,6 +19,9 @@ func main() {
 	if _, present := os.LookupEnv("VAULT_TOKEN"); present {
 		os.Exit(2)
 	}
+	if _, present := os.LookupEnv("VAULT_LAB_OVERRIDE"); present {
+		os.Exit(2)
+	}
 	key, keyErr := os.ReadFile(*keyPath)
 	raw, rawErr := os.ReadFile(*envelopePath)
 	if keyErr != nil || rawErr != nil || len(key) != ed25519.PublicKeySize {

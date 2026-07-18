@@ -30,6 +30,8 @@ trap 'finish 130' INT
 trap 'finish 143' TERM
 
 vault_lab_compose up -d --wait
+rm -f -- "$VAULT_LAB_OVERRIDE"
+unset VAULT_LAB_OVERRIDE
 VAULT_TOKEN="$VAULT_TOKEN" bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh" >"$log" 2>&1
 
 work="$VAULT_LAB_PRIVATE_DIR/artifacts"
@@ -53,7 +55,7 @@ VAULT_TOKEN="$VAULT_TOKEN" "$work/signer" sign --payload "$work/payload.json" --
 "$work/verifier" --key "$work/public.key" --envelope "$work/envelope.json" >>"$log" 2>&1
 printf '%s\n' VAULT_LAB_VERIFY_OK
 
-node -e 'if(process.env.VAULT_TOKEN)process.exit(2);const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));x.payload={artifact:"tampered"};fs.writeFileSync(process.argv[2],JSON.stringify(x));' \
+node -e 'if(process.env.VAULT_TOKEN||process.env.VAULT_LAB_OVERRIDE)process.exit(2);const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));x.payload={artifact:"tampered"};fs.writeFileSync(process.argv[2],JSON.stringify(x));' \
   "$work/envelope.json" "$work/tampered.json" >>"$log" 2>&1
 "$work/verifier" --key "$work/public.key" --envelope "$work/tampered.json" \
   --want-error ENVELOPE_PAYLOAD_HASH >>"$log" 2>&1
