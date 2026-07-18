@@ -23,6 +23,14 @@ describe("local Vault release signer lab", () => {
     });
   });
 
+  it("documents up as the foreground self-bootstrapping lifecycle", () => {
+    const workflow = readFileSync("wiki/Local Development Workflow.md", "utf8");
+    const up = readFileSync("scripts/vault-lab/up.sh", "utf8");
+    expect(workflow).toContain("foreground에서 Vault를 시작하고 bootstrap까지 수행");
+    expect(workflow).not.toContain("pnpm vault:lab:bootstrap");
+    expect(up.indexOf('bootstrap.sh"')).toBeLessThan(up.indexOf("while :"));
+  });
+
   it("allows teardown from a fresh shell without weakening startup image validation", () => {
     const common = readFileSync("scripts/vault-lab/common.sh", "utf8");
     const down = readFileSync("scripts/vault-lab/down.sh", "utf8");
