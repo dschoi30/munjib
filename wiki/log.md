@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-18T21:05:00+09:00 - canonical release envelope boundary
+
+- Result: Added `delivery.UnsignedEnvelopeInput`, `delivery.NewUnsignedEnvelope`, and `delivery.SignedMessage` as the canonical unsigned `VERIFY_ONLY` envelope and signed-message API, with fail-closed input validation. Broker admission now uses the shared `delivery.ValidateExpectedGeneration` policy instead of an inline integer comparison.
+- Coverage: Deterministic signed-message construction, unsafe payload/key/generation/nonce/expiry rejection, and generation match/mismatch behavior.
+- Source evidence: `internal/delivery/envelope.go`, `internal/delivery/envelope_test.go`, `cmd/munjib-release-broker/main.go`, Issue #208.
+- Scope: This refactor does not add Vault integration, production signing, host installation, or trust-key enrollment.
+
 ## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
 
 - Result: The delivery bundle builder and verifier now reject binaries that are not ELF64 little-endian AArch64, preventing non-target artifacts from being labeled `linux/arm64`. Generated bundle manifests use `munjib-delivery-bundle-manifest-v2`/version `2`, separating the checksummed bundle schema and external trust-key contract from the legacy static installation manifest v1.
