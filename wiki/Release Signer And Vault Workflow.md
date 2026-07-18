@@ -279,10 +279,14 @@ nonce = 32-byte random, base64url
 expiresAt = RFC3339Nano, now 이후 5분 이내
 expectedGeneration = host policy와 동일
 payload = signed bundle/digest evidence
-payloadSha256 = payload raw bytes의 SHA-256
+payloadSha256 = envelope encoder와 동일하게 compact/HTML-escaped canonical JSON payload bytes의 SHA-256
 keyId = root registry의 active key ID
 signature = raw Ed25519 signature의 base64url
 ```
+
+Signer는 pretty JSON이나 `<`/`>` 같은 HTML-sensitive string도 envelope에 넣기 전에
+한 번 canonicalize하고, 그 동일 bytes를 hash·embed한다. file 원본을 먼저 hash한 뒤 JSON
+encoder가 payload를 다시 쓰게 두지 않는다.
 
 ### Public-key bootstrap
 

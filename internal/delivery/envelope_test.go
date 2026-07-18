@@ -1,12 +1,48 @@
 package delivery
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestNewUnsignedEnvelopeCanonicalizesPayloadBeforeHashing(t *testing.T) {
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	var nonce [32]byte
+	nonce[0] = 1
+	payload := json.RawMessage("{\n  \"html\": \"<tag>\",\n  \"nested\": { \"x\": 1 }\n}\n")
+	envelope, err := NewUnsignedEnvelope(UnsignedEnvelopeInput{
+		Operation: "VERIFY_ONLY", Payload: payload, KeyID: "key", ExpectedGeneration: 1,
+		Nonce: nonce, ExpiresAt: now.Add(time.Minute),
+	}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	message, err := SignedMessage(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	envelope.Signature = base64.RawURLEncoding.EncodeToString(ed25519.Sign(privateKey, message))
+	raw, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+	verified, err := VerifyEnvelope(raw, publicKey, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(verified.Payload) != `{"html":"\u003ctag\u003e","nested":{"x":1}}` {
+		t.Fatalf("payload=%s", verified.Payload)
+	}
+}
 
 func TestNewUnsignedEnvelopeAndSignedMessage(t *testing.T) {
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
