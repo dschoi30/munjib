@@ -100,6 +100,8 @@ scoped environment에만 둔다. build, Node mutation helper, verifier, arbitrar
 checkout 밖의 같은 mode-`0700` private directory 아래에 둔다. raw public key는 mode `0400` temporary file에 기록하며 command body, token,
 signature, key, temporary path와 Vault response body를 출력하지 않는다. 실패 stderr는
 stable generic message로 redaction하고 성공 stdout은 다음 다섯 줄만 허용한다.
+Integration harness는 정상 EXIT status를 보존하고 SIGINT/SIGTERM에서는 각각 130/143으로
+종료한다. 모든 경로는 trap을 먼저 해제한 뒤 같은 cleanup을 한 번만 실행한다.
 
 Lab signer 호출은 `--key-version 1`과 Munjib `--generation 1`을 별도 인자로
 고정한다. Transit response의 `key_version`과 `vault:vN` signature prefix가 요청한
