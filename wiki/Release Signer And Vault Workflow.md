@@ -116,6 +116,9 @@ Vault Community container와 repository signer/verifier source로 확인한 loca
 `pnpm vault:lab:down`은 fresh shell에서도 실행할 수 있다. image env가 없을 때는
 teardown parsing에만 non-pullable digest-shaped placeholder를 사용하며 container를
 시작하거나 image를 pull하지 않는다. `up`, `bootstrap`, `test`의 digest validation은 유지된다.
+Helper binaries are pure-Go (`CGO_ENABLED=0`) on non-Darwin hosts. Darwin alone uses
+external linking to satisfy the current macOS `LC_UUID` loader requirement, so Linux
+lab execution does not require a C compiler.
 
 ## Single OCI Docker Compose deployment
 

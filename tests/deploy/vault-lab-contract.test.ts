@@ -30,4 +30,11 @@ describe("local Vault release signer lab", () => {
     expect(common).toContain("VAULT_LAB_TEARDOWN_IMAGE");
     expect(common).toContain('VAULT_LAB_IMAGE="${VAULT_LAB_IMAGE:-$VAULT_LAB_TEARDOWN_IMAGE}"');
   });
+
+  it("keeps the Darwin linker workaround from requiring a Linux C toolchain", () => {
+    const integration = readFileSync("scripts/vault-lab/integration.sh", "utf8");
+    expect(integration).toContain('if [[ "$(uname -s)" == Darwin ]]');
+    expect(integration).toContain("CGO_ENABLED=0 go build");
+    expect(integration).toContain("CGO_ENABLED=1 go build -ldflags=-linkmode=external");
+  });
 });
