@@ -86,7 +86,7 @@ jobs:
           pnpm delivery:verify-bundle -- "$bundle_dir"
           {
             printf 'target=linux/arm64\n'
-            printf 'bundle_format=munjib-delivery-bundle-manifest-v1\n'
+            printf 'bundle_format=munjib-delivery-bundle-manifest-v2\n'
             sha256sum \
               "$artifact_dir/munjib-release-broker" \
               "$artifact_dir/munjib-release-submit" \

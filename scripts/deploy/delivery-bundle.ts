@@ -45,8 +45,8 @@ type BundleLayout = {
 };
 
 export type DeliveryBundleManifest = {
-  format: "munjib-delivery-bundle-manifest-v1";
-  version: 1;
+  format: "munjib-delivery-bundle-manifest-v2";
+  version: 2;
   bundle: "delivery-substrate-v1";
   target: { goos: "linux"; goarch: "arm64" };
   payloadDirectory: "payload";
@@ -148,6 +148,24 @@ function ensureRegularFile(path: string, label: string): void {
   if (!lstatSync(path).isFile()) throw new Error(`${label} is not a regular non-symlink file`);
 }
 
+function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
+  const osAbi = bytes[7];
+  const fileType = bytes.length >= 18 ? bytes.readUInt16LE(16) : 0;
+  const isArm64Elf =
+    bytes.length >= 64 &&
+    bytes[0] === 0x7f &&
+    bytes.subarray(1, 4).toString("ascii") === "ELF" &&
+    bytes[4] === 2 &&
+    bytes[5] === 1 &&
+    bytes[6] === 1 &&
+    (osAbi === 0 || osAbi === 3) &&
+    (fileType === 2 || fileType === 3) &&
+    bytes.readUInt16LE(18) === 183 &&
+    bytes.readUInt32LE(20) === 1 &&
+    bytes.readUInt16LE(52) === 64;
+  if (!isArm64Elf) throw new Error(`${label} must be an ELF64 little-endian AArch64 binary`);
+}
+
 function copyFixedFile(source: string, destination: string, mode: string): void {
   mkdirSync(dirname(destination), { recursive: true, mode: 0o700 });
   copyFileSync(source, destination);
@@ -184,6 +202,7 @@ export function buildDeliveryBundle(rootDir: string, artifactDir: string, output
       const realSource = realpathSync(sourcePath);
       assertInside(entry.type === "binary" ? realArtifacts : realRoot, realSource, "bundle source");
       const bytes = readFileSync(sourcePath);
+      if (entry.type === "binary") assertLinuxArm64Elf(bytes, entry.artifact!);
       const digest = sha256(bytes);
       if (entry.type === "repository" && digest !== entry.sha256) throw new Error(`repository checksum mismatch: ${entry.source}`);
       const destination = join(output, relativePayloadPath(entry.destination));
@@ -193,8 +212,8 @@ export function buildDeliveryBundle(rootDir: string, artifactDir: string, output
     });
 
   const manifest: DeliveryBundleManifest = {
-    format: "munjib-delivery-bundle-manifest-v1",
-    version: 1,
+    format: "munjib-delivery-bundle-manifest-v2",
+    version: 2,
     bundle: "delivery-substrate-v1",
     target: layout.target,
     payloadDirectory,
@@ -213,7 +232,7 @@ function readManifest(bundleDir: string): { bundle: string; manifest: DeliveryBu
   ensureRegularFile(join(bundle, manifestName), manifestName);
   const bytes = readFileSync(join(bundle, manifestName));
   const manifest = JSON.parse(bytes.toString("utf8")) as DeliveryBundleManifest;
-  if (manifest.format !== "munjib-delivery-bundle-manifest-v1" || manifest.version !== 1 || manifest.bundle !== "delivery-substrate-v1") {
+  if (manifest.format !== "munjib-delivery-bundle-manifest-v2" || manifest.version !== 2 || manifest.bundle !== "delivery-substrate-v1") {
     throw new Error("invalid delivery bundle manifest");
   }
   return { bundle, manifest, bytes };
@@ -262,7 +281,9 @@ export function verifyDeliveryBundle(rootDir: string, bundleDir: string): Delive
     assertInside(bundle, payloadPath, "payload file");
     ensureRegularFile(payloadPath, actual.destination);
     if ((statSync(payloadPath).mode & 0o777).toString(8).padStart(4, "0") !== actual.mode) throw new Error(`payload mode mismatch: ${actual.destination}`);
-    if (sha256(readFileSync(payloadPath)) !== actual.sha256) throw new Error(`payload checksum mismatch: ${actual.destination}`);
+    const payloadBytes = readFileSync(payloadPath);
+    if (sha256(payloadBytes) !== actual.sha256) throw new Error(`payload checksum mismatch: ${actual.destination}`);
+    if (expectedEntry.type === "binary") assertLinuxArm64Elf(payloadBytes, actual.destination);
     expectedPayload.add(relative(bundle, payloadPath));
   }
   const payloadRoot = join(bundle, payloadDirectory);

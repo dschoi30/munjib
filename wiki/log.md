@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
+
+- Result: The delivery bundle builder and verifier now reject binaries that are not ELF64 little-endian AArch64, preventing non-target artifacts from being labeled `linux/arm64`. Generated bundle manifests use `munjib-delivery-bundle-manifest-v2`/version `2`, separating the checksummed bundle schema and external trust-key contract from the legacy static installation manifest v1.
+- Coverage: Builder input validation, verifier payload validation, CI summary metadata, tamper-resistant architecture regression tests, and delivery workflow documentation.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, PR #186 review threads.
+
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
 
 - Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
