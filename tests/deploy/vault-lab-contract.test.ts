@@ -70,6 +70,14 @@ describe("local Vault release signer lab", () => {
     const verifier = readFileSync("cmd/munjib-vault-lab-verify/main.go", "utf8");
     expect(integration).not.toContain("export VAULT_TOKEN");
     expect(up).not.toContain("export VAULT_TOKEN");
+    expect(integration).toContain("unset VAULT_TOKEN");
+    expect(up).toContain("unset VAULT_TOKEN");
+    expect(integration.indexOf("unset VAULT_TOKEN")).toBeLessThan(
+      integration.indexOf('VAULT_TOKEN="$(vault_lab_token)"'),
+    );
+    expect(up.indexOf("unset VAULT_TOKEN")).toBeLessThan(
+      up.indexOf('VAULT_TOKEN="$(vault_lab_token)"'),
+    );
     expect(integration).toContain('VAULT_TOKEN="$VAULT_TOKEN" bash');
     expect(verifier).toContain('os.LookupEnv("VAULT_TOKEN")');
     expect(integration).toContain("process.env.VAULT_TOKEN");

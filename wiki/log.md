@@ -34,6 +34,7 @@ links:
 - Payload review follow-up: signer now canonicalizes valid JSON before both hashing and embedding, preserving verifier compatibility for pretty and HTML-sensitive payloads.
 - Foreground lifecycle review: `vault:lab:up` now exits 130/143 on INT/TERM through the single EXIT cleanup path and preserves arbitrary child exit status.
 - Integration signal review: the integration harness now preserves normal EXIT status, exits 130/143 on INT/TERM, and routes each path through one cleanup invocation without secret output.
+- Inherited-token review: both lab entry scripts unset any caller-exported `VAULT_TOKEN` before generating the lab token, preventing Bash export-attribute inheritance into builds, helpers, verifiers, or arbitrary children.
 - Scope: Local-only evidence does not mutate production OCI, Cloudflare, or production keys and does not close Issue #185. Same-OCI bootstrap, host trust-key enrollment, host `VERIFY_ONLY_OK`, and current/rollback/recovery attestation remain incomplete.
 - Pages: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, `tests/deploy/vault-lab-contract.test.ts`, `internal/releasesigner/transit.go`, and `internal/releasesigner/transit_test.go`.
