@@ -35,8 +35,8 @@ links:
 
 ## 2026-07-18T20:48:00+09:00 - PR #186 executable segment semantics
 
-- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment whose file-backed bytes contain the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
-- Coverage: Data-only `PT_LOAD`, detached or zero-fill-only entrypoints, and 64-bit virtual-address overflow regressions.
+- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment whose file-backed bytes contain a complete, 4-byte-aligned first AArch64 instruction at the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
+- Coverage: Data-only `PT_LOAD`, detached, zero-fill-only, unaligned, or truncated entry instructions, and 64-bit virtual-address overflow regressions.
 - Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, PR #186 review thread.
 
