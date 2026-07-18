@@ -80,6 +80,21 @@ runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명�
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
 
+Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bundle
+layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
+(`scripts/deploy/{build,verify}-delivery-bundle.ts`)를 제공한다. 빌더는
+linux/arm64용 세 개의 사전 빌드된 Go artifact 이름과 repository 고정 파일만
+받고, 각 binary가 ELF64 little-endian AArch64인지 확인하며
+symlink/path escape/중복 destination을 거부한다. Generated manifest는 기존
+static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 않도록
+`munjib-delivery-bundle-manifest-v2`를 사용한다. 출력 manifest에는 각
+파일의 SHA-256, `root:root` ownership, mode, layout digest와 별도의
+`bundle.sha256`가 포함되며, `payload` 이외의 top-level 항목과 변조된 파일도
+검증기가 fail closed로 거부한다. `release-verify.pub`는 bundle에 포함하지
+않고 `root-bootstrap` external input으로만 선언한다. 따라서 이 코드는
+재현 가능한 artifact package/verification 경계를 제공할 뿐, production host
+설치나 trust-key enrollment를 주장하지 않는다.
+
 ## Security-critical runtime gate
 
 Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
@@ -199,29 +214,52 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
-### main deploy
+### Main deploy: current SSH checkout/native-build path
 
-`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
+The current `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
+every `main` push. It uses `appleboy/ssh-action`, fetches and checks out the exact
+`github.sha` on the OCI host, then runs the native Docker Compose build,
+migration, RAG index, service replacement, and health checks documented below.
+There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
+the broker-only exact-digest submission path is not active production behavior.
 
-Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
-
-Deploy job env:
+Target broker-only inputs (not active yet):
 
 ```text
-WEB_IMAGE=munjib-web:latest
-DEPLOY_SHA=${{ github.sha }}
+APP_IMAGE_DIGEST=<protected exact app digest>
+POSTGRES_IMAGE_DIGEST=<protected exact PostgreSQL digest>
+HOST_BUNDLE_DIGEST=<protected exact host-bundle digest>
+STORAGE_INIT_IMAGE_DIGEST=<protected exact storage-init digest>
+RELEASE_ENVELOPE=<protected signed broker envelope>
 SENTRY_RELEASE=${{ github.sha }}
 NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_ENV_FILE=/etc/munjib/env
 DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
 DEPLOY_HEALTHCHECK_HOST=munjib.example.invalid
-DEPLOY_REPOSITORY=${{ github.repository }}
-DEPLOY_GIT_TOKEN=${{ github.token }}
-DEPLOY_NEXTAUTH_SECRET=<GitHub protected secret>
-DEPLOY_GOOGLE_CLIENT_SECRET=<GitHub protected secret when Google overlay is enabled>
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
+The future broker-only path requires the exact digests above,
+`MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, the restricted deploy channel, and
+the signed envelope. Only after the workflow implements and verifies that gate
+may operators claim that the host no longer performs checkout or source builds.
+
+Before a restricted operator signs or installs a bundle, CI can build and verify
+the public-safe package from the fixed layout. These commands do not sign,
+install, enroll the trust key, or mutate a host:
+
+```bash
+pnpm delivery:build-bundle -- dist/delivery/linux-arm64 .artifacts/delivery-substrate-v1
+pnpm delivery:verify-bundle -- .artifacts/delivery-substrate-v1
+```
+
+The `ci` job runs the same contract on GitHub-hosted Linux: a SHA-pinned
+`actions/setup-go` (`v5.5.0`) provisions Go `1.22.12`, the three fixed Go
+programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
+`GOARCH=arm64`, and the builder/verifier run before the CI summary receives
+only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
+kept in the runner's temporary directory; no binary upload, signing key,
+trust-key enrollment, SSH mutation, or host install occurs. This step is part
+of `ci` so a failed artifact contract blocks a main deploy, while the current
+SSH checkout/native-build deploy job remains unchanged.
 
 Required GitHub secrets:
 
@@ -239,7 +277,36 @@ Current OCI production domain:
 https://munjib.example.invalid
 ```
 
-Remote deploy 순서:
+Target broker-only submit (not active; host install is still an external gate):
+
+```bash
+test -n "$APP_IMAGE_DIGEST"
+test -n "$POSTGRES_IMAGE_DIGEST"
+test -n "$HOST_BUNDLE_DIGEST"
+test -n "$STORAGE_INIT_IMAGE_DIGEST"
+test -n "$RELEASE_ENVELOPE"
+printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+test -S /run/munjib/release-broker.sock
+test -r /etc/munjib/security/broker-operations-v1.json
+printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
+```
+
+The submit account only forwards a bounded frame to the fixed Unix socket; the
+root broker independently revalidates the envelope and evidence before any
+system mutation. A broker socket, signed envelope, or root trust key is not
+present in this repository/host context, so this flow is documented but cannot
+be claimed as production-ready.
+
+<details>
+<summary>Current checkout/native-build flow implemented by ci-cd.yml</summary>
+
+Current deploy sequence:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -320,6 +387,8 @@ SENTRY_RUNTIME_METRICS_INTERVAL_MS=60000
 NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
 NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ```
+
+</details>
 
 ### Docker runtime
 

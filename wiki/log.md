@@ -19,6 +19,72 @@ links:
 
 # Wiki Log
 
+## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
+
+- Result: The delivery bundle builder and verifier now reject binaries that are not ELF64 little-endian AArch64, preventing non-target artifacts from being labeled `linux/arm64`. Generated bundle manifests use `munjib-delivery-bundle-manifest-v2`/version `2`, separating the checksummed bundle schema and external trust-key contract from the legacy static installation manifest v1.
+- Coverage: Builder input validation, verifier payload validation, CI summary metadata, tamper-resistant architecture regression tests, and delivery workflow documentation.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, PR #186 review threads.
+
+## 2026-07-18T20:26:00+09:00 - PR #186 current deploy documentation correction
+
+- Result: Corrected the delivery workflow page to distinguish the active `main` SSH checkout/native-build deploy from the future broker-only exact-digest path. The current workflow has no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` gate, so broker installation and attestation remain future gates rather than current production behavior.
+- Coverage: Active `appleboy/ssh-action` deploy sequence, target broker-only inputs, and the transition condition that must be implemented before claiming checkout-free production delivery.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, Issue #185, PR #186 review threads.
+
+## 2026-07-18T20:48:00+09:00 - PR #186 executable segment semantics
+
+- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment whose file-backed bytes contain a complete, 4-byte-aligned first AArch64 instruction at the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
+- Coverage: Data-only `PT_LOAD`, detached, zero-fill-only, unaligned, or truncated entry instructions, and 64-bit virtual-address overflow regressions.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, PR #186 review thread.
+
+## 2026-07-18T20:35:00+09:00 - PR #186 executable segment and evidence correction
+
+- Result: ELF64 AArch64 validation now requires a non-empty in-file `PT_LOAD` segment with `p_memsz >= p_filesz`, preventing zero-sized or out-of-bounds executable stubs from entering a verified delivery bundle. The Issue #185 handoff report now records that CI does cross-build/package/verify public Linux/ARM64 metadata while signing, attestation, transfer, installation, and trust enrollment remain blocked.
+- Coverage: Builder/verifier executable segment validation, zero-sized segment regression, and public-safe CI evidence wording.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.superpowers/sdd/task-1-report.md`, `.github/workflows/ci-cd.yml`, PR #186 review threads.
+
+## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
+
+- Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T14:38:00+09:00 - delivery bundle review documentation
+
+- Result: Clarified the Issue #185 delivery-bundle assessment's system entities, commands, target tuple, and manifest references with consistent inline-code boundaries.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T11:20:00+09:00 - delivery bundle CLI argument handling
+
+- Result: The delivery bundle CLI wrappers now ignore the package-manager `--`
+  separator before reading artifact/output arguments, matching the CI invocation
+  and keeping the fail-closed builder/verifier path executable.
+- Source evidence: `scripts/deploy/build-delivery-bundle.ts`,
+  `scripts/deploy/verify-delivery-bundle.ts`, Issue #185.
+
+## 2026-07-13T10:10:00+09:00 - delivery bundle packaging boundary
+
+- Result: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout and fail-closed TypeScript builder/verifier for the Leaf 13A broker, submitter, verifier, policies, systemd units, and forced-SSH fragment.
+- Coverage: The generated manifest records per-file SHA-256, fixed `root:root` ownership/modes, layout digest, and a separate manifest digest. Symlinked inputs, path escapes, duplicate destinations, tampered payloads, unexpected top-level files, and non-target bundles are rejected. The production `release-verify.pub` trust key is deliberately declared as a `root-bootstrap` external input and is not generated or bundled.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/delivery/bundle-layout-v1.json`, `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, Issue #185.
+- Verification: focused delivery-substrate and bundle tests pass; production host installation, key enrollment, and signed envelope verification remain external authority gates.
+
+## 2026-07-13T11:05:00+09:00 - delivery bundle CI cross-compile
+
+- Result: Issue #185's `ci` job now uses SHA-pinned `actions/setup-go` v5.5.0 with Go 1.22.12 to cross-compile the fixed broker, submitter, and verifier for Linux/ARM64, run the bundle builder/verifier, and emit only public SHA-256 metadata in the job summary.
+- Coverage: The step uses `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=arm64`, runner-temporary paths, and no artifact upload, signing, trust-key enrollment, SSH, Docker, or host mutation. The existing deploy job and its push-only gate are unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, Issue #185.
+- Verification: focused GitHub Actions, delivery-substrate, and bundle tests pass locally; the GitHub-hosted cross-compile is the CI acceptance gate.
+
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
 - Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
