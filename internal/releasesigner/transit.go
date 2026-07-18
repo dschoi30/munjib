@@ -64,12 +64,12 @@ type vaultSignData struct {
 }
 
 type vaultKeyData struct {
-	AllowPlaintextBackup bool                       `json:"allow_plaintext_backup"`
+	AllowPlaintextBackup *bool                      `json:"allow_plaintext_backup"`
 	AutoRotatePeriod     int                        `json:"auto_rotate_period"`
-	DeletionAllowed      bool                       `json:"deletion_allowed"`
-	Derived              bool                       `json:"derived"`
-	Exportable           bool                       `json:"exportable"`
-	ImportedKey          bool                       `json:"imported_key"`
+	DeletionAllowed      *bool                      `json:"deletion_allowed"`
+	Derived              *bool                      `json:"derived"`
+	Exportable           *bool                      `json:"exportable"`
+	ImportedKey          *bool                      `json:"imported_key"`
 	Keys                 map[string]vaultKeyVersion `json:"keys"`
 	LatestVersion        uint64                     `json:"latest_version"`
 	MinAvailableVersion  uint64                     `json:"min_available_version"`
@@ -172,9 +172,12 @@ func (c TransitClient) PublicKey(ctx context.Context, keyName string, version ui
 	if err := c.get(ctx, "/v1/transit/keys/"+keyName, &response); err != nil {
 		return nil, err
 	}
-	if response.Data.Type != "ed25519" || !response.Data.SupportsSigning || response.Data.Derived ||
-		response.Data.Exportable || response.Data.AllowPlaintextBackup || response.Data.DeletionAllowed ||
-		response.Data.ImportedKey {
+	if response.Data.Type != "ed25519" || !response.Data.SupportsSigning ||
+		response.Data.Derived == nil || *response.Data.Derived ||
+		response.Data.Exportable == nil || *response.Data.Exportable ||
+		response.Data.AllowPlaintextBackup == nil || *response.Data.AllowPlaintextBackup ||
+		response.Data.DeletionAllowed == nil || *response.Data.DeletionAllowed ||
+		response.Data.ImportedKey == nil || *response.Data.ImportedKey {
 		return nil, errors.New("VAULT_PUBLIC_KEY")
 	}
 	entry, ok := response.Data.Keys[strconv.FormatUint(version, 10)]

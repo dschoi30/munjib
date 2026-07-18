@@ -7,14 +7,13 @@ vault_lab_require_image
 VAULT_LAB_PRIVATE_DIR="$(vault_lab_private_dir)"
 export VAULT_LAB_PRIVATE_DIR
 VAULT_TOKEN="$(vault_lab_token)"
-export VAULT_TOKEN
 VAULT_LAB_OVERRIDE="$VAULT_LAB_PRIVATE_DIR/compose.override.yml"
 export VAULT_LAB_OVERRIDE
 vault_lab_write_override "$VAULT_LAB_OVERRIDE"
 trap vault_lab_cleanup EXIT INT TERM
 
 vault_lab_compose up -d --wait
-bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh"
+VAULT_TOKEN="$VAULT_TOKEN" bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh"
 
 if (( $# > 0 )); then
   "$@"
