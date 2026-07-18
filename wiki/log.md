@@ -33,6 +33,13 @@ links:
 - Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `.github/workflows/ci-cd.yml`, Issue #185, PR #186 review threads.
 
+## 2026-07-18T20:48:00+09:00 - PR #186 executable segment semantics
+
+- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment that contains the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
+- Coverage: Data-only `PT_LOAD`, detached entrypoint, and 64-bit virtual-address overflow regressions.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, PR #186 review thread.
+
 ## 2026-07-18T20:35:00+09:00 - PR #186 executable segment and evidence correction
 
 - Result: ELF64 AArch64 validation now requires a non-empty in-file `PT_LOAD` segment with `p_memsz >= p_filesz`, preventing zero-sized or out-of-bounds executable stubs from entering a verified delivery bundle. The Issue #185 handoff report now records that CI does cross-build/package/verify public Linux/ARM64 metadata while signing, attestation, transfer, installation, and trust enrollment remain blocked.

@@ -149,6 +149,7 @@ function ensureRegularFile(path: string, label: string): void {
 }
 
 function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
+  const uint64Max = (BigInt(1) << BigInt(64)) - BigInt(1);
   const osAbi = bytes[7];
   const fileType = bytes.length >= 18 ? bytes.readUInt16LE(16) : 0;
   const hasArm64Header =
@@ -165,6 +166,7 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
     bytes.readUInt16LE(52) === 64;
   let hasLoadableSegment = false;
   if (hasArm64Header) {
+    const entrypoint = bytes.readBigUInt64LE(24);
     const programHeaderOffset = bytes.readBigUInt64LE(32);
     const programHeaderSize = bytes.readUInt16LE(54);
     const programHeaderCount = bytes.readUInt16LE(56);
@@ -174,15 +176,23 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
       if (start >= 64 && Number.isSafeInteger(end) && end <= bytes.length) {
         for (let index = 0; index < programHeaderCount; index += 1) {
           const header = start + index * programHeaderSize;
+          const segmentFlags = bytes.readUInt32LE(header + 4);
           const segmentOffset = bytes.readBigUInt64LE(header + 8);
+          const segmentVirtualAddress = bytes.readBigUInt64LE(header + 16);
           const segmentFileSize = bytes.readBigUInt64LE(header + 32);
           const segmentMemorySize = bytes.readBigUInt64LE(header + 40);
           const segmentEnd = segmentOffset + segmentFileSize;
+          const segmentMemoryEnd = segmentVirtualAddress + segmentMemorySize;
           if (
             bytes.readUInt32LE(header) === 1 &&
+            (segmentFlags & 1) === 1 &&
             segmentFileSize > BigInt(0) &&
             segmentMemorySize >= segmentFileSize &&
-            segmentEnd <= BigInt(bytes.length)
+            segmentEnd <= uint64Max &&
+            segmentEnd <= BigInt(bytes.length) &&
+            segmentMemoryEnd <= uint64Max &&
+            entrypoint >= segmentVirtualAddress &&
+            entrypoint < segmentMemoryEnd
           ) {
             hasLoadableSegment = true;
             break;
