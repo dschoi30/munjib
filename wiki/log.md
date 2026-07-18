@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 341
+updated: 2026-07-18
+source_count: 344
 tags:
   - log
   - munjib
@@ -46,6 +46,25 @@ links:
 - Coverage: Builder/verifier executable segment validation, zero-sized segment regression, and public-safe CI evidence wording.
 - Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.superpowers/sdd/task-1-report.md`, `.github/workflows/ci-cd.yml`, PR #186 review threads.
+
+## 2026-07-18T12:30:00+09:00 - security/release-signer
+
+- Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
+- Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
+- Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
+
+## 2026-07-18T00:00:00+09:00 - security/release-signer
+
+- Result: 초기 production signer 배치를 현재 Munjib production과 같은 OCI VM의 Docker Compose Vault Community로 조정했다. 단일 노드 Raft, TLS, ACL, audit, snapshot/restore를 운영 계약으로 추가하고, 같은 호스트 경계 때문에 #185 독립 attestation 전에는 임시 gate로 표시했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Same-OCI threat boundary, Compose image/config evidence, public port 차단, optional Cloudflare Tunnel/Access, dedicated signer VM 승격 절차.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault production hardening, Cloudflare Tunnel/Access documentation, 사용자 결정.
+
+## 2026-07-17T00:00:00+09:00 - security/release-signer
+
+- Result: 1인 메인테이너 사이드 프로젝트의 delivery signer 권장안을 위키에 기록했다. Vault Community를 local Mac Docker lab과 signer adapter 개발에만 사용하고, production에서는 signer와 Munjib OCI host를 분리한다. HCP Vault Dedicated Development는 non-production only로 분류하고, Essentials 비용·OCI cross-cloud 경계·Community self-host 운영 책임을 함께 기록했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Vault Transit Ed25519, raw public-key bootstrap, Vault signature 변환, key version/generation 매핑, 1인 운영의 인간 독립성 한계, local lab/production bootstrap/attestation/rotation gate.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault Transit API, Vault edition comparison, HCP Vault tier/pricing/deployment documentation, 사용자 결정.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
 
@@ -2961,24 +2980,6 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
-## 2026-07-17T00:00:00+09:00 - security/release-signer
-
-- Result: 1인 메인테이너 사이드 프로젝트의 delivery signer 권장안을 위키에 기록했다. Vault Community를 local Mac Docker lab과 signer adapter 개발에만 사용하고, production에서는 signer와 Munjib OCI host를 분리한다. HCP Vault Dedicated Development는 non-production only로 분류하고, Essentials 비용·OCI cross-cloud 경계·Community self-host 운영 책임을 함께 기록했다.
-- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Vault Transit Ed25519, raw public-key bootstrap, Vault signature 변환, key version/generation 매핑, 1인 운영의 인간 독립성 한계, local lab/production bootstrap/attestation/rotation gate.
-- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault Transit API, Vault edition comparison, HCP Vault tier/pricing/deployment documentation, 사용자 결정.
-- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
-
-## 2026-07-18T00:00:00+09:00 - security/release-signer
-
-- Result: 초기 production signer 배치를 현재 Munjib production과 같은 OCI VM의 Docker Compose Vault Community로 조정했다. 단일 노드 Raft, TLS, ACL, audit, snapshot/restore를 운영 계약으로 추가하고, 같은 호스트 경계 때문에 #185 독립 attestation 전에는 임시 gate로 표시했다.
-- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Same-OCI threat boundary, Compose image/config evidence, public port 차단, optional Cloudflare Tunnel/Access, dedicated signer VM 승격 절차.
-- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault production hardening, Cloudflare Tunnel/Access documentation, 사용자 결정.
-
-## 2026-07-18T12:30:00+09:00 - security/release-signer
-
-- Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
-- Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
-- Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
 
 ## 2026-07-13T17:10:00+09:00 - security-runtime
 
