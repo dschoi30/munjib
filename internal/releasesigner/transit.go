@@ -135,15 +135,16 @@ func validVaultAddress(address *url.URL) bool {
 	return ip != nil && ip.IsLoopback()
 }
 
-func (c TransitClient) Sign(ctx context.Context, keyName string, message []byte) ([]byte, uint64, error) {
-	if !c.valid(keyName) {
+func (c TransitClient) Sign(ctx context.Context, keyName string, keyVersion uint64, message []byte) ([]byte, uint64, error) {
+	if !c.valid(keyName) || keyVersion == 0 {
 		return nil, 0, errors.New("VAULT_CONFIG")
 	}
 	body := struct {
 		Input              string `json:"input"`
+		KeyVersion         uint64 `json:"key_version"`
 		Prehashed          bool   `json:"prehashed"`
 		SignatureAlgorithm string `json:"signature_algorithm"`
-	}{base64.StdEncoding.EncodeToString(message), false, "ed25519"}
+	}{base64.StdEncoding.EncodeToString(message), keyVersion, false, "ed25519"}
 	var response vaultResponse[vaultSignData]
 	if err := c.post(ctx, "/v1/transit/sign/"+keyName, body, &response); err != nil {
 		return nil, 0, err
@@ -153,7 +154,7 @@ func (c TransitClient) Sign(ctx context.Context, keyName string, message []byte)
 		return nil, 0, errors.New("VAULT_SIGNATURE")
 	}
 	version, err := strconv.ParseUint(strings.TrimPrefix(parts[1], "v"), 10, 64)
-	if err != nil || version == 0 || response.Data.KeyVersion != version {
+	if err != nil || version == 0 || response.Data.KeyVersion != version || version != keyVersion {
 		return nil, 0, errors.New("VAULT_SIGNATURE")
 	}
 	signature, ok := decodeCanonicalBase64(parts[2])

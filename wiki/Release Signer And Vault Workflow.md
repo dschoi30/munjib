@@ -98,6 +98,10 @@ Issue #208 Phase A local lab은 구현되어 있다. lifecycle entry point는
 signature, key, temporary path와 Vault response body를 출력하지 않는다. 실패 stderr는
 stable generic message로 redaction하고 성공 stdout은 다음 다섯 줄만 허용한다.
 
+Lab signer 호출은 `--key-version 1`과 Munjib `--generation 1`을 별도 인자로
+고정한다. Transit response의 `key_version`과 `vault:vN` signature prefix가 요청한
+version과 모두 일치하지 않으면 서명을 거부한다.
+
 ```text
 VAULT_LAB_VERIFY_OK
 VAULT_LAB_TAMPER_REJECT_OK
@@ -252,7 +256,7 @@ Adapter는 다음을 수행한다.
 
 1. approved commit, target, manifest digest, bundle digest, immutable artifact reference를 확인한다.
 2. Munjib envelope의 canonical message를 NUL delimiter로 생성한다.
-3. message bytes를 Vault Transit sign API에 전달한다.
+3. bootstrap registry에 기록된 Vault key version을 `--key-version`으로 명시하고 message bytes와 함께 Transit sign API에 전달한다. latest implicit signing은 허용하지 않는다.
 4. `vault:v1:<base64>` signature를 파싱하고 64-byte raw signature인지 확인한다.
 5. signature를 base64url(no padding)로 변환해 envelope에 넣는다.
 6. Vault key ID/version, generation, issued/expiry, bundle digest를 audit record에 남긴다.
