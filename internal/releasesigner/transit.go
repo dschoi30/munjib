@@ -22,6 +22,72 @@ const maxVaultResponseBytes = 64 << 10
 
 var transitKeyName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$`)
 
+type vaultResponse[T any] struct {
+	RequestID     string         `json:"request_id"`
+	LeaseID       string         `json:"lease_id"`
+	Renewable     bool           `json:"renewable"`
+	LeaseDuration int            `json:"lease_duration"`
+	Data          T              `json:"data"`
+	WrapInfo      *vaultWrapInfo `json:"wrap_info"`
+	Warnings      []string       `json:"warnings"`
+	Auth          *vaultAuth     `json:"auth"`
+	MountType     string         `json:"mount_type"`
+}
+
+type vaultWrapInfo struct {
+	Token           string    `json:"token"`
+	Accessor        string    `json:"accessor"`
+	TTL             int       `json:"ttl"`
+	CreationTime    time.Time `json:"creation_time"`
+	CreationPath    string    `json:"creation_path"`
+	WrappedAccessor string    `json:"wrapped_accessor"`
+}
+
+type vaultAuth struct {
+	ClientToken      string            `json:"client_token"`
+	Accessor         string            `json:"accessor"`
+	Policies         []string          `json:"policies"`
+	TokenPolicies    []string          `json:"token_policies"`
+	IdentityPolicies []string          `json:"identity_policies"`
+	Metadata         map[string]string `json:"metadata"`
+	LeaseDuration    int               `json:"lease_duration"`
+	Renewable        bool              `json:"renewable"`
+	EntityID         string            `json:"entity_id"`
+	TokenType        string            `json:"token_type"`
+	Orphan           bool              `json:"orphan"`
+	NumUses          int               `json:"num_uses"`
+}
+
+type vaultSignData struct {
+	Signature string `json:"signature"`
+}
+
+type vaultKeyData struct {
+	AllowPlaintextBackup bool                       `json:"allow_plaintext_backup"`
+	AutoRotatePeriod     int                        `json:"auto_rotate_period"`
+	DeletionAllowed      bool                       `json:"deletion_allowed"`
+	Derived              bool                       `json:"derived"`
+	Exportable           bool                       `json:"exportable"`
+	ImportedKey          bool                       `json:"imported_key"`
+	Keys                 map[string]vaultKeyVersion `json:"keys"`
+	LatestVersion        uint64                     `json:"latest_version"`
+	MinAvailableVersion  uint64                     `json:"min_available_version"`
+	MinDecryptionVersion uint64                     `json:"min_decryption_version"`
+	MinEncryptionVersion uint64                     `json:"min_encryption_version"`
+	Name                 string                     `json:"name"`
+	SupportsDecryption   bool                       `json:"supports_decryption"`
+	SupportsDerivation   bool                       `json:"supports_derivation"`
+	SupportsEncryption   bool                       `json:"supports_encryption"`
+	SupportsSigning      bool                       `json:"supports_signing"`
+	Type                 string                     `json:"type"`
+}
+
+type vaultKeyVersion struct {
+	CreationTime string `json:"creation_time"`
+	Name         string `json:"name"`
+	PublicKey    string `json:"public_key"`
+}
+
 type TransitClient struct {
 	Address    *url.URL
 	HTTPClient *http.Client
@@ -72,11 +138,7 @@ func (c TransitClient) Sign(ctx context.Context, keyName string, message []byte)
 		Prehashed          bool   `json:"prehashed"`
 		SignatureAlgorithm string `json:"signature_algorithm"`
 	}{base64.StdEncoding.EncodeToString(message), false, "ed25519"}
-	var response struct {
-		Data struct {
-			Signature string `json:"signature"`
-		} `json:"data"`
-	}
+	var response vaultResponse[vaultSignData]
 	if err := c.post(ctx, "/v1/transit/sign/"+keyName, body, &response); err != nil {
 		return nil, 0, err
 	}
@@ -99,13 +161,7 @@ func (c TransitClient) PublicKey(ctx context.Context, keyName string, version ui
 	if !c.valid(keyName) || version == 0 {
 		return nil, errors.New("VAULT_CONFIG")
 	}
-	var response struct {
-		Data struct {
-			Keys map[string]struct {
-				PublicKey string `json:"public_key"`
-			} `json:"keys"`
-		} `json:"data"`
-	}
+	var response vaultResponse[vaultKeyData]
 	if err := c.get(ctx, "/v1/transit/keys/"+keyName, &response); err != nil {
 		return nil, err
 	}

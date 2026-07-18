@@ -3009,5 +3009,6 @@ links:
 
 - Result: Added a fail-closed standard-library Vault Transit client with loopback-only plaintext HTTP, HTTPS elsewhere, a 10-second default timeout, rejected redirects, strict bounded JSON responses, and redacted stable error codes.
 - Coverage: Exact Ed25519 signing requests, strict `vault:vN` signature parsing, 64-byte signature enforcement, exact key-name validation, and version-bound raw or PKIX DER Ed25519 public-key normalization.
+- Review follow-up: Standard Vault response-envelope fields and Transit key/key-version metadata are explicitly modeled without weakening unknown-field or trailing-data rejection; endpoint shape, requested-version invalid key forms, and stalled-request context cancellation have direct regression coverage.
 - Source evidence: `internal/releasesigner/transit.go`, `internal/releasesigner/transit_test.go`.
 - Verification: `CGO_ENABLED=0 go test -race ./internal/releasesigner -v`.
