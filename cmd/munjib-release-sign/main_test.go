@@ -7,12 +7,14 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -25,6 +27,101 @@ var fixedNow = time.Date(2026, 7, 19, 1, 2, 3, 0, time.UTC)
 type failingWriter struct{}
 
 func (failingWriter) Write([]byte) (int, error) { return 0, os.ErrClosed }
+
+type fakePublicKeyFile struct {
+	bytes.Buffer
+	mode                                  os.FileMode
+	writeErr, chmodErr, syncErr, closeErr error
+}
+
+func (f *fakePublicKeyFile) Name() string                 { return "/tmp/.release-verify.pub.test" }
+func (f *fakePublicKeyFile) Chmod(mode os.FileMode) error { f.mode = mode; return f.chmodErr }
+func (f *fakePublicKeyFile) Write(p []byte) (int, error) {
+	if f.writeErr != nil {
+		return 0, f.writeErr
+	}
+	return f.Buffer.Write(p)
+}
+func (f *fakePublicKeyFile) Sync() error  { return f.syncErr }
+func (f *fakePublicKeyFile) Close() error { return f.closeErr }
+
+func TestPublishPublicKeyAtomicallyFailureCleanup(t *testing.T) {
+	for _, stage := range []string{"create", "chmod", "write", "sync", "close", "publish"} {
+		t.Run(stage, func(t *testing.T) {
+			file := &fakePublicKeyFile{}
+			if stage == "chmod" {
+				file.chmodErr = errors.New(stage)
+			}
+			if stage == "write" {
+				file.writeErr = errors.New(stage)
+			}
+			if stage == "sync" {
+				file.syncErr = errors.New(stage)
+			}
+			if stage == "close" {
+				file.closeErr = errors.New(stage)
+			}
+			removed, published := false, false
+			ops := publicKeyPublishOps{
+				createTemp: func(string, string) (publicKeyTempFile, error) {
+					if stage == "create" {
+						return nil, errors.New(stage)
+					}
+					return file, nil
+				},
+				link: func(string, string) error {
+					if stage == "publish" {
+						return errors.New(stage)
+					}
+					published = true
+					return nil
+				},
+				remove: func(string) error { removed = true; return nil },
+			}
+			if publishPublicKeyAtomically("/tmp/release-verify.pub", []byte("key"), ops) == nil {
+				t.Fatal("failure accepted")
+			}
+			if stage != "create" && !removed {
+				t.Fatal("temporary file not cleaned")
+			}
+			if published && stage != "close" {
+				t.Fatal("published after failure")
+			}
+		})
+	}
+}
+
+func TestPublishPublicKeyAtomicallyNoReplaceConcurrent(t *testing.T) {
+	dir := t.TempDir()
+	out := filepath.Join(dir, "release-verify.pub")
+	var wg sync.WaitGroup
+	results := make(chan error, 2)
+	for _, key := range [][]byte{bytes.Repeat([]byte{1}, 32), bytes.Repeat([]byte{2}, 32)} {
+		wg.Add(1)
+		go func(key []byte) {
+			defer wg.Done()
+			results <- publishPublicKeyAtomically(out, key, osPublicKeyPublishOps)
+		}(key)
+	}
+	wg.Wait()
+	close(results)
+	successes := 0
+	for err := range results {
+		if err == nil {
+			successes++
+		}
+	}
+	if successes != 1 {
+		t.Fatalf("successes=%d", successes)
+	}
+	info, err := os.Stat(out)
+	if err != nil || info.Mode().Perm() != 0400 || info.Size() != 32 {
+		t.Fatalf("published=%v err=%v", info, err)
+	}
+	if matches, _ := filepath.Glob(filepath.Join(dir, ".release-verify.pub.*")); len(matches) != 0 {
+		t.Fatalf("temp residue: %v", matches)
+	}
+}
 
 func env(address string) func(string) string {
 	return func(name string) string {
