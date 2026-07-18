@@ -150,6 +150,7 @@ function ensureRegularFile(path: string, label: string): void {
 
 function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
   const uint64Max = (BigInt(1) << BigInt(64)) - BigInt(1);
+  const aarch64InstructionSize = BigInt(4);
   const osAbi = bytes[7];
   const fileType = bytes.length >= 18 ? bytes.readUInt16LE(16) : 0;
   const hasArm64Header =
@@ -184,6 +185,7 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
           const segmentEnd = segmentOffset + segmentFileSize;
           const segmentFileMemoryEnd = segmentVirtualAddress + segmentFileSize;
           const segmentMemoryEnd = segmentVirtualAddress + segmentMemorySize;
+          const entryInstructionEnd = entrypoint + aarch64InstructionSize;
           if (
             bytes.readUInt32LE(header) === 1 &&
             (segmentFlags & 1) === 1 &&
@@ -193,8 +195,10 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
             segmentEnd <= BigInt(bytes.length) &&
             segmentFileMemoryEnd <= uint64Max &&
             segmentMemoryEnd <= uint64Max &&
+            entrypoint % aarch64InstructionSize === BigInt(0) &&
+            entryInstructionEnd <= uint64Max &&
             entrypoint >= segmentVirtualAddress &&
-            entrypoint < segmentFileMemoryEnd
+            entryInstructionEnd <= segmentFileMemoryEnd
           ) {
             hasLoadableSegment = true;
             break;
