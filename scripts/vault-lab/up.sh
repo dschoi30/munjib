@@ -16,6 +16,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 vault_lab_compose up -d --wait
+rm -f -- "$VAULT_LAB_OVERRIDE"
+unset VAULT_LAB_OVERRIDE
 VAULT_TOKEN="$VAULT_TOKEN" bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh"
 
 if (( $# > 0 )); then

@@ -97,7 +97,9 @@ wrapper가 만든 private child environment에서만 실행하는 내부 단계�
 만들고, token은 mode `0600` generated Compose override와 Vault bootstrap/signer invocation의
 scoped environment에만 둔다. build, Node mutation helper, verifier, arbitrary `up` child에는
 전달하지 않는다. caller가 export한 기존 `VAULT_TOKEN`은 새 token 생성 전에 unset해 Bash의
-export attribute도 제거한다. 모든 generated source, binary, payload, envelope, public key, log artifact는
+export attribute도 제거한다. Compose가 container를 생성한 직후 token-bearing override를
+삭제하고 `VAULT_LAB_OVERRIDE`도 unset하므로 이후 child/build/helper가 그 path를 상속하지 않는다.
+모든 generated source, binary, payload, envelope, public key, log artifact는
 checkout 밖의 같은 mode-`0700` private directory 아래에 둔다. raw public key는 mode `0400` temporary file에 기록하며 command body, token,
 signature, key, temporary path와 Vault response body를 출력하지 않는다. 실패 stderr는
 stable generic message로 redaction하고 성공 stdout은 다음 다섯 줄만 허용한다.

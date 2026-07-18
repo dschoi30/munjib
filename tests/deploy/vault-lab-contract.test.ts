@@ -80,7 +80,13 @@ describe("local Vault release signer lab", () => {
     );
     expect(integration).toContain('VAULT_TOKEN="$VAULT_TOKEN" bash');
     expect(verifier).toContain('os.LookupEnv("VAULT_TOKEN")');
+    expect(verifier).toContain('os.LookupEnv("VAULT_LAB_OVERRIDE")');
     expect(integration).toContain("process.env.VAULT_TOKEN");
+    expect(integration).toContain("process.env.VAULT_LAB_OVERRIDE");
+    expect(integration).toContain('rm -f -- "$VAULT_LAB_OVERRIDE"');
+    expect(integration).toContain("unset VAULT_LAB_OVERRIDE");
+    expect(up).toContain('rm -f -- "$VAULT_LAB_OVERRIDE"');
+    expect(up).toContain("unset VAULT_LAB_OVERRIDE");
   });
 
   it("keeps all integration artifacts in the private temporary directory", () => {
