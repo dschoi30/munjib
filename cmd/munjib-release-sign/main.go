@@ -35,13 +35,22 @@ type publicKeyTempFile interface {
 
 type publicKeyPublishOps struct {
 	createTemp func(string, string) (publicKeyTempFile, error)
+	openDir    func(string) (publicKeyDirectory, error)
 	link       func(string, string) error
+	unlink     func(string) error
 	remove     func(string) error
+}
+
+type publicKeyDirectory interface {
+	Sync() error
+	Close() error
 }
 
 var osPublicKeyPublishOps = publicKeyPublishOps{
 	createTemp: func(dir, pattern string) (publicKeyTempFile, error) { return os.CreateTemp(dir, pattern) },
+	openDir:    func(path string) (publicKeyDirectory, error) { return os.Open(path) },
 	link:       os.Link,
+	unlink:     os.Remove,
 	remove:     os.Remove,
 }
 
@@ -194,7 +203,28 @@ func publishPublicKeyAtomically(output string, publicKey []byte, ops publicKeyPu
 	if err := file.Close(); err != nil {
 		return err
 	}
-	return ops.link(temporary, output)
+	if err := ops.link(temporary, output); err != nil {
+		return err
+	}
+	directoryFile, err := ops.openDir(directory)
+	if err != nil {
+		_ = ops.unlink(output)
+		return err
+	}
+	if err := directoryFile.Sync(); err != nil {
+		_ = directoryFile.Close()
+		_ = ops.unlink(output)
+		if cleanupDirectory, openErr := ops.openDir(directory); openErr == nil {
+			_ = cleanupDirectory.Sync()
+			_ = cleanupDirectory.Close()
+		}
+		return err
+	}
+	if err := directoryFile.Close(); err != nil {
+		_ = ops.unlink(output)
+		return err
+	}
+	return nil
 }
 
 func usageError(stderr io.Writer) int {

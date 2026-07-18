@@ -45,8 +45,13 @@ func (f *fakePublicKeyFile) Write(p []byte) (int, error) {
 func (f *fakePublicKeyFile) Sync() error  { return f.syncErr }
 func (f *fakePublicKeyFile) Close() error { return f.closeErr }
 
+type fakePublicKeyDirectory struct{ syncErr, closeErr error }
+
+func (f *fakePublicKeyDirectory) Sync() error  { return f.syncErr }
+func (f *fakePublicKeyDirectory) Close() error { return f.closeErr }
+
 func TestPublishPublicKeyAtomicallyFailureCleanup(t *testing.T) {
-	for _, stage := range []string{"create", "chmod", "write", "sync", "close", "publish"} {
+	for _, stage := range []string{"create", "chmod", "write", "sync", "close", "publish", "dir-open", "dir-sync", "dir-close"} {
 		t.Run(stage, func(t *testing.T) {
 			file := &fakePublicKeyFile{}
 			if stage == "chmod" {
@@ -62,6 +67,14 @@ func TestPublishPublicKeyAtomicallyFailureCleanup(t *testing.T) {
 				file.closeErr = errors.New(stage)
 			}
 			removed, published := false, false
+			finalRemoved := false
+			directory := &fakePublicKeyDirectory{}
+			if stage == "dir-sync" {
+				directory.syncErr = errors.New(stage)
+			}
+			if stage == "dir-close" {
+				directory.closeErr = errors.New(stage)
+			}
 			ops := publicKeyPublishOps{
 				createTemp: func(string, string) (publicKeyTempFile, error) {
 					if stage == "create" {
@@ -76,6 +89,13 @@ func TestPublishPublicKeyAtomicallyFailureCleanup(t *testing.T) {
 					published = true
 					return nil
 				},
+				openDir: func(string) (publicKeyDirectory, error) {
+					if stage == "dir-open" {
+						return nil, errors.New(stage)
+					}
+					return directory, nil
+				},
+				unlink: func(string) error { finalRemoved = true; return nil },
 				remove: func(string) error { removed = true; return nil },
 			}
 			if publishPublicKeyAtomically("/tmp/release-verify.pub", []byte("key"), ops) == nil {
@@ -85,7 +105,9 @@ func TestPublishPublicKeyAtomicallyFailureCleanup(t *testing.T) {
 				t.Fatal("temporary file not cleaned")
 			}
 			if published && stage != "close" {
-				t.Fatal("published after failure")
+				if !finalRemoved {
+					t.Fatal("published final not removed after durability failure")
+				}
 			}
 		})
 	}
