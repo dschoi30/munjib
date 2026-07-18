@@ -219,3 +219,29 @@ func TestRunRejectsUnsafeInputsWithStableExitCodes(t *testing.T) {
 		})
 	}
 }
+
+func TestRunReportsMissingVaultEnvironmentWithoutPrintingUsage(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		env  func(string) string
+		want string
+	}{
+		{name: "address", env: func(string) string { return "" }, want: "VAULT_ADDR is required\n"},
+		{name: "token", env: func(key string) string {
+			if key == "VAULT_ADDR" {
+				return "http://127.0.0.1:1"
+			}
+			return ""
+		}, want: "VAULT_TOKEN is required\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if exit := run(context.Background(), []string{"sign"}, test.env, strings.NewReader(""), &stdout, &stderr, time.Now, rand.Reader); exit != exitUsage {
+				t.Fatalf("exit=%d", exit)
+			}
+			if stdout.Len() != 0 || stderr.String() != test.want {
+				t.Fatalf("stdout=%q stderr=%q", stdout.String(), stderr.String())
+			}
+		})
+	}
+}

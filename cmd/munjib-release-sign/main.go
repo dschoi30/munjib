@@ -34,8 +34,13 @@ func run(ctx context.Context, args []string, getenv func(string) string, stdin i
 		return usageError(stderr)
 	}
 	address, token := getenv("VAULT_ADDR"), getenv("VAULT_TOKEN")
-	if address == "" || token == "" {
-		return usageError(stderr)
+	if address == "" {
+		fmt.Fprintln(stderr, "VAULT_ADDR is required")
+		return exitUsage
+	}
+	if token == "" {
+		fmt.Fprintln(stderr, "VAULT_TOKEN is required")
+		return exitUsage
 	}
 	client, err := releasesigner.NewTransitClient(address, token)
 	if err != nil {

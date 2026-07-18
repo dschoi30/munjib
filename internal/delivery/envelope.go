@@ -79,7 +79,7 @@ func NewUnsignedEnvelope(input UnsignedEnvelopeInput, now time.Time) (Envelope, 
 }
 
 func SignedMessage(envelope Envelope) ([]byte, error) {
-	if envelope.Format != "munjib-release-envelope-v1" || envelope.Operation != "VERIFY_ONLY" ||
+	if envelope.Format != "munjib-release-envelope-v1" || !allowedOperations[envelope.Operation] ||
 		envelope.KeyID == "" || envelope.ExpectedGeneration == 0 || len(envelope.PayloadSHA256) != 64 {
 		return nil, errors.New("ENVELOPE_SIGNING_FIELDS")
 	}
