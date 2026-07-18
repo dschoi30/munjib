@@ -6,6 +6,7 @@ vault_lab_require_image
 
 VAULT_LAB_PRIVATE_DIR="$(vault_lab_private_dir)"
 export VAULT_LAB_PRIVATE_DIR
+unset VAULT_TOKEN
 VAULT_TOKEN="$(vault_lab_token)"
 VAULT_LAB_OVERRIDE="$VAULT_LAB_PRIVATE_DIR/compose.override.yml"
 export VAULT_LAB_OVERRIDE
