@@ -113,6 +113,9 @@ VAULT_LAB_WRONG_KEY_REJECT_OK
 이 evidence는 generation `1`, TTL `2m` positive envelope, payload tamper, TTL `1s`
 expiry, configured generation `2`, 두 번째 Transit key rejection을 실제 digest-pinned
 Vault Community container와 repository signer/verifier source로 확인한 local-only 결과다.
+`pnpm vault:lab:down`은 fresh shell에서도 실행할 수 있다. image env가 없을 때는
+teardown parsing에만 non-pullable digest-shaped placeholder를 사용하며 container를
+시작하거나 image를 pull하지 않는다. `up`, `bootstrap`, `test`의 digest validation은 유지된다.
 
 ## Single OCI Docker Compose deployment
 
