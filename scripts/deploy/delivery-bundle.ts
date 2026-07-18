@@ -182,6 +182,7 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
           const segmentFileSize = bytes.readBigUInt64LE(header + 32);
           const segmentMemorySize = bytes.readBigUInt64LE(header + 40);
           const segmentEnd = segmentOffset + segmentFileSize;
+          const segmentFileMemoryEnd = segmentVirtualAddress + segmentFileSize;
           const segmentMemoryEnd = segmentVirtualAddress + segmentMemorySize;
           if (
             bytes.readUInt32LE(header) === 1 &&
@@ -190,9 +191,10 @@ function assertLinuxArm64Elf(bytes: Buffer, label: string): void {
             segmentMemorySize >= segmentFileSize &&
             segmentEnd <= uint64Max &&
             segmentEnd <= BigInt(bytes.length) &&
+            segmentFileMemoryEnd <= uint64Max &&
             segmentMemoryEnd <= uint64Max &&
             entrypoint >= segmentVirtualAddress &&
-            entrypoint < segmentMemoryEnd
+            entrypoint < segmentFileMemoryEnd
           ) {
             hasLoadableSegment = true;
             break;

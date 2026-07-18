@@ -152,6 +152,19 @@ describe("delivery substrate bundle", () => {
     expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
   });
 
+  it("rejects an entrypoint present only in zero-filled segment memory", () => {
+    const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
+    const outputDir = temporaryDirectory("munjib-delivery-output-");
+    for (const name of ["munjib-release-broker", "munjib-release-submit", "munjib-release-verify"]) {
+      writeFileSync(join(artifactDir, name), linuxArm64Elf(name));
+    }
+    const zeroFilledEntrypoint = linuxArm64Elf("fake");
+    zeroFilledEntrypoint.writeBigUInt64LE(BigInt(16), 96);
+    writeFileSync(join(artifactDir, "munjib-release-broker"), zeroFilledEntrypoint);
+
+    expect(() => buildDeliveryBundle(rootDir, artifactDir, outputDir)).toThrow("must be an ELF64 little-endian AArch64 binary");
+  });
+
   it("rejects a PT_LOAD virtual-address range that overflows ELF64", () => {
     const artifactDir = temporaryDirectory("munjib-delivery-artifacts-");
     const outputDir = temporaryDirectory("munjib-delivery-output-");
