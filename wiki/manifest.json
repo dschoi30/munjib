@@ -47,7 +47,7 @@
         "[[Release Signer And Vault Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 58,
+      "source_count": 62,
       "searchPriority": 50
     },
     {
@@ -209,7 +209,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 159,
+      "source_count": 161,
       "searchPriority": 5
     },
     {
@@ -232,7 +232,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 67,
+      "source_count": 70,
       "searchPriority": 50
     },
     {
@@ -252,7 +252,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 344,
+      "source_count": 351,
       "searchPriority": 1
     },
     {
@@ -452,7 +452,7 @@
         "[[Production Observability Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 11,
+      "source_count": 18,
       "searchPriority": 50
     },
     {

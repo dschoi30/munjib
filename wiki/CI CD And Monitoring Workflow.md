@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-18
-source_count: 58
+updated: 2026-07-19
+source_count: 62
 tags:
   - munjib
   - workflow
@@ -423,7 +423,7 @@ Dockerfile stages:
 
 ### Release signer and production delivery gate
 
-Production deploy의 artifact provenance와 host attestation은 [[Release Signer And Vault Workflow]]에서 관리한다. 초기에는 현재 Munjib OCI VM의 Docker Compose에 Vault Community를 함께 둘 수 있지만, 같은 호스트 경계이므로 독립 signer attestation을 충족하지 않는 임시 gate다. `vault server -dev`와 local Mac Docker는 production trust root가 아니다. 현재 bundle builder/verifier는 생성·digest 검증만 제공하며, Vault Transit 서명 결과와 Munjib의 raw Ed25519 envelope 형식 사이에는 별도 adapter가 필요하다. `main` merge 전에는 signed bundle, root-bootstrap public key, host `VERIFY_ONLY_OK`, current/rollback/recovery evidence와 same-OCI 제한 또는 dedicated signer VM 승격 상태가 명시되어야 한다.
+Production deploy의 artifact provenance와 host attestation은 [[Release Signer And Vault Workflow]]에서 관리한다. 초기에는 현재 Munjib OCI VM의 Docker Compose에 Vault Community를 함께 둘 수 있지만, 같은 호스트 경계이므로 독립 signer attestation을 충족하지 않는 임시 gate다. `vault server -dev`와 local Mac Docker는 production trust root가 아니다. Issue #208은 digest-pinned Vault 2.0.3, loopback-only Compose, `munjib-release-sign`, raw Ed25519 public-key normalization과 positive/tamper/expiry/generation/wrong-key local integration을 `pnpm vault:lab:test`로 구현했다. 이 command는 general CI/test에 암묵적으로 포함되지 않는 explicit Docker integration gate다. Phase A local evidence만 완료되었으며 production signed bundle, root-bootstrap key enrollment, host `VERIFY_ONLY_OK`, current/rollback/recovery evidence와 Issue #185 독립 attestation은 계속 미완료다.
 
 ## Monitoring
 

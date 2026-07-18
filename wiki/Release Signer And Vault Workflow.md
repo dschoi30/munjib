@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: 1인 사이드 프로젝트의 release signer를 Vault Community로 운영한다. 초기 production은 Munjib production과 같은 OCI VM의 Docker Compose 단일 노드로 시작하되, 독립 attestation을 위한 별도 signer VM 승격 게이트를 명시한다.
 created: 2026-07-17
-updated: 2026-07-18
-source_count: 11
+updated: 2026-07-19
+source_count: 18
 tags:
   - munjib
   - security
@@ -85,6 +85,30 @@ Local lab rules:
 - local port는 필요할 때만 `127.0.0.1`에 bind한다.
 - `backend "raft"`가 아니라 Vault 설정 키워드인 `storage "raft"`를 사용한다.
 - local signature는 production attestation으로 보고하지 않는다.
+
+Issue #208 Phase A local lab은 구현되어 있다. lifecycle entry point는
+`pnpm vault:lab:up`, `pnpm vault:lab:bootstrap`, `pnpm vault:lab:test`,
+`pnpm vault:lab:down`이고, base Compose는 token을 포함하지 않으며
+`127.0.0.1:18200`에만 publish한다. 검증한 image record는
+`docker.io/hashicorp/vault:2.0.3@sha256:a296a888b118615dc01d5f1a6846e6d4a7277946caaed5b447008fff5fe06b54`이다.
+
+`vault:lab:test`는 실행마다 private temporary directory와 random dev token을
+만들고, token은 mode `0600` generated Compose override와 child process environment에만
+둔다. raw public key는 mode `0400` temporary file에 기록하며 command body, token,
+signature, key, temporary path와 Vault response body를 출력하지 않는다. 실패 stderr는
+stable generic message로 redaction하고 성공 stdout은 다음 다섯 줄만 허용한다.
+
+```text
+VAULT_LAB_VERIFY_OK
+VAULT_LAB_TAMPER_REJECT_OK
+VAULT_LAB_EXPIRY_REJECT_OK
+VAULT_LAB_GENERATION_REJECT_OK
+VAULT_LAB_WRONG_KEY_REJECT_OK
+```
+
+이 evidence는 generation `1`, TTL `2m` positive envelope, payload tamper, TTL `1s`
+expiry, configured generation `2`, 두 번째 Transit key rejection을 실제 digest-pinned
+Vault Community container와 repository signer/verifier source로 확인한 local-only 결과다.
 
 ## Single OCI Docker Compose deployment
 
@@ -264,12 +288,16 @@ OpenSSH 한 줄 public key나 PEM 파일을 그대로 설치하지 않는다. ad
 
 ### Phase A — local Compose lab
 
-- Vault Community image/version pin
-- Transit Ed25519 test key
-- canonical envelope builder
-- Vault sign adapter
-- public-key normalization
-- local verifier positive/tamper/expiry/generation tests
+- [x] Vault Community image/version/digest pin
+- [x] loopback-only Compose와 ephemeral credential override
+- [x] Transit Ed25519 test key `munjib-release-lab-v1`
+- [x] canonical envelope builder와 Vault sign adapter
+- [x] raw 32-byte public-key normalization
+- [x] real local positive/tamper/expiry/generation/wrong-key integration
+
+Phase A 완료는 production readiness가 아니다. Phase B same-OCI production bootstrap,
+Phase C host `VERIFY_ONLY_OK`, current/rollback/recovery evidence와 Issue #185 독립
+attestation은 모두 미완료 상태다.
 
 ### Phase B — same-OCI production bootstrap (temporary gate)
 
@@ -361,6 +389,8 @@ OpenSSH 한 줄 public key나 PEM 파일을 그대로 설치하지 않는다. ad
 
 ## Source evidence
 
+- `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, and `tests/deploy/vault-lab-contract.test.ts`.
+- `cmd/munjib-release-sign/main.go` and `internal/releasesigner/transit.go`.
 - Issue #185 delivery-substrate assessment and `internal/delivery/envelope.go`.
 - `cmd/munjib-release-verify/main.go` and `cmd/munjib-release-broker/main.go`.
 - `deploy/delivery/principal-policy-v1.json` and bundle layout/verifier scripts.

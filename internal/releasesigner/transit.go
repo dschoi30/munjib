@@ -59,7 +59,8 @@ type vaultAuth struct {
 }
 
 type vaultSignData struct {
-	Signature string `json:"signature"`
+	KeyVersion uint64 `json:"key_version"`
+	Signature  string `json:"signature"`
 }
 
 type vaultKeyData struct {
@@ -83,9 +84,11 @@ type vaultKeyData struct {
 }
 
 type vaultKeyVersion struct {
-	CreationTime string `json:"creation_time"`
-	Name         string `json:"name"`
-	PublicKey    string `json:"public_key"`
+	CertificateChain string `json:"certificate_chain"`
+	CreationTime     string `json:"creation_time"`
+	HybridPublicKey  string `json:"hybrid_public_key"`
+	Name             string `json:"name"`
+	PublicKey        string `json:"public_key"`
 }
 
 type TransitClient struct {
@@ -147,7 +150,7 @@ func (c TransitClient) Sign(ctx context.Context, keyName string, message []byte)
 		return nil, 0, errors.New("VAULT_SIGNATURE")
 	}
 	version, err := strconv.ParseUint(strings.TrimPrefix(parts[1], "v"), 10, 64)
-	if err != nil || version == 0 {
+	if err != nil || version == 0 || response.Data.KeyVersion != version {
 		return nil, 0, errors.New("VAULT_SIGNATURE")
 	}
 	signature, ok := decodeCanonicalBase64(parts[2])

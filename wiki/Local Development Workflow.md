@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 67
+updated: 2026-07-19
+source_count: 70
 tags:
   - munjib
   - workflow
@@ -52,6 +52,21 @@ pnpm run test:e2e:ui
 pnpm run test:security-runtime
 pnpm audit --prod
 ```
+
+Issue #208 local Vault signer lab은 Docker가 필요한 explicit gate이며 일반
+`pnpm test`에 암묵적으로 포함되지 않는다. approved digest-pinned image를
+`VAULT_LAB_IMAGE`로 설정한 뒤 다음 lifecycle command를 사용한다.
+
+```bash
+pnpm vault:lab:up
+pnpm vault:lab:bootstrap
+pnpm vault:lab:test
+pnpm vault:lab:down
+```
+
+Lab은 `127.0.0.1:18200`에만 publish하고 dev token은 private temporary
+mode-`0600` override에만 둔다. `vault:lab:test`의 public stdout contract와
+production/non-production 경계는 [[Release Signer And Vault Workflow]]를 본다.
 
 Auth runtime startup/preflight commands:
 
