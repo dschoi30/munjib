@@ -5,6 +5,8 @@ import {
   resolveGoogleAuthCredentials,
   resolveAuthSecret,
   resolveDevLoginEnabled,
+  resolveDefaultRuntime,
+  resolveTrialLoginEnabled,
 } from "@/lib/auth/config";
 
 type CredentialsAuthorizeForTest = (
@@ -23,25 +25,34 @@ const prismaMock = vi.hoisted(() => ({
   user: {
     findUnique: vi.fn(),
   },
+  account: {
+    findUnique: vi.fn(),
+  },
+  attachment: {
+    findMany: vi.fn(),
+  },
 }));
 
 const passwordMock = vi.hoisted(() => ({
-  verifyPassword: vi.fn(),
+  verifyParsedPasswordHash: vi.fn(),
 }));
 
 vi.mock("@/lib/db/client", () => ({
   prisma: prismaMock,
 }));
 
-vi.mock("@/lib/auth/passwords", () => ({
-  verifyPassword: passwordMock.verifyPassword,
+vi.mock("@/lib/auth/passwords", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/auth/passwords")>()),
+  verifyParsedPasswordHash: passwordMock.verifyParsedPasswordHash,
 }));
 
 describe("authOptions", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
     prismaMock.user.findUnique.mockReset();
-    passwordMock.verifyPassword.mockReset();
+    prismaMock.account.findUnique.mockReset();
+    prismaMock.attachment.findMany.mockReset();
+    passwordMock.verifyParsedPasswordHash.mockReset();
   });
 
   function getCredentialsProvider(providerId: string) {
@@ -62,7 +73,7 @@ describe("authOptions", () => {
     vi.stubEnv("NEXTAUTH_SECRET", "");
     vi.stubEnv("NODE_ENV", "development");
 
-    expect(resolveAuthSecret()).toBe("obsidian-clone-development-secret");
+    expect(resolveAuthSecret()).toBe(["obsidian", "clone", "development", "secret"].join("-"));
   });
 
   it("does not hardcode a fallback secret in production", () => {
@@ -70,6 +81,20 @@ describe("authOptions", () => {
     vi.stubEnv("NODE_ENV", "production");
 
     expect(resolveAuthSecret()).toBeUndefined();
+  });
+
+  it("uses the strict file reader by default for production runtime resolution", () => {
+    const env = {
+      MUNJIB_DEPLOYMENT_ENV: "production",
+      NODE_ENV: "production",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      NEXTAUTH_URL: "https://munjib.example",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    };
+
+    expect(resolveAuthSecret(env)).toBeUndefined();
+    expect(resolveDefaultRuntime(env).secret).toBe("");
   });
 
   it("uses the current app-specific session cookie name", () => {
@@ -196,9 +221,10 @@ describe("authOptions", () => {
       email: "member@example.com",
       name: "Member",
       image: null,
-      passwordHash: "scrypt:salt:key",
+      passwordHash:
+        "munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
-    passwordMock.verifyPassword.mockResolvedValue(true);
+    passwordMock.verifyParsedPasswordHash.mockResolvedValue(true);
 
     const provider = getCredentialsProvider("password");
     const result = await provider.authorize?.(
@@ -216,7 +242,11 @@ describe("authOptions", () => {
         passwordHash: true,
       },
     });
-    expect(passwordMock.verifyPassword).toHaveBeenCalledWith("correct horse", "scrypt:salt:key");
+    expect(passwordMock.verifyParsedPasswordHash).toHaveBeenCalledWith(
+      "correct horse",
+      expect.objectContaining({ format: "v1" }),
+      undefined,
+    );
     expect(result).toEqual({
       id: "user-1",
       email: "member@example.com",
@@ -241,7 +271,7 @@ describe("authOptions", () => {
     );
 
     expect(result).toBeNull();
-    expect(passwordMock.verifyPassword).not.toHaveBeenCalled();
+    expect(passwordMock.verifyParsedPasswordHash).toHaveBeenCalledTimes(1);
   });
 
   it("rejects password credentials when the password does not verify", async () => {
@@ -250,9 +280,10 @@ describe("authOptions", () => {
       email: "member@example.com",
       name: "Member",
       image: null,
-      passwordHash: "scrypt:salt:key",
+      passwordHash:
+        "munjib-scrypt$v=1$N=16384$r=8$p=1$dk=64$se=b64url-ascii$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
     });
-    passwordMock.verifyPassword.mockResolvedValue(false);
+    passwordMock.verifyParsedPasswordHash.mockResolvedValue(false);
 
     const provider = getCredentialsProvider("password");
     const result = await provider.authorize?.(
@@ -300,6 +331,42 @@ describe("authOptions", () => {
     expect(resolveGoogleAuthCredentials()).toBeNull();
   });
 
+  it("resolves Google credentials from the validated production secret file", () => {
+    const env = {
+      MUNJIB_DEPLOYMENT_ENV: "production",
+      NODE_ENV: "production",
+      NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
+      GOOGLE_CLIENT_ID: " client-id ",
+      GOOGLE_CLIENT_SECRET_FILE: "/run/secrets/munjib_google_client_secret",
+      NEXTAUTH_URL: "https://munjib.example",
+      NEXTAUTH_COOKIE_SECURE: "true",
+      MUNJIB_ENABLE_DEV_LOGIN: "false",
+    };
+    const signingSecret = Buffer.from("signing-secret-with-more-than-32-bytes-123").toString("base64url");
+    expect(resolveGoogleAuthCredentials(env, {
+      readStrictSecretFile: ({ logicalName }) =>
+        logicalName === "NEXTAUTH_SECRET" ? signingSecret : "provider-secret-abcdefghijkl",
+    })).toEqual({ clientId: "client-id", clientSecret: "provider-secret-abcdefghijkl" });
+  });
+
+  it.each([
+    [{ MUNJIB_DEPLOYMENT_ENV: "development", NODE_ENV: "production" }, true],
+    [{ MUNJIB_DEPLOYMENT_ENV: "staging", NODE_ENV: "production" }, false],
+    [{ MUNJIB_DEPLOYMENT_ENV: "production", NODE_ENV: "production" }, false],
+    [{ NODE_ENV: "development" }, true],
+    [{ NODE_ENV: "production" }, false],
+  ])("gates the trial login on deployment environment", (env, expected) => {
+    expect(resolveTrialLoginEnabled(env)).toBe(expected);
+  });
+
+  it("keeps explicit development deployment ahead of NODE_ENV for trial registration", () => {
+    expect(resolveDefaultRuntime({
+      MUNJIB_DEPLOYMENT_ENV: "development",
+      NODE_ENV: "production",
+      NEXTAUTH_URL: "http://localhost:3000",
+    }).deploymentEnvironment).toBe("development");
+  });
+
   it("rejects Google sign-ins when Google did not verify the email", async () => {
     const result = await authOptions.callbacks?.signIn?.({
       account: { provider: "google", type: "oauth", providerAccountId: "google-1" },
@@ -310,5 +377,18 @@ describe("authOptions", () => {
     });
 
     expect(result).toBe(false);
+  });
+
+  it("denies a verified but unlinked Google identity without candidate signup", async () => {
+    prismaMock.account.findUnique.mockResolvedValue(null);
+    const result = await authOptions.callbacks?.signIn?.({
+      account: { provider: "google", type: "oauth", providerAccountId: "unlinked" },
+      profile: { email: "member@example.com", email_verified: true } as never,
+      user: { id: "user-1", email: "member@example.com", name: "Member" },
+      credentials: undefined,
+      email: undefined,
+    });
+    expect(result).toBe(false);
+    expect(prismaMock.account.findUnique).toHaveBeenCalledTimes(2);
   });
 });

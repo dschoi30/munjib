@@ -55,6 +55,47 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Audit production dependencies
+        run: pnpm audit --prod
+
+      - name: Check Next.js advisories
+        run: pnpm exec tsx scripts/security/check-next-advisories.ts --candidate "$(node -p "require('./package.json').dependencies.next")"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Set up Go for delivery bundle
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: "1.22.12"
+          cache: false
+
+      - name: Build and verify Linux ARM64 delivery bundle
+        run: |
+          set -euo pipefail
+          artifact_dir="$RUNNER_TEMP/munjib-delivery-linux-arm64"
+          bundle_dir="$RUNNER_TEMP/munjib-delivery-substrate-v1"
+          metadata_file="$RUNNER_TEMP/munjib-delivery-substrate-v1.sha256"
+          mkdir -p "$artifact_dir"
+          for binary in broker submit verify; do
+            CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build \
+              -trimpath -buildvcs=false -ldflags='-buildid=' \
+              -o "$artifact_dir/munjib-release-$binary" \
+              "./cmd/munjib-release-$binary"
+          done
+          pnpm delivery:build-bundle -- "$artifact_dir" "$bundle_dir"
+          pnpm delivery:verify-bundle -- "$bundle_dir"
+          {
+            printf 'target=linux/arm64\n'
+            printf 'bundle_format=munjib-delivery-bundle-manifest-v2\n'
+            sha256sum \
+              "$artifact_dir/munjib-release-broker" \
+              "$artifact_dir/munjib-release-submit" \
+              "$artifact_dir/munjib-release-verify" \
+              "$bundle_dir/manifest.json" \
+              "$bundle_dir/bundle.sha256"
+          } > "$metadata_file"
+          cat "$metadata_file" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Generate Prisma client
         run: pnpm run db:generate
 
@@ -90,12 +131,14 @@ jobs:
           DEPLOY_HEALTHCHECK_HOST: munjib.andrewchoi.link
           DEPLOY_REPOSITORY: ${{ github.repository }}
           DEPLOY_GIT_TOKEN: ${{ github.token }}
+          DEPLOY_NEXTAUTH_SECRET: ${{ secrets.MUNJIB_NEXTAUTH_SECRET }}
+          DEPLOY_GOOGLE_CLIENT_SECRET: ${{ secrets.MUNJIB_GOOGLE_CLIENT_SECRET }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN
+          envs: WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN,DEPLOY_NEXTAUTH_SECRET,DEPLOY_GOOGLE_CLIENT_SECRET
           script: |
             set -euo pipefail
             cd "${{ secrets.DEPLOY_PATH }}"
@@ -104,10 +147,49 @@ jobs:
             git checkout --detach "$DEPLOY_SHA"
             test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
             sudo test -r "$DEPLOY_ENV_FILE"
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" build web tools
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose --env-file "$DEPLOY_ENV_FILE" up -d web
+            umask 077
+            secret_dir=/etc/munjib/secrets
+            sudo install -d -o root -g root -m 0755 "$secret_dir"
+            install_secret() {
+              secret_name="$1"
+              secret_value="$2"
+              test -n "$secret_value"
+              secret_tmp="$(sudo mktemp "$secret_dir/.${secret_name}.XXXXXX")"
+              printf '%s' "$secret_value" | sudo tee "$secret_tmp" >/dev/null
+              sudo chown 10001:10001 "$secret_tmp"
+              sudo chmod 0400 "$secret_tmp"
+              sudo mv -fT "$secret_tmp" "$secret_dir/${secret_name}"
+            }
+            install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
+            compose_files="-f docker-compose.yml"
+            google_client_id="$(
+              sudo awk -v key=GOOGLE_CLIENT_ID '
+                $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
+                  value=$0
+                  sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
+                  sub("[[:space:]]*(#.*)?$", "", value)
+                  single=sprintf("%c", 39)
+                  if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+                      (substr(value, 1, 1) == single && substr(value, length(value), 1) == single)) {
+                    value=substr(value, 2, length(value)-2)
+                  }
+                  sub("^[[:space:]]*", "", value)
+                  sub("[[:space:]]*$", "", value)
+                  print value
+                  exit
+                }
+              ' "$DEPLOY_ENV_FILE"
+            )"
+            if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then
+              install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"
+              compose_files="$compose_files -f docker-compose.google.yml"
+            fi
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
+            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
+            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web
             for attempt in 1 2 3 4 5 6 7 8 9 10; do
               if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
                 break

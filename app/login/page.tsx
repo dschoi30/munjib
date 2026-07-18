@@ -1,5 +1,9 @@
 import { LoginForm } from "@/app/login/login-form";
-import { resolveDevLoginEnabled, resolveGoogleAuthCredentials } from "@/lib/auth/config";
+import {
+  resolveDevLoginEnabled,
+  resolveGoogleAuthCredentials,
+  resolveTrialLoginEnabled,
+} from "@/lib/auth/config";
 
 // The form reflects a runtime env gate, so avoid baking it into a static route.
 export const dynamic = "force-dynamic";
@@ -10,6 +14,8 @@ export default function LoginPage() {
       <LoginForm
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
+        isTrialLoginEnabled={resolveTrialLoginEnabled()}
+        isSignupEnabled={false}
       />
     </main>
   );

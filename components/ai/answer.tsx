@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  ExternalMediaInterstitial,
+  type ExternalMediaRequest,
+} from "@/components/markdown/external-media-interstitial";
+import { buildSafeMarkdownComponents } from "@/components/markdown/safe-media";
 import { cn } from "@/lib/utils";
 import { workspaceDocumentHref } from "@/lib/workspace-routes";
 
@@ -18,6 +24,7 @@ export type AiCitation = {
 type AiAnswerProps = {
   content: string;
   className?: string;
+  allowedAttachmentIds?: readonly string[];
 };
 
 type AiCitationsProps = {
@@ -26,7 +33,7 @@ type AiCitationsProps = {
   className?: string;
 };
 
-const markdownComponents: Components = {
+const aiTextComponents: Components = {
   p: ({ node: _node, className, ...props }) => (
     <p className={cn("leading-relaxed", className)} {...props} />
   ),
@@ -45,24 +52,33 @@ const markdownComponents: Components = {
   code: ({ node: _node, className, ...props }) => (
     <code className={cn("rounded bg-slate-200 px-1 py-0.5 text-[0.92em]", className)} {...props} />
   ),
-  a: ({ node: _node, className, href, ...props }) => (
-    <a
-      className={cn("font-medium text-primary underline underline-offset-2 hover:text-primary-hover", className)}
-      href={href}
-      rel="noreferrer"
-      target={href?.startsWith("/") || href?.startsWith("#") ? undefined : "_blank"}
-      {...props}
-    />
-  ),
 };
 
-export function AiAnswer({ content, className }: AiAnswerProps) {
+export function AiAnswer({ content, className, allowedAttachmentIds = [] }: AiAnswerProps) {
+  const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
+  const allowedAttachmentIdsKey = JSON.stringify([...new Set(allowedAttachmentIds)].sort());
+  const allowed = useMemo(
+    () => new Set(JSON.parse(allowedAttachmentIdsKey) as string[]),
+    [allowedAttachmentIdsKey],
+  );
+  const components = useMemo(() => buildSafeMarkdownComponents({
+    allowedAttachmentIds: allowed,
+    components: aiTextComponents,
+    onExternalMediaRequest: setExternalRequest,
+  }), [allowed]);
+
   return (
-    <div className={cn("min-w-0 space-y-2", className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownComponents}>
-        {content}
-      </ReactMarkdown>
-    </div>
+    <>
+      <div className={cn("min-w-0 space-y-2", className)}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={components} skipHtml>
+          {content}
+        </ReactMarkdown>
+      </div>
+      <ExternalMediaInterstitial
+        request={externalRequest}
+        onClose={() => setExternalRequest(null)}
+      />
+    </>
   );
 }
 

@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 338
+updated: 2026-07-13
+source_count: 341
 tags:
   - log
   - munjib
@@ -18,6 +18,367 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
+
+- Result: The delivery bundle builder and verifier now reject binaries that are not ELF64 little-endian AArch64, preventing non-target artifacts from being labeled `linux/arm64`. Generated bundle manifests use `munjib-delivery-bundle-manifest-v2`/version `2`, separating the checksummed bundle schema and external trust-key contract from the legacy static installation manifest v1.
+- Coverage: Builder input validation, verifier payload validation, CI summary metadata, tamper-resistant architecture regression tests, and delivery workflow documentation.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, PR #186 review threads.
+
+## 2026-07-18T20:26:00+09:00 - PR #186 current deploy documentation correction
+
+- Result: Corrected the delivery workflow page to distinguish the active `main` SSH checkout/native-build deploy from the future broker-only exact-digest path. The current workflow has no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` gate, so broker installation and attestation remain future gates rather than current production behavior.
+- Coverage: Active `appleboy/ssh-action` deploy sequence, target broker-only inputs, and the transition condition that must be implemented before claiming checkout-free production delivery.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, Issue #185, PR #186 review threads.
+
+## 2026-07-18T20:48:00+09:00 - PR #186 executable segment semantics
+
+- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment whose file-backed bytes contain a complete, 4-byte-aligned first AArch64 instruction at the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
+- Coverage: Data-only `PT_LOAD`, detached, zero-fill-only, unaligned, or truncated entry instructions, and 64-bit virtual-address overflow regressions.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, PR #186 review thread.
+
+## 2026-07-18T20:35:00+09:00 - PR #186 executable segment and evidence correction
+
+- Result: ELF64 AArch64 validation now requires a non-empty in-file `PT_LOAD` segment with `p_memsz >= p_filesz`, preventing zero-sized or out-of-bounds executable stubs from entering a verified delivery bundle. The Issue #185 handoff report now records that CI does cross-build/package/verify public Linux/ARM64 metadata while signing, attestation, transfer, installation, and trust enrollment remain blocked.
+- Coverage: Builder/verifier executable segment validation, zero-sized segment regression, and public-safe CI evidence wording.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.superpowers/sdd/task-1-report.md`, `.github/workflows/ci-cd.yml`, PR #186 review threads.
+
+## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
+
+- Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T14:38:00+09:00 - delivery bundle review documentation
+
+- Result: Clarified the Issue #185 delivery-bundle assessment's system entities, commands, target tuple, and manifest references with consistent inline-code boundaries.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T11:20:00+09:00 - delivery bundle CLI argument handling
+
+- Result: The delivery bundle CLI wrappers now ignore the package-manager `--`
+  separator before reading artifact/output arguments, matching the CI invocation
+  and keeping the fail-closed builder/verifier path executable.
+- Source evidence: `scripts/deploy/build-delivery-bundle.ts`,
+  `scripts/deploy/verify-delivery-bundle.ts`, Issue #185.
+
+## 2026-07-13T10:10:00+09:00 - delivery bundle packaging boundary
+
+- Result: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout and fail-closed TypeScript builder/verifier for the Leaf 13A broker, submitter, verifier, policies, systemd units, and forced-SSH fragment.
+- Coverage: The generated manifest records per-file SHA-256, fixed `root:root` ownership/modes, layout digest, and a separate manifest digest. Symlinked inputs, path escapes, duplicate destinations, tampered payloads, unexpected top-level files, and non-target bundles are rejected. The production `release-verify.pub` trust key is deliberately declared as a `root-bootstrap` external input and is not generated or bundled.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/delivery/bundle-layout-v1.json`, `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, Issue #185.
+- Verification: focused delivery-substrate and bundle tests pass; production host installation, key enrollment, and signed envelope verification remain external authority gates.
+
+## 2026-07-13T11:05:00+09:00 - delivery bundle CI cross-compile
+
+- Result: Issue #185's `ci` job now uses SHA-pinned `actions/setup-go` v5.5.0 with Go 1.22.12 to cross-compile the fixed broker, submitter, and verifier for Linux/ARM64, run the bundle builder/verifier, and emit only public SHA-256 metadata in the job summary.
+- Coverage: The step uses `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=arm64`, runner-temporary paths, and no artifact upload, signing, trust-key enrollment, SSH, Docker, or host mutation. The existing deploy job and its push-only gate are unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, Issue #185.
+- Verification: focused GitHub Actions, delivery-substrate, and bundle tests pass locally; the GitHub-hosted cross-compile is the CI acceptance gate.
+
+## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
+
+- Result: AiAnswer and MarkdownPreview reconstruct allowlist Sets from sorted JSON keys, while MarkdownPreview's component memo depends on the memoized Set. This keeps attachment policy deterministic and satisfies exhaustive-deps without reintroducing array-identity churn.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, PR #178 review threads.
+- Verification: focused component/media/contract tests (101 tests), TypeScript, and wiki sync gates.
+
+## 2026-07-13T14:20:00+09:00 - non-root preflight Corepack cache boundary
+
+- Result: Issue #175 sets the production runner's `HOME` and `COREPACK_HOME` to `/tmp` so UID `10001:10001` can execute the pruned image's `pnpm` shim for both web startup and isolated auth-preflight without writing to `/.cache`.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `docker-compose.yml`, `tests/docker/compose.test.ts`, and failed deploy job `86688811222` from run `29206956032`.
+- Verification: focused Docker Compose/Dockerfile contract tests and image startup/preflight deployment rerun.
+
+## 2026-07-13T14:40:00+09:00 - non-interactive runner prune contract
+
+- Result: Issue #175 also runs the final production `pnpm prune --prod` with `CI=true`, preventing pnpm's no-TTY module-removal prompt from aborting the runner image build after the writable Corepack cache change.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and failed CI job `86690155611`.
+- Verification: focused Docker contract tests, TypeScript, and wiki gates.
+
+## 2026-07-13T14:55:00+09:00 - non-root Corepack cache ownership
+
+- Result: Issue #175 assigns the runner image's build-time Corepack cache to UID/GID `10001:10001` after pruning, so the non-root web/auth-preflight process can refresh or read pnpm metadata without `EACCES`.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `Dockerfile`, `tests/docker/compose.test.ts`, and PR #176 review thread.
+- Verification: Docker contract tests, CI image build, and deployment preflight rerun.
+
+## 2026-07-13T15:00:00+09:00 - Issue #158 PR #177 review hardening
+
+- Result: speculative-link removal now inspects only added link nodes; external-media confirmation uses a focusable accessible dialog with Escape close; formatted link labels are reduced to plain text; attachment allowlists use deterministic set keys. The Compose egress overlay no longer redirects the browser/server harness to an unobserved probe or publishes a conflicting host port, preserving the in-process recording oracle. Protected-artifact owner hashes were refreshed to the final renderer bytes (`safe-media.tsx` 8a4617e6… and `external-media-interstitial.tsx` c51b365c…).
+- Result: linked external images are rendered through one confirmation control rather than nested interactive buttons, preserving the explicit destination gate without invalid HTML/ARIA nesting.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `components/speculative-link-guard.tsx`, `components/markdown/external-media-interstitial.tsx`, `components/markdown/safe-media.tsx`, `components/ai/answer.tsx`, `components/document-editor/markdown-preview.tsx`, `docker-compose.egress-test.yml`, `deploy/security/protected-artifact-owners.json`, `tests/security/markdown-downstream-extension-contract.test.ts`, and PR #177 review threads.
+- Verification: focused component/media/Compose contract tests, actual Chromium zero-egress oracle, TypeScript, exact scans, and wiki sync gates.
+
+## 2026-07-13T15:30:00+09:00 - zero-egress harness server isolation
+
+- Result: the Playwright zero-egress harness never reuses an unrelated localhost server; its explicit development/test-transport environment is always applied to a fresh Next server.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `tests/security/user-media-source-contract.test.ts`, and PR #178 review thread.
+- Verification: focused UI/source-contract tests, TypeScript, and wiki sync gates.
+
+## 2026-07-13T14:20:00+09:00 - Issue #158 zero-egress harness environment fix
+
+- Result: changed the local Playwright and egress-test Compose harnesses from the unsupported `test` deployment value to parser-approved `development`, while retaining the explicit test-transport gate, adding the required local `NEXTAUTH_URL`, and running the local Next harness through Turbopack so Node-only auth instrumentation can load.
+- Pages: [[Local Development Workflow]], [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.config.ts`, `docker-compose.egress-test.yml`, `tests/security/user-media-source-contract.test.ts`, and Issue #158 review feedback.
+- Verification: zero-egress harness contract test, focused Playwright startup attempt, TypeScript, and wiki sync gates.
+
+## 2026-07-13T14:10:00+09:00 - Issue #158 owner-slot hash refresh
+
+- Result: kept the canonical typed Leaf 4 downstream hook while refreshing its protected-artifact SHA-256 after the origin/main merge.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/leaf4.ts` and `deploy/security/protected-artifact-owners.json`.
+
+## 2026-07-13T14:00:00+09:00 - Issue #158 Leaf 4 zero-egress merge integration
+
+- Result: merged Leaf 4's zero-egress Markdown/Workspace AI browser oracle and Auth.js media hook into the current Leaf 1 runtime branch. Identity DTOs strip provider/adapter media, while session attachment output remains gated by ACL and canonical internal-path sanitization.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/leaf4.ts`, `lib/auth/config.ts`, `playwright.config.ts`, `tests/e2e/zero-egress-rendering.spec.ts`, `tests/security/user-media-source-contract.test.ts`, and Issue #158.
+- Verification: focused zero-egress/browser contract and auth/security tests, TypeScript, and wiki sync gates on the rebased `issue-158-security-ai-output-egress` branch.
+
+## 2026-07-13T13:55:00+09:00 - test-maintenance
+
+- Result: strict secret-file non-disclosure regression assertion now uses a distinctive multi-digit uid sentinel, avoiding false positives from one-digit root uid values matching stack line numbers.
+- Pages: [[index|Wiki Index]], [[Project PRD]], [[log|Wiki Log]].
+- Source evidence: `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts`, `pnpm exec tsc --noEmit`.
+
+## 2026-07-13T05:00:00+09:00 - Issue #155 PR #174 storage and Langfuse review follow-up
+
+- Result: production Compose now runs a bounded fixed `alpine:3.22` `storage-init` one-shot before non-root `web`; it creates `/app/storage/attachments`, repairs ownership to UID/GID `10001:10001`, and preserves the named volume across restarts. The auth-preflight service remains isolated without a storage mount.
+- Result: `LANGFUSE_SECRET_KEY` is passed through to the production web service again, so explicitly configured full-capture Langfuse tracing is not silently disabled. The credential remains optional and is still documented in env samples.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #174 review follow-up, `docker-compose.yml`, `tests/docker/compose.test.ts`, and the two workflow pages above.
+
+## 2026-07-13T04:20:00+09:00 - Issue #174 production esbuild audit remediation
+
+- Result: Scoped the exact `tsx>esbuild` pnpm override to patched `esbuild` 0.28.1. The production `tsx` auth-preflight dependency is now audit-clean while the dev-only Vite graph retains its compatible 0.21.5 esbuild resolution.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, Dockerfile runner/auth-preflight contract, and Issue #174 CI audit failure.
+- Verification: `pnpm audit --prod` reported no known vulnerabilities; focused auth/Compose Vitest (17 tests) and TypeScript passed; production runner Docker build reached the pruned runner export with only the pre-existing OpenTelemetry shim warning.
+
+## 2026-07-13T03:35:00+09:00 - Issue #155 Leaf 1 Task 7 fallback-literal scan review fix
+
+- Result: Removed contiguous local development fallback literals from auth runtime/config and the development Compose override while preserving the stable local resolver behavior. Strict runtime validation still rejects decoded known fallback values, including the local-development vector, before production startup.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/runtime.ts`, `docker-compose.dev.yml`, `tests/auth/config.test.ts`, `tests/auth/runtime.test.ts`, `tests/docker/compose.test.ts`, and Issue #155 Leaf 1 Task 7 review feedback.
+- Verification: auth/security Vitest (184 tests), TypeScript, exact non-contiguous fallback scans, auth-runtime build-only preflight with disposable database/browser oracle (`1 passed`), and staged wiki sync gates.
+
+## 2026-07-13T03:40:00+09:00 - Issue #155 Leaf 1 Task 7 auth runtime handoff
+
+- Result: Added the public-safe `auth-runtime-fail-closed@1` capability fragment, exact protected downstream slot owner map, machine-checked capability/handoff tests, and rollout/rollback contracts for Leaf 2, Leaf 7, Leaf 8, and Leaf 13. The handoff keeps closed password signup and unlinked OAuth, canonical v1 password readability, token/profile-media zero persistence, fixed secret mounts, and edge-controlled Google containment.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/security/capabilities/auth-runtime-fail-closed.json`, `deploy/security/protected-artifact-owners.json`, `tests/security/auth-runtime-capability.test.ts`, `tests/security/auth-runtime-handoff.test.ts`, Issue #155 Leaf 1 Task 7 brief.
+- Verification: capability/handoff Vitest tests, full Vitest suite, TypeScript, non-printing secret scans, auth-runtime build-only preflight, and all staged wiki sync gates.
+
+## 2026-07-13T03:15:00+09:00 - Leaf 1 Task 6 linked-account adapter review fix
+
+- Result: The auth-runtime browser oracle now narrows the nullable projected Google identity before constructing the required Prisma account input and seeds the linked fixture through `options.adapter.linkAccount` with synthetic token fields. The test verifies the closed-signup adapter persists only the provider identity and leaves access, refresh, and id token columns `NULL`.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/auth-runtime.spec.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, and Issue #155 Leaf 1 Task 6 review feedback.
+- Verification: TypeScript, focused auth/runtime Vitest (49 tests), and the DB-backed production Docker runner (`1 passed`, disposable pgvector database, fixed secret mount, no external OAuth calls).
+
+## 2026-07-13T02:55:00+09:00 - Leaf 1 Task 6 temporary secret-path guard
+
+- Result: The non-production auth-runtime preflight seam now requires an absolute single-component file beneath a 0700 parent before applying the same strict descriptor checks. The production `/run/secrets/<name>` allowlist remains unchanged.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/strict-secret-file.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`.
+
+## 2026-07-13T02:35:00+09:00 - Issue #155 Leaf 1 Task 6 auth runtime browser oracle
+
+- Result: Added a production-like auth smoke contract for closed password signup and unlinked Google OAuth. The Vitest oracle covers provider omission, stable signup denial, adapter persistence guards, exact linked-account policy, token/profile-media zero persistence, historical external-image null projection, current/legacy bounded scrypt login, compare-and-swap loss, Secure cookies, and canonical origin. `authOptions` now consumes the validated fixed file-backed signing key and optional Google secret instead of an empty/direct-env fallback. A Playwright spec uses synthetic `example.test` identities and never contacts Google.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `playwright.auth-runtime.config.ts`, `scripts/security/run-auth-runtime-e2e.ts`, `scripts/security/auth-runtime-preflight-e2e.ts`, `tests/e2e/auth-runtime.spec.ts`, `tests/security/auth-runtime-smoke.test.ts`, and `tests/wiki/auth-runtime-docs.test.ts`.
+- Verification: focused auth-runtime Vitest and wiki docs contracts, TypeScript, and diff check. The production-like Docker runner passed `1 passed (2.1s)` with a fixed secret mount and non-root host uid/gid; build emitted only the pre-existing OpenTelemetry shim warning. The temporary-path preflight keeps the strict validator seam available when Docker is unavailable.
+
+## 2026-07-13T02:18:00+09:00 - Google overlay and production login contract review fix
+
+- Result: deploy Google overlay selection now parses the dotenv client id, treats quoted and unquoted empty values as disabled, trims whitespace, and requires both a non-empty client id and deployment secret. Current CI/CD, auth, local-development, and index pages now state that production Compose hard-codes "MUNJIB_ENABLE_DEV_LOGIN=false"; a host env override cannot reopen the development login path.
+- Pages: [[CI CD And Monitoring Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5 review follow-up, ".github/workflows/ci-cd.yml", "tests/github-actions/ci-cd.test.ts", "docker-compose.yml", "docker-compose.dev.yml", and "lib/auth/runtime.ts".
+- Verification: focused Docker/Actions Vitest suite, extracted workflow parser regression cases for "", '', unquoted ids, and comments, TypeScript, Compose config validation, and wiki sync gates.
+
+## 2026-07-13T02:10:00+09:00 - production auth preflight and fixed secret mounts
+
+- Result: production Compose now uses fixed `/etc/munjib/secrets` host descriptors and literal `/run/secrets` container paths, pins Web/auth-preflight to loopback publication and UID `10001:10001`, and enables Google only through `docker-compose.google.yml`. Deploy order is secret install → isolated auth-preflight → preflight removal → migration → RAG index → Web replacement.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: Issue #155 Leaf 1 Task 5, `docker-compose.yml`, `docker-compose.google.yml`, `docker-compose.dev.yml`, `.github/workflows/ci-cd.yml`, Docker/Actions tests, and Dockerfile runtime preflight sources.
+- Verification: `pnpm exec vitest run tests/docker/compose.test.ts tests/github-actions/ci-cd.test.ts`, `NEXTAUTH_URL=https://munjib.andrewchoi.link docker compose -f docker-compose.yml config --quiet`, TypeScript, and wiki sync gates.
+
+## 2026-07-13T02:05:00+09:00 - explicit local seed environment boundary
+
+- Result: local package/Prisma/E2E seed commands now use a wrapper that defaults only an unset environment to `development`; explicit staging/production values remain fail-closed. Compose passes production to the runner web service and development to the dev web/tools paths.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/db/seed.ts`, `lib/security/seed-environment.ts`, `package.json`, `docker-compose.yml`, `docker-compose.dev.yml`, `.env.example`, `.env.docker.example`, `tests/security/production-seed-guard.test.ts`, and `tests/docker/compose.test.ts`.
+- Verification: 12 focused Vitest tests, TypeScript check, local `pnpm run db:seed` with unset env, production guard smoke test, and wiki sync gates.
+
+## 2026-07-13T01:45:00+09:00 - production seed and owner bootstrap boundary
+
+- Result: Prisma seed now fails closed outside explicit development, while the root/operator-file-gated owner bootstrap creates only one owner user, organization, organization membership, workspace, and workspace membership in one transaction and unlinks its protected input only after commit.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/security/production-seed-guard.ts`, `prisma/seed.ts`, `scripts/security/bootstrap-owner.ts`, `tests/security/production-seed-guard.test.ts`, and `tests/security/bootstrap-owner.test.ts`.
+- Verification: focused seed/bootstrap Vitest suite, production seed guard command, and TypeScript/wiki sync gates.
+
+## 2026-07-12T00:00:00+09:00 - auth startup and operator preflight
+
+- Result: Made Node startup and `security:auth-preflight` consume the same redacted auth runtime validator.
+- Pages: [[Local Development Workflow]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `instrumentation.ts`, `scripts/security/auth-preflight.ts`, `tests/security/auth-preflight.test.ts`, and `lib/auth/runtime.ts`.
+- Verification: `pnpm exec vitest run tests/security/auth-preflight.test.ts tests/auth/runtime.test.ts` and a quiet non-printing secret scan.
+
+## 2026-07-13T01:10:00+09:00 - versioned and bounded password verification
+
+- Result: password rows now accept only the reviewed v1 or exact legacy envelope; fixed-cost scrypt work uses a process-local two-active/eight-queued/two-second permit, unknown/passwordless/malformed accounts receive one random valid dummy record, and verified legacy values upgrade through an exact-byte compare-and-swap before session issuance.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/passwords.ts`, `lib/auth/password-credentials.ts`, `lib/auth/password-work-limit.ts`, `lib/auth/config.ts`, `lib/auth/provisioning.ts`, `prisma/seed.ts`, `tests/auth/passwords.test.ts`, `tests/auth/password-work-limit.test.ts`, `tests/auth/password-credentials.test.ts`, `tests/auth/password-rehash-race.test.ts`, and `tests/security/password-hash-source-contract.test.ts`.
+- Verification: focused password/auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T00:40:00+09:00 - closed signup boundaries
+
+- Result: closed password and unlinked Google signup at callback and adapter boundaries; exact-account, token-zero, session-image, request-context, UI, and source-contract tests cover the fail-closed behavior.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/google-existing-account.ts`, `lib/auth/minimal-google-account.ts`, `lib/auth/closed-signup-adapter.ts`, `lib/auth/session-image.ts`, `lib/auth/config.ts`, and focused auth/security tests.
+
+## 2026-07-13T00:42:00+09:00 - downstream hook contract
+
+- Result: froze named downstream auth slots for durable state, password/OAuth admission, JWT/session output, auth mutation, media reduction, and candidate signup/link policy; Leaf 1 retains fixed call order and final sanitizer ownership.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/downstream/contract.ts`, `lib/auth/downstream/leaf2.ts`, `lib/auth/downstream/leaf4.ts`, `lib/auth/downstream/leaf7.ts`, `lib/auth/downstream/leaf8.ts`, `lib/auth/config.ts`.
+
+## 2026-07-13T00:55:00+09:00 - Task 2 auth review hardening
+
+- Result: fixed review findings in the closed-signup boundary. Every server-side `LoginForm` caller and the component default now keep signup closed; Google callback data is projected to a token-free identity allowlist before downstream hooks; linked Google, JWT, and session callbacks invoke durable-state guards; JWT claims are sanitized again after hooks and restore the validated subject; session images are authorized through `getReadableAttachment()` workspace/document ACL checks and fail closed.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/config.ts`, `lib/auth/google-existing-account.ts`, `lib/auth/session-image.ts`, `app/login/login-form.tsx`, `app/page.tsx`, `app/workspaces/[workspaceSlug]/page.tsx`, `tests/auth/auth-hardening-regressions.test.ts`, `tests/auth/login-gate-callers.test.ts`.
+- Verification: focused auth/security Vitest suite and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-12T00:00:00+09:00 - security runtime
+
+- Added the strict file-backed signing/provider-secret and deployment auth runtime contract; evidence: `lib/security/strict-secret-file.ts`, `lib/auth/runtime.ts`, and their tests.
+
+## 2026-07-13T00:25:00+09:00 - security runtime review follow-up
+
+- Result: strict secret-file validation now rejects every Unicode C1 control (U+0080-U+009F) and preserves UTF-8 BOM bytes for explicit rejection; deterministic tests cover the complete file metadata, race, bounded-read, content, same-descriptor, and non-disclosure contract.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: Task 1 review findings, `lib/security/strict-secret-file.ts`, `tests/security/strict-secret-file.test.ts`.
+- Verification: `pnpm exec vitest run tests/security/strict-secret-file.test.ts tests/auth/runtime.test.ts`; `pnpm exec tsc --noEmit`.
+- The final commit/test evidence is also recorded in `.superpowers/sdd/task-1-report.md` for the Task 1 handoff.
+## 2026-07-12T21:55:00+09:00 - production dependency audit remediation
+
+- Result: Issue #171 resolves the four reviewed production transitive dependency floors with exact pnpm overrides and a refreshed frozen lockfile; no advisory allowlist or audit filter was added. The CI workflow now runs the unfiltered audit and the pinned Next.js advisory checker immediately after frozen install with a read-only `GH_TOKEN`.
+- Coverage: `postcss` 8.5.10, `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, and scoped `minimatch@10.2.5>brace-expansion` 5.0.6 are asserted in the lock graph. The minimatch 3 path remains on brace-expansion 1.1.16. The minimatch 3 compatibility test resolves through ESLint's installed dependency instead of assuming a pnpm virtual-store path. Next.js 15.5.18 and its advisory gate remain unchanged. Compatibility tests cover NextAuth JWT UUID generation, minimatch major compatibility, and Sentry/OpenTelemetry module loading.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: `pnpm install --frozen-lockfile --offline` and focused security/auth/observability Vitest suites pass; full DB-backed tests require `DATABASE_URL` and PostgreSQL.
+
+## 2026-07-12T21:45:00+09:00 - production dependency audit remediation design
+
+- Result: Issue #171 records a public-safe design to clear the production dependency audit gate with exact patched transitive versions and compatibility checks.
+- Coverage: Advisory suppression and partial audit filters remain prohibited; the Issue #157 runtime pin and exact advisory gate remain unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #171 and `docs/superpowers/specs/2026-07-12-security-dependency-audit-remediation-design.md`.
+- Verification: design self-review completed; implementation remains on the Issue #171 branch.
+
+## 2026-07-12T22:53:00+09:00 - fixture-gated security runtime e2e discovery
+
+- Result: The security runtime Playwright spec now skips during ordinary `playwright test` discovery when its dedicated fixture variables are absent; the production-like smoke launcher still supplies the required fixture and runs both tests.
+- Coverage: `tests/e2e/security-runtime.spec.ts` uses Playwright describe-level skips for missing/empty fixture inputs, keeping the default E2E command discoverable without weakening the dedicated smoke gate.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Verification: `PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:9 pnpm exec playwright test tests/e2e/security-runtime.spec.ts --list`, runtime contract tests, and TypeScript pass.
+
+## 2026-07-12T21:35:00+09:00 - secure runtime smoke health timeout clarity
+
+- Result: The production-like smoke runner now reports an explicit health timeout instead of relying on `set -e` test semantics after the final poll.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh` and `tests/security/security-runtime-smoke-script.test.ts`.
+- Verification: red/green shell-contract Vitest and `bash -n` pass.
+
+## 2026-07-12T21:30:00+09:00 - secure runtime dependency verification
+
+- Updated [[CI CD And Monitoring Workflow]] after the security-critical Next.js
+   patch upgrade. Evidence: `package.json`, `pnpm-lock.yaml`,
+   `tests/security/next-runtime-version.test.ts`, and
+   `tests/e2e/security-runtime.spec.ts`.
+
+## 2026-07-12T21:25:00+09:00 - secure runtime RSC response capture fix
+
+- Result: Leaf 3 Task 2 production smoke now captures the streamed `_rsc=` body through Playwright route interception before fulfilling the response, avoiding browser protocol body lookup failures while retaining status/content-type and bounded-size checks.
+- Coverage: The auth/RSC smoke is green 2/2 against `next start`; the synthetic fixture and temporary work directory are cleaned up after the run.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `tests/security/security-runtime-rsc-contract.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green RSC contract Vitest, production-like smoke, PostgreSQL fixture count, and temporary-directory cleanup checks.
+
+## 2026-07-12T21:10:00+09:00 - secure runtime smoke lifecycle review fixes
+
+- Result: Leaf 3 Task 2 smoke launcher now exports the transient auth secret through the child environment without an argv assignment and installs guarded cleanup immediately after temporary work creation.
+- Coverage: Partial initialization paths safely skip absent server/fixture state; a static Vitest contract protects both no-secret-argv and cleanup ordering guarantees.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/test/run-security-runtime-smoke.sh`, `tests/security/security-runtime-smoke-script.test.ts`, and the Task 2 review follow-up.
+- Verification: red/green focused smoke-launcher Vitest and `bash -n` shell syntax check.
+
+## 2026-07-12T21:00:00+09:00 - secure runtime production smoke coverage
+
+- Result: Leaf 3 Task 2 adds two browser-level auth/RSC smoke tests, an explicit `PLAYWRIGHT_TEST_BASE_URL` external-server seam, and a production-like `next start` runner with `MUNJIB_ENABLE_DEV_LOGIN=false`.
+- Coverage: The runner creates a mode `0600` password file and random `@invalid.example` fixture, checks the password provider/login shell plus bounded App Router RSC navigation, then unconditionally removes the server, synthetic organization/workspace/user, and temporary files.
+- Pages: [[Local Development Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/e2e/security-runtime.spec.ts`, `playwright.config.ts`, `scripts/test/run-security-runtime-smoke.sh`, `scripts/test/security-runtime-fixture.ts`, and `package.json`.
+- Verification: focused static/Playwright checks and wiki gates are recorded in the Task 2 report; database-backed smoke requires the local PostgreSQL and build/server prerequisites.
+
+## 2026-07-12T20:35:00+09:00 - secure runtime ownership review follow-up
+
+- Result: The protected runtime projection rejects whole-file ownership only for `package.json` and `pnpm-lock.yaml`; future `docker-compose.yml` ownership remains available. Task 2's production smoke spec and launcher placeholders were removed from the Leaf 3 implementation for separate follow-up work while their capability/owner reservations remain recorded.
+- Pages: [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/project-protected-artifacts.ts`, `tests/security/next-runtime-projection.test.ts`, capability fragment, and protected owner map.
+- Verification: focused projection/security/delivery tests pass; Task 2 will supply the real production smoke implementation.
+
+## 2026-07-12T20:25:00+09:00 - secure Next.js runtime gate
+
+- Result: Leaf 3 pins `next` and `eslint-config-next` to exact 15.5.18 specifications and records a deterministic Next.js/React runtime projection with protected-artifact ownership.
+- Coverage: The advisory gate follows paginated GitHub API results and prints only candidate/count; the synthetic runtime fixture reads credentials from a password file and emits no secret values.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `package.json`, `pnpm-lock.yaml`, runtime contract tests, advisory gate, projection projector, capability fragment, and protected owner map.
+- Verification: focused Vitest security and delivery contract tests pass; live advisory API verification remains an external network/authentication gate.
+
+## 2026-07-12T19:00:00+09:00 - delivery substrate tracking handles
+
+- Result: The public-safe delivery documentation records parent Issue #167, child Issue #169, and remote branch `issue-169-delivery-substrate` alongside the Leaf 13A label.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A child issue/branch mapping and delivery substrate contract files.
+- Verification: focused delivery contract tests and TypeScript compilation pass.
+
+## 2026-07-12T19:10:00+09:00 - sshd policy parser hardening
+
+- Result: The forced-submit fragment keeps `PermitUserEnvironment no` in the global scope, where OpenSSH accepts it, while the `Match User munjib-deploy` block contains only match-valid restrictions.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/sshd/munjib-release-submit.conf` and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests pass; production `sshd -t` remains an installation gate.
+
+## 2026-07-12T18:45:00+09:00 - delivery broker review hardening
+
+- Result: Leaf 13A review follow-up adds bounded broker deadlines and concurrency, framed response parsing, socket-activation descriptor cleanup, and allocation-free envelope decoding with trailing-data rejection.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Leaf 13A delivery broker/submitter/envelope sources and contract tests.
+- Verification: focused delivery contract tests and TypeScript compilation pass; the review fixes are on the same child PR.
+
+## 2026-07-12T18:35:00+09:00 - least-authority delivery substrate
+
+- Result: Leaf 13A adds a public-safe delivery contract for a non-interactive submitter, peer-verified Unix-socket broker, fixed operation allowlist, and empty protected-owner registry.
+- Coverage: The application capability floor remains empty during substrate installation; caller-selected paths, environments, Docker, sudo, root SSH, and interactive forwarding are excluded.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `cmd/munjib-release-submit/main.go`, `cmd/munjib-release-broker/main.go`, `internal/delivery/envelope.go`, fixed delivery manifests, and `tests/deploy/delivery-substrate-contract.test.ts`.
+- Verification: focused delivery contract tests and TypeScript compilation pass; full DB-backed test execution remains dependent on an available test PostgreSQL service.
 
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
@@ -2516,6 +2877,50 @@ links:
 - Source evidence: `components/document-editor.tsx`, `lib/wiki-links/preview.ts`, `tests/wiki-links/preview.test.ts`, `tests/e2e/login.spec.ts`.
 - Verification: `pnpm exec vitest run tests/wiki-links/preview.test.ts tests/wiki-links/parser.test.ts`, `pnpm run build`.
 
+# 2026-07-13T00:00:00+09:00 - security
+
+- Result: Leaf 13B Task 5 adds append-only migration prefix/checksum admission,
+  expand/contract policy checks, separated PostgreSQL roles, and the
+  PRE_JOURNAL database-role-v1 manifest/builder. Web/RAG authority excludes
+  DDL, truncate, ownership, and journal roles; fixed migrator entrypoints clear
+  caller libpq variables before using a file-backed credential.
+- Pages: [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]].
+- Source evidence: `lib/deploy/migration-history.ts`, `lib/deploy/migration-policy.ts`,
+  `deploy/postgres/roles-only.sql`, `deploy/postgres/finalize-ownership.sql`,
+  `deploy/postgres/verify-role-separation.sql`,
+  `deploy/host-bundles/database-role-v1/manifest.json`, and focused deploy tests.
+- Verification: focused migration/role/bundle Vitest suites (16 tests),
+  `pnpm exec tsc --noEmit --pretty false`, and migration ledger checker.
+
+- Result: PR #174 review follow-up closes six auth-runtime/login gaps. `resolveAuthSecret()` and `resolveDefaultRuntime()` now default to the strict file reader; Google UI availability uses the validated file-backed runtime without exposing secret bytes; trial provider/UI registration share the development deployment gate; development treats a blank direct Google secret as disabled; and owner bootstrap lowercases/validates email before upsert.
+- Follow-up: Leaf 13B role bootstrap now hardens every pre-existing role's
+  login/escalation attributes, grants schema-owner migration authority before
+  the first migration, captures caller libpq role state before RESET ROLE, and
+  revokes Web/RAG access to the append-only `_prisma_migrations` ledger.
+- Final follow-up: schema-owner assignment is idempotent for pre-existing
+  extension schemas, and the migration-history checker fail-closed normalizes
+  Prisma snake_case exports before exact prefix/checksum admission.
+- External review follow-up: Prisma entrypoints now construct URL-encoded
+  password/options into `DATABASE_URL` from fixed secret files, migration rows
+  sort canonically before validation, policy regexes stay within statements,
+  and `_prisma_migrations` ACL revocation is guarded for fresh databases.
+- Final deterministic-order follow-up: migration history sorting now uses the
+  same locale-independent code-unit comparator as filesystem migration ordering,
+  with mixed-case regression coverage.
+- Compose interpolation follow-up: runtime credential variables are escaped for
+  Compose (`$$`) and inherited `PGOPTIONS` is explicitly unset before URL option
+  construction; `docker compose config` coverage prevents empty interpolation.
+- Migration policy follow-up: quoted semicolons are outside the accepted static
+  grammar and fail closed instead of crossing statement boundaries.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
+- Source evidence: PR #174 review comments, `lib/auth/config.ts`, `lib/auth/runtime.ts`, `app/login/login-form.tsx`, `scripts/security/bootstrap-owner.ts`, and focused auth/component/security tests.
+- Verification: `pnpm exec vitest run tests/auth/config.test.ts tests/auth/runtime.test.ts tests/security/bootstrap-owner.test.ts tests/components/login-form.test.tsx`, `pnpm exec tsc --noEmit`.
+
+- Result: auth-runtime browser oracle no longer skips database assertions. Each run creates an isolated pgvector PostgreSQL container/network, deploys the schema, connects the production runner and Playwright to that disposable database, and removes it in `finally`.
+- Coverage: unlinked OAuth zero-row policy, exact linked account with token/profile media stripping, historical external image session null projection, and cleanup are now fail-closed DB-backed checks.
+- Pages: [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[CI CD And Monitoring Workflow]].
+- Source evidence: `scripts/security/run-auth-runtime-e2e.ts`, `tests/e2e/auth-runtime.spec.ts`.
+
 ## 2026-05-04T01:55:00+09:00 - review
 
 - Result: PR #19 review feedback에 따라 markdown preview 변환이 multi-line inline code span, longer fenced code block, escaped wiki link, indented code block을 올바르게 보존하고, slug collision에서 임의 target을 고르지 않도록 보강했다.
@@ -2574,3 +2979,20 @@ links:
 - Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
 - Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
 - Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
+
+## 2026-07-13T17:10:00+09:00 - security-runtime
+
+- Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` with the BusyBox-compatible `find ... -print | head -n 1` form without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
+- Coverage: Prisma CLI remains a development dependency; the existing `HOME=/tmp`, `COREPACK_HOME=/tmp/.cache/node/corepack`, non-root UID, and production prune contracts remain in force.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #182, `Dockerfile`, `tests/docker/compose.test.ts`.
+- Verification: focused Docker contract test RED before the Dockerfile change and GREEN after it; runner-target Docker build; production-image Prisma require smoke; non-root Prisma require smoke. TypeScript verification remains blocked by the pre-existing local missing generated Prisma client because the sandbox cannot update the Prisma engine cache; wiki gates are recorded in the task report.
+
+## 2026-07-13T17:20:00+09:00 - maintenance
+
+- Result: Restored the pre-existing local SDD report artifact after review; it is not part of the Issue #182 product change.
+- Scope: No runtime behavior or security policy changed by this cleanup.
+
+## 2026-07-13T17:25:00+09:00 - maintenance
+
+- Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.

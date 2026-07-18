@@ -1,0 +1,20 @@
+services:
+  web:
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?google client id required}
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/munjib_google_client_secret
+    secrets:
+      - source: munjib_google_client_secret
+        target: munjib_google_client_secret
+
+  auth-preflight:
+    environment:
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?google client id required}
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/munjib_google_client_secret
+    secrets:
+      - source: munjib_google_client_secret
+        target: munjib_google_client_secret
+
+secrets:
+  munjib_google_client_secret:
+    file: /etc/munjib/secrets/google-client-current
