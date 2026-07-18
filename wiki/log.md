@@ -2568,3 +2568,9 @@ links:
 - Result: 초기 production signer 배치를 현재 Munjib production과 같은 OCI VM의 Docker Compose Vault Community로 조정했다. 단일 노드 Raft, TLS, ACL, audit, snapshot/restore를 운영 계약으로 추가하고, 같은 호스트 경계 때문에 #185 독립 attestation 전에는 임시 gate로 표시했다.
 - Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Same-OCI threat boundary, Compose image/config evidence, public port 차단, optional Cloudflare Tunnel/Access, dedicated signer VM 승격 절차.
 - Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault production hardening, Cloudflare Tunnel/Access documentation, 사용자 결정.
+
+## 2026-07-18T12:30:00+09:00 - security/release-signer
+
+- Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
+- Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
+- Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
