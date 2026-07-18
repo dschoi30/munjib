@@ -77,8 +77,13 @@ func main() {
 GO
 
 printf '%s' '{"artifact":"munjib-release-lab","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' >"$work/payload.json"
-CGO_ENABLED=1 go build -ldflags=-linkmode=external -o "$work/signer" ./cmd/munjib-release-sign >>"$log" 2>&1
-CGO_ENABLED=1 go build -ldflags=-linkmode=external -o "$work/verifier" "$work/verify.go" >>"$log" 2>&1
+if [[ "$(uname -s)" == Darwin ]]; then
+  CGO_ENABLED=1 go build -ldflags=-linkmode=external -o "$work/signer" ./cmd/munjib-release-sign >>"$log" 2>&1
+  CGO_ENABLED=1 go build -ldflags=-linkmode=external -o "$work/verifier" "$work/verify.go" >>"$log" 2>&1
+else
+  CGO_ENABLED=0 go build -o "$work/signer" ./cmd/munjib-release-sign >>"$log" 2>&1
+  CGO_ENABLED=0 go build -o "$work/verifier" "$work/verify.go" >>"$log" 2>&1
+fi
 
 "$work/signer" public-key --key-name munjib-release-lab-v1 --version 1 --out "$work/public.key" >>"$log" 2>&1
 "$work/signer" sign --payload "$work/payload.json" --key-name munjib-release-lab-v1 \
