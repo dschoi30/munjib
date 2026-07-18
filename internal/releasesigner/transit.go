@@ -102,7 +102,10 @@ func NewTransitClient(rawAddress, token string) (TransitClient, error) {
 	if err != nil || !validVaultAddress(address) || token == "" {
 		return TransitClient{}, errors.New("VAULT_CONFIG")
 	}
-	transport := http.DefaultTransport.(*http.Transport).Clone()
+	var transport http.RoundTripper = http.DefaultTransport
+	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport = defaultTransport.Clone()
+	}
 	return TransitClient{
 		Address: address,
 		Token:   token,

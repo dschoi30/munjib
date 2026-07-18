@@ -71,6 +71,22 @@ func TestTransitClientRejectsConfiguration(t *testing.T) {
 	}
 }
 
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (function roundTripperFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return function(request)
+}
+
+func TestNewTransitClientDoesNotAssumeDefaultTransportType(t *testing.T) {
+	original := http.DefaultTransport
+	http.DefaultTransport = roundTripperFunc(func(*http.Request) (*http.Response, error) { return nil, context.Canceled })
+	t.Cleanup(func() { http.DefaultTransport = original })
+	client, err := NewTransitClient("https://example.com", "token")
+	if err != nil || client.HTTPClient.Transport == nil {
+		t.Fatalf("client=%#v err=%v", client, err)
+	}
+}
+
 func TestTransitClientSignFailuresAreStableAndRedacted(t *testing.T) {
 	sig := base64.StdEncoding.EncodeToString(bytes.Repeat([]byte{1}, 64))
 	tests := []struct {

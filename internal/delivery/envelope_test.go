@@ -81,3 +81,16 @@ func TestValidateExpectedGeneration(t *testing.T) {
 		t.Fatal("mismatch accepted")
 	}
 }
+
+func TestSignedMessageCanonicalizesEveryAdmittedOperation(t *testing.T) {
+	for _, operation := range []string{"VERIFY_ONLY", "INSTALL_SUBSTRATE", "RECONCILE_SUBSTRATE"} {
+		envelope := Envelope{
+			Format: "munjib-release-envelope-v1", Operation: operation, Nonce: "nonce",
+			ExpiresAt: "2026-07-18T12:02:00Z", ExpectedGeneration: 1,
+			PayloadSHA256: strings.Repeat("a", 64), KeyID: "key",
+		}
+		if _, err := SignedMessage(envelope); err != nil {
+			t.Fatalf("operation %s: %v", operation, err)
+		}
+	}
+}
