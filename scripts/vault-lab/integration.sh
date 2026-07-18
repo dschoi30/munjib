@@ -24,14 +24,18 @@ finish() {
   fi
   exit "$status"
 }
-trap finish EXIT INT TERM
+trap 'finish $?' EXIT
+trap 'finish 130' INT
+trap 'finish 143' TERM
 
 vault_lab_compose up -d --wait
 VAULT_TOKEN="$VAULT_TOKEN" bash "$VAULT_LAB_ROOT/scripts/vault-lab/bootstrap.sh" >"$log" 2>&1
 
 work="$VAULT_LAB_PRIVATE_DIR/artifacts"
 mkdir -m 0700 "$work"
-trap 'finish $?' EXIT INT TERM
+trap 'finish $?' EXIT
+trap 'finish 130' INT
+trap 'finish 143' TERM
 
 printf '%s' '{"artifact":"munjib-release-lab","digest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}' >"$work/payload.json"
 if [[ "$(uname -s)" == Darwin ]]; then

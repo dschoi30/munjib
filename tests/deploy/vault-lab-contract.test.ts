@@ -39,6 +39,16 @@ describe("local Vault release signer lab", () => {
     expect(up).not.toContain("trap vault_lab_cleanup EXIT INT TERM");
   });
 
+  it("preserves integration signal status through one cleanup path", () => {
+    const integration = readFileSync("scripts/vault-lab/integration.sh", "utf8");
+    expect(integration.match(/trap 'finish \$\?' EXIT/g)).toHaveLength(2);
+    expect(integration.match(/trap 'finish 130' INT/g)).toHaveLength(2);
+    expect(integration.match(/trap 'finish 143' TERM/g)).toHaveLength(2);
+    expect(integration).toContain("trap - EXIT INT TERM");
+    expect(integration).not.toContain("trap finish EXIT INT TERM");
+    expect(integration).not.toContain("trap 'finish $?' EXIT INT TERM");
+  });
+
   it("allows teardown from a fresh shell without weakening startup image validation", () => {
     const common = readFileSync("scripts/vault-lab/common.sh", "utf8");
     const down = readFileSync("scripts/vault-lab/down.sh", "utf8");
