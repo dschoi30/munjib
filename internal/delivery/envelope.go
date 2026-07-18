@@ -58,6 +58,10 @@ func NewUnsignedEnvelope(input UnsignedEnvelopeInput, now time.Time) (Envelope, 
 	if len(input.Payload) == 0 || len(input.Payload) > MaxPayloadBytes || !json.Valid(input.Payload) {
 		return Envelope{}, errors.New("ENVELOPE_PAYLOAD")
 	}
+	canonicalPayload, err := json.Marshal(input.Payload)
+	if err != nil || len(canonicalPayload) == 0 || len(canonicalPayload) > MaxPayloadBytes {
+		return Envelope{}, errors.New("ENVELOPE_PAYLOAD")
+	}
 	if input.Nonce == [32]byte{} {
 		return Envelope{}, errors.New("ENVELOPE_NONCE")
 	}
@@ -65,14 +69,14 @@ func NewUnsignedEnvelope(input UnsignedEnvelopeInput, now time.Time) (Envelope, 
 	if !expiresAt.After(now.UTC()) || expiresAt.Sub(now.UTC()) > 5*time.Minute {
 		return Envelope{}, errors.New("ENVELOPE_EXPIRY")
 	}
-	digest := sha256.Sum256(input.Payload)
+	digest := sha256.Sum256(canonicalPayload)
 	return Envelope{
 		Format:             "munjib-release-envelope-v1",
 		Operation:          input.Operation,
 		Nonce:              base64.RawURLEncoding.EncodeToString(input.Nonce[:]),
 		ExpiresAt:          expiresAt.Format(time.RFC3339Nano),
 		ExpectedGeneration: input.ExpectedGeneration,
-		Payload:            append(json.RawMessage(nil), input.Payload...),
+		Payload:            append(json.RawMessage(nil), canonicalPayload...),
 		PayloadSHA256:      hex.EncodeToString(digest[:]),
 		KeyID:              input.KeyID,
 	}, nil
