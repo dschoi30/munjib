@@ -36,13 +36,14 @@ func TestTransitClientSign(t *testing.T) {
 		}
 		var body struct {
 			Input              string `json:"input"`
+			KeyVersion         uint64 `json:"key_version"`
 			Prehashed          bool   `json:"prehashed"`
 			SignatureAlgorithm string `json:"signature_algorithm"`
 		}
 		if json.NewDecoder(r.Body).Decode(&body) != nil {
 			t.Fatal("invalid body")
 		}
-		if body.Input != base64.StdEncoding.EncodeToString([]byte("message")) || body.Prehashed || body.SignatureAlgorithm != "ed25519" {
+		if body.Input != base64.StdEncoding.EncodeToString([]byte("message")) || body.KeyVersion != 3 || body.Prehashed || body.SignatureAlgorithm != "ed25519" {
 			t.Fatalf("bad body: %#v", body)
 		}
 		json.NewEncoder(w).Encode(map[string]any{
@@ -52,7 +53,7 @@ func TestTransitClientSign(t *testing.T) {
 		})
 	}))
 	defer server.Close()
-	got, version, err := newTestTransitClient(t, server.URL, "test-token").Sign(context.Background(), "munjib-release-lab-v1", []byte("message"))
+	got, version, err := newTestTransitClient(t, server.URL, "test-token").Sign(context.Background(), "munjib-release-lab-v1", 3, []byte("message"))
 	if err != nil || version != 3 || !bytes.Equal(got, signature) {
 		t.Fatalf("unexpected result: %d %x %v", version, got, err)
 	}
@@ -109,14 +110,14 @@ func TestTransitClientSignFailuresAreStableAndRedacted(t *testing.T) {
 				_, _ = w.Write([]byte(tc.response))
 			}))
 			defer s.Close()
-			_, _, err := newTestTransitClient(t, s.URL, "token-secret").Sign(context.Background(), "valid-key", []byte("message"))
+			_, _, err := newTestTransitClient(t, s.URL, "token-secret").Sign(context.Background(), "valid-key", 1, []byte("message"))
 			if err == nil || strings.Contains(err.Error(), "secret") || !strings.HasPrefix(err.Error(), "VAULT_") {
 				t.Fatalf("unsafe error: %v", err)
 			}
 		})
 	}
 	for _, key := range []string{"", "-bad", "bad/key", strings.Repeat("a", 129)} {
-		if _, _, err := newTestTransitClient(t, "http://127.0.0.1:1", "t").Sign(context.Background(), key, nil); err == nil || err.Error() != "VAULT_CONFIG" {
+		if _, _, err := newTestTransitClient(t, "http://127.0.0.1:1", "t").Sign(context.Background(), key, 1, nil); err == nil || err.Error() != "VAULT_CONFIG" {
 			t.Fatalf("key %q: %v", key, err)
 		}
 	}
@@ -125,13 +126,13 @@ func TestTransitClientSignFailuresAreStableAndRedacted(t *testing.T) {
 func TestTransitClientRejectsRedirectAndHonorsContext(t *testing.T) {
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "/elsewhere", http.StatusFound) }))
 	defer s.Close()
-	_, _, err := newTestTransitClient(t, s.URL, "t").Sign(context.Background(), "key", nil)
+	_, _, err := newTestTransitClient(t, s.URL, "t").Sign(context.Background(), "key", 1, nil)
 	if err == nil || err.Error() != "VAULT_REQUEST" {
 		t.Fatalf("redirect: %v", err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, _, err = newTestTransitClient(t, s.URL, "t").Sign(ctx, "key", nil)
+	_, _, err = newTestTransitClient(t, s.URL, "t").Sign(ctx, "key", 1, nil)
 	if err == nil || err.Error() != "VAULT_REQUEST" {
 		t.Fatalf("cancel: %v", err)
 	}
@@ -148,7 +149,7 @@ func TestTransitClientStalledServerHonorsContextTimeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 	defer cancel()
 	started := time.Now()
-	_, _, err := newTestTransitClient(t, s.URL, "t").Sign(ctx, "key", nil)
+	_, _, err := newTestTransitClient(t, s.URL, "t").Sign(ctx, "key", 1, nil)
 	close(release)
 	s.Close()
 	if err == nil || err.Error() != "VAULT_REQUEST" || time.Since(started) > time.Second {

@@ -62,10 +62,11 @@ func runSign(ctx context.Context, client releasesigner.TransitClient, args []str
 	flags.SetOutput(stderr)
 	payloadPath := flags.String("payload", "", "payload JSON file")
 	keyName := flags.String("key-name", "", "Vault Transit key name")
+	keyVersion := flags.Uint64("key-version", 0, "pinned Vault key version")
 	keyID := flags.String("key-id", "", "envelope key ID")
 	generation := flags.Uint64("generation", 0, "expected generation")
 	ttl := flags.Duration("ttl", 0, "envelope lifetime")
-	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *payloadPath == "" || *keyName == "" || *keyID == "" || *generation == 0 || *ttl <= 0 || *ttl > 5*time.Minute {
+	if err := flags.Parse(args); err != nil || flags.NArg() != 0 || *payloadPath == "" || *keyName == "" || *keyVersion == 0 || *keyID == "" || *generation == 0 || *ttl <= 0 || *ttl > 5*time.Minute {
 		return usageError(stderr)
 	}
 	payload, err := readPayload(*payloadPath)
@@ -92,7 +93,7 @@ func runSign(ctx context.Context, client releasesigner.TransitClient, args []str
 		fmt.Fprintln(stderr, "invalid signing input")
 		return exitInput
 	}
-	signature, _, err := client.Sign(ctx, *keyName, message)
+	signature, _, err := client.Sign(ctx, *keyName, *keyVersion, message)
 	if err != nil {
 		fmt.Fprintln(stderr, "Vault signing unavailable")
 		return exitUnavailable
@@ -170,7 +171,7 @@ func runPublicKey(ctx context.Context, client releasesigner.TransitClient, args 
 }
 
 func usageError(stderr io.Writer) int {
-	fmt.Fprintln(stderr, "usage: munjib-release-sign sign --payload FILE --key-name NAME --key-id ID --generation UINT --ttl DURATION")
+	fmt.Fprintln(stderr, "usage: munjib-release-sign sign --payload FILE --key-name NAME --key-version UINT --key-id ID --generation UINT --ttl DURATION")
 	fmt.Fprintln(stderr, "   or: munjib-release-sign public-key --key-name NAME --version UINT --out FILE")
 	return exitUsage
 }

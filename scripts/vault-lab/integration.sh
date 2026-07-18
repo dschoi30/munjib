@@ -82,7 +82,7 @@ CGO_ENABLED=1 go build -ldflags=-linkmode=external -o "$work/verifier" "$work/ve
 
 "$work/signer" public-key --key-name munjib-release-lab-v1 --version 1 --out "$work/public.key" >>"$log" 2>&1
 "$work/signer" sign --payload "$work/payload.json" --key-name munjib-release-lab-v1 \
-  --key-id munjib-release-lab-v1 --generation 1 --ttl 2m >"$work/envelope.json" 2>>"$log"
+  --key-version 1 --key-id munjib-release-lab-v1 --generation 1 --ttl 2m >"$work/envelope.json" 2>>"$log"
 "$work/verifier" --key "$work/public.key" --envelope "$work/envelope.json" >>"$log" 2>&1
 printf '%s\n' VAULT_LAB_VERIFY_OK
 
@@ -93,7 +93,7 @@ node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync(process.argv[
 printf '%s\n' VAULT_LAB_TAMPER_REJECT_OK
 
 "$work/signer" sign --payload "$work/payload.json" --key-name munjib-release-lab-v1 \
-  --key-id munjib-release-lab-v1 --generation 1 --ttl 1s >"$work/expired.json" 2>>"$log"
+  --key-version 1 --key-id munjib-release-lab-v1 --generation 1 --ttl 1s >"$work/expired.json" 2>>"$log"
 sleep 2
 "$work/verifier" --key "$work/public.key" --envelope "$work/expired.json" \
   --want-error ENVELOPE_EXPIRY >>"$log" 2>&1

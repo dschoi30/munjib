@@ -96,7 +96,7 @@ func TestRunSignOutputsVerifierCompatibleEnvelope(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stdout, stderr bytes.Buffer
-	exit := run(context.Background(), []string{"sign", "--payload", payloadPath, "--key-name", "munjib-release-lab-v1", "--key-id", "munjib-release-lab-v1", "--generation", "1", "--ttl", "2m"}, env(server.URL), strings.NewReader(""), &stdout, &stderr, func() time.Time { return fixedNow }, bytes.NewReader(bytes.Repeat([]byte{7}, 32)))
+	exit := run(context.Background(), []string{"sign", "--payload", payloadPath, "--key-name", "munjib-release-lab-v1", "--key-version", "1", "--key-id", "munjib-release-lab-v1", "--generation", "1", "--ttl", "2m"}, env(server.URL), strings.NewReader(""), &stdout, &stderr, func() time.Time { return fixedNow }, bytes.NewReader(bytes.Repeat([]byte{7}, 32)))
 	if exit != 0 {
 		t.Fatalf("exit %d: %s", exit, stderr.String())
 	}
@@ -171,7 +171,7 @@ func TestRunSignReturnsOutputFailureWithoutLeakingSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 	var stderr bytes.Buffer
-	exit := run(context.Background(), []string{"sign", "--payload", payloadPath, "--key-name", "munjib-release-lab-v1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env(server.URL), strings.NewReader(""), failingWriter{}, &stderr, func() time.Time { return fixedNow }, bytes.NewReader(bytes.Repeat([]byte{1}, 32)))
+	exit := run(context.Background(), []string{"sign", "--payload", payloadPath, "--key-name", "munjib-release-lab-v1", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env(server.URL), strings.NewReader(""), failingWriter{}, &stderr, func() time.Time { return fixedNow }, bytes.NewReader(bytes.Repeat([]byte{1}, 32)))
 	if exit != 74 {
 		t.Fatalf("exit = %d, stderr = %q", exit, stderr.String())
 	}
@@ -188,7 +188,7 @@ func TestRunRejectsUnsafeInputsWithStableExitCodes(t *testing.T) {
 	_ = os.WriteFile(validPayload, []byte(`{}`), 0600)
 	_ = os.WriteFile(badPayload, []byte(`no`), 0600)
 	_ = os.WriteFile(largePayload, bytes.Repeat([]byte(" "), delivery.MaxPayloadBytes+1), 0600)
-	base := []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "2m"}
+	base := []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}
 	tests := []struct {
 		name   string
 		args   []string
@@ -199,11 +199,12 @@ func TestRunRejectsUnsafeInputsWithStableExitCodes(t *testing.T) {
 		{"secret addr flag", append(append([]string{}, base...), "--vault-addr", "https://example.com"), env("http://127.0.0.1:1"), 64},
 		{"missing env", base, func(string) string { return "" }, 64},
 		{"invalid present vault address", base, env("http://example.com"), 69},
-		{"non-json", []string{"sign", "--payload", badPayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
-		{"oversized", []string{"sign", "--payload", largePayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
-		{"generation zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-id", "id", "--generation", "0", "--ttl", "2m"}, env("http://127.0.0.1:1"), 64},
-		{"ttl zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "0s"}, env("http://127.0.0.1:1"), 64},
-		{"ttl too long", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-id", "id", "--generation", "1", "--ttl", "6m"}, env("http://127.0.0.1:1"), 64},
+		{"key version zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-version", "0", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 64},
+		{"non-json", []string{"sign", "--payload", badPayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
+		{"oversized", []string{"sign", "--payload", largePayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "2m"}, env("http://127.0.0.1:1"), 65},
+		{"generation zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "0", "--ttl", "2m"}, env("http://127.0.0.1:1"), 64},
+		{"ttl zero", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "0s"}, env("http://127.0.0.1:1"), 64},
+		{"ttl too long", []string{"sign", "--payload", validPayload, "--key-name", "key", "--key-version", "1", "--key-id", "id", "--generation", "1", "--ttl", "6m"}, env("http://127.0.0.1:1"), 64},
 		{"extra args", append(append([]string{}, base...), "extra"), env("http://127.0.0.1:1"), 64},
 		{"vault unavailable", base, env("http://127.0.0.1:1"), 69},
 	}
