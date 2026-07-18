@@ -3012,3 +3012,10 @@ links:
 - Review follow-up: Standard Vault response-envelope fields and Transit key/key-version metadata are explicitly modeled without weakening unknown-field or trailing-data rejection; endpoint shape, requested-version invalid key forms, and stalled-request context cancellation have direct regression coverage.
 - Source evidence: `internal/releasesigner/transit.go`, `internal/releasesigner/transit_test.go`.
 - Verification: `CGO_ENABLED=0 go test -race ./internal/releasesigner -v`.
+
+## 2026-07-19T00:00:00+09:00 - release-security
+
+- Result: Added the testable `munjib-release-sign` adapter with `sign` and `public-key` subcommands backed by Vault Transit.
+- Security contract: Vault address and token are environment-only inputs; signed-envelope stdout is machine-only JSON, errors are redacted, payload and expiry bounds fail closed, and raw Ed25519 public-key output uses exclusive mode-`0400` creation without overwrite, symlink, or directory traversal behavior.
+- Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
+- Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
