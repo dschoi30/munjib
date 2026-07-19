@@ -256,6 +256,36 @@ pnpm wiki:lint
 pnpm wiki:sync-check --staged
 ```
 
+## Derived history authorization handoff
+
+Issue #163의 dependency-safe implementation slice는 `lib/rag/ai-history-authorization.ts`에
+저장된 Workspace AI turn의 lineage 파서와 visibility decision, non-enumerating
+tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
+`source-backed` document/chunk 쌍만 현재 canonical source authority에 다시 확인하며,
+모든 source가 승인되어야 turn 전체가 visible이 된다. `source-free-v1` proof가 없는
+행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
+`legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
+citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
+Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
+row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+`source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
+lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
+또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
+Source-backed 행도 context metadata가 승인된 lineage 밖으로 확장되거나 citation이
+lineage에 없는 document/chunk를 가리키면 전체 행을 tombstone으로 처리한다.
+Lineage와 각 source 객체도 정확한 v1 key schema만 허용해 nested extra metadata를
+visible DTO로 복사하지 않는다.
+Citation도 승인된 `documentId`와 선택적 `chunkId`만 허용하며, 이 경계에서 검증할
+수 없는 title/path/heading/extra field가 있으면 전체 행을 tombstone으로 처리한다.
+최종 thread DTO caller는 tombstone 수나
+denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
+않아야 한다.
+
+이 helper는 Prisma, route, migration, purge, provider call, telemetry를 import하지
+않는다. 최종 thread load/follow-up/memory refresh/finalization/citation navigation
+caller는 Leaf 2/4/6/13B가 제공하는 canonical authority와 함께 이 경계를 사용해야
+하며, 그 dependency gate 전에는 production behavior를 연결하지 않는다.
+
 ## 근거
 
 - GitHub issue #73

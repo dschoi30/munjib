@@ -171,6 +171,16 @@ describe("AI provider boundary", () => {
     ).toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
   });
 
+  it("treats staging as production-like for destination security", () => {
+    const local = { id: "ollama-internal-v1", origin: "http://ollama:11434", path: "/api", allowLoopback: true } as const;
+    expect(() => validateProviderDestination("http://ollama:11434/api", local, "staging")).toThrow(
+      "AI_PROVIDER_DESTINATION_FORBIDDEN",
+    );
+    expect(() => validateProviderDestination("http://api.openai.com/v1", policy.resolve("chat-default-v1").endpoint, "staging")).toThrow(
+      "AI_PROVIDER_DESTINATION_FORBIDDEN",
+    );
+  });
+
   it("emits only bounded allowlisted metadata and drops content and identity fields", () => {
     expect(
       sanitizeAiProviderTelemetry({
