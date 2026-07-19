@@ -19,6 +19,7 @@ beforeAll(() => {
 const requestFor = (probeId: string) =>
   probeId === "origin-loopback"
     ? {
+        method: "GET",
         transport: "http-loopback",
         connectAddress: "127.0.0.1:3000",
         host: "munjib.andrewchoi.link",
@@ -26,12 +27,14 @@ const requestFor = (probeId: string) =>
       }
     : probeId === "unknown-host-rejection"
       ? {
+          method: "GET",
           transport: "https",
           connectAddress: "munjib.andrewchoi.link",
           host: "unknown.invalid",
           path: "/api/auth/providers",
         }
       : {
+          method: "GET",
           transport: "https",
           connectAddress: "munjib.andrewchoi.link",
           host: "munjib.andrewchoi.link",
@@ -51,6 +54,14 @@ describe("edge bindings contract evaluator", () => {
       publiclyRoutable: false,
     });
     expect(contract.activationGates.productionMutationAllowed).toBe(false);
+  });
+
+  it("rejects fields that do not belong to a probe variant", () => {
+    const raw = JSON.parse(contractJson) as Record<string, any>;
+    const unknownHost = raw.probes.find((probe: Record<string, unknown>) => probe.id === "unknown-host-rejection");
+    unknownHost.expectedStatus = 200;
+
+    expect(() => parseEdgeBindingsContract(raw)).toThrow("EDGE_BINDINGS_CONFIG_INVALID");
   });
 
   it("fails closed when a required header is missing or has a non-exact value", () => {
@@ -136,6 +147,16 @@ describe("edge bindings contract evaluator", () => {
       request: requestFor("origin-loopback"),
     });
     expect(noStorePresent.ok).toBe(true);
+
+    const tooSlow = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 5_001,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": "no-store" },
+      request: requestFor("origin-loopback"),
+    });
+    expect(tooSlow.ok).toBe(false);
+    expect(tooSlow.reasons).toContain("LATENCY_TIMEOUT_EXCEEDED");
 
     const malformedSeparator = evaluateEdgeProbe(contract, "origin-loopback", {
       status: 200,
@@ -279,6 +300,7 @@ describe("edge bindings contract evaluator", () => {
         "Cache-Control": "no-store",
       },
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
@@ -300,6 +322,7 @@ describe("edge bindings contract evaluator", () => {
         "Cache-Control": "no-store",
       },
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "attacker.invalid",
@@ -322,6 +345,7 @@ describe("edge bindings contract evaluator", () => {
         "Cache-Control": "no-store",
       },
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
@@ -330,6 +354,29 @@ describe("edge bindings contract evaluator", () => {
     });
     expect(wrongPath.ok).toBe(false);
     expect(wrongPath.reasons).toContain("REQUEST_PATH_MISMATCH");
+
+    const wrongMethod = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: {
+        method: "POST",
+        transport: "https",
+        connectAddress: "munjib.andrewchoi.link",
+        host: "munjib.andrewchoi.link",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(wrongMethod.ok).toBe(false);
+    expect(wrongMethod.reasons).toContain("REQUEST_METHOD_MISMATCH");
   });
 
   it("pins the unknown-host negative probe to the canonical connect address", () => {
@@ -340,6 +387,7 @@ describe("edge bindings contract evaluator", () => {
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: { "cache-control": "no-store" },
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "unknown.invalid",
@@ -354,6 +402,7 @@ describe("edge bindings contract evaluator", () => {
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: { "cache-control": "no-store" },
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "unknown.invalid",
         host: "unknown.invalid",
@@ -372,6 +421,7 @@ describe("edge bindings contract evaluator", () => {
       observedAt: "2026-07-13T00:00:00.000Z",
       headers: undefined as never,
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
@@ -387,6 +437,7 @@ describe("edge bindings contract evaluator", () => {
       observedAt: Symbol("date") as never,
       headers: {},
       request: {
+        method: "GET",
         transport: "https",
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",

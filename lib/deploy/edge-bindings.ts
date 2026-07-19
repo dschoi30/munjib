@@ -105,6 +105,7 @@ export type EdgeProbeObservation = {
 };
 
 export type EdgeProbeRequestMetadata = {
+  method: string;
   transport: string;
   connectAddress: string;
   host: string;
@@ -249,6 +250,24 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
   }
 
   if (id === "public-https") {
+    requireAllowedKeys(
+      probe,
+      [
+        "id",
+        "transport",
+        "method",
+        "path",
+        "host",
+        "connectAddress",
+        "expectedStatus",
+        "requiredHeaders",
+        "cadenceSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "bodyPolicy",
+      ],
+      `probes[${index}]`,
+    );
     if (
       base.transport !== "https" ||
       base.path !== "/api/auth/providers" ||
@@ -279,6 +298,23 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
   }
 
   if (id === "origin-loopback") {
+    requireAllowedKeys(
+      probe,
+      [
+        "id",
+        "transport",
+        "method",
+        "path",
+        "host",
+        "address",
+        "expectedStatus",
+        "cadenceSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "bodyPolicy",
+      ],
+      `probes[${index}]`,
+    );
     if (
       base.transport !== "http-loopback" ||
       base.path !== "/api/auth/providers" ||
@@ -304,6 +340,23 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
   }
 
   if (id === "unknown-host-rejection") {
+    requireAllowedKeys(
+      probe,
+      [
+        "id",
+        "transport",
+        "method",
+        "path",
+        "host",
+        "connectAddress",
+        "expectedStatusClass",
+        "cadenceSeconds",
+        "timeoutSeconds",
+        "failureThreshold",
+        "bodyPolicy",
+      ],
+      `probes[${index}]`,
+    );
     if (
       base.transport !== "https" ||
       base.path !== "/api/auth/providers" ||
@@ -523,6 +576,9 @@ export function evaluateEdgeProbe(
   }
   if (!Number.isInteger(status) || status < 100 || status > 599) reasons.push("STATUS_INVALID");
   if (!Number.isFinite(latencyMs) || latencyMs < 0) reasons.push("LATENCY_INVALID");
+  if (Number.isFinite(latencyMs) && latencyMs > probe.timeoutSeconds * 1000) {
+    reasons.push("LATENCY_TIMEOUT_EXCEEDED");
+  }
   if (!isStrictObservedAt(observedAt)) reasons.push("OBSERVED_AT_INVALID");
   if (probe.expectedStatus !== undefined && status !== probe.expectedStatus) {
     reasons.push(`STATUS_MISMATCH:${probe.expectedStatus}`);
@@ -535,6 +591,9 @@ export function evaluateEdgeProbe(
   if (!isRecord(request)) {
     reasons.push("REQUEST_INVALID");
   } else {
+    if (typeof request.method !== "string" || request.method !== probe.method) {
+      reasons.push("REQUEST_METHOD_MISMATCH");
+    }
     if (typeof request.transport !== "string" || request.transport !== probe.transport) {
       reasons.push("REQUEST_TRANSPORT_MISMATCH");
     }
