@@ -213,6 +213,8 @@ export type ManifestPayloadIntegrity = Readonly<{
 export type RecoveryCompatibilityEvidence = Readonly<{
   /** A verifier for the independently attested recovery floor. */
   acceptsCapabilityFloor: (capabilityFloorSha256: string) => boolean;
+  /** A verifier for the independently attested recovery-pointer record and contract digest. */
+  acceptsSnapshotContract: (acceptedSnapshotContractSha256: string, recoveryPointerRecordSha256: string) => boolean;
 }>;
 
 export class SnapshotManifestError extends Error {
@@ -679,6 +681,9 @@ export function assertRecoveryCompatibility(manifest: SnapshotManifestV2, eviden
   const expected = snapshotCompatibilityContractSha256(manifest);
   if (!equalHash(expected, manifest.recoveryPointerAtCapture.acceptedSnapshotContractSha256)) {
     fail("recovery compatibility contract does not cover the current migration/schema tuple");
+  }
+  if (!evidence.acceptsSnapshotContract(expected, manifest.recoveryPointerAtCapture.recordSha256)) {
+    fail("recovery runtime did not independently accept the snapshot contract and pointer record");
   }
 }
 

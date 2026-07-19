@@ -14,6 +14,8 @@ ordering boundaries that later capture/restore work must satisfy:
 - Phase A is a manually invoked, isolated recovery gate.
 - Phase B is a candidate-only recovery gate that reuses the exact Phase-A
   envelope before any journal or purge mutation.
+  The public contract encodes that Phase B requires Phase-A acceptance and
+  reuse of the Phase-A envelope.
 - The snapshot image is evidence only; restore selects an independently attested
   recovery image.
 - Ciphertext is authenticated and decrypted before any signature or catalog
@@ -35,8 +37,9 @@ checks, bounded IDs and safe relative paths, deterministic migration and
 attachment ordering, and the attachment state rules that keep non-`READY` rows
 inventory-only. `assertManifestPayloadIntegrity` compares database/archive/file
 receipts without opening a database or storage path. `assertRecoveryCompatibility`
-requires an independently supplied capability-floor verifier and a deterministic
-current migration/schema compatibility digest.
+requires independently supplied capability-floor and recovery-pointer/contract
+verifiers; manifest-owned migration/schema digests are never treated as their
+own attestation.
 
 The public envelope parser accepts no signing path until a root ciphertext seal,
 immutable exact-read receipt, and authenticated decrypt verification receipt all
