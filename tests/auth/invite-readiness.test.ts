@@ -89,4 +89,18 @@ describe("invite-first signup readiness contract", () => {
       /contract\.forbiddenOperations/,
     );
   });
+
+  test("rejects non-enumerable and symbol own contract extensions", () => {
+    const contract = loadContract() as Record<string, unknown>;
+    const hidden = { ...contract } as Record<string, unknown>;
+    Object.defineProperty(hidden, "secret", { value: "not-a-secret", enumerable: false });
+    expect(() => parseInviteSignupReadinessContract(hidden)).toThrow(/contract\.secret is an unknown field/);
+
+    const symbol = Symbol("secret");
+    const symbolExtended = { ...contract } as Record<string, unknown>;
+    Object.defineProperty(symbolExtended, symbol, { value: "not-a-secret", enumerable: false });
+    expect(() => parseInviteSignupReadinessContract(symbolExtended)).toThrow(
+      /contract\.Symbol\(secret\) is an unknown field/,
+    );
+  });
 });

@@ -3263,3 +3263,9 @@ links:
 - Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
 - Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-20T06:55:00+09:00 - security-review
+
+- Result: Invite signup readiness exact-key validation now rejects non-enumerable and symbol own extensions as unknown fields, preserving the fail-closed contract boundary for in-memory objects.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review thread.
+- Verification: focused invite readiness tests.

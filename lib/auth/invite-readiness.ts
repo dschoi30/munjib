@@ -70,9 +70,9 @@ function assertRecord(value: unknown, path: string): asserts value is Record<str
 
 function assertExactKeys(value: Record<string, unknown>, expected: readonly string[], path: string): void {
   const expectedSet = new Set(expected);
-  for (const key of Object.keys(value)) {
-    if (!expectedSet.has(key)) {
-      fail(`${path}.${key} is an unknown field`);
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string" || !expectedSet.has(key)) {
+      fail(`${path}.${String(key)} is an unknown field`);
     }
   }
   for (const key of expected) {
