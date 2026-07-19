@@ -91,7 +91,7 @@ const completeManifest = (): SnapshotManifestV2 => {
         entryHash: HASH_2,
         latestExportBatchDigest: HASH,
         containingBatchFirstSequence: "1",
-        containingBatchDigest: HASH_2,
+        containingBatchDigest: HASH,
       },
     },
   };
@@ -254,12 +254,14 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, entryHash: HASH } } })).toThrow(/same sequence|entryHash/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "7" } } })).toThrow(/different sequence|entryHash/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, latestExportBatchDigest: null } } })).toThrow(/latestExportBatchDigest|genesis/i);
+    expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, containingBatchDigest: HASH_2 } } })).toThrow(/latest.*containing|batch digest/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, chainAtSnapshot: { sequence: "8", entryHash: HASH }, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "8", entryHash: HASH } } })).toThrow(/genesisHash|positive sequence/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, chainAtSnapshot: { sequence: "9223372036854775808", entryHash: HASH_2 } } })).toThrow(/int64|sequence/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, chainAtSnapshot: { sequence: "0", entryHash: HASH_2 }, exportCheckpointAtSnapshot: { sequence: "0", entryHash: HASH_2, latestExportBatchDigest: null, containingBatchFirstSequence: null, containingBatchDigest: null } } })).toThrow(/genesis|sequence zero/i);
     expect(() => parseSnapshotManifest({ ...manifest, database: { ...manifest.database, sizeBytes: "0" } })).toThrow(/sizeBytes|non-zero/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, archiveSizeBytes: "0" } })).toThrow(/archiveSizeBytes|READY/i);
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, attachments: "3" } })).toThrow(/attachment inventory/i);
+    expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, documents: "0" } })).toThrow(/documents|READY/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },
