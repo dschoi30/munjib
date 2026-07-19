@@ -21,7 +21,7 @@ links:
 
 ## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
-- Result: `parseSnapshotManifest()` recomputes `migrationIdsSha256(appliedIds)`, binds `aggregateCounts.attachments` to the attachment inventory, and rejects a containing batch start beyond its checkpoint. `parseSnapshotEnvelope()` also binds envelope identity, epoch, image/capability digests, and journal sequence to the decrypted manifest.
+- Result: `parseSnapshotManifest()` recomputes `migrationIdsSha256(appliedIds)`, binds `aggregateCounts.attachments` to the attachment inventory, rejects a containing batch start beyond its checkpoint, and enforces Leaf 2 int64/genesis/equal-sequence journal hash rules. `parseSnapshotEnvelope()` also binds envelope identity, epoch, image/capability digests, and journal sequence to the decrypted manifest.
 - Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review thread.
 - Verification: focused manifest/recovery-contract tests and TypeScript.

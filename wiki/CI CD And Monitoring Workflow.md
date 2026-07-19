@@ -254,7 +254,9 @@ timestamps through the domain error, and locale-dependent archive ordering. The
 envelope now binds `backupId`, `epochUtc`, image/capability digests, and journal
 sequence to the decrypted manifest; `aggregateCounts.attachments` must equal the
 attachment inventory length; and a containing batch start may not exceed its
-checkpoint sequence.
+checkpoint sequence. Journal chain/checkpoint sequences are also bounded by the
+Leaf 2 signed-int64 ceiling, equal-sequence hashes must agree, and sequence zero
+must use the manifest genesis hash.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
