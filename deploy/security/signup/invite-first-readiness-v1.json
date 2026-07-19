@@ -14,7 +14,7 @@
   ],
   "invariants": [
     "verified-google-identity-only",
-    "raw-bearer-never-url-cookie-database-or-log",
+    "raw-bearer-never-request-url-cookie-database-or-log",
     "opaque-attempt-hash-only",
     "atomic-invitation-consumption",
     "no-blind-email-linking",

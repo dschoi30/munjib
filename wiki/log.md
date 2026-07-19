@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:04:00+09:00 - Issue #161 fragment-only bearer transport
+
+- Result: Narrowed the Leaf 7 raw-bearer invariant to permit only a client-side URL fragment for immediate exchange, with mandatory scrubbing before request/navigation boundaries; request/server-visible URLs and durable or observable sinks remain forbidden.
+- Source evidence: `lib/auth/invite-readiness.ts`, `deploy/security/signup/invite-first-readiness-v1.json`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness and signup readiness tests.
+
 ## 2026-07-20T06:58:00+09:00 - Issue #161 iterator-safe readiness arrays
 
 - Result: Invite readiness arrays are copied from validated numeric indices, so caller-controlled `Symbol.iterator` implementations cannot replace canonical values during the immutable return step.

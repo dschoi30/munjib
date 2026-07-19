@@ -27,6 +27,13 @@ describe("invite-first signup readiness handoff", () => {
     expect(runbook).not.toMatch(/(?:postgres(?:ql)?:\/\/|BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,})/);
   });
 
+  test("documents the fragment-only bearer transport boundary", () => {
+    const runbook = read("docs/runbooks/invite-signup-gate-readiness.md");
+
+    expect(runbook).toMatch(/client-side URL fragment[\s\S]*scrubbed/i);
+    expect(runbook).toMatch(/request or server-visible URL/i);
+  });
+
   test("keeps the checked-in contract free of activation or credentials", () => {
     const contract = read("deploy/security/signup/invite-first-readiness-v1.json");
 
