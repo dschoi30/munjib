@@ -13,6 +13,10 @@ mutation.
   fails closed to a non-enumerating tombstone.
 - Source-backed turns require every source to pass a caller-supplied canonical
   source-authority callback. One denied source hides the whole turn.
+- Follow-up answers and refreshed `memorySummary` must inherit the union of all
+  source lineages consumed from prior answers or memory context. A turn that
+  consumes source-backed context cannot be relabeled `source-free-v1` merely
+  because the current retrieval returns no new chunks.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
 - The serializer scopes tombstones to derived `ASSISTANT` rows. Normal
@@ -57,11 +61,13 @@ until a final authority recheck succeeds before releasing any token. A
 finalization-only check after `onToken` is insufficient because a source can be
 revoked between tokens.
 
-The eventual thread DTO must not add a hidden-message count, denied-source
-count, or other aggregate that lets a caller enumerate hidden history. This
-slice only defines the per-row tombstone shape; list-level filtering/count
-behavior remains an integration acceptance criterion for the dependency-
-complete owner.
+The eventual thread/list DTO must filter denied assistant rows at list level
+or use one aggregate redaction that does not preserve hidden-row count or
+position. It must never emit one tombstone per hidden row, and it must not add a
+hidden-message count, denied-source count, or other aggregate that lets a
+caller enumerate hidden history. This slice only defines the per-row tombstone
+shape for internal composition; list-level suppression remains an integration
+acceptance criterion for the dependency-complete owner.
 
 ## Public-safe evidence
 

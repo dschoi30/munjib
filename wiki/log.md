@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:00:00+09:00 - Issue #163 transitive lineage and list suppression
+
+- Result: Derived AI history readiness now requires follow-up answers and refreshed memory summaries to inherit the union of consumed source lineages, and requires list-level suppression or aggregate redaction instead of one tombstone per hidden row.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review threads.
+- Verification: focused readiness test.
+
 ## 2026-07-20T06:56:00+09:00 - Issue #163 stream contract assertion hardening
 
 - Result: The readiness test now requires both halves of the streamed authorization contract: immediate per-token reauthorization and whole-response buffering until a final authority recheck.

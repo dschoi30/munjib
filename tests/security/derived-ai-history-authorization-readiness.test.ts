@@ -23,6 +23,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("source-free-v1");
     expect(runbook).toContain("legacy-unproven");
     expect(runbook).toContain("fails closed");
+    expect(runbook).toMatch(/union of all\s+source lineages consumed/i);
+    expect(runbook).toMatch(/cannot be relabeled `source-free-v1`/i);
   });
 
   it("covers every derived-history visibility boundary", () => {
@@ -40,6 +42,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("non-enumerating tombstone");
     expect(runbook).toMatch(/answer text,\s+citations,\s+source ids/);
     expect(runbook).toContain("One denied source hides the whole turn");
+    expect(runbook).toMatch(/filter denied assistant rows at list level/i);
+    expect(runbook).toMatch(/never emit one tombstone per hidden row/i);
   });
 
   it("keeps destructive data operations outside this leaf", () => {

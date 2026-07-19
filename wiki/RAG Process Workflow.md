@@ -134,6 +134,12 @@ authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-on
 읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
 citation, document id/title/path, denial reason을 노출하지 않는
 non-enumerating tombstone으로 숨기고 follow-up/memory 입력에서도 제외한다.
+Follow-up answer와 refreshed `memorySummary`는 prior answer/memory에서 소비한
+모든 source lineage의 union을 상속해야 하며, 새 retrieval chunk가 없다는
+이유만으로 `source-free-v1`로 재분류할 수 없다. Thread/list DTO는 denied
+assistant row를 list-level에서 필터링하거나 hidden row 수·위치를 보존하지
+않는 단일 aggregate redaction으로 표현해야 하며, hidden row마다 tombstone을
+하나씩 반환해서는 안 된다.
 Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
 immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
 migration, route, purge, production activation을 시작하지 않는다.
