@@ -20,11 +20,13 @@ const completeContract = (): RecoveryReadinessContract => ({
     phaseA: {
       mode: "MANUAL_ISOLATED",
       required: true,
+      requiresPhaseAAcceptance: false,
       dependencies: ["leaf-13-broker-installed"],
     },
     phaseB: {
       mode: "CANDIDATE_ISOLATED",
       required: true,
+      requiresPhaseAAcceptance: true,
       dependencies: ["leaf-13b-deployed", "leaf-2-journal-ready", "leaf-9-purge-hooks", "leaf-11-attachment-lifecycle"],
     },
   },
@@ -34,6 +36,7 @@ const completeContract = (): RecoveryReadinessContract => ({
     "restore-never-production",
     "no-production-private-key",
     "snapshot-image-is-evidence-only",
+    "phase-b-reuses-phase-a-envelope",
   ],
 });
 
@@ -100,6 +103,21 @@ describe("encrypted recovery readiness contract", () => {
       "leaf-11-attachment-lifecycle",
     ]);
     expect(JSON.stringify(parsed)).not.toMatch(/PASS|ACCEPTED|production-ready/i);
+  });
+
+  test("requires Phase B to depend on Phase A acceptance and its envelope", () => {
+    const contract = completeContract();
+    expect(() => parseRecoveryReadinessContract({
+      ...contract,
+      phases: {
+        ...contract.phases,
+        phaseB: { ...contract.phases.phaseB, requiresPhaseAAcceptance: false },
+      },
+    })).toThrow(/phaseA|acceptance/i);
+    expect(() => parseRecoveryReadinessContract({
+      ...contract,
+      invariants: contract.invariants.filter((value) => value !== "phase-b-reuses-phase-a-envelope"),
+    })).toThrow(/invariant|envelope/i);
   });
 
   test("rejects non-canonical dependency and invariant ordering", () => {

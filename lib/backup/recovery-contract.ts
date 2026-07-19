@@ -25,6 +25,7 @@ export const RECOVERY_INVARIANTS = Object.freeze([
   "restore-never-production",
   "no-production-private-key",
   "snapshot-image-is-evidence-only",
+  "phase-b-reuses-phase-a-envelope",
 ]);
 
 const SENSITIVE_KEY = /(?:password|secret|token|cookie|email|name|path|query|url|body|content|provider|private|credential|database|host|slug|title|document|attachment)/i;
@@ -35,6 +36,7 @@ type PhaseMode = (typeof PHASE_MODES)[number];
 type RecoveryPhase = Readonly<{
   mode: PhaseMode;
   required: true;
+  requiresPhaseAAcceptance: boolean;
   dependencies: readonly string[];
 }>;
 
@@ -118,13 +120,14 @@ function assertCanonicalArray(value: unknown, expected: readonly string[], path:
   return Object.freeze([...value]);
 }
 
-function parsePhase(value: unknown, expectedMode: PhaseMode, expectedDependencies: readonly string[], path: string): RecoveryPhase {
+function parsePhase(value: unknown, expectedMode: PhaseMode, expectedRequiresPhaseAAcceptance: boolean, expectedDependencies: readonly string[], path: string): RecoveryPhase {
   assertRecord(value, path);
-  assertExactKeys(value, ["mode", "required", "dependencies"], path);
+  assertExactKeys(value, ["mode", "required", "requiresPhaseAAcceptance", "dependencies"], path);
   assertLiteral(value.mode, expectedMode, `${path}.mode`);
   assertLiteral(value.required, true, `${path}.required`);
+  assertLiteral(value.requiresPhaseAAcceptance, expectedRequiresPhaseAAcceptance, `${path}.requiresPhaseAAcceptance`);
   const dependencies = assertCanonicalArray(value.dependencies, expectedDependencies, `${path}.dependencies`);
-  return Object.freeze({ mode: expectedMode, required: true, dependencies });
+  return Object.freeze({ mode: expectedMode, required: true, requiresPhaseAAcceptance: expectedRequiresPhaseAAcceptance, dependencies });
 }
 
 /**
@@ -151,8 +154,8 @@ export function parseRecoveryReadinessContract(value: unknown): RecoveryReadines
 
   assertRecord(value.phases, "contract.phases");
   assertExactKeys(value.phases, ["phaseA", "phaseB"], "contract.phases");
-  const phaseA = parsePhase(value.phases.phaseA, "MANUAL_ISOLATED", RECOVERY_DEPENDENCIES.phaseA, "contract.phases.phaseA");
-  const phaseB = parsePhase(value.phases.phaseB, "CANDIDATE_ISOLATED", RECOVERY_DEPENDENCIES.phaseB, "contract.phases.phaseB");
+  const phaseA = parsePhase(value.phases.phaseA, "MANUAL_ISOLATED", false, RECOVERY_DEPENDENCIES.phaseA, "contract.phases.phaseA");
+  const phaseB = parsePhase(value.phases.phaseB, "CANDIDATE_ISOLATED", true, RECOVERY_DEPENDENCIES.phaseB, "contract.phases.phaseB");
   const invariants = assertCanonicalArray(value.invariants, RECOVERY_INVARIANTS, "contract.invariants");
 
   return Object.freeze({

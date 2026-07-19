@@ -241,8 +241,9 @@ describe("snapshot manifest v2", () => {
 
   test("checks migration compatibility, journal high-water, and payload receipts", () => {
     const manifest = completeManifest();
-    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false })).toThrow(/floor/i);
-    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true })).not.toThrow();
+    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false, acceptsSnapshotContract: () => true })).toThrow(/floor/i);
+    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true, acceptsSnapshotContract: () => false })).toThrow(/independent|contract|pointer/i);
+    expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true, acceptsSnapshotContract: () => true })).not.toThrow();
     expect(() => parseSnapshotManifest({
       ...manifest,
       migrations: { ...manifest.migrations, orderedIdsSha256: HASH },

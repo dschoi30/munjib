@@ -273,6 +273,12 @@ All decimal strings are also bounded before any `BigInt` conversion, preventing
 oversized numeric inputs from consuming unbounded parser resources.
 Aggregate counts also preserve the required organization → workspace → document
 parent chain and each count is capped at PostgreSQL's signed `bigint`/int64 limit.
+`assertRecoveryCompatibility()` also requires independent evidence to accept the
+recovery-pointer record together with the derived migration/schema contract
+digest; the manifest cannot self-attest that tuple. The public readiness
+contract marks Phase B as requiring Phase-A acceptance and the exact Phase-A
+envelope through `requiresPhaseAAcceptance` and the
+`phase-b-reuses-phase-a-envelope` invariant.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

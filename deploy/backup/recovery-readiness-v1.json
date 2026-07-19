@@ -14,6 +14,7 @@
     "phaseA": {
       "mode": "MANUAL_ISOLATED",
       "required": true,
+      "requiresPhaseAAcceptance": false,
       "dependencies": [
         "leaf-13-broker-installed"
       ]
@@ -21,6 +22,7 @@
     "phaseB": {
       "mode": "CANDIDATE_ISOLATED",
       "required": true,
+      "requiresPhaseAAcceptance": true,
       "dependencies": [
         "leaf-13b-deployed",
         "leaf-2-journal-ready",
@@ -34,6 +36,7 @@
     "ciphertext-before-signature",
     "restore-never-production",
     "no-production-private-key",
-    "snapshot-image-is-evidence-only"
+    "snapshot-image-is-evidence-only",
+    "phase-b-reuses-phase-a-envelope"
   ]
 }
