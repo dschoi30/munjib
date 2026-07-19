@@ -10,8 +10,9 @@ contract is `deploy/security/edge-bindings-v1.json`.
 - The contract is `PREPARATORY` with `activation: DISABLED`. It is an
   acceptance checklist for the eventual edge owner, not a production command
   or a claim that the headers/probes are active.
-- The public probe uses `GET /api/auth/providers`, which is already a bounded,
-  unauthenticated Auth.js metadata route. It records status and latency only;
+- The public probes use `GET /api/auth/providers`, `GET /login`, and
+  `GET /workspaces` so every declared no-store route class has direct edge
+  evidence. They record status and latency only;
   response bodies, cookies, authorization headers, query strings, request
   bodies, and client IPs are never retained.
 - The loopback probe verifies the origin independently of the public edge. The
