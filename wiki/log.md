@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T00:28:00+09:00 - Issue #164 IPv6 hostname classification review fix
+
+- Result: multicast prefix checks now apply only to IPv6 literals, preserving valid server-owned DNS names such as `ffapi.example`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
 ## 2026-07-20T00:18:00+09:00 - Issue #164 IPv6 special-range review fix
 
 - Result: compressed IPv4-compatible and multicast IPv6 destinations now fail closed outside the explicit fixed Ollama gate.
