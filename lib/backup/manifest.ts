@@ -410,6 +410,13 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   if (decimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`) > decimal(value.chainAtSnapshot.sequence, `${path}.chainAtSnapshot.sequence`)) {
     fail(`${checkpointPath}.sequence cannot exceed chainAtSnapshot.sequence`);
   }
+  if (
+    containingFirst !== null &&
+    decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) >
+      decimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`)
+  ) {
+    fail(`${checkpointPath}.containingBatchFirstSequence cannot exceed checkpoint sequence`);
+  }
 
   return freeze({
     genesisHash: value.genesisHash,
@@ -462,6 +469,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
   assertExactKeys(value.aggregateCounts, ["organizations", "workspaces", "documents", "attachments"], "manifest.aggregateCounts");
   for (const key of ["organizations", "workspaces", "documents", "attachments"] as const) assertDecimal(value.aggregateCounts[key], `manifest.aggregateCounts.${key}`);
+  if (decimal(value.aggregateCounts.attachments as string, "manifest.aggregateCounts.attachments") !== BigInt(entries.length)) {
+    fail("manifest.aggregateCounts.attachments must match attachment inventory");
+  }
 
   assertRecord(value.migrations, "manifest.migrations");
   assertExactKeys(value.migrations, ["appliedIds", "orderedIdsSha256", "schemaFingerprintSha256"], "manifest.migrations");
@@ -652,8 +662,21 @@ function parseEnvelopeBase(value: unknown): SnapshotEnvelopeV2 {
  * of the public envelope prevents accidental publication of paths or provider
  * metadata while still making signing fail closed before decrypt verification.
  */
-export function parseSnapshotEnvelope(value: unknown, receipts: SnapshotEnvelopeReceipts): SnapshotEnvelopeV2 {
+export function parseSnapshotEnvelope(
+  value: unknown,
+  receipts: SnapshotEnvelopeReceipts,
+  manifest: SnapshotManifestV2,
+): SnapshotEnvelopeV2 {
   const envelope = parseEnvelopeBase(value);
+  if (
+    envelope.backupId !== manifest.backupId ||
+    envelope.epochUtc !== manifest.epochUtc ||
+    envelope.snapshotImageDigest !== manifest.snapshotRuntime.imageDigest ||
+    envelope.capabilityFloorSha256 !== manifest.snapshotRuntime.capabilityFloorSha256 ||
+    envelope.journalSequence !== manifest.journal.exportCheckpointAtSnapshot.sequence
+  ) {
+    fail("envelope metadata does not match decrypted manifest");
+  }
   assertNoSensitiveKeys(receipts, "receipts");
   assertRecord(receipts, "receipts");
   assertExactKeys(receipts, ["rootCiphertextSeal", "exactRead", "decryptVerification"], "receipts");

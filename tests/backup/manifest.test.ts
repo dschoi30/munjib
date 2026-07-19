@@ -148,7 +148,7 @@ const completeEnvelope = () => {
       manifestSha256: HASH_2,
     },
   };
-  return { envelope, receipts };
+  return { manifest, envelope, receipts };
 };
 
 describe("snapshot manifest v2", () => {
@@ -245,6 +245,8 @@ describe("snapshot manifest v2", () => {
     })).toThrow(/orderedIdsSha256|migration/i);
 
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "9" } } })).toThrow(/exceed/i);
+    expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, containingBatchFirstSequence: "9" } } })).toThrow(/containingBatchFirstSequence|checkpoint/i);
+    expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, attachments: "3" } })).toThrow(/attachment inventory/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },
@@ -273,22 +275,23 @@ describe("snapshot manifest v2", () => {
 
 describe("snapshot envelope v2", () => {
   test("requires root seal, immutable exact-read, and decrypt verification receipts", () => {
-    const { envelope, receipts } = completeEnvelope();
-    expect(() => parseSnapshotEnvelope(envelope, receipts)).not.toThrow();
-    expect(() => parseSnapshotEnvelope(envelope, undefined as never)).toThrow(SnapshotManifestError);
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: { ...receipts.rootCiphertextSeal, sealed: false as true } })).toThrow(/seal/i);
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } })).toThrow(/generation/i);
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } })).toThrow(/decrypt/i);
+    const { manifest, envelope, receipts } = completeEnvelope();
+    expect(() => parseSnapshotEnvelope(envelope, receipts, manifest)).not.toThrow();
+    expect(() => parseSnapshotEnvelope(envelope, undefined as never, manifest)).toThrow(SnapshotManifestError);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: { ...receipts.rootCiphertextSeal, sealed: false as true } }, manifest)).toThrow(/seal/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } }, manifest)).toThrow(/generation/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } }, manifest)).toThrow(/decrypt/i);
     const inheritedRoot = Object.create(receipts.rootCiphertextSeal) as Record<string, unknown>;
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: inheritedRoot as never })).toThrow(/required/i);
-    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, unexpected: true } as never)).toThrow(/unknown/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: inheritedRoot as never }, manifest)).toThrow(/required/i);
+    expect(() => parseSnapshotEnvelope(envelope, { ...receipts, unexpected: true } as never, manifest)).toThrow(/unknown/i);
+    expect(() => parseSnapshotEnvelope({ ...envelope, backupId: "b20260713-0002" }, receipts, manifest)).toThrow(/metadata|manifest/i);
   });
 
   test("rejects mutable generations, payload mismatches, and sensitive public fields", () => {
-    const { envelope, receipts } = completeEnvelope();
-    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "latest" } }, receipts)).toThrow(/generation/i);
-    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, sizeBytes: "4097" } }, receipts)).toThrow(/payload/i);
-    expect(() => parseSnapshotEnvelope({ ...envelope, apiToken: "no" }, receipts)).toThrow(/sensitive|unknown/i);
+    const { manifest, envelope, receipts } = completeEnvelope();
+    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "latest" } }, receipts, manifest)).toThrow(/generation/i);
+    expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, sizeBytes: "4097" } }, receipts, manifest)).toThrow(/payload/i);
+    expect(() => parseSnapshotEnvelope({ ...envelope, apiToken: "no" }, receipts, manifest)).toThrow(/sensitive|unknown/i);
     expect(() => assertManifestPayloadIntegrity(completeManifest(), {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [null as never] },
@@ -305,8 +308,8 @@ describe("snapshot envelope v2", () => {
   });
 
   test("keeps snapshot image as evidence, never an executable restore selection", () => {
-    const { envelope, receipts } = completeEnvelope();
-    const parsed = parseSnapshotEnvelope(envelope, receipts);
+    const { manifest, envelope, receipts } = completeEnvelope();
+    const parsed = parseSnapshotEnvelope(envelope, receipts, manifest);
     expect(assertSnapshotImageEvidenceOnly(parsed)).toBeUndefined();
     expect(Object.keys(parsed)).not.toContain("restoreImageDigest");
   });

@@ -250,7 +250,11 @@ until root seal, immutable exact-read, and authenticated decrypt receipts match;
 builder, capture, restore, purge, key rotation, or host/provider operation is
 included in this slice.
 Validation also rejects non-adjacent duplicate attachment paths, invalid UTC
-timestamps through the domain error, and locale-dependent archive ordering.
+timestamps through the domain error, and locale-dependent archive ordering. The
+envelope now binds `backupId`, `epochUtc`, image/capability digests, and journal
+sequence to the decrypted manifest; `aggregateCounts.attachments` must equal the
+attachment inventory length; and a containing batch start may not exceed its
+checkpoint sequence.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
