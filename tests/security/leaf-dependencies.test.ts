@@ -105,4 +105,29 @@ describe("Leaf 2 dependencies", () => {
       verifyLeaf2Dependencies({ ...validInput, leaf13: undefined } as never),
     ).toThrow("LEAF2_INPUT_INVALID");
   });
+
+  it("pins parsed proof envelopes to the literal production environment", () => {
+    expect(() =>
+      verifyLeaf2Dependencies({
+        ...validInput,
+        expectedEnvironment: "staging",
+      } as never),
+    ).toThrow("LEAF2_ENVIRONMENT_INVALID");
+  });
+
+  it("requires proof flags to be literal booleans", () => {
+    expect(() =>
+      verifyLeaf2Dependencies({
+        ...validInput,
+        leaf1: { ...validInput.leaf1, closedPasswordSignup: "true" },
+      } as never),
+    ).toThrow("LEAF1_CLOSED_SIGNUP_REQUIRED");
+
+    expect(() =>
+      verifyLeaf2Dependencies({
+        ...validInput,
+        leaf13: { ...validInput.leaf13, immutableDelivery: "true" },
+      } as never),
+    ).toThrow("LEAF13_CAPABILITY_REQUIRED");
+  });
 });

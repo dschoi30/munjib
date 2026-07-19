@@ -259,6 +259,11 @@ issues matching Leaf 1/Leaf 13 deployment proofs. No auth tombstone, session
 version bump, Trial quarantine, or support grant may run from the preparatory seam
 alone.
 
+The verifier rejects nullish or partial parsed envelopes with `LEAF2_INPUT_INVALID`,
+requires the caller environment to be the literal `production`, and accepts proof
+flags only when they are literal booleans. This prevents a parsed staging envelope
+or truthy string field from being promoted into a production dependency proof.
+
 The closed production invariant is intentionally explicit: Google accepts only the
 **exact linked Google Account**, and callback denial plus the adapter guard produce
 **zero User or Account creation**. Provider credentials and an **external profile image**

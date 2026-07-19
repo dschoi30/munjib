@@ -55,6 +55,10 @@ export function verifyLeaf2Dependencies(
     throw new Error("LEAF2_INPUT_INVALID");
   }
 
+  if (input.expectedEnvironment !== "production") {
+    throw new Error("LEAF2_ENVIRONMENT_INVALID");
+  }
+
   if (!SOURCE_DIGEST_PATTERN.test(input.expectedSourceDigest)) {
     throw new Error("LEAF2_SOURCE_DIGEST_INVALID");
   }
@@ -65,7 +69,7 @@ export function verifyLeaf2Dependencies(
   if (input.leaf1.sourceDigest !== input.expectedSourceDigest) {
     throw new Error("LEAF1_SOURCE_DIGEST_MISMATCH");
   }
-  if (!input.leaf1.closedPasswordSignup || !input.leaf1.closedUnlinkedOauth) {
+  if (input.leaf1.closedPasswordSignup !== true || input.leaf1.closedUnlinkedOauth !== true) {
     throw new Error("LEAF1_CLOSED_SIGNUP_REQUIRED");
   }
 
@@ -76,9 +80,9 @@ export function verifyLeaf2Dependencies(
     throw new Error("LEAF13_SOURCE_IDENTITY_MISMATCH");
   }
   if (
-    !input.leaf13.immutableDelivery ||
-    !input.leaf13.rollbackDrillPassed ||
-    !input.leaf13.databaseRoleSeparation ||
+    input.leaf13.immutableDelivery !== true ||
+    input.leaf13.rollbackDrillPassed !== true ||
+    input.leaf13.databaseRoleSeparation !== true ||
     !CAPABILITY_DIGEST_PATTERN.test(input.leaf13.databaseRoleCapabilitySha256)
   ) {
     throw new Error("LEAF13_CAPABILITY_REQUIRED");

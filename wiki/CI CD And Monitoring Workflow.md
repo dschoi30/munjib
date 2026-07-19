@@ -337,7 +337,9 @@ the expected production source digest, Leaf 1's closed-password/unlinked-OAuth
 proofs, and Leaf 13's immutable-delivery, rollback, and database-role capability
 proof, then returns a branded value for later migration/apply commands. Signature
 and trust-anchor verification remain the responsibility of the delivery broker;
-the verifier does not manufacture deployment evidence.
+the verifier does not manufacture deployment evidence. Parsed input is rejected
+when nullish or partial, `expectedEnvironment` must be literal `production`, and
+all capability flags must be literal booleans rather than merely truthy values.
 
 The production workflow does not invoke a Leaf 2 migration, Trial disable,
 membership cleanup, or support operation yet. Those commands remain blocked until

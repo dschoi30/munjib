@@ -33,7 +33,14 @@ links:
 - Boundary: The verifier consumes broker-verified proof fields but does not verify signatures or activate production migration, Trial quarantine, membership cleanup, support access, or journal mutation. Those operations remain deferred behind Issues #184 and #185.
 - Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, GitHub Issue #156.
-- Verification: `pnpm exec vitest run tests/security/leaf-dependencies.test.ts` (5 tests passed); full TypeScript and wiki gates run during synchronization.
+- Verification: `pnpm exec vitest run tests/security/leaf-dependencies.test.ts` (8 tests passed); full TypeScript and wiki gates run during synchronization.
+
+## 2026-07-20T06:12:00+09:00 - Issue #156 verifier review hardening
+
+- Result: `verifyLeaf2Dependencies()` now fails closed for nullish/partial parsed input, pins the expected environment to literal `production`, and requires all Leaf 1/Leaf 13 capability flags to be literal booleans.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, PR #187 review threads.
+- Verification: 8 focused Leaf 2 dependency tests, TypeScript compilation, and wiki gates.
 
 ## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
