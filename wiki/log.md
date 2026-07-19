@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:56:00+09:00 - Issue #163 stream contract assertion hardening
+
+- Result: The readiness test now requires both halves of the streamed authorization contract: immediate per-token reauthorization and whole-response buffering until a final authority recheck.
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: focused readiness test.
+
 ## 2026-07-20T06:55:00+09:00 - Issue #163 stream reauthorization boundary
 
 - Result: Strengthened the derived AI history handoff so streamed responses
