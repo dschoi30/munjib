@@ -43,11 +43,12 @@ invariants:
 - New accounts use provider-verified Google identities and one active
   workspace-scoped invitation; password signup remains closed.
 - A raw invitation bearer may exist only in a client-side URL fragment for the
-  immediate exchange and must be scrubbed before navigation/history persists
-  it. It must never enter a request or server-visible URL, cookie, database,
+  immediate exchange and in the one guarded, bounded exchange request body;
+  the fragment must be scrubbed before navigation/history persists it. It must
+  never enter an unintended request or server-visible URL, cookie, database,
   server component prop, history entry, log, telemetry payload, or OAuth
   callback. Only a short-lived opaque attempt cookie and its domain-separated
-  hash may cross the exchange boundary.
+  hash may persist after the exchange.
 - Invitation consumption, attempt invalidation, role checks, and the deny-only
   journal transition are one atomic transaction. Invitation acceptance never
   grants `OWNER`.

@@ -37,8 +37,9 @@ Leaf 8 abuse/session capability, exact private runtime, and attested delivery
 broker are independently available. This branch does not claim those gates or
 enable signup. Invitation lifecycle, atomic consumption, revision invalidation,
   provider linking, and client-side browser-fragment scrubbing remain
-  follow-up work in the same issue; the fragment is the only permitted raw
-  bearer transport and must be removed before any request/navigation boundary.
+  follow-up work in the same issue; the fragment is the pre-exchange transport,
+  and the one guarded bounded exchange request body is the only permitted
+  server-visible occurrence. No other request/navigation boundary may carry it.
 
 ## Verification
 

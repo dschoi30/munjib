@@ -19,7 +19,7 @@ export const INVITE_SIGNUP_PREREQUISITES = Object.freeze([
 
 export const INVITE_SIGNUP_INVARIANTS = Object.freeze([
   "verified-google-identity-only",
-  "raw-bearer-never-request-url-cookie-database-or-log",
+  "raw-bearer-only-fragment-or-guarded-exchange",
   "opaque-attempt-hash-only",
   "atomic-invitation-consumption",
   "no-blind-email-linking",

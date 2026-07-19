@@ -32,6 +32,7 @@ describe("invite-first signup readiness handoff", () => {
 
     expect(runbook).toMatch(/client-side URL fragment[\s\S]*scrubbed/i);
     expect(runbook).toMatch(/request or server-visible URL/i);
+    expect(runbook).toMatch(/guarded, bounded exchange request body/i);
   });
 
   test("keeps the checked-in contract free of activation or credentials", () => {
