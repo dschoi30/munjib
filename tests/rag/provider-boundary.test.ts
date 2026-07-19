@@ -152,6 +152,11 @@ describe("AI provider boundary", () => {
       expect(() => validateProviderDestination(value, { id: "ipv6-special-v1", origin: value.slice(0, value.indexOf("/v1")), path: "/v1" }, "development"))
         .toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
     }
+    expect(() => validateProviderDestination(
+      "https://[64:ff9b:1::a00:5]/v1",
+      { id: "nat64-private-v1", origin: "https://[64:ff9b:1::a00:5]", path: "/v1" },
+      "development",
+    )).toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
   });
 
   it("permits the fixed local endpoint only in non-production", () => {

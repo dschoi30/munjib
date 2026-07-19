@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T00:50:00+09:00 - Issue #164 index and NAT64 review fixes
+
+- Result: Wiki Index frontmatter now reflects the Issue #164 addition, and standard/local-use NAT64 translated IPv6 destinations fail closed outside the fixed Ollama gate.
+- Pages: [[index|Wiki Index]], [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
 ## 2026-07-20T00:28:00+09:00 - Issue #164 IPv6 hostname classification review fix
 
 - Result: multicast prefix checks now apply only to IPv6 literals, preserving valid server-owned DNS names such as `ffapi.example`.

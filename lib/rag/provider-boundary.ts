@@ -337,7 +337,10 @@ function isPrivateOrMetadataHost(hostname: string): boolean {
   // forms (for example ::7f00:1) that are not covered by the textual prefix
   // checks below. Reject the entire ::/96 compatibility space and multicast
   // destinations unless the caller has the explicit fixed Ollama gate.
-  if (normalized.includes(":") && (normalized.startsWith("::") || normalized.startsWith("ff"))) {
+  if (
+    normalized.includes(":") &&
+    (normalized.startsWith("::") || normalized.startsWith("ff") || normalized.startsWith("64:ff9b:"))
+  ) {
     return true;
   }
   if (isIpv4(normalized)) {
