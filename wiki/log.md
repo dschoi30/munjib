@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
+
+- Result: Recorded the Leaf 7 dependency-safe invitation bearer and attempt-secret boundary: canonical 256-bit base64url secrets, domain-separated hash-only persistence, constant-time hash comparison, exact exchange-body parsing, immutable output, and no route/database/URL/logging capabilities.
+- Scope: Preparation only; invitation lifecycle, atomic consumption, revision invalidation, provider linking, and production signup activation remain gated follow-ups.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #161, `lib/auth/invite-token.ts`, `tests/auth/invite-token.test.ts`, `tests/security/invite-token-source-contract.test.ts`, `docs/runbooks/invite-token-primitives.md`.
+- Verification: focused invite-token/source-boundary tests, TypeScript compilation, and wiki manifest/lint/sync checks.
+
 ## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
 - Result: `parseSnapshotManifest()` recomputes `migrationIdsSha256(appliedIds)`, bounds decimal strings before `BigInt` conversion, caps every PostgreSQL-backed aggregate count at signed int64, requires full non-zero 40-character runtime source commits, accepts exhaustive attachment inventories beyond the old 100,000-entry parser ceiling, applies the same capacity policy to exhaustive READY archive receipts, requires a document ID on every inventory row, caps manifest and receipt attachment sizes at PostgreSQL/Prisma signed int32, rejects null-like/moving provider-generation aliases, covers all non-null attachment document references across lifecycle states, rejects zero-byte database dumps and zero-byte archives with READY entries, bounds recursive sensitive-key traversal depth, binds organization→workspace→document aggregate parents plus `aggregateCounts.attachments` and document counts to the attachment inventory, requires positive containing-batch starts within the checkpoint, ties latest/containing batch digests together after genesis, ties latest batch digest presence to genesis, rejects positive journal hashes equal to genesis, and enforces Leaf 2 int64/genesis/equal-sequence/different-sequence journal hash rules. `assertRecoveryCompatibility()` now requires independent evidence for the full recovery-pointer projection (including image, release-evidence, artifact-set, and contract fields) and derived migration/schema contract digest; the public readiness contract encodes Phase-B dependence on Phase-A acceptance and exact-envelope reuse. `parseSnapshotEnvelope()` binds envelope identity, epoch, image/capability digests, journal sequence, and the canonical manifest SHA-256 to the decrypted manifest and decrypt receipt.

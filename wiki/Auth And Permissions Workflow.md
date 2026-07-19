@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 70
+updated: 2026-07-20
+source_count: 101
 tags:
   - munjib
   - auth
