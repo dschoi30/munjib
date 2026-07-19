@@ -52,7 +52,7 @@ material do not belong here.
 | #193 / #163 readiness | Open PR (`6e7b7fc`); CI billing-blocked | `issue-163-security-ai-history-authorization` / PR #193 | Readiness/test handoff only; streamed authorization contract is documented, no history mutation is activated. |
 | #194 / #164 readiness | Open PR (`a10c4f5`); CI billing-blocked | `issue-164-security-ai-provider-policy` / PR #194 | Public-safe policy handoff only; no provider allowlist or route activation. |
 | #196 / #166 readiness | Open PR (`483e417`); CI billing-blocked | `issue-166-security-edge-bindings` / PR #196 | Readiness contract/test only; no edge infrastructure or production traffic change. |
-| #197 | Open status-map PR (`9b0f728`); rebased here | `codex/issue-154-security-hardening-status` / PR #197 | Documentation only; the map never certifies deployment, host attestation, snapshot/restore, purge, or issue closure. |
+| #197 | Open status-map PR (`4fa1ee5`); CI billing-blocked | `codex/issue-154-security-hardening-status` / PR #197 | Documentation only; the map never certifies deployment, host attestation, snapshot/restore, purge, or issue closure. |
 
 ## Dependency order and non-claims
 

@@ -22,6 +22,7 @@ links:
 ## 2026-07-20T07:08:00+09:00 - public security status head refresh
 
 - Result: Updated the public hardening status map with the latest reviewed heads for PRs #161, #187, #191, #192, #193, and #195; all remain CI billing-blocked with zero unresolved review threads.
+- Follow-up: The status-map row for PR #197 is pinned to the current map head after each refresh.
 - Source evidence: `docs/runbooks/security-hardening-status.md`, GitHub PR checks/review-thread audit.
 - Verification: local status-map tests, TypeScript, and wiki gates.
 
