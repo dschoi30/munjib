@@ -226,6 +226,73 @@ token-bearing Google row remains. Cleanup appends the existing
 failure rolls back the transaction and replay is deny-only/idempotent. The canonical
 twenty-six-kind journal union is unchanged.
 
+### Issue #168 encrypted recovery readiness
+
+Issue #168 currently contributes only the public readiness contract at
+`deploy/backup/recovery-readiness-v1.json` and its side-effect-free parser/tests.
+The contract fixes RPO 24 hours, RTO 4 hours, 7/4/3 retention, the isolated Phase
+A/Phase B boundary, and the invariants that restore never targets production and
+the snapshot image is evidence only. Phase A cannot proceed until the Leaf 13
+delivery broker is installed and attested (#185). Phase B additionally waits for
+the exact-digest Leaf 13B runtime (#184), Leaf 2 journal readiness, Leaf 9 purge
+hooks, and Leaf 11 attachment lifecycle. A green contract test is not a snapshot,
+restore, key, purge, or production acceptance result; Issue #168 remains open
+until those dependencies and independent restore evidence are complete.
+
+The dependency-safe v2 manifest slice adds recursive exact-key validation and
+constant-time receipt/integrity helpers in `lib/backup/manifest.ts`. It binds
+database/archive hashes, every attachment state and READY byte hash, ordered
+migrations (recomputing `migrationIdsSha256(appliedIds)` and rejecting a mismatched
+digest), capability/evidence hashes, and the Leaf 2 checkpoint while keeping
+the private manifest data-only. The public envelope cannot be parsed for signing
+until root seal, immutable exact-read, and authenticated decrypt receipts match;
+`snapshotImageDigest` remains audit evidence and is never a restore selector. No
+builder, capture, restore, purge, key rotation, or host/provider operation is
+included in this slice.
+Validation also rejects non-adjacent duplicate attachment paths, invalid UTC
+timestamps through the domain error, and locale-dependent archive ordering. The
+envelope now binds `backupId`, `epochUtc`, image/capability digests, and journal
+sequence to the decrypted manifest; `aggregateCounts.attachments` must equal the
+attachment inventory length; and a containing batch start may not exceed its
+checkpoint sequence. Journal chain/checkpoint sequences are also bounded by the
+Leaf 2 signed-int64 ceiling, equal-sequence hashes must agree, and sequence zero
+must use the manifest genesis hash. The envelope `manifestSha256` is computed
+over the parser's canonical field-ordered manifest JSON and must match both the
+supplied parsed manifest and the decrypt receipt; a present containing batch
+must start at sequence one or later. PostgreSQL dump size must be non-zero;
+chain/checkpoint hashes must differ at different sequences; and
+`latestExportBatchDigest` is null only at genesis and required thereafter.
+READY attachment inventories also require a non-zero archive size, and positive
+journal hashes may not reuse the genesis hash.
+Recursive untrusted-key traversal is capped at a bounded depth and fails with the
+domain error before the JavaScript call stack can be exhausted.
+For non-genesis checkpoints, the containing batch digest must equal the latest
+export batch digest, and the declared document count must cover distinct READY
+attachment document references.
+All decimal strings are also bounded before any `BigInt` conversion, preventing
+oversized numeric inputs from consuming unbounded parser resources.
+Aggregate counts also preserve the required organization → workspace → document
+parent chain and each count is capped at PostgreSQL's signed `bigint`/int64 limit.
+`assertRecoveryCompatibility()` also requires independent evidence to accept the
+recovery-pointer record together with the derived migration/schema contract
+digest, with the full pointer projection (image, release evidence, artifact
+set, and accepted contract fields) available to that verifier; the manifest
+cannot self-attest that tuple. The public readiness
+contract marks Phase B as requiring Phase-A acceptance and the exact Phase-A
+envelope through `requiresPhaseAAcceptance` and the
+`phase-b-reuses-phase-a-envelope` invariant.
+Snapshot runtime source commits are full, non-zero 40-character Git object IDs
+so runtime evidence cannot use an abbreviated or null-looking revision.
+The exhaustive attachment inventory is not capped at the old 100,000-entry
+parser limit; its cardinality must equal the authenticated aggregate count, and
+all non-null attachment document references (including pending lifecycle rows)
+must be covered by the document count. The same capacity policy applies to
+extracted READY archive receipts, and every inventory row must carry its required
+document ID. Attachment byte sizes are capped at the PostgreSQL/Prisma signed
+32-bit `Int` ceiling for both manifest rows and archive receipts.
+Provider generations also reject null-like and moving aliases (`latest`,
+`current`, `unversioned`, and equivalent sentinels) before receipt matching.
+
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
 Secure cookies, canonical origin, disabled development login, production seed
