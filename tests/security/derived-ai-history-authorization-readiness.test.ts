@@ -27,6 +27,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toMatch(/cannot be relabeled `source-free-v1`/i);
     expect(runbook).toMatch(/every source supplied\s+to the current prompt/i);
     expect(runbook).toMatch(/displayed citations are not a\s+complete authorization record/i);
+    expect(runbook).toContain("MAX_DERIVED_LINEAGE_SOURCES=256");
+    expect(runbook).toContain("MAX_DERIVED_LINEAGE_BYTES=32768");
   });
 
   it("covers every derived-history visibility boundary", () => {
@@ -37,6 +39,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("citation serialization");
     expect(runbook).toContain("send-completion/`done` serialization");
     expect(runbook).toContain("reset-response serialization");
+    expect(runbook).toMatch(/GET,\s+reset, and streamed `done` DTO/i);
+    expect(runbook).toMatch(/memorySummary.*omit or redact/i);
     expect(runbook).toMatch(/reauthorize immediately before\s+each token/i);
     expect(runbook).toMatch(/buffer the entire response\s+until a final authority recheck/i);
   });
