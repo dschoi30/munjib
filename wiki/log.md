@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 361
+source_count: 362
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:40:00+09:00 - Issue #163 bounded lineage and atomic memory summary
+
+- Result: Derived history readiness now fails closed when bounded lineage is exceeded (no prior-context rollover) and requires memorySummary plus lineage to persist and serialize as one matching atomic pair.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
 
 ## 2026-07-20T07:36:00+09:00 - Issue #163 memory summary and bounded lineage
 

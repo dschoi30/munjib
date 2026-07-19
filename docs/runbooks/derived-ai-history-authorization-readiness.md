@@ -25,8 +25,9 @@ mutation.
 - Lineage entries must be deduplicated by canonical document/chunk key and
   bounded at `MAX_DERIVED_LINEAGE_SOURCES=256` and
   `MAX_DERIVED_LINEAGE_BYTES=32768`. Exceeding either bound must fail closed
-  before persistence or roll the thread to a new turn that retains a complete
-  authorization dependency set; it must never truncate sources merely to fit.
+  before generation/persistence. Rollover that carries prior context is not
+  permitted in this slice; a future compacting proof must be a separate
+  reviewed contract. It must never truncate sources merely to fit.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
 - Future integration requirement: the owning serializer must treat each
@@ -71,8 +72,10 @@ send-completion/`done` serialization, citation serialization, and
 reset-response serialization, with revocation-race coverage. Every GET,
 reset, and streamed `done` DTO must independently authorize the derived
 `memorySummary` lineage and omit or redact `memorySummary` when it is denied;
-authorizing message rows alone is insufficient. No direct membership fallback
-or citation-only inference is permitted.
+the exact summary value and its lineage must be persisted atomically and
+serialized only as a matching pair. Authorizing message rows alone is
+insufficient. No direct membership fallback or citation-only inference is
+permitted.
 
 For streamed assistant responses, authorization must be established before any
 token is emitted. The implementation must either reauthorize immediately before

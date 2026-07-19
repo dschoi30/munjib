@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-07-20
-source_count: 120
+source_count: 121
 tags:
   - munjib
   - workflow
@@ -151,8 +151,9 @@ citation marker가 최종 answer에 등장했는지와 무관하게 포함해야
 lineage와의 union이 authorization record다. 표시된 citation만으로 lineage를
 재구성해서는 안 된다. Lineage entry는 canonical document/chunk key로 dedupe하고
 `MAX_DERIVED_LINEAGE_SOURCES=256`, `MAX_DERIVED_LINEAGE_BYTES=32768` 한도를
-지켜야 한다. 한도를 넘으면 source를 잘라내지 말고 persistence 전에 fail closed
-하거나 complete dependency set을 보존한 새 turn/thread로 rollover해야 한다.
+지켜야 한다. 한도를 넘으면 source를 잘라내지 말고 generation/persistence 전에
+fail closed한다. Prior context를 들고 rollover하는 것은 이 slice에서 허용하지
+않으며, compacting proof는 별도 reviewed contract여야 한다.
 Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
 immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
 migration, route, purge, production activation을 시작하지 않는다.
@@ -318,7 +319,8 @@ overfetch/refill 결과의 page metadata도 visible turn만으로 계산해야 �
 이 per-row helper 자체는 list-level pairing이나 streamed `done` serialization을
 주장하지 않는다. GET, reset, streamed `done` DTO는 message rows와 별도로
 derived `memorySummary` lineage를 재인가하고, 거부되면 `memorySummary`를
-omit/redact해야 한다.
+omit/redact해야 한다. Summary value와 lineage는 하나의 atomic persistence
+envelope/transaction으로 저장하고, serialization도 matching pair만 읽어야 한다.
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
