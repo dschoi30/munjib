@@ -283,6 +283,10 @@ envelope through `requiresPhaseAAcceptance` and the
 `phase-b-reuses-phase-a-envelope` invariant.
 Snapshot runtime source commits are full, non-zero 40-character Git object IDs
 so runtime evidence cannot use an abbreviated or null-looking revision.
+The exhaustive attachment inventory is not capped at the old 100,000-entry
+parser limit; its cardinality must equal the authenticated aggregate count, and
+all non-null attachment document references (including pending lifecycle rows)
+must be covered by the document count.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

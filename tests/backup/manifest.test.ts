@@ -240,6 +240,23 @@ describe("snapshot manifest v2", () => {
     })).toThrow(/duplicate relative paths/i);
   });
 
+  test("accepts exhaustive inventories beyond the legacy 100,000-entry ceiling", () => {
+    const manifest = completeManifest();
+    const entries = Array.from({ length: 100_001 }, (_, index) => ({
+      id: `att-${String(index).padStart(6, "0")}`,
+      documentId: null,
+      status: "PENDING" as const,
+      relativePath: null,
+      sizeBytes: "0",
+      contentSha256: null,
+    }));
+    expect(() => parseSnapshotManifest({
+      ...manifest,
+      attachments: { ...manifest.attachments, archiveSizeBytes: "0", entries },
+      aggregateCounts: { ...manifest.aggregateCounts, attachments: "100001" },
+    })).not.toThrow();
+  });
+
   test("checks migration compatibility, journal high-water, and payload receipts", () => {
     const manifest = completeManifest();
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false, acceptsSnapshotContract: () => true })).toThrow(/floor/i);
@@ -275,6 +292,16 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, workspaces: "0" } })).toThrow(/workspaces|documents/i);
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, organizations: "0" } })).toThrow(/organizations|workspaces/i);
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, organizations: "9223372036854775808" } })).toThrow(/int64|count/i);
+    const pendingDocumentManifest = {
+      ...manifest,
+      attachments: {
+        ...manifest.attachments,
+        archiveSizeBytes: "0",
+        entries: manifest.attachments.entries.map((entry) => ({ ...entry, status: "PENDING" as const, relativePath: null, sizeBytes: "0", contentSha256: null })),
+      },
+      aggregateCounts: { ...manifest.aggregateCounts, documents: "0" },
+    };
+    expect(() => parseSnapshotManifest(pendingDocumentManifest)).toThrow(/documents/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },

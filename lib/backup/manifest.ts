@@ -344,7 +344,7 @@ function freeze<T>(value: T): Readonly<T> {
 export function assertNoSensitiveKeys(value: unknown, path = "value", depth = 0): void {
   if (depth > MAX_NESTED_DEPTH) fail(`${path} exceeds maximum nesting depth`);
   if (Array.isArray(value)) {
-    assertDenseArray(value, path);
+    assertDenseArray(value, path, path === "value.attachments.entries" ? Number.MAX_SAFE_INTEGER : undefined);
     value.forEach((item, index) => assertNoSensitiveKeys(item, `${path}[${index}]`, depth + 1));
     return;
   }
@@ -503,7 +503,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertHash(value.attachments.archiveSha256, "manifest.attachments.archiveSha256");
   assertDecimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
   const archiveSize = decimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
-  assertDenseArray(value.attachments.entries, "manifest.attachments.entries");
+  // The inventory is exhaustive and its cardinality is authenticated below by
+  // aggregateCounts.attachments; no product-level attachment-count ceiling exists.
+  assertDenseArray(value.attachments.entries, "manifest.attachments.entries", Number.MAX_SAFE_INTEGER);
   const entries = value.attachments.entries.map(parseAttachmentEntry);
   const relativePaths = new Set<string>();
   for (let index = 1; index < entries.length; index += 1) {
@@ -517,7 +519,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   if (entries.some((entry) => entry.status === "READY") && archiveSize === BigInt(0)) {
     fail("manifest.attachments.archiveSizeBytes must be non-zero when READY entries exist");
   }
-  const readyDocumentIds = new Set(entries.filter((entry) => entry.status === "READY").map((entry) => entry.documentId as string));
+  const referencedDocumentIds = new Set(entries.filter((entry) => entry.documentId !== null).map((entry) => entry.documentId as string));
 
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
   assertExactKeys(value.aggregateCounts, ["organizations", "workspaces", "documents", "attachments"], "manifest.aggregateCounts");
@@ -535,8 +537,8 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   if (documentCount > BigInt(0) && workspaceCount === BigInt(0)) {
     fail("manifest.aggregateCounts.workspaces must cover documents");
   }
-  if (documentCount < BigInt(readyDocumentIds.size)) {
-    fail("manifest.aggregateCounts.documents must cover READY attachment document references");
+  if (documentCount < BigInt(referencedDocumentIds.size)) {
+    fail("manifest.aggregateCounts.documents must cover attachment document references");
   }
   if (attachmentCount !== BigInt(entries.length)) {
     fail("manifest.aggregateCounts.attachments must match attachment inventory");
