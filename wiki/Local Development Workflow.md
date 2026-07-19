@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 67
+updated: 2026-07-19
+source_count: 70
 tags:
   - munjib
   - workflow
@@ -52,6 +52,26 @@ pnpm run test:e2e:ui
 pnpm run test:security-runtime
 pnpm audit --prod
 ```
+
+Issue #208 local Vault signer lab은 Docker가 필요한 explicit gate이며 일반
+`pnpm test`에 암묵적으로 포함되지 않는다. approved digest-pinned image를
+`VAULT_LAB_IMAGE`로 설정한다. `vault:lab:up`은 foreground에서 Vault를 시작하고 bootstrap까지 수행하며, 종료 신호를 받으면 private token/override와 Compose resource를 함께 정리한다. 따라서 별도 shell에서 standalone bootstrap을 실행하는 lifecycle이 아니다. 독립 integration gate는 자체 lifecycle을 소유한다.
+
+```bash
+pnpm vault:lab:up
+pnpm vault:lab:test
+pnpm vault:lab:down
+```
+
+`vault:lab:bootstrap` package command는 `up`/integration wrapper가 생성한 private
+`VAULT_TOKEN` 환경 안에서만 호출하는 내부 단계이며 fresh shell용 command가 아니다.
+Foreground `vault:lab:up`은 SIGINT에서 130, SIGTERM에서 143으로 종료하며 `EXIT`
+handler가 Compose와 private credential state를 한 번 정리한다. command 인자를 준 child
+mode는 child exit status를 그대로 전파한다.
+
+Lab은 `127.0.0.1:18200`에만 publish하고 dev token은 private temporary
+mode-`0600` override에만 둔다. `vault:lab:test`의 public stdout contract와
+production/non-production 경계는 [[Release Signer And Vault Workflow]]를 본다.
 
 Auth runtime startup/preflight commands:
 

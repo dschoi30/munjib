@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 조직, workspace, 폴더, 문서, 버전, 링크, 태그, 속성, 첨부, 댓글, 권한, 감사 로그 데이터 모델.
 created: 2026-04-29
-updated: 2026-07-07
-source_count: 41
+updated: 2026-07-13
+source_count: 42
 tags:
   - munjib
   - data-model
@@ -283,6 +283,37 @@ erDiagram
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
+Issue #159의 active-resource 경계는 이 모델 위에 별도 membership 권위를
+추가하지 않는다. `lib/workspaces/active-membership.ts`는 향후 DB-time
+`workspaceId + userId` resolver를 위한 계약이며 현재는 fail closed한다.
+`lib/authorization/active-resource-locks.ts`는 이미 존재하는 Workspace,
+Folder, Document의 `archivedAt`/`status` 컬럼만 사용해 actor advisory lock과
+정렬된 row lock을 제공한다. SupportAccessGrant와 archive-operation provenance
+컬럼은 해당 스키마 migration 전에는 조회하지 않는다. 따라서 active-resource
+resolver, Leaf 6 document ACL slot, Leaf 14 purge readiness seam은 production
+mutation이나 archive/purge state를 아직 활성화하지 않는다.
+
+## Security journal and durable auth handoff
+
+Issue #156's dependency-safe implementation slice adds no Prisma model or
+migration yet. It publishes the typed boundary that later leaves must share:
+`SecurityJournalEvent` is a JSON-safe, exact-key event whose positive BIGINT
+sequence remains a string, whose timestamp is canonical UTC microseconds, and
+whose event kind/subject/payload are closed sets. `encodeSecurityJournalHashPreimage()`
+uses the fixed domain prefix, previous hash, unsigned BIGINT sequence,
+length-prefixed UTF-8 fields, and one-byte state version so TypeScript and the
+future DB function can hash identical bytes without JSON serialization or
+JavaScript number conversion. `appendSecurityJournalEvent()` is only a
+parameterized call to the future DB-owned append function.
+
+`lib/auth/durable-auth-state.ts` is the corresponding auth-state seam: it
+reloads immutable `User.id` state and fails closed when `authDisabledAt` is set
+or the durable columns are unavailable. The injectable Leaf 2 hook factory is
+ready for the post-migration slot activation, but the reserved default hook,
+schema, role/extension setup, journal genesis, Trial quarantine, and any
+production cleanup remain untouched until the immutable runtime/broker
+dependencies are proven.
+
 Issue #119 adds `Workspace.archivedDocumentRetentionPolicy` as a workspace-wide archived document retention policy. Values are `NEVER`, `DAYS_7`, `DAYS_30`, and `DAYS_90`, with `DAYS_30` as the default for new and existing workspaces. The policy is DB-backed rather than browser-local and is used by the archived document purge CLI to calculate each workspace's `archivedAt` cutoff. When purge hard-deletes archived documents, incoming `DocumentLink` rows are first kept as broken unresolved edges instead of silent `targetDocumentId=null` non-broken links, then affected active source documents are reconciled so a matching active replacement can become the new target.
 
 ## 폴더, 문서, 버전
@@ -357,7 +388,7 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 
 ## 권한과 감사
 
-- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다.
+- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다. Issue #160의 Leaf 6 결정 계약은 이를 active-resource authority 뒤에서만 평가하며, explicit grant의 유효 상한을 현재 workspace role(`VIEWER` read, `EDITOR` write, `ADMIN`/`OWNER` manage)으로 제한한다. Legacy `WorkspaceMember`/`Permission` fallback은 authority를 발행하지 못하고 fail closed한다.
 - `AuditLog`: 문서 생성, 수정, 아카이브, version restore, broken link 기반 생성, attachment upload, comment 생성 같은 mutation 기록을 남긴다.
 
 ## Account identity

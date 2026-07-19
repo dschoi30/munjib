@@ -20,8 +20,8 @@ const (
 )
 
 var allowedOperations = map[string]bool{
-	"VERIFY_ONLY":        true,
-	"INSTALL_SUBSTRATE":  true,
+	"VERIFY_ONLY":         true,
+	"INSTALL_SUBSTRATE":   true,
 	"RECONCILE_SUBSTRATE": true,
 }
 
@@ -37,9 +37,72 @@ type Envelope struct {
 	Signature          string          `json:"signature"`
 }
 
+type UnsignedEnvelopeInput struct {
+	Operation          string
+	Payload            json.RawMessage
+	KeyID              string
+	ExpectedGeneration uint64
+	Nonce              [32]byte
+	ExpiresAt          time.Time
+}
+
 type VerifiedRequest struct {
 	Envelope Envelope
 	Payload  []byte
+}
+
+func NewUnsignedEnvelope(input UnsignedEnvelopeInput, now time.Time) (Envelope, error) {
+	if input.Operation != "VERIFY_ONLY" || input.KeyID == "" || input.ExpectedGeneration == 0 {
+		return Envelope{}, errors.New("ENVELOPE_INPUT")
+	}
+	if len(input.Payload) == 0 || len(input.Payload) > MaxPayloadBytes || !json.Valid(input.Payload) {
+		return Envelope{}, errors.New("ENVELOPE_PAYLOAD")
+	}
+	canonicalPayload, err := json.Marshal(input.Payload)
+	if err != nil || len(canonicalPayload) == 0 || len(canonicalPayload) > MaxPayloadBytes {
+		return Envelope{}, errors.New("ENVELOPE_PAYLOAD")
+	}
+	if input.Nonce == [32]byte{} {
+		return Envelope{}, errors.New("ENVELOPE_NONCE")
+	}
+	expiresAt := input.ExpiresAt.UTC()
+	if !expiresAt.After(now.UTC()) || expiresAt.Sub(now.UTC()) > 5*time.Minute {
+		return Envelope{}, errors.New("ENVELOPE_EXPIRY")
+	}
+	digest := sha256.Sum256(canonicalPayload)
+	return Envelope{
+		Format:             "munjib-release-envelope-v1",
+		Operation:          input.Operation,
+		Nonce:              base64.RawURLEncoding.EncodeToString(input.Nonce[:]),
+		ExpiresAt:          expiresAt.Format(time.RFC3339Nano),
+		ExpectedGeneration: input.ExpectedGeneration,
+		Payload:            append(json.RawMessage(nil), canonicalPayload...),
+		PayloadSHA256:      hex.EncodeToString(digest[:]),
+		KeyID:              input.KeyID,
+	}, nil
+}
+
+func SignedMessage(envelope Envelope) ([]byte, error) {
+	if envelope.Format != "munjib-release-envelope-v1" || !allowedOperations[envelope.Operation] ||
+		envelope.KeyID == "" || envelope.ExpectedGeneration == 0 || len(envelope.PayloadSHA256) != 64 {
+		return nil, errors.New("ENVELOPE_SIGNING_FIELDS")
+	}
+	return []byte(strings.Join([]string{
+		envelope.Format,
+		envelope.Operation,
+		envelope.Nonce,
+		envelope.ExpiresAt,
+		fmt.Sprint(envelope.ExpectedGeneration),
+		envelope.PayloadSHA256,
+		envelope.KeyID,
+	}, "\x00")), nil
+}
+
+func ValidateExpectedGeneration(envelope Envelope, configured uint64) error {
+	if configured == 0 || envelope.ExpectedGeneration != configured {
+		return errors.New("ENVELOPE_GENERATION")
+	}
+	return nil
 }
 
 func VerifyEnvelope(raw []byte, publicKey ed25519.PublicKey, now time.Time) (VerifiedRequest, error) {
@@ -78,21 +141,12 @@ func VerifyEnvelope(raw []byte, publicKey ed25519.PublicKey, now time.Time) (Ver
 	if err != nil || len(signature) != ed25519.SignatureSize {
 		return VerifiedRequest{}, errors.New("ENVELOPE_SIGNATURE")
 	}
-	message := signedMessage(envelope)
+	message, err := SignedMessage(envelope)
+	if err != nil {
+		return VerifiedRequest{}, err
+	}
 	if !ed25519.Verify(publicKey, message, signature) {
 		return VerifiedRequest{}, errors.New("ENVELOPE_SIGNATURE_INVALID")
 	}
 	return VerifiedRequest{Envelope: envelope, Payload: append([]byte(nil), envelope.Payload...)}, nil
-}
-
-func signedMessage(envelope Envelope) []byte {
-	return []byte(strings.Join([]string{
-		envelope.Format,
-		envelope.Operation,
-		envelope.Nonce,
-		envelope.ExpiresAt,
-		fmt.Sprint(envelope.ExpectedGeneration),
-		envelope.PayloadSHA256,
-		envelope.KeyID,
-	}, "\x00"))
 }
