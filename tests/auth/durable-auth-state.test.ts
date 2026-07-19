@@ -48,7 +48,20 @@ describe("durable auth state boundary", () => {
     );
   });
 
-  it.each([null, undefined, "", " ", "+1", "01", -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+  it.each([
+    null,
+    undefined,
+    "",
+    " ",
+    "+1",
+    "01",
+    -1,
+    1.5,
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+    BigInt("9223372036854775808"),
+    "9223372036854775808",
+  ])(
     "rejects noncanonical session version %p",
     async (sessionVersion) => {
       await expect(assertCurrentUserAuthEnabled({

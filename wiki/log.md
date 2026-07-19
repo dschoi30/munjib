@@ -3081,3 +3081,9 @@ links:
 - Journal follow-up: Append results above PostgreSQL's signed `BIGINT` maximum now fail closed using the same bound as event parsing.
 - Source evidence: `lib/auth/durable-auth-state.ts`, `lib/auth/downstream/contract.ts`, `lib/auth/config.ts`, `lib/security/journal.ts`, and focused regression tests.
 - Verification: 33 focused auth/journal tests and TypeScript compilation.
+
+## 2026-07-19T17:47:00+09:00 - security-review
+
+- Result: Durable session versions now reject bigint and canonical decimal values above PostgreSQL's signed `BIGINT` maximum before they can become JWT claims.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `tests/auth/durable-auth-state.test.ts`, PR #199 review thread.
+- Verification: focused durable-auth regression tests and TypeScript compilation.
