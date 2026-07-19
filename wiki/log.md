@@ -116,6 +116,7 @@ links:
 
 - Reused one module-level `TextEncoder` for security-journal hash preimage encoding; the canonical byte contract is unchanged while repeated event hashing avoids per-field encoder allocation.
 - Durable auth state now accepts only non-negative `bigint`, safe-integer number, or canonical unsigned decimal string session versions; null, whitespace, signs, leading zeroes, fractions, and non-finite values fail closed as `AUTH_STATE_UNAVAILABLE`.
+- Journal append accepts exactly one database result with a positive `bigint` sequence and canonical lowercase string hash; empty, duplicate, non-positive, or coercible non-string results fail closed.
 - Source evidence: `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, PR #199 review threads.
 - Verification: journal/auth focused tests (11 passed), TypeScript, and staged wiki gates.
 

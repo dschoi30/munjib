@@ -368,7 +368,14 @@ export async function appendSecurityJournalEvent(
     )
   `);
   const row = rows[0];
-  if (!row || typeof row.sequence !== "bigint" || !HASH_PATTERN.test(row.eventHash)) {
+  if (
+    rows.length !== 1 ||
+    !row ||
+    typeof row.sequence !== "bigint" ||
+    row.sequence <= BigInt(0) ||
+    typeof row.eventHash !== "string" ||
+    !HASH_PATTERN.test(row.eventHash)
+  ) {
     throw new Error("SECURITY_JOURNAL_APPEND_RESULT_INVALID");
   }
   return { sequence: row.sequence, eventHash: row.eventHash };
