@@ -19,9 +19,9 @@ import (
 )
 
 const (
-	socketPath = "/run/munjib/release-broker.sock"
-	policyPath = "/etc/munjib/security/principal-policy-v1.json"
-	keyPath    = "/var/lib/munjib/security/bootstrap/release-verify.pub"
+	socketPath               = "/run/munjib/release-broker.sock"
+	policyPath               = "/etc/munjib/security/principal-policy-v1.json"
+	keyPath                  = "/var/lib/munjib/security/bootstrap/release-verify.pub"
 	maxConcurrentConnections = 32
 )
 
@@ -126,7 +126,7 @@ func handle(conn *net.UnixConn) {
 		return
 	}
 	verified, err := delivery.VerifyEnvelope(frame, ed25519.PublicKey(publicKeyBytes), time.Now().UTC())
-	if err != nil || verified.Envelope.ExpectedGeneration != configured.Generation {
+	if err != nil || delivery.ValidateExpectedGeneration(verified.Envelope, configured.Generation) != nil {
 		writeResponse(conn, response{Code: "ENVELOPE_REJECTED"})
 		return
 	}

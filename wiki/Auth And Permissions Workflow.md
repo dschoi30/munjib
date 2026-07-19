@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-13
-source_count: 69
+source_count: 70
 tags:
   - munjib
   - auth
@@ -92,6 +92,77 @@ avatar resolution uses `getReadableAttachment()` with the current user's
 workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
+
+## Active-resource authorization boundary
+
+Issue #159 reserves one shared resolver/lock boundary for future archive,
+document-access, attachment, comment, link, history, AI, and retention callers.
+`lib/authorization/active-resources.ts` delegates document ACL lookup to the
+version-zero Leaf 6 slot and refuses normal authorization until the canonical
+database-time `resolveActiveWorkspaceMembership(workspaceId, userId)` authority
+is installed. It intentionally does not query `WorkspaceMember` as a fallback,
+so a missing authority cannot enumerate archived resources or create a second
+source of truth. `lib/authorization/active-resource-locks.ts` provides the
+schema-safe actor advisory lock and deterministic workspace, sorted-folder, and
+document row locks; it does not introduce archive provenance columns or mutation
+callers.
+
+The Leaf 14 production purge seam is likewise version zero and fail closed. Both
+logical and physical destructive authorization raise an integration-not-installed
+error until independent journal, restore, and provider evidence is composed by
+its own owner. The reserved Leaf 6/Leaf 14 paths and their hashes live in
+`deploy/security/protected-artifact-owners.json`; this branch changes no schema,
+archive state, purge rows, or production behavior.
+
+Issue #160 adds the dependency-safe Leaf 6 decision seam without activating a
+new authority. `lib/authorization/document-acl-entrypoint.ts` must resolve the
+active document resource before loading Leaf 6 access data, and
+`lib/authorization/document-acl.ts` rejects missing, mismatched, or
+structurally forged authority proofs. The proof carries a module-private
+runtime brand, so a legacy `WorkspaceMember` or `Permission` query cannot mint
+document authority. Explicit document grants are capped by the active
+workspace role (`VIEWER`→`READ`, `EDITOR`→`WRITE`, `ADMIN`/`OWNER`→`MANAGE`),
+preventing a higher explicit row from elevating a lower workspace role. The
+resolver and Leaf 6 slot remain fail closed until the canonical DB-time
+active-membership authority and its ACL implementation are installed.
+The server entrypoint opens one transaction and requires the active-document
+resolver to issue its proof from locked authority rows before Leaf 6 data is
+read through the same transaction, preventing role/archive TOCTOU decisions.
+
+### Leaf 2 durable auth-state and journal handoff (Issue #156)
+
+The reviewed Leaf 2 implementation slice defines a fail-closed durable-auth
+boundary in `lib/auth/durable-auth-state.ts`. Callers provide only an immutable
+user id and an authoritative database interface; the helper reloads
+`authDisabledAt` and `sessionVersion` by `User.id`, rejects email-shaped or
+malformed identities before querying, and treats a missing column, missing user,
+malformed version, or database error as an unavailable/denied state. The
+injectable `createDurableAuthStateHook()` factory exposes this resolver to a
+future Leaf 2 hook without changing the protected version-0 slot while the
+database migration and runtime capability remain pending.
+
+The hook contract also carries the issued session version. On initial JWT
+issuance, an activated hook returns the DB-owned version for a canonical decimal
+JWT claim; subsequent JWT and session checks must present that claim and match
+the current durable value. Missing or stale claims fail closed, so incrementing
+`sessionVersion` revokes previously issued sessions once Leaf 2 is activated.
+
+The same slice defines the language-independent `lib/security/journal.ts`
+contract. It closes the twenty-six deny-only event kinds to their allowed
+subject types and `{stateCode, stateVersion: 1}` payload, preserves BIGINT
+sequence values as canonical decimal strings, rejects unknown keys/noncanonical
+UTC microseconds/invalid hashes or UUIDs, derives retry-stable UUIDv5 operation
+ids from a length-delimited tuple, and mirrors the PostgreSQL binary hash
+preimage. `appendSecurityJournalEvent()` only calls the fixed
+`public.security_journal_append(...)` function through a parameterized query;
+its single returned sequence must fit the positive PostgreSQL signed-BIGINT
+range. It does not create tables, roles, extensions, or perform a production mutation.
+
+This is a pre-migration handoff only. The default auth hook remains unchanged,
+the `User` columns and journal tables are not present on `origin/main`, and
+Trial disable, credential/session cleanup, journal genesis, support access, and
+production migration stay gated on the deployed Leaf 1/13B proofs and the
+privileged broker. Evidence is tracked in Issue #156's implementation branch.
 
 ## Versioned and bounded password verification
 
