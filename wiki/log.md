@@ -96,6 +96,30 @@ links:
 - Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault Transit API, Vault edition comparison, HCP Vault tier/pricing/deployment documentation, 사용자 결정.
 - Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
 
+## 2026-07-13T18:05:00+09:00 - security-leaf2-contract-followup
+
+- Result: The Leaf 2 journal module now also exports the branded isolated-restore replay context and reducer type so later recovery leaves consume one shared interface without mutating production journal state. The durable-auth hook factory stays outside the protected version-0 Leaf 2 slot.
+- Scope: Type-only handoff; no replay implementation, restore, migration, or production operation.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]].
+- Source evidence: `lib/security/journal.ts` and its focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T18:00:00+09:00 - security-leaf2-contract
+
+- Result: Issue #156's safe implementation slice adds the canonical typed security-journal parser, UUIDv5 operation-id derivation, language-independent binary hash preimage, parameterized DB append seam, and a fail-closed durable auth-state resolver with an injectable Leaf 2 hook factory.
+- Scope: No Prisma migration, extension/role DDL, journal genesis, Trial disable, credential/session cleanup, support grant, purge, or production operation was performed. The reserved default auth hook remains version 0 until deployed Leaf 1/13B and broker evidence are available.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: Issue #156 implementation branch `issue-156-security-trial-isolation-implementation`, `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, and focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T14:45:00+09:00 - Issue #156 journal review follow-up
+
+- Reused one module-level `TextEncoder` for security-journal hash preimage encoding; the canonical byte contract is unchanged while repeated event hashing avoids per-field encoder allocation.
+- Durable auth state now accepts only non-negative `bigint`, safe-integer number, or canonical unsigned decimal string session versions; null, whitespace, signs, leading zeroes, fractions, and non-finite values fail closed as `AUTH_STATE_UNAVAILABLE`.
+- Journal append accepts exactly one database result with a positive `bigint` sequence and canonical lowercase string hash; empty, duplicate, non-positive, or coercible non-string results fail closed.
+- Source evidence: `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, PR #199 review threads.
+- Verification: journal/auth focused tests (11 passed), TypeScript, and staged wiki gates.
+
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
 
 - Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
@@ -3043,3 +3067,23 @@ links:
 - Review follow-up: Present-but-invalid Vault configuration is classified as unavailable (`69`), public-key creation explicitly reapplies mode `0400` after exclusive creation to defeat restrictive umasks, and signed-envelope output writer failures remain output errors (`74`) without secret-bearing diagnostics.
 - Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
 - Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
+
+## 2026-07-19T17:27:00+09:00 - security-review
+
+- Result: Added explicit regression coverage for malformed security-journal append rows, including empty or multiple rows, non-positive sequences, and non-string hashes.
+- Scope: Test-only follow-up; the fail-closed append validation is unchanged.
+- Source evidence: `tests/security/journal-contract.test.ts`.
+- Verification: 27 focused durable-auth and security-journal tests plus TypeScript compilation.
+
+## 2026-07-19T17:37:00+09:00 - security-review
+
+- Result: Completed the durable session-version boundary before Leaf 2 activation: initial JWT issuance can bind the DB-owned version, while later JWT/session checks carry and compare the issued claim; missing or stale versions fail closed.
+- Journal follow-up: Append results above PostgreSQL's signed `BIGINT` maximum now fail closed using the same bound as event parsing.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `lib/auth/downstream/contract.ts`, `lib/auth/config.ts`, `lib/security/journal.ts`, and focused regression tests.
+- Verification: 33 focused auth/journal tests and TypeScript compilation.
+
+## 2026-07-19T17:47:00+09:00 - security-review
+
+- Result: Durable session versions now reject bigint and canonical decimal values above PostgreSQL's signed `BIGINT` maximum before they can become JWT claims.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `tests/auth/durable-auth-state.test.ts`, PR #199 review thread.
+- Verification: focused durable-auth regression tests and TypeScript compilation.
