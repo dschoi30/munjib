@@ -27,6 +27,9 @@ const requestFor = (probeId: string) =>
         connectAddress: "127.0.0.1:3000",
         host: "munjib.andrewchoi.link",
         path: "/api/auth/providers",
+        tlsVerified: false,
+        tlsServerName: "",
+        redirectCount: 0,
       }
     : probeId === "unknown-host-rejection"
       ? {
@@ -38,6 +41,9 @@ const requestFor = (probeId: string) =>
           connectAddress: "munjib.andrewchoi.link",
           host: "unknown.invalid",
           path: "/api/auth/providers",
+          tlsVerified: true,
+          tlsServerName: "munjib.andrewchoi.link",
+          redirectCount: 0,
         }
       : {
           method: "GET",
@@ -48,6 +54,9 @@ const requestFor = (probeId: string) =>
           connectAddress: "munjib.andrewchoi.link",
           host: "munjib.andrewchoi.link",
           path: "/api/auth/providers",
+          tlsVerified: true,
+          tlsServerName: "munjib.andrewchoi.link",
+          redirectCount: 0,
         };
 
 describe("edge bindings contract evaluator", () => {
@@ -319,6 +328,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(valid.ok).toBe(true);
@@ -344,6 +356,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "attacker.invalid",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(wrongHost.ok).toBe(false);
@@ -370,6 +385,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: "/login",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(wrongPath.ok).toBe(false);
@@ -396,6 +414,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(wrongMethod.ok).toBe(false);
@@ -422,6 +443,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(credentialed.ok).toBe(false);
@@ -446,6 +470,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "unknown.invalid",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(valid.ok).toBe(true);
@@ -464,6 +491,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "unknown.invalid",
         host: "unknown.invalid",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(directDns.ok).toBe(false);
@@ -486,6 +516,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: "/api/auth/providers",
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(malformedHeaders.ok).toBe(false);
@@ -501,6 +534,50 @@ describe("edge bindings contract evaluator", () => {
     expect(paddedHeaderName.ok).toBe(false);
     expect(paddedHeaderName.reasons).toContain("HEADERS_INVALID");
 
+    const invalidHeaderName = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 4,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "bad header": "no-store" },
+      request: requestFor("origin-loopback"),
+    });
+    expect(invalidHeaderName.ok).toBe(false);
+    expect(invalidHeaderName.reasons).toContain("HEADERS_INVALID");
+
+    const unverifiedTls = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: { ...requestFor("public-https"), tlsVerified: false },
+    });
+    expect(unverifiedTls.ok).toBe(false);
+    expect(unverifiedTls.reasons).toContain("REQUEST_TLS_UNVERIFIED");
+
+    const redirected = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: { ...requestFor("public-https"), redirectCount: 1 },
+    });
+    expect(redirected.ok).toBe(false);
+    expect(redirected.reasons).toContain("REQUEST_REDIRECTED");
+
     const malformedDateAndPath = evaluateEdgeProbe(contract, "public-https", {
       status: 200,
       latencyMs: 42,
@@ -515,6 +592,9 @@ describe("edge bindings contract evaluator", () => {
         connectAddress: "munjib.andrewchoi.link",
         host: "munjib.andrewchoi.link",
         path: Symbol("path") as never,
+        tlsVerified: true,
+        tlsServerName: "munjib.andrewchoi.link",
+        redirectCount: 0,
       },
     });
     expect(malformedDateAndPath.ok).toBe(false);
