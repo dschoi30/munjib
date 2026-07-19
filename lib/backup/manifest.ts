@@ -424,6 +424,12 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   if (checkpointSequence === BigInt(0) && value.exportCheckpointAtSnapshot.entryHash !== value.genesisHash) {
     fail(`${checkpointPath}.entryHash must match genesisHash at sequence zero`);
   }
+  if (chainSequence > BigInt(0) && value.chainAtSnapshot.entryHash === value.genesisHash) {
+    fail(`${path}.chainAtSnapshot.entryHash cannot equal genesisHash at a positive sequence`);
+  }
+  if (checkpointSequence > BigInt(0) && value.exportCheckpointAtSnapshot.entryHash === value.genesisHash) {
+    fail(`${checkpointPath}.entryHash cannot equal genesisHash at a positive sequence`);
+  }
   if (chainSequence === checkpointSequence && value.chainAtSnapshot.entryHash !== value.exportCheckpointAtSnapshot.entryHash) {
     fail(`${checkpointPath}.entryHash must match chainAtSnapshot.entryHash at the same sequence`);
   }
@@ -482,6 +488,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertExactKeys(value.attachments, ["archiveSha256", "archiveSizeBytes", "entries"], "manifest.attachments");
   assertHash(value.attachments.archiveSha256, "manifest.attachments.archiveSha256");
   assertDecimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
+  const archiveSize = decimal(value.attachments.archiveSizeBytes, "manifest.attachments.archiveSizeBytes");
   assertDenseArray(value.attachments.entries, "manifest.attachments.entries");
   const entries = value.attachments.entries.map(parseAttachmentEntry);
   const relativePaths = new Set<string>();
@@ -492,6 +499,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
     if (entry.relativePath === null) continue;
     if (relativePaths.has(entry.relativePath)) fail("manifest.attachments.entries must not duplicate relative paths");
     relativePaths.add(entry.relativePath);
+  }
+  if (entries.some((entry) => entry.status === "READY") && archiveSize === BigInt(0)) {
+    fail("manifest.attachments.archiveSizeBytes must be non-zero when READY entries exist");
   }
 
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
