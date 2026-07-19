@@ -85,7 +85,7 @@ describe("auth callback hardening", () => {
   });
 
   it("runs durable-state guards for linked Google, JWT, and session surfaces", async () => {
-    const assertDurableAuthState = vi.fn();
+    const assertDurableAuthState = vi.fn(() => ({ userId: "user-1", sessionVersion: BigInt(7) }));
     const hooks = {
       ...defaultAuthDownstreamHooks,
       assertDurableAuthState,
@@ -111,19 +111,32 @@ describe("auth callback hardening", () => {
       credentials: undefined,
       email: undefined,
     });
-    await options.callbacks?.jwt?.({ token: { sub: "user-1" }, user: undefined } as never);
+    const issuedToken = await options.callbacks?.jwt?.({
+      token: { sub: "user-1" },
+      user: { id: "user-1" },
+    } as never);
     db.user.findUnique.mockResolvedValue({ image: null });
     await options.callbacks?.session?.({
       session: { user: { id: "user-1", email: "member@example.test", image: null } },
-      token: { sub: "user-1" },
+      token: issuedToken,
     } as never);
 
     expect(assertDurableAuthState).toHaveBeenCalledWith({
       userId: "user-1",
       surface: "GOOGLE_EXISTING",
     });
-    expect(assertDurableAuthState).toHaveBeenCalledWith({ userId: "user-1", surface: "JWT" });
-    expect(assertDurableAuthState).toHaveBeenCalledWith({ userId: "user-1", surface: "SESSION" });
+    expect(issuedToken).toMatchObject({ sub: "user-1", sessionVersion: "7" });
+    expect(assertDurableAuthState).toHaveBeenCalledWith({
+      userId: "user-1",
+      surface: "JWT",
+      issueSessionVersion: true,
+      issuedSessionVersion: undefined,
+    });
+    expect(assertDurableAuthState).toHaveBeenCalledWith({
+      userId: "user-1",
+      surface: "SESSION",
+      issuedSessionVersion: "7",
+    });
   });
 
   it("keeps the original JWT subject and strips hook-added media claims", async () => {
