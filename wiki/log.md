@@ -22,6 +22,7 @@ links:
 ## 2026-07-13T14:45:00+09:00 - Issue #159 active-resource review follow-up
 
 - Folder boundary locks now reject any archived row as `FOLDER_NOT_FOUND`, matching workspace/document active-resource fail-closed semantics.
+- Folder locks also require `status = ACTIVE`, covering inconsistent rows whose archived status has a null `archivedAt` timestamp.
 - Source evidence: `lib/authorization/active-resource-locks.ts`, `tests/authorization/active-resource-locks.test.ts`, PR #200 review thread.
 - Verification: active-resource resolver/lock focused tests (7 passed), TypeScript, and staged wiki gates.
 
