@@ -102,9 +102,26 @@ describe("invite-first signup readiness contract", () => {
     expect(() => parseInviteSignupReadinessContract(symbolExtended)).toThrow(
       /contract\.Symbol\(secret\) is an unknown field/,
     );
+
+    const nestedHidden = { ...contract } as Record<string, unknown>;
+    const hiddenPrerequisites = [...(contract.prerequisites as string[])];
+    Object.defineProperty(hiddenPrerequisites, "secret", { value: "not-a-secret", enumerable: false });
+    nestedHidden.prerequisites = hiddenPrerequisites;
+    expect(() => parseInviteSignupReadinessContract(nestedHidden)).toThrow(
+      /contract\.prerequisites\.secret is an unknown field/,
+    );
+
+    const nestedSymbol = { ...contract } as Record<string, unknown>;
+    const symbolPrerequisites = [...(contract.prerequisites as string[])];
+    const nestedSecret = Symbol("secret");
+    Object.defineProperty(symbolPrerequisites, nestedSecret, { value: "not-a-secret", enumerable: false });
+    nestedSymbol.prerequisites = symbolPrerequisites;
+    expect(() => parseInviteSignupReadinessContract(nestedSymbol)).toThrow(
+      /contract\.prerequisites\.Symbol\(secret\) is an unknown field/,
+    );
   });
 
-  test("copies canonical array values without invoking a caller iterator", () => {
+  test("rejects a caller-controlled iterator extension before copying", () => {
     const contract = loadContract() as Record<string, unknown>;
     const hostilePrerequisites = [...(contract.prerequisites as string[])];
     Object.defineProperty(hostilePrerequisites, Symbol.iterator, {
@@ -114,11 +131,11 @@ describe("invite-first signup readiness contract", () => {
       },
     });
 
-    const parsed = parseInviteSignupReadinessContract({
-      ...contract,
-      prerequisites: hostilePrerequisites,
-    });
-
-    expect(parsed.prerequisites).toEqual(INVITE_SIGNUP_PREREQUISITES);
+    expect(() =>
+      parseInviteSignupReadinessContract({
+        ...contract,
+        prerequisites: hostilePrerequisites,
+      }),
+    ).toThrow(/contract\.prerequisites\.Symbol\(Symbol\.iterator\) is an unknown field/);
   });
 });

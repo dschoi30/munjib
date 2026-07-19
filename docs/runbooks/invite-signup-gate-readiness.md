@@ -12,6 +12,9 @@ handoff boundary. The parser in `lib/auth/invite-readiness.ts` is
 side-effect-free and fail-closed: it accepts only the exact public contract and
 returns an immutable preparation value. It does not enable signup, read
 production state, accept a capability, or create an account.
+The top-level contract and each canonical string array reject unknown own
+properties, including non-enumerable and symbol keys, before values are
+copied into the immutable result.
 
 The requested production mode is `invite`; until every prerequisite is
 independently attested, the effective mode remains `closed`. The current branch

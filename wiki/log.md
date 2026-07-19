@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 358
+source_count: 359
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:16:00+09:00 - Issue #161 nested contract-array own-key guard
+
+- Result: Invite readiness now rejects non-enumerable and symbol own keys on nested canonical arrays before copying immutable values, matching the top-level exact-key policy.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness tests and wiki gates.
 
 ## 2026-07-20T07:12:00+09:00 - Issue #161 workflow bearer transport alignment
 

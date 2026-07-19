@@ -93,6 +93,15 @@ function assertCanonicalArray<T extends string>(value: unknown, expected: readon
     fail(`${path} must be an array of strings`);
   }
   const arr: readonly unknown[] = value;
+  const expectedOwnKeys = new Set<string>(["length"]);
+  for (let index = 0; index < arr.length; index += 1) {
+    expectedOwnKeys.add(String(index));
+  }
+  for (const key of Reflect.ownKeys(value)) {
+    if (typeof key !== "string" || !expectedOwnKeys.has(key)) {
+      fail(`${path}.${String(key)} is an unknown field`);
+    }
+  }
   for (let index = 0; index < arr.length; index += 1) {
     if (!Object.prototype.hasOwnProperty.call(arr, index)) {
       fail(`${path} must be a dense array`);
