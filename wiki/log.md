@@ -19,6 +19,31 @@ links:
 
 # Wiki Log
 
+## 2026-07-19T23:55:00+09:00 - Issue #163 citation canonicalization review fix
+
+- Result: source-backed history citations now admit only authorized document/chunk identifiers; unverifiable title, path, heading, and arbitrary fields fail closed.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T22:58:00+09:00 - Issue #163 nested lineage schema review fix
+
+- Result: source-backed lineage and source entries now require the exact v1 nested key schema, preventing unreviewed nested source metadata from reaching visible history DTOs.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T20:37:00+09:00 - Issue #163 source-backed contamination review fix
+
+- Result: source-backed history rows now fail closed when extra context metadata or citations reference sources outside the authorized lineage.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T20:24:00+09:00 - Issue #163 source-free contamination review fix
+
+- Result: `source-free-v1` assistant rows now fail closed when persisted citations remain or `contextMeta` contains anything beyond the exact lineage proof, preventing mixed-writer and partial-migration rows from bypassing source authority.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`, and PR #203 P2 review feedback.
+- Verification: focused AI history tests, TypeScript, and wiki sync gates.
+
 ## 2026-07-13T22:25:00+09:00 - Issue #162 opaque bucket boundary review fix
 
 - Result: `authorizeAuthRequest()` now admits only the exact 43-character base64url shape emitted by `deriveAuthGuardBucket()`. Raw IP/slug-shaped values are denied before the external store call, and a non-settling store fails closed after the bounded timeout.
@@ -3152,3 +3177,11 @@ links:
 - Result: Durable session versions now reject bigint and canonical decimal values above PostgreSQL's signed `BIGINT` maximum before they can become JWT claims.
 - Source evidence: `lib/auth/durable-auth-state.ts`, `tests/auth/durable-auth-state.test.ts`, PR #199 review thread.
 - Verification: focused durable-auth regression tests and TypeScript compilation.
+## 2026-07-13T13:10:00+09:00 - security-ai-history
+
+- Result: Issue #163 implementation slice adds a dependency-safe source-lineage parser, all-sources visibility decision, and non-enumerating tombstone DTO contract for derived Workspace AI history.
+- Coverage: explicit v1 source-backed document/chunk pairs, explicit source-free proof, malformed/missing/sparse legacy lineage fail closed, one denied or unavailable source hides the whole turn, source-backed decisions stay scoped to assistant rows, and tombstones omit internal ids, timestamps, answer/citations, source metadata, model, counts, and denial reasons.
+- Scope: no Prisma migration, route wiring, purge, provider call, telemetry, or production mutation; the helper accepts a future canonical authority callback and remains gated on Leaves 2/4/6/13B.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
+- Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
