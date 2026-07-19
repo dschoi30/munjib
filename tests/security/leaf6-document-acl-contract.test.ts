@@ -25,10 +25,13 @@ describe("Leaf 6 document ACL source contract", () => {
 
   it("keeps the server entrypoint ordered behind active-resource resolution", async () => {
     const source = await readFile("lib/authorization/document-acl-entrypoint.ts", "utf8");
-    const resolverCall = source.indexOf("resolveActiveDocumentForActor(db");
-    const aclCall = source.indexOf("getDocumentAccessForActor(db");
+    const transactionCall = source.indexOf("db.$transaction(async (tx)");
+    const resolverCall = source.indexOf("resolveActiveDocumentForActorForUpdate(tx");
+    const aclCall = source.indexOf("getDocumentAccessForActor(tx");
 
+    expect(transactionCall).toBeGreaterThanOrEqual(0);
     expect(resolverCall).toBeGreaterThanOrEqual(0);
+    expect(resolverCall).toBeGreaterThan(transactionCall);
     expect(aclCall).toBeGreaterThan(resolverCall);
   });
 });

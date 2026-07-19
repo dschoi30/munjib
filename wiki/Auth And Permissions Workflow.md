@@ -125,6 +125,9 @@ workspace role (`VIEWER`→`READ`, `EDITOR`→`WRITE`, `ADMIN`/`OWNER`→`MANAGE
 preventing a higher explicit row from elevating a lower workspace role. The
 resolver and Leaf 6 slot remain fail closed until the canonical DB-time
 active-membership authority and its ACL implementation are installed.
+The server entrypoint opens one transaction and requires the active-document
+resolver to issue its proof from locked authority rows before Leaf 6 data is
+read through the same transaction, preventing role/archive TOCTOU decisions.
 
 ### Leaf 2 durable auth-state and journal handoff (Issue #156)
 
