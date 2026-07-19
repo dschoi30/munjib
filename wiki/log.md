@@ -19,6 +19,21 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #160 ACL review follow-up
+
+- Folder locks reject archived rows; document ACL uses the exported canonical workspace-role permission ceiling map so Leaf 6 decisions cannot drift from shared permission policy.
+- Source evidence: `lib/authorization/active-resource-locks.ts`, `lib/permissions/document.ts`, `lib/authorization/document-acl.ts`, focused authorization tests, PR #201 review threads.
+- Verification: ACL/permission/active-resource focused tests, TypeScript, and staged wiki gates.
+- Atomicity follow-up: The ACL entrypoint now opens one transaction, obtains a locked active-document authority through the transaction-only resolver seam, and reads Leaf 6 access with the same transaction client.
+
+## 2026-07-13T18:00:00+09:00 - Issue #160 security
+
+- Result: Issue #160 adds a dependency-safe Leaf 6 document ACL decision seam on top of the reserved active-resource interfaces.
+- Coverage: `document-acl-entrypoint` resolves active authority before ACL access; the decision contract rejects missing, mismatched, and structurally forged proofs; explicit grants are capped by workspace role (`VIEWER` read, `EDITOR` write, `ADMIN`/`OWNER` manage). No duplicate membership resolver, schema/migration, journal, purge, or production mutation was added.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: `lib/authorization/active-resources.ts`, `lib/authorization/document-acl-entrypoint.ts`, `lib/authorization/document-acl.ts`, `lib/permissions/document.ts`, and the focused ACL/security tests.
+- Verification: focused ACL/permission/source-contract tests and TypeScript verification passed; the canonical active-membership/Leaf 6 providers remain fail closed until their dependency gates are installed.
+
 ## 2026-07-13T14:45:00+09:00 - Issue #159 active-resource review follow-up
 
 - Folder boundary locks now reject any archived row as `FOLDER_NOT_FOUND`, matching workspace/document active-resource fail-closed semantics.
