@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-13
-source_count: 115
+updated: 2026-07-20
+source_count: 117
 tags:
   - munjib
   - workflow
@@ -188,6 +188,8 @@ Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트
 
 Issue #164 security review records the remaining policy boundary in `docs/runbooks/ai-provider-policy-readiness.md`: request validation prevents client-supplied credentials, base URLs, and embedding settings, but the current release still treats provider availability as a UI hint and accepts any syntactically valid model id for a configured provider. A future policy resolver must be server-owned, shared by Ask AI and Workspace AI, and fail closed on provider/model/destination allowlists before model construction. Its destination contract must include chat, embedding, and optional Langfuse egress while keeping secrets, URLs, prompts, retrieved content, and provider response bodies out of telemetry. Activation is gated on Issues #139, #160, #163, #184, and #185; this handoff does not change live provider or schema behavior.
 
+Issue #164의 pre-gate 경계 슬라이스는 `lib/rag/provider-boundary.ts`에 route/DB/secret 의존성 없이 고정되어 있다. 브라우저 요청은 opaque `selectionId`만 통과하고 provider/model, credential, base URL, embedding identity, policy-bypass 필드는 fail-closed로 거부한다. 서버가 소유한 선택 항목만 resolve할 수 있으며 disabled 항목과 raw `provider:model` 문자열은 거부된다. 고정 endpoint 검증은 userinfo, query/fragment, alternate port, scheme/path 불일치, production literal/private/metadata/loopback 목적지를 거부하고, `http://ollama:11434`는 명시적인 non-production local gate에서만 허용한다. `sanitizeAiProviderTelemetry()`는 operation/provider/model/policyVersion/outcome/latency/usage만 bounded allowlist로 반환하고 prompt, response, workspace/user/source identity, URL, header는 복사하지 않는다. 이 모듈은 Issue #139/#160/#163/#184/#185 dependency gate가 닫힌 뒤 Ask AI/Workspace AI 및 Leaf 10 transport가 소비할 후보이며, 현재 route/provider activation이나 migration은 수행하지 않는다. 경계는 selection/model/endpoint 입력의 런타임 타입을 재검증하고 IPv4-mapped IPv6 사설 주소도 거부한다.
+
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 
 ## Retrieval And Ranking
@@ -256,6 +258,36 @@ pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:sync-check --staged
 ```
+
+## Derived history authorization handoff
+
+Issue #163의 dependency-safe implementation slice는 `lib/rag/ai-history-authorization.ts`에
+저장된 Workspace AI turn의 lineage 파서와 visibility decision, non-enumerating
+tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
+`source-backed` document/chunk 쌍만 현재 canonical source authority에 다시 확인하며,
+모든 source가 승인되어야 turn 전체가 visible이 된다. `source-free-v1` proof가 없는
+행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
+`legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
+citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
+Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
+row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+`source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
+lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
+또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
+Source-backed 행도 context metadata가 승인된 lineage 밖으로 확장되거나 citation이
+lineage에 없는 document/chunk를 가리키면 전체 행을 tombstone으로 처리한다.
+Lineage와 각 source 객체도 정확한 v1 key schema만 허용해 nested extra metadata를
+visible DTO로 복사하지 않는다.
+Citation도 승인된 `documentId`와 선택적 `chunkId`만 허용하며, 이 경계에서 검증할
+수 없는 title/path/heading/extra field가 있으면 전체 행을 tombstone으로 처리한다.
+최종 thread DTO caller는 tombstone 수나
+denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
+않아야 한다.
+
+이 helper는 Prisma, route, migration, purge, provider call, telemetry를 import하지
+않는다. 최종 thread load/follow-up/memory refresh/finalization/citation navigation
+caller는 Leaf 2/4/6/13B가 제공하는 canonical authority와 함께 이 경계를 사용해야
+하며, 그 dependency gate 전에는 production behavior를 연결하지 않는다.
 
 ## 근거
 
