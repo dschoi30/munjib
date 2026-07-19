@@ -139,7 +139,9 @@ Follow-up answer와 refreshed `memorySummary`는 prior answer/memory에서 소�
 이유만으로 `source-free-v1`로 재분류할 수 없다. Thread/list DTO는 denied
 assistant row를 list-level에서 필터링하거나 hidden row 수·위치를 보존하지
 않는 단일 aggregate redaction으로 표현해야 하며, hidden row마다 tombstone을
-하나씩 반환해서는 안 된다.
+하나씩 반환해서는 안 된다. Persisted `USER`+`ASSISTANT` pair는 하나의
+derived turn이므로 assistant access가 거부되면 paired user row도 함께
+숨겨 unmatched question으로 hidden turn의 위치를 드러내지 않아야 한다.
 Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
 immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
 migration, route, purge, production activation을 시작하지 않는다.

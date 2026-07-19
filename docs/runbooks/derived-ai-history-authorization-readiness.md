@@ -19,9 +19,10 @@ mutation.
   because the current retrieval returns no new chunks.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
-- The serializer scopes tombstones to derived `ASSISTANT` rows. Normal
-  user-authored `USER` questions remain visible and never inherit a detached
-  assistant decision.
+- The serializer treats each persisted `USER`+`ASSISTANT` pair as one derived
+  turn. If the assistant decision is denied or unavailable, suppress the whole
+  pair (or use one aggregate redaction) rather than leaving an unmatched user
+  question that reveals the hidden turn's position.
 - A `source-free-v1` assistant row is visible only when citations are null or
   empty and `contextMeta` contains only the exact lineage proof. Mixed-writer
   or partial-migration rows that retain citation/source metadata fail closed
@@ -61,13 +62,13 @@ until a final authority recheck succeeds before releasing any token. A
 finalization-only check after `onToken` is insufficient because a source can be
 revoked between tokens.
 
-The eventual thread/list DTO must filter denied assistant rows at list level
-or use one aggregate redaction that does not preserve hidden-row count or
-position. It must never emit one tombstone per hidden row, and it must not add a
-hidden-message count, denied-source count, or other aggregate that lets a
-caller enumerate hidden history. This slice only defines the per-row tombstone
-shape for internal composition; list-level suppression remains an integration
-acceptance criterion for the dependency-complete owner.
+The eventual thread/list DTO must suppress each denied `USER`+`ASSISTANT` turn
+at list level or use one aggregate redaction that does not preserve hidden-row
+count or position. It must never emit one tombstone per hidden turn, and it
+must not add a hidden-message count, denied-source count, or other aggregate
+that lets a caller enumerate hidden history. This slice only defines the
+per-row tombstone shape for internal composition; whole-turn list suppression
+remains an integration acceptance criterion for the dependency-complete owner.
 
 ## Public-safe evidence
 

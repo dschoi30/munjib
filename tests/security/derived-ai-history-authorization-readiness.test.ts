@@ -42,8 +42,10 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("non-enumerating tombstone");
     expect(runbook).toMatch(/answer text,\s+citations,\s+source ids/);
     expect(runbook).toContain("One denied source hides the whole turn");
-    expect(runbook).toMatch(/filter denied assistant rows at list level/i);
-    expect(runbook).toMatch(/never emit one tombstone per hidden row/i);
+    expect(runbook).toMatch(/suppress each denied `USER`\+`ASSISTANT` turn\s+at list level/i);
+    expect(runbook).toMatch(/never emit one tombstone per hidden turn/i);
+    expect(runbook).toMatch(/suppress each denied `USER`\+`ASSISTANT` turn/i);
+    expect(runbook).toMatch(/whole\s+pair/i);
   });
 
   it("keeps destructive data operations outside this leaf", () => {
