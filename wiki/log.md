@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 358
+source_count: 359
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:18:00+09:00 - public security status latest heads
+
+- Result: Refreshed the hardening status map with the latest reviewed heads for PRs #161 (`43311d9`), #191 (`1cb34bf`), #192 (`3721c66`), and #193 (`2432c43`); all remain CI billing-blocked with zero unresolved review threads.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, GitHub PR metadata/review audit.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:08:00+09:00 - public security status head refresh
 
