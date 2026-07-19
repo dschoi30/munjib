@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 102
+source_count: 103
 tags:
   - munjib
   - auth
@@ -244,7 +244,8 @@ pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
 activation, or production behavior. The exchange parser and each canonical
 contract array check `Reflect.ownKeys` so non-enumerable and symbol own metadata
 cannot bypass the exact shape; array length is bounded before key scanning and
-indexed values must be own data properties rather than accessors. Atomic
+indexed values and top-level contract fields must be own data properties rather
+than accessors. Atomic
 invitation consumption, revision
 invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
 follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.

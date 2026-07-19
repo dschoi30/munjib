@@ -82,6 +82,17 @@ function assertExactKeys(value: Record<string, unknown>, expected: readonly stri
   }
 }
 
+function readOwnDataProperty(value: Record<string, unknown>, key: string, path: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (!descriptor) {
+    fail(`${path} is required`);
+  }
+  if (!("value" in descriptor)) {
+    fail(`${path} must be a data property`);
+  }
+  return descriptor.value;
+}
+
 function assertLiteral<T extends string | number>(value: unknown, expected: T, path: string): asserts value is T {
   if (value !== expected) {
     fail(`${path} must equal ${JSON.stringify(expected)}`);
@@ -155,17 +166,17 @@ export function parseInviteSignupReadinessContract(value: unknown): InviteSignup
     ],
     "contract",
   );
-  assertLiteral(value["format"], INVITE_SIGNUP_READINESS_FORMAT, "contract.format");
-  assertLiteral(value["version"], INVITE_SIGNUP_READINESS_VERSION, "contract.version");
-  assertLiteral(value["leaf"], 7, "contract.leaf");
-  assertLiteral(value["state"], "PREPARATION_ONLY", "contract.state");
-  assertLiteral(value["requestedMode"], "invite", "contract.requestedMode");
-  assertLiteral(value["fallbackMode"], "closed", "contract.fallbackMode");
+  assertLiteral(readOwnDataProperty(value, "format", "contract.format"), INVITE_SIGNUP_READINESS_FORMAT, "contract.format");
+  assertLiteral(readOwnDataProperty(value, "version", "contract.version"), INVITE_SIGNUP_READINESS_VERSION, "contract.version");
+  assertLiteral(readOwnDataProperty(value, "leaf", "contract.leaf"), 7, "contract.leaf");
+  assertLiteral(readOwnDataProperty(value, "state", "contract.state"), "PREPARATION_ONLY", "contract.state");
+  assertLiteral(readOwnDataProperty(value, "requestedMode", "contract.requestedMode"), "invite", "contract.requestedMode");
+  assertLiteral(readOwnDataProperty(value, "fallbackMode", "contract.fallbackMode"), "closed", "contract.fallbackMode");
 
-  const prerequisites = assertCanonicalArray(value["prerequisites"], INVITE_SIGNUP_PREREQUISITES, "contract.prerequisites");
-  const invariants = assertCanonicalArray(value["invariants"], INVITE_SIGNUP_INVARIANTS, "contract.invariants");
+  const prerequisites = assertCanonicalArray(readOwnDataProperty(value, "prerequisites", "contract.prerequisites"), INVITE_SIGNUP_PREREQUISITES, "contract.prerequisites");
+  const invariants = assertCanonicalArray(readOwnDataProperty(value, "invariants", "contract.invariants"), INVITE_SIGNUP_INVARIANTS, "contract.invariants");
   const forbiddenOperations = assertCanonicalArray(
-    value["forbiddenOperations"],
+    readOwnDataProperty(value, "forbiddenOperations", "contract.forbiddenOperations"),
     INVITE_SIGNUP_FORBIDDEN_OPERATIONS,
     "contract.forbiddenOperations",
   );

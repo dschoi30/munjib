@@ -124,6 +124,18 @@ describe("invite-first signup readiness contract", () => {
       /contract\.Symbol\(secret\) is an unknown field/,
     );
 
+    const accessor = { ...contract } as Record<string, unknown>;
+    Object.defineProperty(accessor, "format", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error("accessor invoked");
+      },
+    });
+    expect(() => parseInviteSignupReadinessContract(accessor)).toThrow(
+      /contract\.format must be a data property/,
+    );
+
     const nestedHidden = { ...contract } as Record<string, unknown>;
     const hiddenPrerequisites = [...(contract.prerequisites as string[])];
     Object.defineProperty(hiddenPrerequisites, "secret", { value: "not-a-secret", enumerable: false });

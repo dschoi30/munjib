@@ -17,7 +17,8 @@ properties, including non-enumerable and symbol keys, before values are
 copied into the immutable result. Canonical array lengths are bounded before
 key scanning, and indexed values must be own data properties rather than
 accessors, so hostile in-memory inputs cannot trigger untrusted code or an
-unbounded loop.
+unbounded loop. Top-level contract fields are also required to be own data
+properties before their values are consumed.
 
 The requested production mode is `invite`; until every prerequisite is
 independently attested, the effective mode remains `closed`. The current branch
