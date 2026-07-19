@@ -286,7 +286,9 @@ so runtime evidence cannot use an abbreviated or null-looking revision.
 The exhaustive attachment inventory is not capped at the old 100,000-entry
 parser limit; its cardinality must equal the authenticated aggregate count, and
 all non-null attachment document references (including pending lifecycle rows)
-must be covered by the document count.
+must be covered by the document count. The same capacity policy applies to
+extracted READY archive receipts, and every inventory row must carry its required
+document ID.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
