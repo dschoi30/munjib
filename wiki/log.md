@@ -24,6 +24,7 @@ links:
 - Folder locks reject archived rows; document ACL uses the exported canonical workspace-role permission ceiling map so Leaf 6 decisions cannot drift from shared permission policy.
 - Source evidence: `lib/authorization/active-resource-locks.ts`, `lib/permissions/document.ts`, `lib/authorization/document-acl.ts`, focused authorization tests, PR #201 review threads.
 - Verification: ACL/permission/active-resource focused tests, TypeScript, and staged wiki gates.
+- Atomicity follow-up: The ACL entrypoint now opens one transaction, obtains a locked active-document authority through the transaction-only resolver seam, and reads Leaf 6 access with the same transaction client.
 
 ## 2026-07-13T18:00:00+09:00 - Issue #160 security
 

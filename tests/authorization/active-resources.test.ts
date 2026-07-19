@@ -31,8 +31,11 @@ describe("active-resource resolver boundary", () => {
   });
 
   it("runs active-resource authority before any Leaf 6 ACL decision", async () => {
+    const db = {
+      $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({}),
+    };
     await expect(
-      resolveDocumentAclForActor({} as never, {
+      resolveDocumentAclForActor(db as never, {
         documentId: "document-id",
         actorId: "actor-id",
         operation: "read",

@@ -104,6 +104,18 @@ export async function resolveActiveDocumentForActor(
 }
 
 /**
+ * Transaction-only document authority seam. The activated implementation must
+ * lock the document and membership authority rows before issuing the proof so
+ * Leaf 6 access can be read from the same transaction without a TOCTOU window.
+ */
+export async function resolveActiveDocumentForActorForUpdate(
+  _tx: Prisma.TransactionClient,
+  _input: { documentId: string; actorId: string; access: WorkspaceAccess },
+): Promise<ActiveDocumentResource | null> {
+  throw new Error(ACTIVE_MEMBERSHIP_AUTHORITY_UNAVAILABLE);
+}
+
+/**
  * Leaf 6 owns document-level ACL semantics.  Keep this delegation available
  * from the first release without importing a future Leaf 6 implementation.
  */
