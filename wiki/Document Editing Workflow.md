@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 103
+source_count: 104
 tags:
   - munjib
   - workflow
@@ -160,6 +160,9 @@ document permission을 매번 재확인하고, server page는 current-view에 �
 최소 DTO만 내려야 한다. 이 변경은 Leaf 5 active-resource authority가
 머지·검증된 뒤에만 구현하며, 공개 handoff는
 `docs/runbooks/document-authorization-readiness.md`에 유지한다.
+검증 matrix는 target 생성뿐 아니라 normal document create/update/restore/move와
+folder rename/move의 각 reconciliation caller에서 authorized source repair와
+unreadable source zero-write 결과를 독립 fixture로 확인해야 한다.
 
 ## UI 세부 사항
 

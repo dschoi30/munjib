@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 364
+source_count: 365
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:34:00+09:00 - Issue #160 reconciliation verification matrix
+
+- Result: Document authorization verification now requires independent source-authority fixtures for every link-reconciliation caller, including normal document and folder rename/move paths, not only broken-link target creation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:28:00+09:00 - Issue #160 reconciliation caller coverage
 

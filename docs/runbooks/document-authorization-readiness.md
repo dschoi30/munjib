@@ -63,6 +63,9 @@ The next implementation pass should verify, with synthetic fixtures only:
 - Restricted source documents cannot create or repair broken-link targets, and
   every source row repaired by target creation has an independent authority
   decision.
+- The same independent source-authority matrix must cover normal document
+  create/update/restore/move and folder rename/move callers that invoke link
+  reconciliation; target-creation-only coverage is insufficient.
 - Mixed-ACL folder descendants reject the whole transaction with zero writes;
   a cascade containing an archived descendant also rejects with zero writes
   until the separate archive-maintenance authority is available.
