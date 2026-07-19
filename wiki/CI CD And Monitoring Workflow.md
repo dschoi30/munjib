@@ -266,6 +266,9 @@ READY attachment inventories also require a non-zero archive size, and positive
 journal hashes may not reuse the genesis hash.
 Recursive untrusted-key traversal is capped at a bounded depth and fails with the
 domain error before the JavaScript call stack can be exhausted.
+For non-genesis checkpoints, the containing batch digest must equal the latest
+export batch digest, and the declared document count must cover distinct READY
+attachment document references.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

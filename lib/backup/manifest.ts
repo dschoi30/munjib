@@ -445,6 +445,12 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
     fail(`${checkpointPath}.latestExportBatchDigest is required after genesis`);
   }
   if (
+    checkpointSequence > BigInt(0) &&
+    value.exportCheckpointAtSnapshot.latestExportBatchDigest !== value.exportCheckpointAtSnapshot.containingBatchDigest
+  ) {
+    fail(`${checkpointPath} latest and containing batch digests must match after genesis`);
+  }
+  if (
     containingFirst !== null &&
     decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) > checkpointSequence
   ) {
@@ -505,10 +511,14 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   if (entries.some((entry) => entry.status === "READY") && archiveSize === BigInt(0)) {
     fail("manifest.attachments.archiveSizeBytes must be non-zero when READY entries exist");
   }
+  const readyDocumentIds = new Set(entries.filter((entry) => entry.status === "READY").map((entry) => entry.documentId as string));
 
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
   assertExactKeys(value.aggregateCounts, ["organizations", "workspaces", "documents", "attachments"], "manifest.aggregateCounts");
   for (const key of ["organizations", "workspaces", "documents", "attachments"] as const) assertDecimal(value.aggregateCounts[key], `manifest.aggregateCounts.${key}`);
+  if (decimal(value.aggregateCounts.documents as string, "manifest.aggregateCounts.documents") < BigInt(readyDocumentIds.size)) {
+    fail("manifest.aggregateCounts.documents must cover READY attachment document references");
+  }
   if (decimal(value.aggregateCounts.attachments as string, "manifest.aggregateCounts.attachments") !== BigInt(entries.length)) {
     fail("manifest.aggregateCounts.attachments must match attachment inventory");
   }
