@@ -78,7 +78,7 @@ links:
 
 ## 상태판
 
-- Issue #162 auth-abuse/session-revocation은 Leaf 2의 `authDisabledAt`/`sessionVersion`/journal authority와 Leaf 13의 private binding/database-role/broker attestation이 준비될 때까지 readiness handoff로 유지한다. 공개 안전한 게이트와 다음 구현 순서는 `docs/runbooks/auth-abuse-sessions-readiness.md`와 [[Auth And Permissions Workflow]]에 기록한다.
+- Issue #162 auth-abuse/session-revocation은 Leaf 2의 `authDisabledAt`/`sessionVersion`/journal authority, Leaf 13의 private binding/database-role/broker attestation, 그리고 Issue #166 host-edge binding/probe contract가 모두 준비될 때까지 readiness handoff로 유지한다. 공개 안전한 게이트와 다음 구현 순서는 `docs/runbooks/auth-abuse-sessions-readiness.md`와 [[Auth And Permissions Workflow]]에 기록한다.
 
 - Issue #162의 첫 구현 slice는 `lib/auth/abuse/runtime.ts`에 strict file-backed guard runtime, bounded canonical-Origin/Fetch-Metadata primitives, 외부 durable-store 위임과 fail-closed stable codes를 추가한다. Prisma/session registry·라우트 활성화·Leaf 1/2 protected path·production mutation은 dependency gate 뒤 후속 작업으로 남긴다. 상세 contract는 [[Auth And Permissions Workflow]]에 기록한다.
 

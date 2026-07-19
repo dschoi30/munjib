@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:10:00+09:00 - Issue #162 status-board host-edge gate
+
+- Result: Wiki Index status-board now includes Issue #166 host-edge binding/probe acceptance alongside the Leaf 2 and Leaf 13 prerequisites.
+- Source evidence: `wiki/index.md`, PR #191 review thread.
+- Verification: wiki gates.
+
 ## 2026-07-20T07:06:00+09:00 - Issue #162 pending implementation wording
 
 - Result: Auth-abuse readiness now limits the “present” claim to merged journal/durable-state and bounded guard preparation; support-grant and runtime activation remain implementation work.
