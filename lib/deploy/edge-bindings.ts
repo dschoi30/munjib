@@ -44,7 +44,12 @@ export type EdgeHeaderContract = {
 };
 
 export type EdgeProbe = {
-  id: "public-https" | "origin-loopback" | "unknown-host-rejection";
+  id:
+    | "public-https"
+    | "public-login"
+    | "public-workspace"
+    | "origin-loopback"
+    | "unknown-host-rejection";
   transport: "https" | "http-loopback";
   method: "GET";
   path: string;
@@ -255,7 +260,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
     return fail(`probes[${index}] cadence, timeout, and threshold must be positive`);
   }
 
-  if (id === "public-https") {
+  if (id === "public-https" || id === "public-login" || id === "public-workspace") {
     requireAllowedKeys(
       probe,
       [
@@ -274,9 +279,15 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       ],
       `probes[${index}]`,
     );
+    const expectedPath =
+      id === "public-https"
+        ? "/api/auth/providers"
+        : id === "public-login"
+          ? "/login"
+          : "/workspaces";
     if (
       base.transport !== "https" ||
-      base.path !== "/api/auth/providers" ||
+      base.path !== expectedPath ||
       base.host !== "munjib.andrewchoi.link" ||
       probe.connectAddress !== "munjib.andrewchoi.link" ||
       base.cadenceSeconds !== 60 ||
@@ -284,16 +295,16 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
       base.failureThreshold !== 3 ||
       probe.expectedStatus !== 200
     ) {
-      return fail("public-https probe does not match the bounded contract");
+      return fail(`${id} probe does not match the bounded contract`);
     }
     const requiredHeaders = requireExactArray(
       probe.requiredHeaders,
       REQUIRED_HEADER_VALUES.map((header) => header.name),
-      "probes[public-https].requiredHeaders",
+      `probes[${id}].requiredHeaders`,
     );
     return {
       ...base,
-      id: "public-https",
+      id: id as "public-https" | "public-login" | "public-workspace",
       transport: "https",
       method: "GET",
       connectAddress: "munjib.andrewchoi.link",
@@ -439,12 +450,18 @@ export function parseEdgeBindingsContract(value: unknown): Readonly<EdgeBindings
   if (cachePolicy.probeResponse !== "no-store") return fail("cachePolicy.probeResponse must be no-store");
 
   const probesValue = source.probes;
-  if (!Array.isArray(probesValue) || probesValue.length !== 3) {
-    return fail("probes must contain exactly the public, loopback, and negative probes");
+  if (!Array.isArray(probesValue) || probesValue.length !== 5) {
+    return fail("probes must cover API, login, workspace, loopback, and negative probes");
   }
   const probes = probesValue.map(validateProbe);
-  if (new Set(probes.map((probe) => probe.id)).size !== 3) {
+  if (new Set(probes.map((probe) => probe.id)).size !== 5) {
     return fail("probes must have unique ids");
+  }
+  for (const prefix of noStorePathPrefixes) {
+    const root = prefix.endsWith("/") ? prefix.slice(0, -1) : prefix;
+    if (!probes.some((probe) => probe.path === root || probe.path.startsWith(`${root}/`))) {
+      return fail(`no-store path prefix ${prefix} has no probe coverage`);
+    }
   }
 
   const telemetry = requireRecord(source.telemetry, "telemetry");

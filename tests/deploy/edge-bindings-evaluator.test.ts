@@ -53,10 +53,15 @@ const requestFor = (probeId: string) =>
           transport: "https",
           connectAddress: "munjib.andrewchoi.link",
           host: "munjib.andrewchoi.link",
-          path: "/api/auth/providers",
           tlsVerified: true,
           tlsServerName: "munjib.andrewchoi.link",
           redirectCount: 0,
+          path:
+            probeId === "public-login"
+              ? "/login"
+              : probeId === "public-workspace"
+                ? "/workspaces"
+                : "/api/auth/providers",
         };
 
 describe("edge bindings contract evaluator", () => {
@@ -71,7 +76,36 @@ describe("edge bindings contract evaluator", () => {
       hostHeader: "munjib.andrewchoi.link",
       publiclyRoutable: false,
     });
+    expect(contract.probes.map((probe) => probe.id)).toEqual([
+      "public-https",
+      "public-login",
+      "public-workspace",
+      "origin-loopback",
+      "unknown-host-rejection",
+    ]);
     expect(contract.activationGates.productionMutationAllowed).toBe(false);
+  });
+
+  it("covers every declared no-store route class with a public probe", () => {
+    const contract = parseEdgeBindingsContractJson(contractJson);
+    const headers = {
+      "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+      "X-Content-Type-Options": "nosniff",
+      "X-Frame-Options": "DENY",
+      "Referrer-Policy": "strict-origin-when-cross-origin",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Cache-Control": "no-store",
+    };
+    for (const probeId of ["public-login", "public-workspace"]) {
+      const evaluation = evaluateEdgeProbe(contract, probeId, {
+        status: 200,
+        latencyMs: 42,
+        observedAt: "2026-07-13T00:00:00.000Z",
+        headers,
+        request: requestFor(probeId),
+      });
+      expect(evaluation.ok).toBe(true);
+    }
   });
 
   it("rejects fields that do not belong to a probe variant", () => {

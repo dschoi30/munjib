@@ -53,6 +53,46 @@
       "bodyPolicy": "discard"
     },
     {
+      "id": "public-login",
+      "transport": "https",
+      "method": "GET",
+      "path": "/login",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "public-workspace",
+      "transport": "https",
+      "method": "GET",
+      "path": "/workspaces",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
       "id": "origin-loopback",
       "transport": "http-loopback",
       "method": "GET",
