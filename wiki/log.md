@@ -19,6 +19,28 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T22:25:00+09:00 - Issue #162 opaque bucket boundary review fix
+
+- Result: `authorizeAuthRequest()` now admits only the exact 43-character base64url shape emitted by `deriveAuthGuardBucket()`. Raw IP/slug-shaped values are denied before the external store call, and a non-settling store fails closed after the bounded timeout.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 P1 review feedback.
+- Verification: focused auth/guard tests, TypeScript, and wiki sync gates.
+
+## 2026-07-13T22:05:00+09:00 - Issue #162 Origin normalization review fix
+
+- Result: `evaluateAuthOrigin()` now reuses the canonical runtime Origin parser instead of comparing a raw header string to `URL.origin`, so equivalent casing/default-port representations are normalized before same-origin comparison while foreign origins remain denied.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 review feedback.
+- Verification: red-green focused guard test, TypeScript, and wiki sync gates.
+
+## 2026-07-13T21:00:00+09:00 - Issue #162 bounded auth guard runtime slice
+
+- Result: Added the dependency-safe `lib/auth/abuse/runtime.ts` contract. Strict staging/production guard secrets are file-backed, canonical Origin and Fetch-Metadata checks are bounded, and durable store errors fail closed without a local-memory limiter or raw identifier persistence.
+- Boundary: No Prisma migration/session registry, auth route activation, Leaf 1/2 protected-path change, host installation, secret rotation, or production mutation.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and Issue #162 dependency gates.
+- Verification: focused guard contract tests and TypeScript passed; full repository checks remain subject to the existing branch baseline.
+
 ## 2026-07-13T14:45:00+09:00 - Issue #160 ACL review follow-up
 
 - Folder locks reject archived rows; document ACL uses the exported canonical workspace-role permission ceiling map so Leaf 6 decisions cannot drift from shared permission policy.
