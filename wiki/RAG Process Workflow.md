@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-13
-source_count: 115
+updated: 2026-07-20
+source_count: 117
 tags:
   - munjib
   - workflow
@@ -185,6 +185,8 @@ Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가
 
 Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 시작했다. Issue #109는 이 surface를 provider+model override로 확장해 settings panel이 `ollama`, `openai`, `openai-compatible` 중 chat provider와 model id를 함께 저장하고, Ask AI request와 workspace chatbot message request의 optional `chatProvider`/`chatModel` fields로 전달하게 한다. Server는 validated provider+model으로 answer-generation `chat` config만 다시 만들고, API key/base URL은 provider별 server env에서 읽으며, embedding provider/model/dimension과 vector index identity는 request에서 받지 않는다. A complete provider+model override is resolved before reading the default chat provider config, so an Ollama override can still run when the default OpenAI-compatible chat provider env is incomplete; the selected override provider must still have its own required server-side config. OpenRouter presets include `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`, `openai/gpt-oss-20b:free`, and `openai/gpt-oss-120b:free`, all stored with `openai-compatible`. Static presets are shown only when the selected provider is `openai-compatible`; Ollama and OpenAI keep direct model-id input plus provider-filtered custom models. The settings panel distinguishes malformed model ids from provider-incompatible ids and `Save custom model` also registers the custom provider+model pair in a browser/workspace custom list. Legacy string-only browser storage remains readable through the current default or inferred provider. Issue #133 adds a server-derived chat provider availability map: Ollama is always shown, official OpenAI is shown only when `OPENAI_API_KEY` or `MUNJIB_OPENAI_API_KEY` is present, and OpenAI-compatible/OpenRouter is shown only when `MUNJIB_OPENAI_COMPATIBLE_BASE_URL` is present. The settings panel hides unavailable providers and ignores stale browser overrides for unavailable providers; Ask AI and Workspace AI clients also drop those stale overrides before sending requests so missing server env does not keep producing provider-configuration 503s from old localStorage values. PR #134 review follow-up makes the client fallback explicit: if no usable stored override exists and the server default provider is unavailable, Ask AI and Workspace AI send the first available provider's reset-default provider/model pair instead of omitting override fields and falling back to the broken server default.
 
+Issue #164의 pre-gate 경계 슬라이스는 `lib/rag/provider-boundary.ts`에 route/DB/secret 의존성 없이 고정되어 있다. 브라우저 요청은 opaque `selectionId`만 통과하고 provider/model, credential, base URL, embedding identity, policy-bypass 필드는 fail-closed로 거부한다. 서버가 소유한 선택 항목만 resolve할 수 있으며 disabled 항목과 raw `provider:model` 문자열은 거부된다. 고정 endpoint 검증은 userinfo, query/fragment, alternate port, scheme/path 불일치, production literal/private/metadata/loopback 목적지를 거부하고, `http://ollama:11434`는 명시적인 non-production local gate에서만 허용한다. `sanitizeAiProviderTelemetry()`는 operation/provider/model/policyVersion/outcome/latency/usage만 bounded allowlist로 반환하고 prompt, response, workspace/user/source identity, URL, header는 복사하지 않는다. 이 모듈은 Issue #139/#160/#163/#184/#185 dependency gate가 닫힌 뒤 Ask AI/Workspace AI 및 Leaf 10 transport가 소비할 후보이며, 현재 route/provider activation이나 migration은 수행하지 않는다. 경계는 selection/model/endpoint 입력의 런타임 타입을 재검증하고 IPv4-mapped IPv6 사설 주소도 거부한다.
+
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 
 Issue #139의 dependency-safe preparation은 `lib/rag/embedding-registry.ts`에 server/client-safe profile metadata와 deterministic versioned profile id contract만 추가한다. Registry는 현재 live profile 하나만 노출하고 legacy `indexId` `bge-m3`를 보존한다. Helper는 caller가 제공한 provider availability map만 필터링하며 env, credential, provider network, workspace data, schema, backfill, reindex, activation을 읽거나 실행하지 않는다. 1024 차원 guard와 future desired/active profile 경계는 [[Embedding Profile Registry Readiness]]에 기록한다. #184/#185 immutable runtime/delivery broker, Leaf 13B database authority, and an explicitly owned maintenance role are required before settings schema or runtime profile switching can begin.
@@ -255,6 +257,36 @@ pnpm wiki:manifest
 pnpm wiki:lint
 pnpm wiki:sync-check --staged
 ```
+
+## Derived history authorization handoff
+
+Issue #163의 dependency-safe implementation slice는 `lib/rag/ai-history-authorization.ts`에
+저장된 Workspace AI turn의 lineage 파서와 visibility decision, non-enumerating
+tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
+`source-backed` document/chunk 쌍만 현재 canonical source authority에 다시 확인하며,
+모든 source가 승인되어야 turn 전체가 visible이 된다. `source-free-v1` proof가 없는
+행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
+`legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
+citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
+Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
+row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+`source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
+lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
+또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
+Source-backed 행도 context metadata가 승인된 lineage 밖으로 확장되거나 citation이
+lineage에 없는 document/chunk를 가리키면 전체 행을 tombstone으로 처리한다.
+Lineage와 각 source 객체도 정확한 v1 key schema만 허용해 nested extra metadata를
+visible DTO로 복사하지 않는다.
+Citation도 승인된 `documentId`와 선택적 `chunkId`만 허용하며, 이 경계에서 검증할
+수 없는 title/path/heading/extra field가 있으면 전체 행을 tombstone으로 처리한다.
+최종 thread DTO caller는 tombstone 수나
+denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
+않아야 한다.
+
+이 helper는 Prisma, route, migration, purge, provider call, telemetry를 import하지
+않는다. 최종 thread load/follow-up/memory refresh/finalization/citation navigation
+caller는 Leaf 2/4/6/13B가 제공하는 canonical authority와 함께 이 경계를 사용해야
+하며, 그 dependency gate 전에는 production behavior를 연결하지 않는다.
 
 ## 근거
 

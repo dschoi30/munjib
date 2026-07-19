@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-13",
+  "updated": "2026-07-19",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 69,
+      "source_count": 101,
       "searchPriority": 50
     },
     {
@@ -44,9 +44,10 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]",
         "[[Project PRD]]",
+        "[[Release Signer And Vault Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 58,
+      "source_count": 62,
       "searchPriority": 50
     },
     {
@@ -131,7 +132,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 41,
+      "source_count": 42,
       "searchPriority": 50
     },
     {
@@ -221,6 +222,7 @@
         "[[Local Development Workflow]]",
         "[[RAG Process Workflow]]",
         "[[CI CD And Monitoring Workflow]]",
+        "[[Release Signer And Vault Workflow]]",
         "[[Production Observability Workflow]]",
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
@@ -229,7 +231,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 159,
+      "source_count": 163,
       "searchPriority": 5
     },
     {
@@ -252,7 +254,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 67,
+      "source_count": 70,
       "searchPriority": 50
     },
     {
@@ -272,7 +274,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 341,
+      "source_count": 357,
       "searchPriority": 1
     },
     {
@@ -447,7 +449,32 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 115,
+      "source_count": 117,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-release-signer-vault",
+      "path": "wiki/Release Signer And Vault Workflow.md",
+      "title": "Release Signer And Vault Workflow",
+      "type": "workflow",
+      "status": "active",
+      "summary": "1인 사이드 프로젝트의 release signer를 Vault Community로 운영한다. 초기 production은 Munjib production과 같은 OCI VM의 Docker Compose 단일 노드로 시작하되, 독립 attestation을 위한 별도 signer VM 승격 게이트를 명시한다.",
+      "tags": [
+        "munjib",
+        "security",
+        "deployment",
+        "release-signer",
+        "vault",
+        "docker-compose",
+        "cloudflare"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[CI CD And Monitoring Workflow]]",
+        "[[Production Observability Workflow]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 18,
       "searchPriority": 50
     },
     {
