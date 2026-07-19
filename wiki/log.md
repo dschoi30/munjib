@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:10:00+09:00 - Issue #160 auth workflow metadata refresh
+
+- Result: Incremented Auth And Permissions Workflow source_count to 102 for the new Issue #160 readiness evidence and regenerated the manifest.
+- Source evidence: `wiki/Auth And Permissions Workflow.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki gates.
+
 ## 2026-07-20T07:02:00+09:00 - Issue #160 metadata and descendant coverage
 
 - Result: Refreshed Wiki Log source metadata and clarified that folder path mutations must authorize every descendant row actually updated, including archived descendants loaded by the cascade.
