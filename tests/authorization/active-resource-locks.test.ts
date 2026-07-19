@@ -44,8 +44,8 @@ describe("active-resource lock order", () => {
   it("sorts and deduplicates folder ids before locking", async () => {
     const { tx, calls } = fakeTx([
       [
-        { id: "folder-a", archivedAt: null },
-        { id: "folder-b", archivedAt: null },
+        { id: "folder-a", status: "ACTIVE", archivedAt: null },
+        { id: "folder-b", status: "ACTIVE", archivedAt: null },
       ],
     ]);
     await expect(
@@ -55,9 +55,14 @@ describe("active-resource lock order", () => {
   });
 
   it("rejects archived folders instead of returning an active boundary", async () => {
-    const archived = fakeTx([[{ id: "folder-a", archivedAt: new Date() }]]);
+    const archived = fakeTx([[{ id: "folder-a", status: "ACTIVE", archivedAt: new Date() }]]);
     await expect(
       lockFolderBoundaries(archived.tx, "workspace-id", ["folder-a"]),
+    ).rejects.toThrow("FOLDER_NOT_FOUND");
+
+    const archivedStatus = fakeTx([[{ id: "folder-a", status: "ARCHIVED", archivedAt: null }]]);
+    await expect(
+      lockFolderBoundaries(archivedStatus.tx, "workspace-id", ["folder-a"]),
     ).rejects.toThrow("FOLDER_NOT_FOUND");
   });
 

@@ -32,17 +32,20 @@ export async function lockFolderBoundaries(
   folderIds: readonly string[],
 ) {
   const ids = [...new Set(folderIds)].sort();
-  if (ids.length === 0) return [] as Array<{ id: string; archivedAt: Date | null }>;
+  if (ids.length === 0) return [] as Array<{ id: string; status: string; archivedAt: Date | null }>;
 
-  const rows = await tx.$queryRaw<Array<{ id: string; archivedAt: Date | null }>>(Prisma.sql`
-    SELECT "id", "archivedAt"
+  const rows = await tx.$queryRaw<Array<{ id: string; status: string; archivedAt: Date | null }>>(Prisma.sql`
+    SELECT "id", "status"::text AS "status", "archivedAt"
     FROM "Folder"
     WHERE "workspaceId" = ${workspaceId}
       AND "id" IN (${Prisma.join(ids)})
     ORDER BY "id" ASC
     FOR UPDATE
   `);
-  if (rows.length !== ids.length || rows.some((row) => row.archivedAt !== null)) {
+  if (
+    rows.length !== ids.length ||
+    rows.some((row) => row.status !== "ACTIVE" || row.archivedAt !== null)
+  ) {
     throw new Error(SERVICE_ERROR_CODES.FOLDER_NOT_FOUND);
   }
   return rows;
