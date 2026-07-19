@@ -284,7 +284,7 @@ const validateProbe = (value: unknown, index: number): EdgeProbe => {
         ? "/api/auth/providers"
         : id === "public-login"
           ? "/login"
-          : "/workspaces";
+          : "/workspaces/probe";
     if (
       base.transport !== "https" ||
       base.path !== expectedPath ||

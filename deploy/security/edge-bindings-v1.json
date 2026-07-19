@@ -76,7 +76,7 @@
       "id": "public-workspace",
       "transport": "https",
       "method": "GET",
-      "path": "/workspaces",
+      "path": "/workspaces/probe",
       "host": "munjib.andrewchoi.link",
       "connectAddress": "munjib.andrewchoi.link",
       "expectedStatus": 200,
