@@ -185,6 +185,13 @@ describe("AI provider boundary", () => {
     );
   });
 
+  it("does not classify an ff-prefixed DNS hostname as multicast IPv6", () => {
+    const endpoint = { id: "ff-dns-v1", origin: "https://ffapi.example", path: "/v1" } as const;
+    expect(validateProviderDestination("https://ffapi.example/v1", endpoint, "development")).toBe(
+      "https://ffapi.example/v1",
+    );
+  });
+
   it("emits only bounded allowlisted metadata and drops content and identity fields", () => {
     expect(
       sanitizeAiProviderTelemetry({
