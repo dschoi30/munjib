@@ -37,7 +37,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 export type Leaf2DependencyInput = {
   expectedEnvironment: "production";
-  expectedSourceDigest: string;
   leaf1: Leaf1Proof;
   leaf13: Leaf13Proof;
 };
@@ -50,6 +49,7 @@ export type Leaf2DependencyInput = {
  */
 export function verifyLeaf2Dependencies(
   input: Leaf2DependencyInput,
+  trustedSourceDigest: unknown,
 ): VerifiedLeaf2Dependencies {
   if (!isRecord(input) || !isRecord(input.leaf1) || !isRecord(input.leaf13)) {
     throw new Error("LEAF2_INPUT_INVALID");
@@ -60,8 +60,8 @@ export function verifyLeaf2Dependencies(
   }
 
   if (
-    typeof input.expectedSourceDigest !== "string" ||
-    !SOURCE_DIGEST_PATTERN.test(input.expectedSourceDigest)
+    typeof trustedSourceDigest !== "string" ||
+    !SOURCE_DIGEST_PATTERN.test(trustedSourceDigest)
   ) {
     throw new Error("LEAF2_SOURCE_DIGEST_INVALID");
   }
@@ -69,7 +69,7 @@ export function verifyLeaf2Dependencies(
   if (input.leaf1.environment !== input.expectedEnvironment) {
     throw new Error("LEAF1_ENVIRONMENT_MISMATCH");
   }
-  if (input.leaf1.sourceDigest !== input.expectedSourceDigest) {
+  if (input.leaf1.sourceDigest !== trustedSourceDigest) {
     throw new Error("LEAF1_SOURCE_DIGEST_MISMATCH");
   }
   if (input.leaf1.closedPasswordSignup !== true || input.leaf1.closedUnlinkedOauth !== true) {
@@ -78,7 +78,7 @@ export function verifyLeaf2Dependencies(
 
   if (
     input.leaf13.environment !== input.expectedEnvironment ||
-    input.leaf13.sourceDigest !== input.expectedSourceDigest
+    input.leaf13.sourceDigest !== trustedSourceDigest
   ) {
     throw new Error("LEAF13_SOURCE_IDENTITY_MISMATCH");
   }
@@ -94,7 +94,7 @@ export function verifyLeaf2Dependencies(
 
   return {
     environment: "production",
-    sourceDigest: input.expectedSourceDigest,
+    sourceDigest: trustedSourceDigest,
     databaseRoleCapabilitySha256: input.leaf13.databaseRoleCapabilitySha256,
     [verifiedLeaf2Dependencies]: true,
   };

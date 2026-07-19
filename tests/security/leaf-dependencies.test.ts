@@ -8,7 +8,6 @@ const sourceDigest = "sha256:" + "a".repeat(64);
 
 const validInput = {
   expectedEnvironment: "production" as const,
-  expectedSourceDigest: sourceDigest,
   leaf1: {
     environment: "production",
     sourceDigest,
@@ -25,10 +24,12 @@ const validInput = {
   },
 };
 
+const verify = (input: typeof validInput) => verifyLeaf2Dependencies(input, sourceDigest);
+
 describe("Leaf 2 dependencies", () => {
   it("requires the exact deployed Leaf 1 source digest", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf1: { ...validInput.leaf1, sourceDigest: "sha256:" + "c".repeat(64) },
       }),
@@ -37,14 +38,14 @@ describe("Leaf 2 dependencies", () => {
 
   it("requires closed Leaf 1 signup and unlinked OAuth proofs", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf1: { ...validInput.leaf1, closedPasswordSignup: false },
       }),
     ).toThrow("LEAF1_CLOSED_SIGNUP_REQUIRED");
 
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf1: { ...validInput.leaf1, closedUnlinkedOauth: false },
       }),
@@ -53,14 +54,14 @@ describe("Leaf 2 dependencies", () => {
 
   it("requires the deployed Leaf 13 immutable-delivery capability", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf13: { ...validInput.leaf13, sourceDigest: "sha256:" + "c".repeat(64) },
       }),
     ).toThrow("LEAF13_SOURCE_IDENTITY_MISMATCH");
 
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf13: { ...validInput.leaf13, rollbackDrillPassed: false },
       }),
@@ -68,7 +69,7 @@ describe("Leaf 2 dependencies", () => {
   });
 
   it("returns a branded dependency proof only for a complete exact match", () => {
-    const verified: VerifiedLeaf2Dependencies = verifyLeaf2Dependencies(validInput);
+    const verified: VerifiedLeaf2Dependencies = verify(validInput);
 
     expect(verified).toMatchObject({
       environment: "production",
@@ -79,14 +80,11 @@ describe("Leaf 2 dependencies", () => {
 
   it("rejects malformed source and role capability digests", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
-        ...validInput,
-        expectedSourceDigest: "a".repeat(64),
-      }),
+      verifyLeaf2Dependencies(validInput, "a".repeat(64)),
     ).toThrow("LEAF2_SOURCE_DIGEST_INVALID");
 
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf13: {
           ...validInput.leaf13,
@@ -97,12 +95,12 @@ describe("Leaf 2 dependencies", () => {
   });
 
   it("rejects nullish or partial parsed input with a controlled error", () => {
-    expect(() => verifyLeaf2Dependencies(null as never)).toThrow("LEAF2_INPUT_INVALID");
+    expect(() => verifyLeaf2Dependencies(null as never, sourceDigest)).toThrow("LEAF2_INPUT_INVALID");
     expect(() =>
-      verifyLeaf2Dependencies({ ...validInput, leaf1: undefined } as never),
+      verifyLeaf2Dependencies({ ...validInput, leaf1: undefined } as never, sourceDigest),
     ).toThrow("LEAF2_INPUT_INVALID");
     expect(() =>
-      verifyLeaf2Dependencies({ ...validInput, leaf13: undefined } as never),
+      verifyLeaf2Dependencies({ ...validInput, leaf13: undefined } as never, sourceDigest),
     ).toThrow("LEAF2_INPUT_INVALID");
   });
 
@@ -111,20 +109,20 @@ describe("Leaf 2 dependencies", () => {
       verifyLeaf2Dependencies({
         ...validInput,
         expectedEnvironment: "staging",
-      } as never),
+      } as never, sourceDigest),
     ).toThrow("LEAF2_ENVIRONMENT_INVALID");
   });
 
   it("requires proof flags to be literal booleans", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf1: { ...validInput.leaf1, closedPasswordSignup: "true" },
       } as never),
     ).toThrow("LEAF1_CLOSED_SIGNUP_REQUIRED");
 
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf13: { ...validInput.leaf13, immutableDelivery: "true" },
       } as never),
@@ -133,7 +131,7 @@ describe("Leaf 2 dependencies", () => {
 
   it("rejects non-string capability digests before regex coercion", () => {
     expect(() =>
-      verifyLeaf2Dependencies({
+      verify({
         ...validInput,
         leaf13: {
           ...validInput.leaf13,
@@ -141,5 +139,19 @@ describe("Leaf 2 dependencies", () => {
         },
       } as never),
     ).toThrow("LEAF13_CAPABILITY_REQUIRED");
+  });
+
+  it("requires an independently trusted deployment digest", () => {
+    const staleDigest = "sha256:" + "c".repeat(64);
+    expect(() =>
+      verifyLeaf2Dependencies(
+        {
+          ...validInput,
+          leaf1: { ...validInput.leaf1, sourceDigest: staleDigest },
+          leaf13: { ...validInput.leaf13, sourceDigest: staleDigest },
+        },
+        sourceDigest,
+      ),
+    ).toThrow("LEAF1_SOURCE_DIGEST_MISMATCH");
   });
 });

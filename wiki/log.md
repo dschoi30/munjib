@@ -19,15 +19,17 @@ links:
 
 # Wiki Log
 
-## 2026-07-20T06:45:00+09:00 - Issue #156 capability digest type hardening
+## 2026-07-20T06:45:00+09:00 - Issue #156 capability and source digest hardening
 
 - Result: Leaf 2 dependency verification now rejects non-string capability
   digests before regular-expression evaluation, preventing arrays or other
-  runtime values from being coerced into a branded string proof.
+  runtime values from being coerced into a branded string proof. The trusted
+  deployment source digest is now supplied outside the parsed proof envelope,
+  so matching stale proof fields cannot self-authorize a release.
 - Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `lib/security/leaf-dependencies.ts`,
   `tests/security/leaf-dependencies.test.ts`, PR #187 review thread.
-- Verification: 9 focused Leaf 2 tests and TypeScript compilation.
+- Verification: 10 focused Leaf 2 tests and TypeScript compilation.
 
 ## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
 

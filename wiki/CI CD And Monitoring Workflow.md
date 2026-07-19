@@ -333,9 +333,10 @@ may operators claim that the host no longer performs checkout or source builds.
 
 Issue #156 adds `lib/security/leaf-dependencies.ts` as the narrow handoff seam
 for the future Trial-isolation rollout. `verifyLeaf2Dependencies()` accepts only
-the expected production source digest, Leaf 1's closed-password/unlinked-OAuth
-proofs, and Leaf 13's immutable-delivery, rollback, and database-role capability
-proof, then returns a branded value for later migration/apply commands. Signature
+an independently trusted production source digest supplied by the deployment
+authority, Leaf 1's closed-password/unlinked-OAuth proofs, and Leaf 13's
+immutable-delivery, rollback, and database-role capability proof, then returns a
+branded value for later migration/apply commands. Signature
 and trust-anchor verification remain the responsibility of the delivery broker;
 the verifier does not manufacture deployment evidence. Parsed input is rejected
 when nullish or partial, `expectedEnvironment` must be literal `production`, and
