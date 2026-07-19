@@ -11,8 +11,7 @@ const runbook = readFileSync(
 
 describe("derived AI history authorization readiness contract", () => {
   it("keeps the branch documentation-only and dependency-gated", () => {
-    expect(runbook).toContain("does not change the schema, API routes");
-    expect(runbook).toContain("No runtime implementation, schema migration");
+    expect(runbook).toMatch(/does\s+not activate a route, migration, purge job, provider call, or production\s+mutation/);
     expect(runbook).toContain("Leaf 2");
     expect(runbook).toContain("Leaf 4");
     expect(runbook).toContain("Leaf 6");
@@ -21,29 +20,29 @@ describe("derived AI history authorization readiness contract", () => {
 
   it("requires lineage proof for source-backed, source-free, and legacy rows", () => {
     expect(runbook).toContain("Source-backed");
-    expect(runbook).toContain("Source-free");
-    expect(runbook).toContain("Unproven legacy");
-    expect(runbook).toContain("not replayable");
+    expect(runbook).toContain("source-free-v1");
+    expect(runbook).toContain("legacy-unproven");
+    expect(runbook).toContain("fails closed");
   });
 
   it("covers every derived-history visibility boundary", () => {
-    expect(runbook).toContain("Thread load");
-    expect(runbook).toContain("Follow-up preparation");
-    expect(runbook).toContain("Memory refresh");
-    expect(runbook).toContain("Finalization/persistence");
-    expect(runbook).toContain("Citation navigation");
+    expect(runbook).toContain("thread load");
+    expect(runbook).toContain("follow-up context");
+    expect(runbook).toContain("memory refresh");
+    expect(runbook).toContain("finalization");
+    expect(runbook).toContain("citation serialization");
   });
 
   it("requires non-enumerating whole-turn redaction", () => {
-    expect(runbook).toContain("whole derived turn");
+    expect(runbook).toContain("whole turn");
     expect(runbook).toContain("non-enumerating tombstone");
-    expect(runbook).toMatch(/no answer text,\s+citations, source ids/);
-    expect(runbook).toMatch(/must not\s+reveal whether a denied source existed/);
+    expect(runbook).toMatch(/answer text,\s+citations,\s+source ids/);
+    expect(runbook).toContain("One denied source hides the whole turn");
   });
 
   it("keeps destructive data operations outside this leaf", () => {
-    expect(runbook).toMatch(/not a destructive\s+purge/);
-    expect(runbook).toContain("does not request broker installation");
-    expect(runbook).toContain("Out of scope for Issue #163");
+    expect(runbook).toContain("purge job");
+    expect(runbook).toMatch(/production\s+mutation/);
+    expect(runbook).toMatch(/No direct membership\s+fallback/);
   });
 });
