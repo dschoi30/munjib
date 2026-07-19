@@ -37,9 +37,10 @@ checks, bounded IDs and safe relative paths, deterministic migration and
 attachment ordering, and the attachment state rules that keep non-`READY` rows
 inventory-only. `assertManifestPayloadIntegrity` compares database/archive/file
 receipts without opening a database or storage path. `assertRecoveryCompatibility`
-requires independently supplied capability-floor and recovery-pointer/contract
-verifiers; manifest-owned migration/schema digests are never treated as their
-own attestation.
+requires independently supplied capability-floor and full recovery-pointer /
+contract verifiers (including image, release-evidence, and artifact-set fields);
+manifest-owned migration/schema digests are never treated as their own
+attestation.
 
 The public envelope parser accepts no signing path until a root ciphertext seal,
 immutable exact-read receipt, and authenticated decrypt verification receipt all

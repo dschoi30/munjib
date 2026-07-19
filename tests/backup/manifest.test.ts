@@ -244,6 +244,13 @@ describe("snapshot manifest v2", () => {
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false, acceptsSnapshotContract: () => true })).toThrow(/floor/i);
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true, acceptsSnapshotContract: () => false })).toThrow(/independent|contract|pointer/i);
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true, acceptsSnapshotContract: () => true })).not.toThrow();
+    expect(() => assertRecoveryCompatibility({
+      ...manifest,
+      recoveryPointerAtCapture: { ...manifest.recoveryPointerAtCapture, artifactSetSha256: HASH_2 },
+    }, {
+      acceptsCapabilityFloor: () => true,
+      acceptsSnapshotContract: (_contract, pointer: any) => pointer === manifest.recoveryPointerAtCapture.recordSha256 || pointer.artifactSetSha256 === HASH,
+    })).toThrow(/independent|pointer/i);
     expect(() => parseSnapshotManifest({
       ...manifest,
       migrations: { ...manifest.migrations, orderedIdsSha256: HASH },
