@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  getDocumentAccessForActor,
   resolveActiveDocumentForActor,
   resolveActiveWorkspaceForActor,
   resolveActiveWorkspaceForActorForUpdate,
@@ -37,5 +38,11 @@ describe("active-resource resolver boundary", () => {
         operation: "read",
       }),
     ).rejects.toThrow("ACTIVE_MEMBERSHIP_AUTHORITY_UNAVAILABLE");
+  });
+
+  it("delegates document ACL evaluation to the protected Leaf 6 slot", async () => {
+    await expect(
+      getDocumentAccessForActor({} as never, "document-id", "actor-id"),
+    ).rejects.toThrow("LEAF6_DOCUMENT_ACCESS_AUTHORITY_UNAVAILABLE");
   });
 });
