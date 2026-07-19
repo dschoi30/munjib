@@ -217,7 +217,36 @@ export function toAiHistoryMessageDto(
     return createAiHistoryTombstone(message.role);
   }
 
+  // A source-free proof is valid only for a row that is actually free of
+  // persisted source material. Treat mixed-writer or partial-migration rows as
+  // unproven instead of copying stale citations or source metadata to clients.
+  if (decision.lineage.kind === "source-free" && !isCleanSourceFreeMessage(message)) {
+    return createAiHistoryTombstone(message.role);
+  }
+
   return createVisibleAiHistoryMessageDto(message);
+}
+
+function isCleanSourceFreeMessage(message: AiHistoryMessageRecord): boolean {
+  if (message.citations !== null && !(Array.isArray(message.citations) && message.citations.length === 0)) {
+    return false;
+  }
+  if (!isRecord(message.contextMeta) || !isRecord(message.contextMeta.lineage)) {
+    return false;
+  }
+
+  const contextKeys = Object.keys(message.contextMeta);
+  if (contextKeys.length !== 1 || contextKeys[0] !== "lineage") {
+    return false;
+  }
+
+  const lineageKeys = Object.keys(message.contextMeta.lineage).sort();
+  return (
+    lineageKeys.length === 3 &&
+    lineageKeys[0] === "kind" &&
+    lineageKeys[1] === "proof" &&
+    lineageKeys[2] === "version"
+  );
 }
 
 function createVisibleAiHistoryMessageDto(message: AiHistoryMessageRecord): AiHistoryVisibleMessageDto {

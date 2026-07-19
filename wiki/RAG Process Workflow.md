@@ -265,7 +265,11 @@ tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
 `legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
 citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
 Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
-row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다. 최종 thread DTO caller는 tombstone 수나
+row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+`source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
+lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
+또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
+최종 thread DTO caller는 tombstone 수나
 denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
 않아야 한다.
 

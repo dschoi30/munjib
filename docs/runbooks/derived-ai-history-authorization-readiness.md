@@ -18,6 +18,10 @@ mutation.
 - The serializer scopes tombstones to derived `ASSISTANT` rows. Normal
   user-authored `USER` questions remain visible and never inherit a detached
   assistant decision.
+- A `source-free-v1` assistant row is visible only when citations are null or
+  empty and `contextMeta` contains only the exact lineage proof. Mixed-writer
+  or partial-migration rows that retain citation/source metadata fail closed
+  to a tombstone.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.
