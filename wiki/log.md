@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 359
+source_count: 360
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:24:00+09:00 - public security status production-evidence scope
+
+- Result: Narrowed the public status snapshot so only #155 and #157 are described as production-verified; #158 remains merged/closed without an unsupported deployment claim.
+- Source evidence: `wiki/Security Hardening Public Status.md`, `docs/runbooks/security-hardening-status.md`, PR #197 review thread.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:18:00+09:00 - public security status latest heads
 

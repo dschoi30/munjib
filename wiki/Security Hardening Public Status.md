@@ -26,7 +26,9 @@ state, secret, operator evidence는 이 wiki와 GitHub-visible history에 기록
 ## Current snapshot
 
 - Audit base: `origin/main` `c742a62` (merged PR #207).
-- Merged and production-verified P0 chain: #155, #157, #158.
+- Merged and production-verified P0 chain: #155 and #157. PR #178/#158 is
+  merged/closed by the media-egress release, but this status map does not claim
+  a separate production deployment check for it.
 - Delivery substrate code is merged in PR #170 and bundle packaging is merged in
   PR #186; host broker installation, trust enrollment, and independent
   attestation remain a separate open gate in #185.
