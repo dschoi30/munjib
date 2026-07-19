@@ -84,10 +84,12 @@ export function reconcileAttachmentLifecycleInventory(input: {
 
   for (const attachment of input.attachments) {
     const storageKey = normalizeStorageKey(attachment.storageKey).value;
-    attachmentCounts.set(
-      storageKey,
-      (attachmentCounts.get(storageKey) ?? 0) + 1,
-    );
+    if (validateMetadataKey(attachment.storageKey, attachment.workspaceId).valid) {
+      attachmentCounts.set(
+        storageKey,
+        (attachmentCounts.get(storageKey) ?? 0) + 1,
+      );
+    }
   }
   for (const file of input.files) {
     const storageKey = normalizeStorageKey(file.storageKey).value;
@@ -147,7 +149,8 @@ export function reconcileAttachmentLifecycleInventory(input: {
 
   entries.sort((a, b) => {
     const keyOrder = compareCodeUnits(a.storageKey, b.storageKey);
-    return keyOrder || compareCodeUnits(a.classification, b.classification);
+    const classificationOrder = compareCodeUnits(a.classification, b.classification);
+    return keyOrder || classificationOrder || compareCodeUnits(a.issue ?? "", b.issue ?? "");
   });
 
   return Object.freeze({

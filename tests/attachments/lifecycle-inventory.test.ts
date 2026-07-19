@@ -49,6 +49,37 @@ describe("attachment lifecycle inventory", () => {
     ]);
   });
 
+  it("does not let invalid metadata rows hide matching files", () => {
+    const result = reconcileAttachmentLifecycleInventory({
+      attachments: [{ workspaceId: "another-workspace", storageKey: referenced }],
+      files: [{ storageKey: referenced }],
+    });
+
+    expect(result.entries).toEqual([
+      { storageKey: referenced, classification: "invalid-key", issue: "workspace-mismatch" },
+      { storageKey: referenced, classification: "orphan-bytes" },
+    ]);
+    expect(result.counts).toEqual({
+      referenced: 0,
+      "missing-bytes": 0,
+      "orphan-bytes": 1,
+      "invalid-key": 1,
+    });
+  });
+
+  it("uses the issue as a deterministic tie-breaker for same-key entries", () => {
+    const result = reconcileAttachmentLifecycleInventory({
+      attachments: [{ workspaceId: "another-workspace", storageKey: referenced }],
+      files: [{ storageKey: referenced }, { storageKey: referenced }],
+    });
+
+    expect(result.entries).toEqual([
+      { storageKey: referenced, classification: "invalid-key", issue: "duplicate-storage-key" },
+      { storageKey: referenced, classification: "invalid-key", issue: "duplicate-storage-key" },
+      { storageKey: referenced, classification: "invalid-key", issue: "workspace-mismatch" },
+    ]);
+  });
+
   it("is deterministic for equivalent input order", () => {
     const first = reconcileAttachmentLifecycleInventory({
       attachments: [{ workspaceId: "cmworkspace", storageKey: missing }, { workspaceId: "cmworkspace", storageKey: referenced }],

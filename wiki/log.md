@@ -3284,3 +3284,9 @@ links:
 - Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
 - Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-20T06:55:00+09:00 - security-review
+
+- Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
+- Verification: focused attachment lifecycle inventory tests.
