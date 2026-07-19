@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-19T22:58:00+09:00 - Issue #163 nested lineage schema review fix
+
+- Result: source-backed lineage and source entries now require the exact v1 nested key schema, preventing unreviewed nested source metadata from reaching visible history DTOs.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
 ## 2026-07-19T20:37:00+09:00 - Issue #163 source-backed contamination review fix
 
 - Result: source-backed history rows now fail closed when extra context metadata or citations reference sources outside the authorized lineage.

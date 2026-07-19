@@ -237,6 +237,13 @@ function isCleanSourceBackedMessage(
   if (!isRecord(message.contextMeta) || Object.keys(message.contextMeta).length !== 1 || !("lineage" in message.contextMeta)) {
     return false;
   }
+  const rawLineage = message.contextMeta.lineage;
+  if (!isRecord(rawLineage) || !hasExactKeys(rawLineage, ["kind", "sources", "version"]) || !Array.isArray(rawLineage.sources)) {
+    return false;
+  }
+  if (rawLineage.sources.some((source) => !isRecord(source) || !hasExactKeys(source, ["chunkId", "documentId"]))) {
+    return false;
+  }
   if (message.citations === null) return true;
   if (!Array.isArray(message.citations)) return false;
 
@@ -249,6 +256,11 @@ function isCleanSourceBackedMessage(
     if (citation.chunkId === undefined) return true;
     return nonEmptyString(citation.chunkId) && allowedPairs.has(`${documentId}\u0000${citation.chunkId.trim()}`);
   });
+}
+
+function hasExactKeys(value: Record<string, unknown>, expected: readonly string[]): boolean {
+  const keys = Object.keys(value).sort();
+  return keys.length === expected.length && keys.every((key, index) => key === expected[index]);
 }
 
 function isCleanSourceFreeMessage(message: AiHistoryMessageRecord): boolean {

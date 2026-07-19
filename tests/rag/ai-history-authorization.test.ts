@@ -198,6 +198,17 @@ describe("AI history lineage and visibility contract", () => {
       ...message,
       contextMeta: { ...(message.contextMeta as object), citationChunkIds: ["other-chunk"] },
     }, decision)).toMatchObject({ visibility: "tombstone" });
+    expect(toAiHistoryMessageDto({
+      ...message,
+      contextMeta: {
+        lineage: {
+          version: 1,
+          kind: "source-backed",
+          sources: [{ documentId: "secret-document", chunkId: "secret-chunk", title: "stale" }],
+          deniedDocumentId: "other-document",
+        },
+      },
+    }, decision)).toMatchObject({ visibility: "tombstone" });
   });
 
   it("does not serialize a different message with a detached visible decision", () => {

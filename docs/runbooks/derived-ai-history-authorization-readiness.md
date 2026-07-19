@@ -24,6 +24,8 @@ mutation.
   to a tombstone.
 - Source-backed rows likewise fail closed when context metadata extends beyond
   the authorized lineage or a citation names a document/chunk absent from it.
+  The lineage object and each source entry must also match the exact v1 schema;
+  nested title/path/denied-source fields are not serialized.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.
