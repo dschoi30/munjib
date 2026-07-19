@@ -273,6 +273,8 @@ Source-backed 행도 context metadata가 승인된 lineage 밖으로 확장되�
 lineage에 없는 document/chunk를 가리키면 전체 행을 tombstone으로 처리한다.
 Lineage와 각 source 객체도 정확한 v1 key schema만 허용해 nested extra metadata를
 visible DTO로 복사하지 않는다.
+Citation도 승인된 `documentId`와 선택적 `chunkId`만 허용하며, 이 경계에서 검증할
+수 없는 title/path/heading/extra field가 있으면 전체 행을 tombstone으로 처리한다.
 최종 thread DTO caller는 tombstone 수나
 denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
 않아야 한다.

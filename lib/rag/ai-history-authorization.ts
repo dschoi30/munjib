@@ -251,6 +251,12 @@ function isCleanSourceBackedMessage(
   const allowedPairs = new Set(sources.map((source) => `${source.documentId}\u0000${source.chunkId}`));
   return message.citations.every((citation) => {
     if (!isRecord(citation) || !nonEmptyString(citation.documentId)) return false;
+    if (
+      !hasExactKeys(citation, ["documentId"]) &&
+      !hasExactKeys(citation, ["chunkId", "documentId"])
+    ) {
+      return false;
+    }
     const documentId = citation.documentId.trim();
     if (!allowedDocuments.has(documentId)) return false;
     if (citation.chunkId === undefined) return true;

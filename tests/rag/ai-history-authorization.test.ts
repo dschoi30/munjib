@@ -11,7 +11,7 @@ const message: AiHistoryMessageRecord = {
   id: "message-secret-id",
   role: "ASSISTANT",
   content: "Confidential answer from the restricted runbook.",
-  citations: [{ documentId: "secret-document", title: "Restricted runbook" }],
+  citations: [{ documentId: "secret-document" }],
   contextMeta: {
     lineage: {
       version: 1,
@@ -194,6 +194,10 @@ describe("AI history lineage and visibility contract", () => {
 
     expect(toAiHistoryMessageDto({ ...message, citations: [{ documentId: "other-document" }] }, decision))
       .toMatchObject({ visibility: "tombstone" });
+    expect(toAiHistoryMessageDto({
+      ...message,
+      citations: [{ documentId: "secret-document", documentTitle: "stale denied title" }],
+    }, decision)).toMatchObject({ visibility: "tombstone" });
     expect(toAiHistoryMessageDto({
       ...message,
       contextMeta: { ...(message.contextMeta as object), citationChunkIds: ["other-chunk"] },
