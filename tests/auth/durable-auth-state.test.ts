@@ -48,6 +48,16 @@ describe("durable auth state boundary", () => {
     );
   });
 
+  it.each([null, undefined, "", " ", "+1", "01", -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY])(
+    "rejects noncanonical session version %p",
+    async (sessionVersion) => {
+      await expect(assertCurrentUserAuthEnabled({
+        db: database({ id: "user-1", authDisabledAt: null, sessionVersion }),
+        userId: "user-1",
+      })).rejects.toThrow("AUTH_STATE_UNAVAILABLE");
+    },
+  );
+
   it("rejects caller-authored identity shapes before touching the database", async () => {
     const db = database({ id: "user-1", authDisabledAt: null, sessionVersion: BigInt(0) });
     await expect(assertCurrentUserAuthEnabled({ db, userId: " user-1 " })).rejects.toThrow(
