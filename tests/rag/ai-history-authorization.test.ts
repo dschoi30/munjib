@@ -188,6 +188,18 @@ describe("AI history lineage and visibility contract", () => {
     });
   });
 
+  it("fails closed when source-backed metadata names an undeclared source", () => {
+    const lineage = parseAiHistoryLineage(message.contextMeta);
+    const decision = decideAiHistoryVisibility({ lineage, authorizeSource: () => true });
+
+    expect(toAiHistoryMessageDto({ ...message, citations: [{ documentId: "other-document" }] }, decision))
+      .toMatchObject({ visibility: "tombstone" });
+    expect(toAiHistoryMessageDto({
+      ...message,
+      contextMeta: { ...(message.contextMeta as object), citationChunkIds: ["other-chunk"] },
+    }, decision)).toMatchObject({ visibility: "tombstone" });
+  });
+
   it("does not serialize a different message with a detached visible decision", () => {
     const lineage = parseAiHistoryLineage(message.contextMeta);
     const decision = decideAiHistoryVisibility({ lineage, authorizeSource: () => true });

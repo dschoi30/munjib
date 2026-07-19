@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-19T20:37:00+09:00 - Issue #163 source-backed contamination review fix
+
+- Result: source-backed history rows now fail closed when extra context metadata or citations reference sources outside the authorized lineage.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
 ## 2026-07-19T20:24:00+09:00 - Issue #163 source-free contamination review fix
 
 - Result: `source-free-v1` assistant rows now fail closed when persisted citations remain or `contextMeta` contains anything beyond the exact lineage proof, preventing mixed-writer and partial-migration rows from bypassing source authority.
