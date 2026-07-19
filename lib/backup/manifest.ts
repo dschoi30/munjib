@@ -519,7 +519,16 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertRecord(value.aggregateCounts, "manifest.aggregateCounts");
   assertExactKeys(value.aggregateCounts, ["organizations", "workspaces", "documents", "attachments"], "manifest.aggregateCounts");
   for (const key of ["organizations", "workspaces", "documents", "attachments"] as const) assertDecimal(value.aggregateCounts[key], `manifest.aggregateCounts.${key}`);
-  if (decimal(value.aggregateCounts.documents as string, "manifest.aggregateCounts.documents") < BigInt(readyDocumentIds.size)) {
+  const organizationCount = decimal(value.aggregateCounts.organizations as string, "manifest.aggregateCounts.organizations");
+  const workspaceCount = decimal(value.aggregateCounts.workspaces as string, "manifest.aggregateCounts.workspaces");
+  const documentCount = decimal(value.aggregateCounts.documents as string, "manifest.aggregateCounts.documents");
+  if (workspaceCount > BigInt(0) && organizationCount === BigInt(0)) {
+    fail("manifest.aggregateCounts.organizations must cover workspaces");
+  }
+  if (documentCount > BigInt(0) && workspaceCount === BigInt(0)) {
+    fail("manifest.aggregateCounts.workspaces must cover documents");
+  }
+  if (documentCount < BigInt(readyDocumentIds.size)) {
     fail("manifest.aggregateCounts.documents must cover READY attachment document references");
   }
   if (decimal(value.aggregateCounts.attachments as string, "manifest.aggregateCounts.attachments") !== BigInt(entries.length)) {
