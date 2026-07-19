@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 101
+updated: 2026-07-20
+source_count: 102
 tags:
   - munjib
   - workflow
