@@ -1,0 +1,81 @@
+{
+  "format": "munjib-delivery-bundle-layout-v1",
+  "version": 1,
+  "bundle": "delivery-substrate-v1",
+  "target": {
+    "goos": "linux",
+    "goarch": "arm64"
+  },
+  "files": [
+    {
+      "artifact": "munjib-release-broker",
+      "destination": "/usr/local/libexec/munjib-release-broker",
+      "type": "binary",
+      "owner": "root:root",
+      "mode": "0755"
+    },
+    {
+      "artifact": "munjib-release-submit",
+      "destination": "/usr/local/libexec/munjib-release-submit",
+      "type": "binary",
+      "owner": "root:root",
+      "mode": "0755"
+    },
+    {
+      "artifact": "munjib-release-verify",
+      "destination": "/usr/local/libexec/munjib-release-verify",
+      "type": "binary",
+      "owner": "root:root",
+      "mode": "0755"
+    },
+    {
+      "source": "deploy/delivery/broker-operations-v1.json",
+      "destination": "/etc/munjib/security/broker-operations-v1.json",
+      "type": "repository",
+      "owner": "root:root",
+      "mode": "0400",
+      "sha256": "7a2467384f1e30108e833cdb8fab1df40315b4f822132cee3e5dbded7bb386a0"
+    },
+    {
+      "source": "deploy/delivery/principal-policy-v1.json",
+      "destination": "/etc/munjib/security/principal-policy-v1.json",
+      "type": "repository",
+      "owner": "root:root",
+      "mode": "0400",
+      "sha256": "16d5af6111162e808305c195de08a6a509736f71876d636b21058e075cb9fbce"
+    },
+    {
+      "source": "deploy/sshd/munjib-release-submit.conf",
+      "destination": "/etc/ssh/sshd_config.d/munjib-release-submit.conf",
+      "type": "repository",
+      "owner": "root:root",
+      "mode": "0400",
+      "sha256": "80b92c60a7e05017378d5f5f8fdedb5c9d1406633e1f829ce38a1d3bf9c939f5"
+    },
+    {
+      "source": "deploy/systemd/munjib-release-broker.service",
+      "destination": "/etc/systemd/system/munjib-release-broker.service",
+      "type": "repository",
+      "owner": "root:root",
+      "mode": "0400",
+      "sha256": "011b84bd03d3256806493a12eab4088508148b4ad108ab1de5a9b4a5a665f359"
+    },
+    {
+      "source": "deploy/systemd/munjib-release-broker.socket",
+      "destination": "/etc/systemd/system/munjib-release-broker.socket",
+      "type": "repository",
+      "owner": "root:root",
+      "mode": "0400",
+      "sha256": "14dfc692a7ab8476037227aa9efb3b8d93d75bf34319a8ca6a63e58073896d7d"
+    }
+  ],
+  "externalInputs": [
+    {
+      "name": "release-verify.pub",
+      "destination": "/var/lib/munjib/security/bootstrap/release-verify.pub",
+      "owner": "root:root",
+      "mode": "0400",
+      "provisioning": "root-bootstrap"
+    }
+  ]
+}
