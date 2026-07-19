@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 341
+updated: 2026-07-20
+source_count: 357
 tags:
   - log
   - munjib
@@ -19,32 +19,280 @@ links:
 
 # Wiki Log
 
-## 2026-07-13T18:00:00+09:00 - Issue #161 invite token primitive boundary
+## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
-- Result: Added the dependency-safe Leaf 7 credential boundary. Invitation and
-  attempt values are independent 256-bit opaque base64url secrets; each gets a
-  distinct domain-separated SHA-256 hash before durable persistence. The attempt
-  cookie contains only the opaque secret, and the exchange parser accepts one
-  bounded `bearer` field with immutable output.
-- Scope: No invitation schema, route, middleware, OAuth behavior, signup
-  activation, migration, or production mutation. Leaf 2, Leaf 8, private
-  runtime, and delivery-broker gates remain open.
-- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
-- Source evidence: `lib/auth/invite-token.ts`,
-  `tests/auth/invite-token.test.ts`, and
-  `docs/runbooks/invite-token-primitives.md`.
-- Verification: focused invite-token tests, TypeScript, and wiki sync gates.
+- Result: `parseSnapshotManifest()` recomputes `migrationIdsSha256(appliedIds)`, bounds decimal strings before `BigInt` conversion, caps every PostgreSQL-backed aggregate count at signed int64, requires full non-zero 40-character runtime source commits, accepts exhaustive attachment inventories beyond the old 100,000-entry parser ceiling, applies the same capacity policy to exhaustive READY archive receipts, requires a document ID on every inventory row, caps manifest and receipt attachment sizes at PostgreSQL/Prisma signed int32, rejects null-like/moving provider-generation aliases, covers all non-null attachment document references across lifecycle states, rejects zero-byte database dumps and zero-byte archives with READY entries, bounds recursive sensitive-key traversal depth, binds organization→workspace→document aggregate parents plus `aggregateCounts.attachments` and document counts to the attachment inventory, requires positive containing-batch starts within the checkpoint, ties latest/containing batch digests together after genesis, ties latest batch digest presence to genesis, rejects positive journal hashes equal to genesis, and enforces Leaf 2 int64/genesis/equal-sequence/different-sequence journal hash rules. `assertRecoveryCompatibility()` now requires independent evidence for the full recovery-pointer projection (including image, release-evidence, artifact-set, and contract fields) and derived migration/schema contract digest; the public readiness contract encodes Phase-B dependence on Phase-A acceptance and exact-envelope reuse. `parseSnapshotEnvelope()` binds envelope identity, epoch, image/capability digests, journal sequence, and the canonical manifest SHA-256 to the decrypted manifest and decrypt receipt.
+- Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review thread.
+- Verification: focused manifest/recovery-contract tests and TypeScript.
 
-## 2026-07-13T18:15:00+09:00 - Issue #161 invite-token review hardening
+## 2026-07-13T16:25:00+09:00 - Issue #168 manifest review follow-up
 
-- Result: The invite token primitive now passes the expected byte length through
-  each typed generation/hash path, and exchange-body exact-shape validation uses
-  `Reflect.ownKeys` to reject non-enumerable and symbol own metadata.
+- Result: backup manifest tests lock non-adjacent duplicate-path rejection, invalid UTC handling, deterministic archive ordering, and strict unknown-record typing; sparse arrays and exact-key receipt/payload validation remain fail closed.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review threads.
+- Verification: focused manifest/recovery-contract suites, TypeScript, and wiki gates.
+
+## 2026-07-20T01:00:00+09:00 - Issue #166 edge probe review reconciliation
+
+- Result: edge activation evidence is now an exact required set, public probes cover the `/api/`, `/login`, and existing workspace dynamic `/workspaces/probe` no-store classes, probe timestamps require strict UTC millisecond ISO round-tripping, no-store root paths are covered at their boundary, Cache-Control accepts only top-level comma-separated directives while preserving quoted commas, redacted telemetry canonicalizes unknown IDs, malformed timestamps, or invalid numerics, probe variants reject incompatible keys, request method and credential omission are bound, HTTPS probes require verified canonical TLS metadata and zero redirects, invalid HTTP-token or whitespace-padded header names and control-character values fail closed, and timeout overruns fail closed.
+- Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/deploy/edge-bindings.ts`, `tests/deploy/edge-bindings-evaluator.test.ts`, PR #205 review feedback.
+- Verification: focused edge-binding tests and TypeScript.
+
+## 2026-07-20T00:50:00+09:00 - Issue #164 index and NAT64 review fixes
+
+- Result: Wiki Index frontmatter now reflects the Issue #164 addition, and standard/local-use NAT64 translated IPv6 destinations fail closed outside the fixed Ollama gate.
+- Pages: [[index|Wiki Index]], [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:28:00+09:00 - Issue #164 IPv6 hostname classification review fix
+
+- Result: multicast prefix checks now apply only to IPv6 literals, preserving valid server-owned DNS names such as `ffapi.example`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:18:00+09:00 - Issue #164 IPv6 special-range review fix
+
+- Result: compressed IPv4-compatible and multicast IPv6 destinations now fail closed outside the explicit fixed Ollama gate.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:10:00+09:00 - Issue #164 provider-boundary review reconciliation
+
+- Result: provider selection inputs require runtime string types, IPv4-mapped IPv6 private destinations are denied, and staging is treated as production-like for HTTPS/private-destination policy.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/provider-boundary.ts`, `tests/rag/provider-boundary.test.ts`, PR #204 review feedback.
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-19T23:55:00+09:00 - Issue #163 citation canonicalization review fix
+
+- Result: source-backed history citations now admit only authorized document/chunk identifiers; unverifiable title, path, heading, and arbitrary fields fail closed.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T22:58:00+09:00 - Issue #163 nested lineage schema review fix
+
+- Result: source-backed lineage and source entries now require the exact v1 nested key schema, preventing unreviewed nested source metadata from reaching visible history DTOs.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T20:37:00+09:00 - Issue #163 source-backed contamination review fix
+
+- Result: source-backed history rows now fail closed when extra context metadata or citations reference sources outside the authorized lineage.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused AI history tests and TypeScript.
+
+## 2026-07-19T20:24:00+09:00 - Issue #163 source-free contamination review fix
+
+- Result: `source-free-v1` assistant rows now fail closed when persisted citations remain or `contextMeta` contains anything beyond the exact lineage proof, preventing mixed-writer and partial-migration rows from bypassing source authority.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`, and PR #203 P2 review feedback.
+- Verification: focused AI history tests, TypeScript, and wiki sync gates.
+
+## 2026-07-13T22:25:00+09:00 - Issue #162 opaque bucket boundary review fix
+
+- Result: `authorizeAuthRequest()` now admits only the exact 43-character base64url shape emitted by `deriveAuthGuardBucket()`. Raw IP/slug-shaped values are denied before the external store call, and a non-settling store fails closed after the bounded timeout.
 - Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
-- Source evidence: `lib/auth/invite-token.ts` and
-  `tests/auth/invite-token.test.ts`.
-- Verification: focused invite-token/source-contract tests, TypeScript, and
-  wiki sync gates.
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 P1 review feedback.
+- Verification: focused auth/guard tests, TypeScript, and wiki sync gates.
+
+## 2026-07-13T22:05:00+09:00 - Issue #162 Origin normalization review fix
+
+- Result: `evaluateAuthOrigin()` now reuses the canonical runtime Origin parser instead of comparing a raw header string to `URL.origin`, so equivalent casing/default-port representations are normalized before same-origin comparison while foreign origins remain denied.
+- Pages: [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and PR #202 review feedback.
+- Verification: red-green focused guard test, TypeScript, and wiki sync gates.
+
+## 2026-07-13T21:00:00+09:00 - Issue #162 bounded auth guard runtime slice
+
+- Result: Added the dependency-safe `lib/auth/abuse/runtime.ts` contract. Strict staging/production guard secrets are file-backed, canonical Origin and Fetch-Metadata checks are bounded, and durable store errors fail closed without a local-memory limiter or raw identifier persistence.
+- Boundary: No Prisma migration/session registry, auth route activation, Leaf 1/2 protected-path change, host installation, secret rotation, or production mutation.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/auth/abuse/runtime.ts`, `tests/security/auth-guard-runtime.test.ts`, and Issue #162 dependency gates.
+- Verification: focused guard contract tests and TypeScript passed; full repository checks remain subject to the existing branch baseline.
+
+## 2026-07-13T14:45:00+09:00 - Issue #160 ACL review follow-up
+
+- Folder locks reject archived rows; document ACL uses the exported canonical workspace-role permission ceiling map so Leaf 6 decisions cannot drift from shared permission policy.
+- Source evidence: `lib/authorization/active-resource-locks.ts`, `lib/permissions/document.ts`, `lib/authorization/document-acl.ts`, focused authorization tests, PR #201 review threads.
+- Verification: ACL/permission/active-resource focused tests, TypeScript, and staged wiki gates.
+- Atomicity follow-up: The ACL entrypoint now opens one transaction, obtains a locked active-document authority through the transaction-only resolver seam, and reads Leaf 6 access with the same transaction client.
+
+## 2026-07-13T18:00:00+09:00 - Issue #160 security
+
+- Result: Issue #160 adds a dependency-safe Leaf 6 document ACL decision seam on top of the reserved active-resource interfaces.
+- Coverage: `document-acl-entrypoint` resolves active authority before ACL access; the decision contract rejects missing, mismatched, and structurally forged proofs; explicit grants are capped by workspace role (`VIEWER` read, `EDITOR` write, `ADMIN`/`OWNER` manage). No duplicate membership resolver, schema/migration, journal, purge, or production mutation was added.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: `lib/authorization/active-resources.ts`, `lib/authorization/document-acl-entrypoint.ts`, `lib/authorization/document-acl.ts`, `lib/permissions/document.ts`, and the focused ACL/security tests.
+- Verification: focused ACL/permission/source-contract tests and TypeScript verification passed; the canonical active-membership/Leaf 6 providers remain fail closed until their dependency gates are installed.
+
+## 2026-07-13T14:45:00+09:00 - Issue #159 active-resource review follow-up
+
+- Folder boundary locks now reject any archived row as `FOLDER_NOT_FOUND`, matching workspace/document active-resource fail-closed semantics.
+- Folder locks also require `status = ACTIVE`, covering inconsistent rows whose archived status has a null `archivedAt` timestamp.
+- Source evidence: `lib/authorization/active-resource-locks.ts`, `tests/authorization/active-resource-locks.test.ts`, PR #200 review thread.
+- Verification: active-resource resolver/lock focused tests (7 passed), TypeScript, and staged wiki gates.
+
+## 2026-07-13T21:15:00+09:00 - Issue #159 schema-safe resolver and lock contract
+
+- Result: Added the shared active-resource resolver boundary with a deliberate
+  fail-closed database-time membership contract, schema-safe actor/workspace/
+  folder/document lock helpers, and a version-zero Leaf 6 document ACL slot.
+  Added the independently protected Leaf 14 logical/physical purge seam, both
+  fail closed until their owning dependency provides journal, restore, and
+  provider evidence.
+- Safety: No `WorkspaceMember` fallback, schema migration, archive/purge
+  mutation, production caller, or secret-bearing fixture was added.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/authorization/active-resources.ts`,
+  `lib/authorization/active-resource-locks.ts`,
+  `lib/workspaces/active-membership.ts`,
+  `lib/authorization/downstream/leaf6-document-access.ts`,
+  `lib/retention/downstream/leaf14-production-readiness.ts`, and
+  `deploy/security/protected-artifact-owners.json`.
+- Verification: focused resolver/lock/downstream contract tests (including the
+  protected Leaf 6 delegation assertion) and TypeScript
+  verification pass; no production behavior is activated by this slice.
+
+## 2026-07-19T00:30:00+09:00 - Vault Transit local integration lab
+
+- Result: Implemented Issue #208 Phase A with a digest-pinned Vault Community 2.0.3 Compose lab, loopback-only `127.0.0.1:18200` publication, explicit `vault:lab:*` lifecycle commands, and a generated mode-`0600` token override confined to private temporary state.
+- Evidence: Real Docker integration emitted only `VAULT_LAB_VERIFY_OK`, `VAULT_LAB_TAMPER_REJECT_OK`, `VAULT_LAB_EXPIRY_REJECT_OK`, `VAULT_LAB_GENERATION_REJECT_OK`, and `VAULT_LAB_WRONG_KEY_REJECT_OK`; no token, key, signature, request body, response body, or temporary path was public output.
+- Compatibility: The strict Transit decoder now models Vault 2.0.3 `key_version`, `certificate_chain`, and `hybrid_public_key`, cross-checks the response key version against the signature prefix, and retains unknown-field/trailing-data rejection.
+- Review follow-up: Transit client construction preserves a wrapped default `http.RoundTripper` without a panic-prone type assertion, missing Vault env reports the exact required variable without CLI usage noise, and canonical signing accepts every verifier-admitted operation while `NewUnsignedEnvelope` remains restricted to `VERIFY_ONLY`.
+- Rotation review follow-up: Sign requests now require an explicit Vault `key_version`, send it to Transit, and cross-check the response field plus `vault:vN` prefix against that pinned version. The CLI exposes `--key-version` separately from Munjib generation so a key rotation cannot silently sign against a newer key than the bootstrapped raw public key.
+- Teardown review follow-up: `vault:lab:down` no longer requires the original image env in a fresh shell. Cleanup supplies a non-pullable digest-shaped placeholder only for Compose parsing, while startup/bootstrap/test keep strict image validation.
+- Portability review follow-up: Lab helper binaries use pure-Go builds on Linux and other non-Darwin hosts; the external-link/cgo workaround is scoped only to Darwin's current `LC_UUID` loader requirement.
+- Custody review follow-up: Public-key bootstrap now rejects non-Ed25519/non-signing, derived, exportable, imported, plaintext-backup-enabled, or deletion-enabled Transit key metadata before writing any raw trust key.
+- Lifecycle review follow-up: documented `vault:lab:up` as the foreground self-bootstrapping wrapper and `vault:lab:bootstrap` as an internal private-environment step, removing the non-functional fresh-shell sequence.
+- Independent Vault lab review: narrowed the root token to override/bootstrap/signer calls, moved every generated integration artifact outside the checkout, made five custody booleans presence-aware, and changed all four negative verifier oracles to exact stable-code equality.
+- Payload review follow-up: signer now canonicalizes valid JSON before both hashing and embedding, preserving verifier compatibility for pretty and HTML-sensitive payloads.
+- Foreground lifecycle review: `vault:lab:up` now exits 130/143 on INT/TERM through the single EXIT cleanup path and preserves arbitrary child exit status.
+- Integration signal review: the integration harness now preserves normal EXIT status, exits 130/143 on INT/TERM, and routes each path through one cleanup invocation without secret output.
+- Inherited-token review: both lab entry scripts unset any caller-exported `VAULT_TOKEN` before generating the lab token, preventing Bash export-attribute inheritance into builds, helpers, verifiers, or arbitrary children.
+- Trust-key publication review: public-key output now uses a synced mode-0400 destination-directory temp inode and atomic hard-link no-replace publication, so partial final files are never visible and existing paths remain protected.
+- Override-path review: both lab harnesses delete the token-bearing generated Compose override and unset its exported path immediately after container creation, before bootstrap-independent builds, helpers, or arbitrary children run.
+- Cleanup/durability review: lab entrypoints discard inherited private-dir/override paths before cleanup, and trust-key publication now syncs the destination directory or removes its owned final link on durability failure.
+- Scope: Local-only evidence does not mutate production OCI, Cloudflare, or production keys and does not close Issue #185. Same-OCI bootstrap, host trust-key enrollment, host `VERIFY_ONLY_OK`, and current/rollback/recovery attestation remain incomplete.
+- Pages: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/vault-lab/compose.yml`, `scripts/vault-lab/*.sh`, `tests/deploy/vault-lab-contract.test.ts`, `internal/releasesigner/transit.go`, and `internal/releasesigner/transit_test.go`.
+
+## 2026-07-18T21:05:00+09:00 - canonical release envelope boundary
+
+- Result: Added `delivery.UnsignedEnvelopeInput`, `delivery.NewUnsignedEnvelope`, and `delivery.SignedMessage` as the canonical unsigned `VERIFY_ONLY` envelope and signed-message API, with fail-closed input validation. Broker admission now uses the shared `delivery.ValidateExpectedGeneration` policy instead of an inline integer comparison.
+- Coverage: Deterministic signed-message construction, unsafe payload/key/generation/nonce/expiry rejection, and generation match/mismatch behavior.
+- Source evidence: `internal/delivery/envelope.go`, `internal/delivery/envelope_test.go`, `cmd/munjib-release-broker/main.go`, Issue #208.
+- Scope: This refactor does not add Vault integration, production signing, host installation, or trust-key enrollment.
+
+## 2026-07-18T20:10:00+09:00 - PR #186 delivery bundle review hardening
+
+- Result: The delivery bundle builder and verifier now reject binaries that are not ELF64 little-endian AArch64, preventing non-target artifacts from being labeled `linux/arm64`. Generated bundle manifests use `munjib-delivery-bundle-manifest-v2`/version `2`, separating the checksummed bundle schema and external trust-key contract from the legacy static installation manifest v1.
+- Coverage: Builder input validation, verifier payload validation, CI summary metadata, tamper-resistant architecture regression tests, and delivery workflow documentation.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, PR #186 review threads.
+
+## 2026-07-18T20:26:00+09:00 - PR #186 current deploy documentation correction
+
+- Result: Corrected the delivery workflow page to distinguish the active `main` SSH checkout/native-build deploy from the future broker-only exact-digest path. The current workflow has no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` gate, so broker installation and attestation remain future gates rather than current production behavior.
+- Coverage: Active `appleboy/ssh-action` deploy sequence, target broker-only inputs, and the transition condition that must be implemented before claiming checkout-free production delivery.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, Issue #185, PR #186 review threads.
+
+## 2026-07-18T20:48:00+09:00 - PR #186 executable segment semantics
+
+- Result: Linux/ARM64 bundle validation now accepts only a `PF_X` load segment whose file-backed bytes contain a complete, 4-byte-aligned first AArch64 instruction at the ELF entrypoint and whose file and virtual-memory ranges do not overflow ELF64, in addition to the existing non-empty in-file bounds checks.
+- Coverage: Data-only `PT_LOAD`, detached, zero-fill-only, unaligned, or truncated entry instructions, and 64-bit virtual-address overflow regressions.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, PR #186 review thread.
+
+## 2026-07-18T20:35:00+09:00 - PR #186 executable segment and evidence correction
+
+- Result: ELF64 AArch64 validation now requires a non-empty in-file `PT_LOAD` segment with `p_memsz >= p_filesz`, preventing zero-sized or out-of-bounds executable stubs from entering a verified delivery bundle. The Issue #185 handoff report now records that CI does cross-build/package/verify public Linux/ARM64 metadata while signing, attestation, transfer, installation, and trust enrollment remain blocked.
+- Coverage: Builder/verifier executable segment validation, zero-sized segment regression, and public-safe CI evidence wording.
+- Pages: [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, `.superpowers/sdd/task-1-report.md`, `.github/workflows/ci-cd.yml`, PR #186 review threads.
+
+## 2026-07-18T12:30:00+09:00 - security/release-signer
+
+- Result: Issue #208의 local-only Vault Community Transit signer lab 구현 계획을 확정했다. production OCI, Cloudflare, production key custody, host bootstrap, Issue #185 attestation은 범위 밖으로 유지한다.
+- Coverage: `docs/superpowers/plans/2026-07-18-vault-transit-release-signer-local-lab.md`, [[Release Signer And Vault Workflow]]. Canonical envelope API, strict Vault client, signer CLI, digest-pinned loopback lab, real integration evidence와 PR review gate.
+- Source evidence: Issue #208 approved design, `docs/superpowers/specs/2026-07-18-vault-transit-release-signer-local-lab-design.md`, `wiki/Release Signer And Vault Workflow.md`.
+
+## 2026-07-18T00:00:00+09:00 - security/release-signer
+
+- Result: 초기 production signer 배치를 현재 Munjib production과 같은 OCI VM의 Docker Compose Vault Community로 조정했다. 단일 노드 Raft, TLS, ACL, audit, snapshot/restore를 운영 계약으로 추가하고, 같은 호스트 경계 때문에 #185 독립 attestation 전에는 임시 gate로 표시했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Same-OCI threat boundary, Compose image/config evidence, public port 차단, optional Cloudflare Tunnel/Access, dedicated signer VM 승격 절차.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault production hardening, Cloudflare Tunnel/Access documentation, 사용자 결정.
+
+## 2026-07-17T00:00:00+09:00 - security/release-signer
+
+- Result: 1인 메인테이너 사이드 프로젝트의 delivery signer 권장안을 위키에 기록했다. Vault Community를 local Mac Docker lab과 signer adapter 개발에만 사용하고, production에서는 signer와 Munjib OCI host를 분리한다. HCP Vault Dedicated Development는 non-production only로 분류하고, Essentials 비용·OCI cross-cloud 경계·Community self-host 운영 책임을 함께 기록했다.
+- Coverage: [[Release Signer And Vault Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Vault Transit Ed25519, raw public-key bootstrap, Vault signature 변환, key version/generation 매핑, 1인 운영의 인간 독립성 한계, local lab/production bootstrap/attestation/rotation gate.
+- Source evidence: `internal/delivery/envelope.go`, `cmd/munjib-release-verify/main.go`, `cmd/munjib-release-broker/main.go`, Issue #185 assessment, Vault Transit API, Vault edition comparison, HCP Vault tier/pricing/deployment documentation, 사용자 결정.
+- Verification: `pnpm wiki:manifest`, `pnpm wiki:lint`.
+
+## 2026-07-13T18:05:00+09:00 - security-leaf2-contract-followup
+
+- Result: The Leaf 2 journal module now also exports the branded isolated-restore replay context and reducer type so later recovery leaves consume one shared interface without mutating production journal state. The durable-auth hook factory stays outside the protected version-0 Leaf 2 slot.
+- Scope: Type-only handoff; no replay implementation, restore, migration, or production operation.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]].
+- Source evidence: `lib/security/journal.ts` and its focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T18:00:00+09:00 - security-leaf2-contract
+
+- Result: Issue #156's safe implementation slice adds the canonical typed security-journal parser, UUIDv5 operation-id derivation, language-independent binary hash preimage, parameterized DB append seam, and a fail-closed durable auth-state resolver with an injectable Leaf 2 hook factory.
+- Scope: No Prisma migration, extension/role DDL, journal genesis, Trial disable, credential/session cleanup, support grant, purge, or production operation was performed. The reserved default auth hook remains version 0 until deployed Leaf 1/13B and broker evidence are available.
+- Pages: [[Auth And Permissions Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]].
+- Source evidence: Issue #156 implementation branch `issue-156-security-trial-isolation-implementation`, `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, and focused contract tests.
+- Verification: `pnpm exec vitest run tests/security/journal-contract.test.ts tests/auth/durable-auth-state.test.ts`; `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T14:45:00+09:00 - Issue #156 journal review follow-up
+
+- Reused one module-level `TextEncoder` for security-journal hash preimage encoding; the canonical byte contract is unchanged while repeated event hashing avoids per-field encoder allocation.
+- Durable auth state now accepts only non-negative `bigint`, safe-integer number, or canonical unsigned decimal string session versions; null, whitespace, signs, leading zeroes, fractions, and non-finite values fail closed as `AUTH_STATE_UNAVAILABLE`.
+- Journal append accepts exactly one database result with a positive `bigint` sequence and canonical lowercase string hash; empty, duplicate, non-positive, or coercible non-string results fail closed.
+- Source evidence: `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, PR #199 review threads.
+- Verification: journal/auth focused tests (11 passed), TypeScript, and staged wiki gates.
+
+## 2026-07-13T14:55:00+09:00 - delivery bundle review wording
+
+- Result: Clarified the remaining review-target lines for VERIFY_ONLY and the Go executable in the public-safe Issue #185 report.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T14:38:00+09:00 - delivery bundle review documentation
+
+- Result: Clarified the Issue #185 delivery-bundle assessment's system entities, commands, target tuple, and manifest references with consistent inline-code boundaries.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: PR #186 review threads and .superpowers/sdd/task-1-report.md.
+- Verification: markdown diff check passed; no host installation, trust-key enrollment, or production mutation was performed.
+
+## 2026-07-13T11:20:00+09:00 - delivery bundle CLI argument handling
+
+- Result: The delivery bundle CLI wrappers now ignore the package-manager `--`
+  separator before reading artifact/output arguments, matching the CI invocation
+  and keeping the fail-closed builder/verifier path executable.
+- Source evidence: `scripts/deploy/build-delivery-bundle.ts`,
+  `scripts/deploy/verify-delivery-bundle.ts`, Issue #185.
+
+## 2026-07-13T10:10:00+09:00 - delivery bundle packaging boundary
+
+- Result: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout and fail-closed TypeScript builder/verifier for the Leaf 13A broker, submitter, verifier, policies, systemd units, and forced-SSH fragment.
+- Coverage: The generated manifest records per-file SHA-256, fixed `root:root` ownership/modes, layout digest, and a separate manifest digest. Symlinked inputs, path escapes, duplicate destinations, tampered payloads, unexpected top-level files, and non-target bundles are rejected. The production `release-verify.pub` trust key is deliberately declared as a `root-bootstrap` external input and is not generated or bundled.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `deploy/delivery/bundle-layout-v1.json`, `scripts/deploy/delivery-bundle.ts`, `tests/deploy/delivery-bundle.test.ts`, Issue #185.
+- Verification: focused delivery-substrate and bundle tests pass; production host installation, key enrollment, and signed envelope verification remain external authority gates.
+
+## 2026-07-13T11:05:00+09:00 - delivery bundle CI cross-compile
+
+- Result: Issue #185's `ci` job now uses SHA-pinned `actions/setup-go` v5.5.0 with Go 1.22.12 to cross-compile the fixed broker, submitter, and verifier for Linux/ARM64, run the bundle builder/verifier, and emit only public SHA-256 metadata in the job summary.
+- Coverage: The step uses `CGO_ENABLED=0`, `GOOS=linux`, `GOARCH=arm64`, runner-temporary paths, and no artifact upload, signing, trust-key enrollment, SSH, Docker, or host mutation. The existing deploy job and its push-only gate are unchanged.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, Issue #185.
+- Verification: focused GitHub Actions, delivery-substrate, and bundle tests pass locally; the GitHub-hosted cross-compile is the CI acceptance gate.
 
 ## 2026-07-13T06:20:00+09:00 - Issue #158 PR #178 memo dependency correction
 
@@ -2922,6 +3170,7 @@ links:
 - Result: 기존 `llm-wiki` 중심 wiki를 munjib project wiki로 전면 교체했다.
 - Source evidence: `prd.md`, `obsidian-analysis-report.md`, `package.json`, `prisma/schema.prisma`, `lib/documents/service.ts`, `lib/wiki-links/*`, `app/workspaces/[workspaceSlug]/*`.
 - Pages: [[Munjib]], [[Project PRD]], [[Document Knowledge Model]], [[Wiki Links And Backlinks]], [[Document Editing Workflow]], [[Auth And Permissions Workflow]], [[Local Development Workflow]], [[Next.js Prisma Monolith]], [[Wiki Schema]], [[index|Wiki Index]]
+
 ## 2026-07-13T17:10:00+09:00 - security-runtime
 
 - Result: Issue #182 production runner now preserves the generated Prisma client across `pnpm prune --prod`; the runner discovers the generated `.prisma/client` with the BusyBox-compatible `find ... -print | head -n 1` form without relying on a pnpm virtual-store version, copies it through a build-only temporary path, restores the runtime lookup path, and fails the image build when `require("@prisma/client")` cannot load.
@@ -2938,3 +3187,47 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+
+## 2026-07-18T00:00:00+09:00 - release-security
+
+- Result: Added a fail-closed standard-library Vault Transit client with loopback-only plaintext HTTP, HTTPS elsewhere, a 10-second default timeout, rejected redirects, strict bounded JSON responses, and redacted stable error codes.
+- Coverage: Exact Ed25519 signing requests, strict `vault:vN` signature parsing, 64-byte signature enforcement, exact key-name validation, and version-bound raw or PKIX DER Ed25519 public-key normalization.
+- Review follow-up: Standard Vault response-envelope fields and Transit key/key-version metadata are explicitly modeled without weakening unknown-field or trailing-data rejection; endpoint shape, requested-version invalid key forms, and stalled-request context cancellation have direct regression coverage.
+- Source evidence: `internal/releasesigner/transit.go`, `internal/releasesigner/transit_test.go`.
+- Verification: `CGO_ENABLED=0 go test -race ./internal/releasesigner -v`.
+
+## 2026-07-19T00:00:00+09:00 - release-security
+
+- Result: Added the testable `munjib-release-sign` adapter with `sign` and `public-key` subcommands backed by Vault Transit.
+- Security contract: Vault address and token are environment-only inputs; signed-envelope stdout is machine-only JSON, errors are redacted, payload and expiry bounds fail closed, and raw Ed25519 public-key output uses exclusive mode-`0400` creation without overwrite, symlink, or directory traversal behavior.
+- Review follow-up: Present-but-invalid Vault configuration is classified as unavailable (`69`), public-key creation explicitly reapplies mode `0400` after exclusive creation to defeat restrictive umasks, and signed-envelope output writer failures remain output errors (`74`) without secret-bearing diagnostics.
+- Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
+- Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
+
+## 2026-07-19T17:27:00+09:00 - security-review
+
+- Result: Added explicit regression coverage for malformed security-journal append rows, including empty or multiple rows, non-positive sequences, and non-string hashes.
+- Scope: Test-only follow-up; the fail-closed append validation is unchanged.
+- Source evidence: `tests/security/journal-contract.test.ts`.
+- Verification: 27 focused durable-auth and security-journal tests plus TypeScript compilation.
+
+## 2026-07-19T17:37:00+09:00 - security-review
+
+- Result: Completed the durable session-version boundary before Leaf 2 activation: initial JWT issuance can bind the DB-owned version, while later JWT/session checks carry and compare the issued claim; missing or stale versions fail closed.
+- Journal follow-up: Append results above PostgreSQL's signed `BIGINT` maximum now fail closed using the same bound as event parsing.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `lib/auth/downstream/contract.ts`, `lib/auth/config.ts`, `lib/security/journal.ts`, and focused regression tests.
+- Verification: 33 focused auth/journal tests and TypeScript compilation.
+
+## 2026-07-19T17:47:00+09:00 - security-review
+
+- Result: Durable session versions now reject bigint and canonical decimal values above PostgreSQL's signed `BIGINT` maximum before they can become JWT claims.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `tests/auth/durable-auth-state.test.ts`, PR #199 review thread.
+- Verification: focused durable-auth regression tests and TypeScript compilation.
+## 2026-07-13T13:10:00+09:00 - security-ai-history
+
+- Result: Issue #163 implementation slice adds a dependency-safe source-lineage parser, all-sources visibility decision, and non-enumerating tombstone DTO contract for derived Workspace AI history.
+- Coverage: explicit v1 source-backed document/chunk pairs, explicit source-free proof, malformed/missing/sparse legacy lineage fail closed, one denied or unavailable source hides the whole turn, source-backed decisions stay scoped to assistant rows, and tombstones omit internal ids, timestamps, answer/citations, source metadata, model, counts, and denial reasons.
+- Scope: no Prisma migration, route wiring, purge, provider call, telemetry, or production mutation; the helper accepts a future canonical authority callback and remains gated on Leaves 2/4/6/13B.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
+- Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
