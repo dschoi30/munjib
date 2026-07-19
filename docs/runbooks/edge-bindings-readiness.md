@@ -11,8 +11,9 @@ contract is `deploy/security/edge-bindings-v1.json`.
   acceptance checklist for the eventual edge owner, not a production command
   or a claim that the headers/probes are active.
 - The public probes use `GET /api/auth/providers`, `GET /login`, and
-  `GET /workspaces` so every declared no-store route class has direct edge
-  evidence. They record status and latency only;
+  `GET /workspaces/probe` (the existing workspace dynamic route renders its
+  credential-free login shell) so every declared no-store route class has
+  direct edge evidence. They record status and latency only;
   response bodies, cookies, authorization headers, query strings, request
   bodies, and client IPs are never retained.
 - The loopback probe verifies the origin independently of the public edge. The

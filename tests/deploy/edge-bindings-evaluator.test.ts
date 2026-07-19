@@ -60,7 +60,7 @@ const requestFor = (probeId: string) =>
             probeId === "public-login"
               ? "/login"
               : probeId === "public-workspace"
-                ? "/workspaces"
+                ? "/workspaces/probe"
                 : "/api/auth/providers",
         };
 
