@@ -19,6 +19,15 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:52:00+09:00 - Issue #160 readiness wording correction
+
+- Result: Changed the status-map wording from “closes” to “records” so the
+  documentation-only ACL handoff does not imply that Leaf 5 authority or route
+  behavior is already active.
+- Pages: [[index|Wiki Index]], [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `wiki/index.md`, PR #192 review thread.
+- Verification: wiki gates.
+
 ## 2026-07-20T06:40:00+09:00 - Issue #160 document authorization readiness
 
 - Result: Recorded the dependency-gated document authorization closure: descendant-folder authorization, broken-link source checks, active attachment/comment/history routes, role-capped document permissions, minimal current-view DTOs, and authenticated history pagination remain tied to the active-resource authority.
