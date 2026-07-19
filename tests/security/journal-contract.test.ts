@@ -114,6 +114,7 @@ describe("security journal contract", () => {
     { rows: [] },
     { rows: [{ sequence: BigInt(0), eventHash: "22".repeat(32) }] },
     { rows: [{ sequence: BigInt(-1), eventHash: "22".repeat(32) }] },
+    { rows: [{ sequence: BigInt("9223372036854775808"), eventHash: "22".repeat(32) }] },
     { rows: [{ sequence: BigInt(1), eventHash: Buffer.from("2".repeat(64)) }] },
     { rows: [
       { sequence: BigInt(1), eventHash: "22".repeat(32) },

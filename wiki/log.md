@@ -3074,3 +3074,10 @@ links:
 - Scope: Test-only follow-up; the fail-closed append validation is unchanged.
 - Source evidence: `tests/security/journal-contract.test.ts`.
 - Verification: 27 focused durable-auth and security-journal tests plus TypeScript compilation.
+
+## 2026-07-19T17:37:00+09:00 - security-review
+
+- Result: Completed the durable session-version boundary before Leaf 2 activation: initial JWT issuance can bind the DB-owned version, while later JWT/session checks carry and compare the issued claim; missing or stale versions fail closed.
+- Journal follow-up: Append results above PostgreSQL's signed `BIGINT` maximum now fail closed using the same bound as event parsing.
+- Source evidence: `lib/auth/durable-auth-state.ts`, `lib/auth/downstream/contract.ts`, `lib/auth/config.ts`, `lib/security/journal.ts`, and focused regression tests.
+- Verification: 33 focused auth/journal tests and TypeScript compilation.

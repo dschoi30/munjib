@@ -72,6 +72,24 @@ describe("durable auth state boundary", () => {
   it("exposes an injectable hook without changing the reserved Leaf 2 slot", async () => {
     const db = database({ id: "user-1", authDisabledAt: null, sessionVersion: BigInt(2) });
     const hook = createDurableAuthStateHook(db);
-    await expect(hook({ userId: "user-1", surface: "JWT" })).resolves.toBeUndefined();
+    await expect(hook({
+      userId: "user-1",
+      surface: "JWT",
+      issueSessionVersion: true,
+    })).resolves.toEqual({ userId: "user-1", sessionVersion: BigInt(2) });
+  });
+
+  it("rejects stale or missing issued session versions after initial JWT issuance", async () => {
+    const hook = createDurableAuthStateHook(
+      database({ id: "user-1", authDisabledAt: null, sessionVersion: BigInt(3) }),
+    );
+    await expect(hook({
+      userId: "user-1",
+      surface: "JWT",
+      issuedSessionVersion: "2",
+    })).rejects.toThrow("AUTH_SESSION_REVOKED");
+    await expect(hook({ userId: "user-1", surface: "SESSION" })).rejects.toThrow(
+      "AUTH_SESSION_VERSION_MISSING",
+    );
   });
 });
