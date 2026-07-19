@@ -76,8 +76,10 @@ Monitoring entry point는 두 갈래다.
 production traffic, Caddy, DNS/TLS, firewall, host monitoring을 변경하지 않는다.
 `lib/deploy/edge-bindings.ts`의 순수 evaluator는 고정 security header와 path-boundary
 no-store를 확인하고, probe variant별 incompatible key, credential omission, request
-method, configured timeout 초과를 fail closed한다. `Cache-Control` directive는
-comma-separated 문법만 인정하고 whitespace-padded header name을 거부한다.
+method, configured timeout 초과를 fail closed한다. HTTPS 관측은 인증서 검증과
+canonical TLS server name을 증명해야 하고 redirect count가 0이어야 한다.
+`Cache-Control` directive는 comma-separated 문법만 인정하고 HTTP token 문법에
+맞지 않거나 whitespace-padded인 header name을 거부한다.
 실패 telemetry는 allowlist만 내보내며 unknown probe ID, malformed timestamp, invalid
 status/latency는 bounded sentinel (`unknown`, `1970-01-01T00:00:00.000Z`, `0`)로
 정규화한다. 실제 edge

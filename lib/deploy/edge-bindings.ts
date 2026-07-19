@@ -113,6 +113,9 @@ export type EdgeProbeRequestMetadata = {
   connectAddress: string;
   host: string;
   path: string;
+  tlsVerified: boolean;
+  tlsServerName: string;
+  redirectCount: number;
 };
 
 export type EdgeProbeEvaluation = {
@@ -517,9 +520,8 @@ const headerMap = (
   const duplicates = new Set<string>();
   if (typeof Headers !== "undefined" && headers instanceof Headers) {
     for (const [rawName, rawValue] of headers.entries()) {
-      if (rawName !== rawName.trim()) return { values, duplicates, invalid: true };
-      const name = rawName.trim().toLowerCase();
-      if (!name) return { values, duplicates, invalid: true };
+      if (!isValidHeaderName(rawName)) return { values, duplicates, invalid: true };
+      const name = rawName.toLowerCase();
       if (values.has(name)) duplicates.add(name);
       values.set(name, rawValue);
     }
@@ -530,8 +532,7 @@ const headerMap = (
   for (const [rawName, rawValue] of entries) {
     if (
       typeof rawName !== "string" ||
-      rawName.length === 0 ||
-      rawName !== rawName.trim()
+      !isValidHeaderName(rawName)
     ) {
       return { values, duplicates, invalid: true };
     }
@@ -544,12 +545,15 @@ const headerMap = (
         ? rawValue
         : null;
     if (value === null) return { values, duplicates, invalid: true };
-    const name = rawName.trim().toLowerCase();
+    const name = rawName.toLowerCase();
     if (values.has(name)) duplicates.add(name);
     values.set(name, value);
   }
   return { values, duplicates, invalid: false };
 };
+
+const isValidHeaderName = (name: string): boolean =>
+  /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name);
 
 export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: unknown): boolean {
   if (typeof path !== "string") return false;
@@ -625,6 +629,22 @@ export function evaluateEdgeProbe(
       reasons.push("REQUEST_PATH_INVALID");
     } else if (request.path !== probe.path) {
       reasons.push("REQUEST_PATH_MISMATCH");
+    }
+    if (probe.transport === "https") {
+      if (request.tlsVerified !== true) reasons.push("REQUEST_TLS_UNVERIFIED");
+      const expectedTlsServerName = new URL(contract.canonicalOrigin).hostname;
+      if (request.tlsServerName !== expectedTlsServerName) {
+        reasons.push("REQUEST_TLS_SERVER_NAME_MISMATCH");
+      }
+    }
+    if (
+      typeof request.redirectCount !== "number" ||
+      !Number.isInteger(request.redirectCount) ||
+      request.redirectCount < 0
+    ) {
+      reasons.push("REQUEST_REDIRECT_COUNT_INVALID");
+    } else if (request.redirectCount !== 0) {
+      reasons.push("REQUEST_REDIRECTED");
     }
   }
 

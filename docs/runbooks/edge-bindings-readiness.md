@@ -44,7 +44,10 @@ unknown-host negative probe runs every five minutes and must remain a 4xx.
 Probe requests use no cookies or credentials and discard response bodies. Alert
 payloads contain only `probeId`, status, latency, timestamp, and outcome.
 The evaluator also requires normalized request metadata (transport, canonical
-connect address, Host header, and exact path) to match the configured probe.
+connect address, Host header, exact path, and zero redirects) to match the
+configured probe. HTTPS observations must prove certificate verification and
+use the canonical TLS server name; response header names must match the HTTP
+field-name token grammar with no whitespace or invalid characters.
 The unknown-host negative probe connects to `munjib.example.invalid` and only
 overrides the Host header to `unknown.invalid`; a DNS/TLS failure cannot count
 as a successful 4xx rejection. Malformed headers, timestamps, paths, or request

@@ -21,7 +21,7 @@ links:
 
 ## 2026-07-20T01:00:00+09:00 - Issue #166 edge probe review reconciliation
 
-- Result: edge activation evidence is now an exact required set, probe timestamps require strict UTC millisecond ISO round-tripping, no-store root paths are covered at their boundary, Cache-Control accepts only comma-separated directives, redacted telemetry canonicalizes unknown IDs, malformed timestamps, or invalid numerics, probe variants reject incompatible keys, request method and credential omission are bound, whitespace-padded header names fail closed, and timeout overruns fail closed.
+- Result: edge activation evidence is now an exact required set, probe timestamps require strict UTC millisecond ISO round-tripping, no-store root paths are covered at their boundary, Cache-Control accepts only comma-separated directives, redacted telemetry canonicalizes unknown IDs, malformed timestamps, or invalid numerics, probe variants reject incompatible keys, request method and credential omission are bound, HTTPS probes require verified canonical TLS metadata and zero redirects, invalid HTTP-token or whitespace-padded header names fail closed, and timeout overruns fail closed.
 - Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
 - Source evidence: `lib/deploy/edge-bindings.ts`, `tests/deploy/edge-bindings-evaluator.test.ts`, PR #205 review feedback.
 - Verification: focused edge-binding tests and TypeScript.
