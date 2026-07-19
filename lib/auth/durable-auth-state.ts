@@ -30,6 +30,8 @@ export type DurableAuthStateInput = Readonly<{
   issueSessionVersion?: boolean;
 }>;
 
+const MAX_SESSION_VERSION = BigInt("9223372036854775807");
+
 export function createDurableAuthStateHook(
   db: DurableAuthDatabase,
 ): (input: DurableAuthStateInput) => Promise<DurableAuthState> {
@@ -67,11 +69,12 @@ function assertUserId(userId: unknown): asserts userId is string {
 
 function parseSessionVersion(value: unknown): bigint {
   if (typeof value === "bigint") {
-    if (value >= BigInt(0)) return value;
+    if (value >= BigInt(0) && value <= MAX_SESSION_VERSION) return value;
   } else if (typeof value === "number") {
     if (Number.isSafeInteger(value) && value >= 0) return BigInt(value);
   } else if (typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value)) {
-    return BigInt(value);
+    const parsed = BigInt(value);
+    if (parsed <= MAX_SESSION_VERSION) return parsed;
   }
   throw new Error("AUTH_STATE_UNAVAILABLE");
 }
