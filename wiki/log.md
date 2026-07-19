@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 361
+source_count: 362
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:32:00+09:00 - Issue #161 proxy rejection boundary
+
+- Result: Invite readiness rejects Node proxy contract objects and arrays before any own-key, descriptor, or value inspection, preventing caller-controlled proxy traps from executing.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness tests and wiki gates.
 
 ## 2026-07-20T07:26:00+09:00 - Issue #161 top-level data-property guard
 

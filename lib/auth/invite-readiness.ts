@@ -1,3 +1,5 @@
+import { types as nodeTypes } from "node:util";
+
 /**
  * Public, dependency-safe readiness contract for the invite-first signup leaf.
  *
@@ -63,6 +65,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function assertRecord(value: unknown, path: string): asserts value is Record<string, unknown> {
+  if (nodeTypes.isProxy(value)) {
+    fail(`${path} must not be a proxy`);
+  }
   if (!isRecord(value)) {
     fail(`${path} must be an object`);
   }
@@ -100,6 +105,9 @@ function assertLiteral<T extends string | number>(value: unknown, expected: T, p
 }
 
 function assertCanonicalArray<T extends string>(value: unknown, expected: readonly T[], path: string): readonly T[] {
+  if (nodeTypes.isProxy(value)) {
+    fail(`${path} must not be a proxy`);
+  }
   if (!Array.isArray(value)) {
     fail(`${path} must be an array of strings`);
   }

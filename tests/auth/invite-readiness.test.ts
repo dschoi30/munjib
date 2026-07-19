@@ -111,6 +111,27 @@ describe("invite-first signup readiness contract", () => {
     );
   });
 
+  test("rejects proxied contract objects and arrays before reflection", () => {
+    const contract = loadContract() as Record<string, unknown>;
+    const proxiedContract = new Proxy({ ...contract }, {
+      ownKeys() {
+        throw new Error("proxy trap invoked");
+      },
+    });
+    expect(() => parseInviteSignupReadinessContract(proxiedContract)).toThrow(
+      /contract must not be a proxy/,
+    );
+
+    const proxiedPrerequisites = new Proxy([...(contract.prerequisites as string[])], {
+      get() {
+        throw new Error("proxy trap invoked");
+      },
+    });
+    expect(() =>
+      parseInviteSignupReadinessContract({ ...contract, prerequisites: proxiedPrerequisites }),
+    ).toThrow(/contract\.prerequisites must not be a proxy/);
+  });
+
   test("rejects non-enumerable and symbol own contract extensions", () => {
     const contract = loadContract() as Record<string, unknown>;
     const hidden = { ...contract } as Record<string, unknown>;
