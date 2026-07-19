@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-13
-source_count: 58
+updated: 2026-07-19
+source_count: 62
 tags:
   - munjib
   - workflow
@@ -19,6 +19,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[Production Observability Workflow]]"
   - "[[Project PRD]]"
+  - "[[Release Signer And Vault Workflow]]"
   - "[[Wiki Maintenance Automation]]"
 ---
 
@@ -69,6 +70,25 @@ Monitoring entry point는 두 갈래다.
 - Docker stdout/stderr: startup, env, DB connection, PostgreSQL process log, Sentry init 이전 failure.
 - Sentry SaaS: Next.js App Router request error, global error, browser runtime error, low sample rate tracing, opt-in Node runtime metrics, error-only Replay, low-cardinality application metrics.
 
+### Edge binding probe boundary (Issue #166)
+
+`deploy/security/edge-bindings-v1.json`은 여전히 `PREPARATORY`/`DISABLED`이며
+production traffic, Caddy, DNS/TLS, firewall, host monitoring을 변경하지 않는다.
+`lib/deploy/edge-bindings.ts`의 순수 evaluator는 고정 security header와 path-boundary
+no-store를 확인하고, `/api/`, `/login`, `/workspaces/` 각 route class에 public
+probe가 존재하는지 parser에서 고정한다. Probe variant별 incompatible key,
+credential omission, request method, configured timeout 초과를 fail closed한다. HTTPS 관측은 인증서 검증과
+canonical TLS server name을 증명해야 하고 redirect count가 0이어야 한다.
+`Cache-Control` directive는 comma-separated 문법만 인정하고 HTTP token 문법에
+맞지 않거나 whitespace-padded인 header name을 거부하며, quoted comma 안의
+문자열을 directive separator로 오인하지 않는다. CR/LF 같은 금지 control
+character가 있는 header value도 거부한다.
+실패 telemetry는 allowlist만 내보내며 unknown probe ID, malformed timestamp, invalid
+status/latency는 bounded sentinel (`unknown`, `1970-01-01T00:00:00.000Z`, `0`)로
+정규화한다. 실제 edge
+activation 전에는 `docs/runbooks/edge-bindings-readiness.md`의 외부 evidence와
+operator gate를 충족해야 한다.
+
 ## Least-authority delivery substrate
 
 Leaf 13A의 delivery substrate는 parent Issue #167 (`issue-167-security-immutable-deploy`) 아래
@@ -79,6 +99,21 @@ schema를 매 요청 다시 검증한다. 이 단계에는 application capabilit
 runtime 변경 권한이 없고, caller가 경로·환경·Compose/systemd 명령을 선택할 수
 없다. Submitter에는 sudo, Docker socket, root SSH, forwarding, interactive TTY가
 없으며, 모든 후속 mutation은 별도 attested root operation으로 승격되어야 한다.
+
+Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bundle
+layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
+(`scripts/deploy/{build,verify}-delivery-bundle.ts`)를 제공한다. 빌더는
+linux/arm64용 세 개의 사전 빌드된 Go artifact 이름과 repository 고정 파일만
+받고, 각 binary가 ELF64 little-endian AArch64인지 확인하며
+symlink/path escape/중복 destination을 거부한다. Generated manifest는 기존
+static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 않도록
+`munjib-delivery-bundle-manifest-v2`를 사용한다. 출력 manifest에는 각
+파일의 SHA-256, `root:root` ownership, mode, layout digest와 별도의
+`bundle.sha256`가 포함되며, `payload` 이외의 top-level 항목과 변조된 파일도
+검증기가 fail closed로 거부한다. `release-verify.pub`는 bundle에 포함하지
+않고 `root-bootstrap` external input으로만 선언한다. 따라서 이 코드는
+재현 가능한 artifact package/verification 경계를 제공할 뿐, production host
+설치나 trust-key enrollment를 주장하지 않는다.
 
 ## Security-critical runtime gate
 
@@ -191,6 +226,73 @@ token-bearing Google row remains. Cleanup appends the existing
 failure rolls back the transaction and replay is deny-only/idempotent. The canonical
 twenty-six-kind journal union is unchanged.
 
+### Issue #168 encrypted recovery readiness
+
+Issue #168 currently contributes only the public readiness contract at
+`deploy/backup/recovery-readiness-v1.json` and its side-effect-free parser/tests.
+The contract fixes RPO 24 hours, RTO 4 hours, 7/4/3 retention, the isolated Phase
+A/Phase B boundary, and the invariants that restore never targets production and
+the snapshot image is evidence only. Phase A cannot proceed until the Leaf 13
+delivery broker is installed and attested (#185). Phase B additionally waits for
+the exact-digest Leaf 13B runtime (#184), Leaf 2 journal readiness, Leaf 9 purge
+hooks, and Leaf 11 attachment lifecycle. A green contract test is not a snapshot,
+restore, key, purge, or production acceptance result; Issue #168 remains open
+until those dependencies and independent restore evidence are complete.
+
+The dependency-safe v2 manifest slice adds recursive exact-key validation and
+constant-time receipt/integrity helpers in `lib/backup/manifest.ts`. It binds
+database/archive hashes, every attachment state and READY byte hash, ordered
+migrations (recomputing `migrationIdsSha256(appliedIds)` and rejecting a mismatched
+digest), capability/evidence hashes, and the Leaf 2 checkpoint while keeping
+the private manifest data-only. The public envelope cannot be parsed for signing
+until root seal, immutable exact-read, and authenticated decrypt receipts match;
+`snapshotImageDigest` remains audit evidence and is never a restore selector. No
+builder, capture, restore, purge, key rotation, or host/provider operation is
+included in this slice.
+Validation also rejects non-adjacent duplicate attachment paths, invalid UTC
+timestamps through the domain error, and locale-dependent archive ordering. The
+envelope now binds `backupId`, `epochUtc`, image/capability digests, and journal
+sequence to the decrypted manifest; `aggregateCounts.attachments` must equal the
+attachment inventory length; and a containing batch start may not exceed its
+checkpoint sequence. Journal chain/checkpoint sequences are also bounded by the
+Leaf 2 signed-int64 ceiling, equal-sequence hashes must agree, and sequence zero
+must use the manifest genesis hash. The envelope `manifestSha256` is computed
+over the parser's canonical field-ordered manifest JSON and must match both the
+supplied parsed manifest and the decrypt receipt; a present containing batch
+must start at sequence one or later. PostgreSQL dump size must be non-zero;
+chain/checkpoint hashes must differ at different sequences; and
+`latestExportBatchDigest` is null only at genesis and required thereafter.
+READY attachment inventories also require a non-zero archive size, and positive
+journal hashes may not reuse the genesis hash.
+Recursive untrusted-key traversal is capped at a bounded depth and fails with the
+domain error before the JavaScript call stack can be exhausted.
+For non-genesis checkpoints, the containing batch digest must equal the latest
+export batch digest, and the declared document count must cover distinct READY
+attachment document references.
+All decimal strings are also bounded before any `BigInt` conversion, preventing
+oversized numeric inputs from consuming unbounded parser resources.
+Aggregate counts also preserve the required organization → workspace → document
+parent chain and each count is capped at PostgreSQL's signed `bigint`/int64 limit.
+`assertRecoveryCompatibility()` also requires independent evidence to accept the
+recovery-pointer record together with the derived migration/schema contract
+digest, with the full pointer projection (image, release evidence, artifact
+set, and accepted contract fields) available to that verifier; the manifest
+cannot self-attest that tuple. The public readiness
+contract marks Phase B as requiring Phase-A acceptance and the exact Phase-A
+envelope through `requiresPhaseAAcceptance` and the
+`phase-b-reuses-phase-a-envelope` invariant.
+Snapshot runtime source commits are full, non-zero 40-character Git object IDs
+so runtime evidence cannot use an abbreviated or null-looking revision.
+The exhaustive attachment inventory is not capped at the old 100,000-entry
+parser limit; its cardinality must equal the authenticated aggregate count, and
+all non-null attachment document references (including pending lifecycle rows)
+must be covered by the document count. The same capacity policy applies to
+extracted READY archive receipts, and every inventory row must carry its required
+document ID. Attachment byte sizes are capped at the PostgreSQL/Prisma signed
+32-bit `Int` ceiling for both manifest rows and archive receipts.
+Provider generations also reject null-like and moving aliases (`latest`,
+`current`, `unversioned`, and equivalent sentinels) before receipt matching.
+
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
 Secure cookies, canonical origin, disabled development login, production seed
@@ -198,6 +300,34 @@ prohibition, token/profile-media zero persistence, and canonical v1 password-has
 readability. A rollback image that cannot parse an existing v1 row is ineligible, and
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
+
+### Main deploy: current SSH checkout/native-build path
+
+The current `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
+every `main` push. It uses `appleboy/ssh-action`, fetches and checks out the exact
+`github.sha` on the OCI host, then runs the native Docker Compose build,
+migration, RAG index, service replacement, and health checks documented below.
+There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
+the broker-only exact-digest submission path is not active production behavior.
+
+Target broker-only inputs (not active yet):
+
+```text
+APP_IMAGE_DIGEST=<protected exact app digest>
+POSTGRES_IMAGE_DIGEST=<protected exact PostgreSQL digest>
+HOST_BUNDLE_DIGEST=<protected exact host-bundle digest>
+STORAGE_INIT_IMAGE_DIGEST=<protected exact storage-init digest>
+RELEASE_ENVELOPE=<protected signed broker envelope>
+SENTRY_RELEASE=${{ github.sha }}
+NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
+DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
+```
+
+The future broker-only path requires the exact digests above,
+`MUNJIB_PRIVATE_RUNTIME_BROKER_READY=true`, the restricted deploy channel, and
+the signed envelope. Only after the workflow implements and verifies that gate
+may operators claim that the host no longer performs checkout or source builds.
 
 ### Leaf 2 dependency gate (preparatory)
 
@@ -215,29 +345,24 @@ the exact private-runtime gate and broker installation are independently accepte
 (Issues #184 and #185). This prevents a preparatory TypeScript seam from being
 mistaken for a production authorization proof.
 
-### main deploy
+Before a restricted operator signs or installs a bundle, CI can build and verify
+the public-safe package from the fixed layout. These commands do not sign,
+install, enroll the trust key, or mutate a host:
 
-`deploy` job은 `ci`가 성공한 `main` push에서만 실행된다. `appleboy/ssh-action@v1.2.0`으로 production server에 접속하고, OCI host에서 server checkout의 최신 source를 native Docker build한 뒤 compose project를 갱신한다.
-
-Issue #96에서는 OCI instance가 `linux/arm64/v8` platform으로 GHCR image를 pull한다는 점을 반영해 Buildx/QEMU multi-platform publish를 시도했다. 그러나 follow-up main run `27017475831`의 `Publish image` job이 QEMU 기반 runtime image build/push에서 장시간 지연되어 취소되었고, Issue #98에서 deploy path를 GHCR publish/pull 대신 OCI host native build로 바꾸었다. 현재 workflow에는 `publish` job, GHCR login, `docker/build-push-action`, `docker/setup-qemu-action`, `packages: write` permission이 없다.
-
-Deploy job env:
-
-```text
-WEB_IMAGE=munjib-web:latest
-DEPLOY_SHA=${{ github.sha }}
-SENTRY_RELEASE=${{ github.sha }}
-NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
-DEPLOY_ENV_FILE=/etc/munjib/env
-DEPLOY_HEALTHCHECK_URL=http://127.0.0.1:3000
-DEPLOY_HEALTHCHECK_HOST=munjib.andrewchoi.link
-DEPLOY_REPOSITORY=${{ github.repository }}
-DEPLOY_GIT_TOKEN=${{ github.token }}
-DEPLOY_NEXTAUTH_SECRET=<GitHub protected secret>
-DEPLOY_GOOGLE_CLIENT_SECRET=<GitHub protected secret when Google overlay is enabled>
+```bash
+pnpm delivery:build-bundle -- dist/delivery/linux-arm64 .artifacts/delivery-substrate-v1
+pnpm delivery:verify-bundle -- .artifacts/delivery-substrate-v1
 ```
 
-Browser SDK 값은 Next.js build time에 bundle된다. 현재 deploy는 OCI host에서 image를 build하므로 host-local `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*` 값과 deploy job이 전달하는 `NEXT_PUBLIC_SENTRY_RELEASE`가 compose build args로 들어가야 한다. 초기 production 관측 기간에는 trace sample rate를 일시적으로 `1.0`까지 올릴 수 있지만, Issue #135의 저비용 steady state는 낮은 trace sample rate, full session Replay `0`, 필요 시 error-only Replay만 켜는 구성을 기본으로 본다.
+The `ci` job runs the same contract on GitHub-hosted Linux: a SHA-pinned
+`actions/setup-go` (`v5.5.0`) provisions Go `1.22.12`, the three fixed Go
+programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
+`GOARCH=arm64`, and the builder/verifier run before the CI summary receives
+only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
+kept in the runner's temporary directory; no binary upload, signing key,
+trust-key enrollment, SSH mutation, or host install occurs. This step is part
+of `ci` so a failed artifact contract blocks a main deploy, while the current
+SSH checkout/native-build deploy job remains unchanged.
 
 Required GitHub secrets:
 
@@ -255,7 +380,36 @@ Current OCI production domain:
 https://munjib.andrewchoi.link
 ```
 
-Remote deploy 순서:
+Target broker-only submit (not active; host install is still an external gate):
+
+```bash
+test -n "$APP_IMAGE_DIGEST"
+test -n "$POSTGRES_IMAGE_DIGEST"
+test -n "$HOST_BUNDLE_DIGEST"
+test -n "$STORAGE_INIT_IMAGE_DIGEST"
+test -n "$RELEASE_ENVELOPE"
+printf '%s' "$APP_IMAGE_DIGEST" | grep -Eq '^ghcr.io/dschoi30/munjib@sha256:[a-f0-9]{64}$'
+printf '%s' "$POSTGRES_IMAGE_DIGEST" | grep -Eq '^pgvector/pgvector@sha256:[a-f0-9]{64}$'
+printf '%s' "$HOST_BUNDLE_DIGEST" | grep -Eq '^sha256:[a-f0-9]{64}$'
+printf '%s' "$STORAGE_INIT_IMAGE_DIGEST" | grep -Eq '^.+@sha256:[a-f0-9]{64}$'
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$APP_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$POSTGRES_IMAGE_DIGEST" >/dev/null
+printf '%s' "$RELEASE_ENVELOPE" | grep -F -- "$HOST_BUNDLE_DIGEST" >/dev/null
+test -S /run/munjib/release-broker.sock
+test -r /etc/munjib/security/broker-operations-v1.json
+printf '%s' "$RELEASE_ENVELOPE" | /usr/local/libexec/munjib-release-submit
+```
+
+The submit account only forwards a bounded frame to the fixed Unix socket; the
+root broker independently revalidates the envelope and evidence before any
+system mutation. A broker socket, signed envelope, or root trust key is not
+present in this repository/host context, so this flow is documented but cannot
+be claimed as production-ready.
+
+<details>
+<summary>Current checkout/native-build flow implemented by ci-cd.yml</summary>
+
+Current deploy sequence:
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -337,6 +491,8 @@ NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
 NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
 ```
 
+</details>
+
 ### Docker runtime
 
 Production compose는 `postgres`, `storage-init`, `web`, `tools` service를 가진다. runner image는 non-root web/auth-preflight가 Corepack의 기본 `/.cache`에 쓰지 않도록 `HOME=/tmp`와 `COREPACK_HOME=/tmp/.cache/node/corepack`을 사용한다. 이 cache에는 애플리케이션 secret이 들어가지 않으며, production prune 뒤에도 `pnpm start`와 isolated preflight가 같은 UID로 실행된다.
@@ -366,6 +522,10 @@ Dockerfile stages:
 - `tools`: maintenance command image.
 - `runner`: production runtime image.
 - `dev`: local development image.
+
+### Release signer and production delivery gate
+
+Production deploy의 artifact provenance와 host attestation은 [[Release Signer And Vault Workflow]]에서 관리한다. 초기에는 현재 Munjib OCI VM의 Docker Compose에 Vault Community를 함께 둘 수 있지만, 같은 호스트 경계이므로 독립 signer attestation을 충족하지 않는 임시 gate다. `vault server -dev`와 local Mac Docker는 production trust root가 아니다. Issue #208은 digest-pinned Vault 2.0.3, loopback-only Compose, `munjib-release-sign`, raw Ed25519 public-key normalization과 positive/tamper/expiry/generation/wrong-key local integration을 `pnpm vault:lab:test`로 구현했다. 이 command는 general CI/test에 암묵적으로 포함되지 않는 explicit Docker integration gate다. Phase A local evidence만 완료되었으며 production signed bundle, root-bootstrap key enrollment, host `VERIFY_ONLY_OK`, current/rollback/recovery evidence와 Issue #185 독립 attestation은 계속 미완료다.
 
 ## Monitoring
 

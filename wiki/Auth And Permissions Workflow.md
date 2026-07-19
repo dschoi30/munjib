@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 69
+updated: 2026-07-20
+source_count: 101
 tags:
   - munjib
   - auth
@@ -93,6 +93,77 @@ workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
 
+## Active-resource authorization boundary
+
+Issue #159 reserves one shared resolver/lock boundary for future archive,
+document-access, attachment, comment, link, history, AI, and retention callers.
+`lib/authorization/active-resources.ts` delegates document ACL lookup to the
+version-zero Leaf 6 slot and refuses normal authorization until the canonical
+database-time `resolveActiveWorkspaceMembership(workspaceId, userId)` authority
+is installed. It intentionally does not query `WorkspaceMember` as a fallback,
+so a missing authority cannot enumerate archived resources or create a second
+source of truth. `lib/authorization/active-resource-locks.ts` provides the
+schema-safe actor advisory lock and deterministic workspace, sorted-folder, and
+document row locks; it does not introduce archive provenance columns or mutation
+callers.
+
+The Leaf 14 production purge seam is likewise version zero and fail closed. Both
+logical and physical destructive authorization raise an integration-not-installed
+error until independent journal, restore, and provider evidence is composed by
+its own owner. The reserved Leaf 6/Leaf 14 paths and their hashes live in
+`deploy/security/protected-artifact-owners.json`; this branch changes no schema,
+archive state, purge rows, or production behavior.
+
+Issue #160 adds the dependency-safe Leaf 6 decision seam without activating a
+new authority. `lib/authorization/document-acl-entrypoint.ts` must resolve the
+active document resource before loading Leaf 6 access data, and
+`lib/authorization/document-acl.ts` rejects missing, mismatched, or
+structurally forged authority proofs. The proof carries a module-private
+runtime brand, so a legacy `WorkspaceMember` or `Permission` query cannot mint
+document authority. Explicit document grants are capped by the active
+workspace role (`VIEWER`→`READ`, `EDITOR`→`WRITE`, `ADMIN`/`OWNER`→`MANAGE`),
+preventing a higher explicit row from elevating a lower workspace role. The
+resolver and Leaf 6 slot remain fail closed until the canonical DB-time
+active-membership authority and its ACL implementation are installed.
+The server entrypoint opens one transaction and requires the active-document
+resolver to issue its proof from locked authority rows before Leaf 6 data is
+read through the same transaction, preventing role/archive TOCTOU decisions.
+
+### Leaf 2 durable auth-state and journal handoff (Issue #156)
+
+The reviewed Leaf 2 implementation slice defines a fail-closed durable-auth
+boundary in `lib/auth/durable-auth-state.ts`. Callers provide only an immutable
+user id and an authoritative database interface; the helper reloads
+`authDisabledAt` and `sessionVersion` by `User.id`, rejects email-shaped or
+malformed identities before querying, and treats a missing column, missing user,
+malformed version, or database error as an unavailable/denied state. The
+injectable `createDurableAuthStateHook()` factory exposes this resolver to a
+future Leaf 2 hook without changing the protected version-0 slot while the
+database migration and runtime capability remain pending.
+
+The hook contract also carries the issued session version. On initial JWT
+issuance, an activated hook returns the DB-owned version for a canonical decimal
+JWT claim; subsequent JWT and session checks must present that claim and match
+the current durable value. Missing or stale claims fail closed, so incrementing
+`sessionVersion` revokes previously issued sessions once Leaf 2 is activated.
+
+The same slice defines the language-independent `lib/security/journal.ts`
+contract. It closes the twenty-six deny-only event kinds to their allowed
+subject types and `{stateCode, stateVersion: 1}` payload, preserves BIGINT
+sequence values as canonical decimal strings, rejects unknown keys/noncanonical
+UTC microseconds/invalid hashes or UUIDs, derives retry-stable UUIDv5 operation
+ids from a length-delimited tuple, and mirrors the PostgreSQL binary hash
+preimage. `appendSecurityJournalEvent()` only calls the fixed
+`public.security_journal_append(...)` function through a parameterized query;
+its single returned sequence must fit the positive PostgreSQL signed-BIGINT
+range. It does not create tables, roles, extensions, or perform a production mutation.
+
+This is a pre-migration handoff only. The default auth hook remains unchanged,
+the `User` columns and journal tables are not present on `origin/main`, and
+Trial disable, credential/session cleanup, journal genesis, support access, and
+production migration stay gated on the deployed Leaf 1/13B proofs and the
+privileged broker. Evidence is tracked in Issue #156's implementation branch.
+
 ## Versioned and bounded password verification
 
 `User.passwordHash` accepts only the reviewed v1 envelope
@@ -127,6 +198,23 @@ user/request may appear in a session. Password verification uses
 one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope before
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
+
+### Invite token primitive boundary (Issue #161)
+
+The dependency-safe Leaf 7 slice in `lib/auth/invite-token.ts` generates
+independent 256-bit invitation and attempt secrets, encodes them as canonical
+unpadded base64url, and hashes each with a distinct domain-separated SHA-256
+context before durable persistence. The attempt cookie value is only the opaque
+secret; cookie names and attributes are intentionally outside this module.
+`parseInvitationExchangeBody()` accepts exactly one bounded `bearer` field and
+returns an immutable object, rejecting workspace ids, revisions, and unknown
+metadata. Validation errors are generic and never echo credentials. This is a
+pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
+activation, or production behavior. The exchange parser checks `Reflect.ownKeys`
+so non-enumerable and symbol own metadata cannot bypass the exact shape. Atomic
+invitation consumption, revision
+invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
+follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.
 
 ### Leaf 1 downstream handoff and rollback contract
 
@@ -355,6 +443,12 @@ Seed reruns preserve existing launch account hashes and email verification times
 Issue #158의 Leaf 4는 Auth.js identity DTO와 JWT/session callback에서 provider·adapter가 제공한 ambient media를 출력하지 않는 경계를 유지한다. `lib/auth/downstream/leaf4.ts`의 `leaf4AuthUserOutput()`은 `image: null`인 identity-only shape를 만들고 `leaf4SessionMediaHook()`은 Auth.js `picture`/`image` claims를 제거한다. 이 훅은 Leaf 1의 downstream contract와 합성되며, 저장 attachment가 session에 투영되는 경우에도 `getReadableAttachment()` ACL 검증과 canonical internal path sanitizer를 통과한 값만 허용한다.
 
 Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI answer가 외부 image URL을 자동 fetch/render하지 않는지 실제 Next/Node 경로에서 확인한다. test-only provider transport와 egress calibration은 명시적 test/development gate 뒤에만 열리고 production/staging에서는 거부된다.
+
+## Issue #162 bounded auth guard runtime slice
+
+`lib/auth/abuse/runtime.ts`는 아직 라우트에 연결하지 않은 Leaf 8 소유 경계다. staging/production에서 `MUNJIB_AUTH_GUARD_SECRET_FILE=/run/secrets/munjib_auth_guard_secret`만 허용하고 `readStrictSecretFile()`의 파일 권한·소유자·내용 검증을 통과한 경우에만 runtime snapshot을 만든다. 직접 secret 환경값, 누락/실패한 파일, 비 HTTPS canonical origin은 `AUTH_GUARD_UNAVAILABLE`로 분류되며 secret 값은 오류·로그·store 입력에 포함하지 않는다.
+
+`evaluateAuthOrigin()`과 `evaluateFetchMetadata()`는 unsafe method의 canonical Origin, `Sec-Fetch-Site`, 선택적 mode/dest를 각각 bounded header로 검사하고, 누락·교차 사이트·형식 오류를 stable deny code로 반환한다. `authorizeAuthRequest()`는 raw identifier나 process-local map을 만들지 않고 opaque bucket을 외부 durable store에 위임하며 store 오류와 알 수 없는 결과를 fail-closed 처리한다. `deriveAuthGuardBucket()`은 runtime secret으로 scope/value를 domain-separated HMAC digest로 바꿔 persisted key가 원문이 되지 않도록 한다. 이 slice는 Prisma migration, session registry, Leaf 1/2 protected path, route activation, host mutation을 포함하지 않는다.
 
 ## 근거
 

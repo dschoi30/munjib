@@ -1,0 +1,147 @@
+{
+  "format": "munjib-edge-bindings-v1",
+  "version": 1,
+  "state": "PREPARATORY",
+  "activation": "DISABLED",
+  "owner": "edge-header-continuous-probes",
+  "canonicalOrigin": "https://munjib.andrewchoi.link",
+  "origin": {
+    "transport": "http-loopback",
+    "address": "127.0.0.1:3000",
+    "hostHeader": "munjib.andrewchoi.link",
+    "publiclyRoutable": false
+  },
+  "requiredHeaders": [
+    {
+      "name": "strict-transport-security",
+      "value": "max-age=31536000; includeSubDomains"
+    },
+    { "name": "x-content-type-options", "value": "nosniff" },
+    { "name": "x-frame-options", "value": "DENY" },
+    {
+      "name": "referrer-policy",
+      "value": "strict-origin-when-cross-origin"
+    },
+    {
+      "name": "permissions-policy",
+      "value": "camera=(), microphone=(), geolocation=()"
+    }
+  ],
+  "cachePolicy": {
+    "noStorePathPrefixes": ["/api/", "/login", "/workspaces/"],
+    "probeResponse": "no-store"
+  },
+  "probes": [
+    {
+      "id": "public-https",
+      "transport": "https",
+      "method": "GET",
+      "path": "/api/auth/providers",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "public-login",
+      "transport": "https",
+      "method": "GET",
+      "path": "/login",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "public-workspace",
+      "transport": "https",
+      "method": "GET",
+      "path": "/workspaces/probe",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "origin-loopback",
+      "transport": "http-loopback",
+      "method": "GET",
+      "address": "127.0.0.1:3000",
+      "path": "/api/auth/providers",
+      "host": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 5,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "unknown-host-rejection",
+      "transport": "https",
+      "method": "GET",
+      "path": "/api/auth/providers",
+      "host": "unknown.invalid",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatusClass": "4xx",
+      "cadenceSeconds": 300,
+      "timeoutSeconds": 10,
+      "failureThreshold": 1,
+      "bodyPolicy": "discard"
+    }
+  ],
+  "telemetry": {
+    "allowedFields": ["probeId", "status", "latencyMs", "observedAt", "outcome"],
+    "redactedFields": [
+      "authorization",
+      "cookie",
+      "set-cookie",
+      "query",
+      "requestBody",
+      "responseBody",
+      "clientIp"
+    ],
+    "retainResponseBody": false
+  },
+  "activationGates": {
+    "dependencies": [3, 4, 7, 8, 9, 10, 11, "13B"],
+    "requiredEvidence": [
+      "edge-owner-approval",
+      "tls-certificate-and-dns-binding",
+      "origin-loopback-binding",
+      "header-conformance-probe",
+      "continuous-probe-alert-routing",
+      "immutable-runtime-broker-attestation"
+    ],
+    "productionMutationAllowed": false
+  }
+}
