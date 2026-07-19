@@ -168,6 +168,9 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, password: "no" })).toThrow(/sensitive|unknown/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, nested: { apiToken: "no" } } })).toThrow(/sensitive|unknown/i);
     expect(() => assertNoSensitiveKeys({ relativePath: "safe/file", nested: { providerSecret: "no" } })).toThrow(/sensitive/i);
+    let deeplyNested: unknown = {};
+    for (let index = 0; index < 70; index += 1) deeplyNested = { nested: deeplyNested };
+    expect(() => assertNoSensitiveKeys(deeplyNested)).toThrow(/depth/i);
   });
 
   test("requires own properties and rejects prototype-provided manifest fields", () => {
