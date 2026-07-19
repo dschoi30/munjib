@@ -50,6 +50,11 @@ helper into thread load, follow-up context, memory refresh, finalization, and
 citation serialization, with revocation-race coverage. No direct membership
 fallback or citation-only inference is permitted.
 
+For streamed assistant responses, authorization must be established before any
+token is emitted. The implementation must either reauthorize each stream before
+emission or buffer tokens until the final recheck succeeds; a finalization-only
+check after `onToken` is insufficient because a source can be revoked mid-stream.
+
 The eventual thread DTO must not add a hidden-message count, denied-source
 count, or other aggregate that lets a caller enumerate hidden history. This
 slice only defines the per-row tombstone shape; list-level filtering/count

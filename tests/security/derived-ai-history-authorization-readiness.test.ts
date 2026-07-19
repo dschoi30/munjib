@@ -31,6 +31,7 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("memory refresh");
     expect(runbook).toContain("finalization");
     expect(runbook).toContain("citation serialization");
+    expect(runbook).toMatch(/before any\s+token is emitted|buffer tokens until the final recheck/i);
   });
 
   it("requires non-enumerating whole-turn redaction", () => {

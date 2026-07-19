@@ -26,6 +26,12 @@ links:
 - Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193.
 
+## 2026-07-20T06:52:00+09:00 - Issue #163 streaming authorization review hardening
+
+- Result: The readiness contract now requires authorization before any streamed token is emitted, or buffering until the final recheck succeeds; a finalization-only check after `onToken` is explicitly insufficient for mid-stream revocation.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: 5 focused readiness tests and TypeScript compilation.
+
 ## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
 
 - Result: Recorded the Leaf 7 dependency-safe invitation bearer and attempt-secret boundary: canonical 256-bit base64url secrets, domain-separated hash-only persistence, constant-time hash comparison, exact exchange-body parsing, immutable output, and no route/database/URL/logging capabilities.
