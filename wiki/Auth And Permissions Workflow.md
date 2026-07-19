@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 101
+source_count: 102
 tags:
   - munjib
   - auth
@@ -210,10 +210,13 @@ no invitation schema, attempt cookie, link grant, route, middleware, OAuth
 behavior, migration, or production mutation.
 
 The future gate accepts only a provider-verified Google identity with one active
-workspace invitation. A raw invitation bearer must never enter a URL, cookie,
-database, server component prop, history entry, log, telemetry payload, or OAuth
-callback; only a short-lived opaque attempt and its domain-separated hash may
-cross the exchange boundary. Invitation consumption, role checks, invalidation,
+workspace invitation. A raw invitation bearer may exist only in the client-side
+URL fragment used to begin the exchange and in one guarded, bounded exchange
+request body; the fragment must be scrubbed before history/navigation persists
+it. It must not enter any other request or server-visible URL, cookie, database,
+server component prop, history entry, log, telemetry payload, or OAuth callback;
+the post-exchange attempt remains opaque and its domain-separated hash is the
+only durable lookup value. Invitation consumption, role checks, invalidation,
 and the deny-only journal transition must be atomic, and invitation roles can
 never grant `OWNER`. Matching an invitation or email is not proof of a
 password account, so unauthenticated OAuth collisions must not perform blind

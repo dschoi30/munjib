@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 357
+source_count: 358
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:12:00+09:00 - Issue #161 workflow bearer transport alignment
+
+- Result: Auth And Permissions Workflow now matches the guarded Leaf 7 contract: a raw bearer may appear in the client fragment and one bounded exchange body, then only the opaque attempt/hash crosses durable boundaries.
+- Source evidence: `wiki/Auth And Permissions Workflow.md`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite signup readiness test and wiki manifest/lint checks.
 
 ## 2026-07-20T07:10:00+09:00 - Issue #161 guarded exchange body boundary
 
