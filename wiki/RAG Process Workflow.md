@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-07-20
-source_count: 117
+source_count: 118
 tags:
   - munjib
   - workflow
@@ -126,7 +126,8 @@ membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 �
 
 Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
 source-backed/source-free lineage를 명시하고, thread load, follow-up
-context, memory refresh, finalization, citation serialization 각각에서
+context, memory refresh, finalization, citation serialization, reset-response
+serialization 각각에서
 현재 canonical actor/workspace/document authority를 재확인해야 한다. Streamed
 assistant response는 각 token 노출 직전에 재인가하거나 전체 response를 최종
 authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-only 검사는
@@ -141,7 +142,10 @@ assistant row를 list-level에서 필터링하거나 hidden row 수·위치를 �
 않는 단일 aggregate redaction으로 표현해야 하며, hidden row마다 tombstone을
 하나씩 반환해서는 안 된다. Persisted `USER`+`ASSISTANT` pair는 하나의
 derived turn이므로 assistant access가 거부되면 paired user row도 함께
-숨겨 unmatched question으로 hidden turn의 위치를 드러내지 않아야 한다.
+숨겨 unmatched question으로 hidden turn의 위치를 드러내지 않아야 한다. 이
+whole-turn suppression은 durable turn-correlation key와 turn-granular
+pagination을 전제로 하며, `threadId`와 개별 message pagination만으로
+동시 전송·legacy orphan·page boundary에서 pair를 추정해서는 안 된다.
 Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
 immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
 migration, route, purge, production activation을 시작하지 않는다.

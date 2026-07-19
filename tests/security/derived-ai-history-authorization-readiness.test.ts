@@ -33,6 +33,7 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("memory refresh");
     expect(runbook).toContain("finalization");
     expect(runbook).toContain("citation serialization");
+    expect(runbook).toContain("reset-response serialization");
     expect(runbook).toMatch(/reauthorize immediately before\s+each token/i);
     expect(runbook).toMatch(/buffer the entire response\s+until a final authority recheck/i);
   });
@@ -46,6 +47,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toMatch(/never emit one tombstone per hidden turn/i);
     expect(runbook).toMatch(/suppress each denied `USER`\+`ASSISTANT` turn/i);
     expect(runbook).toMatch(/whole\s+pair/i);
+    expect(runbook).toMatch(/durable turn-correlation\s+key/i);
+    expect(runbook).toMatch(/turn-granular pagination/i);
   });
 
   it("keeps destructive data operations outside this leaf", () => {

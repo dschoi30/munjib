@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 357
+source_count: 358
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:14:00+09:00 - Issue #163 reset and turn-correlation boundaries
+
+- Result: Derived AI history readiness now includes reset-response serialization and requires a durable turn key with turn-granular pagination before whole-turn suppression can be trusted across concurrent sends, orphan rows, or page boundaries.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
 
 ## 2026-07-20T07:10:00+09:00 - Issue #163 future whole-turn requirement
 
