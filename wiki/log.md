@@ -19,6 +19,16 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:45:00+09:00 - Issue #156 capability digest type hardening
+
+- Result: Leaf 2 dependency verification now rejects non-string capability
+  digests before regular-expression evaluation, preventing arrays or other
+  runtime values from being coerced into a branded string proof.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`,
+  `tests/security/leaf-dependencies.test.ts`, PR #187 review thread.
+- Verification: 9 focused Leaf 2 tests and TypeScript compilation.
+
 ## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
 
 - Result: Recorded the Leaf 7 dependency-safe invitation bearer and attempt-secret boundary: canonical 256-bit base64url secrets, domain-separated hash-only persistence, constant-time hash comparison, exact exchange-body parsing, immutable output, and no route/database/URL/logging capabilities.

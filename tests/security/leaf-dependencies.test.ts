@@ -130,4 +130,16 @@ describe("Leaf 2 dependencies", () => {
       } as never),
     ).toThrow("LEAF13_CAPABILITY_REQUIRED");
   });
+
+  it("rejects non-string capability digests before regex coercion", () => {
+    expect(() =>
+      verifyLeaf2Dependencies({
+        ...validInput,
+        leaf13: {
+          ...validInput.leaf13,
+          databaseRoleCapabilitySha256: ["b".repeat(64)],
+        },
+      } as never),
+    ).toThrow("LEAF13_CAPABILITY_REQUIRED");
+  });
 });

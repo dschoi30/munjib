@@ -59,7 +59,10 @@ export function verifyLeaf2Dependencies(
     throw new Error("LEAF2_ENVIRONMENT_INVALID");
   }
 
-  if (!SOURCE_DIGEST_PATTERN.test(input.expectedSourceDigest)) {
+  if (
+    typeof input.expectedSourceDigest !== "string" ||
+    !SOURCE_DIGEST_PATTERN.test(input.expectedSourceDigest)
+  ) {
     throw new Error("LEAF2_SOURCE_DIGEST_INVALID");
   }
 
@@ -83,6 +86,7 @@ export function verifyLeaf2Dependencies(
     input.leaf13.immutableDelivery !== true ||
     input.leaf13.rollbackDrillPassed !== true ||
     input.leaf13.databaseRoleSeparation !== true ||
+    typeof input.leaf13.databaseRoleCapabilitySha256 !== "string" ||
     !CAPABILITY_DIGEST_PATTERN.test(input.leaf13.databaseRoleCapabilitySha256)
   ) {
     throw new Error("LEAF13_CAPABILITY_REQUIRED");
