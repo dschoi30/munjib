@@ -160,6 +160,28 @@ describe("edge bindings contract evaluator", () => {
     expect(accepted.reasons).toContain("STATUS_CLASS_MISMATCH:4xx");
   });
 
+  it("rejects reduced activation evidence and malformed timestamps", () => {
+    const raw = JSON.parse(contractJson) as Record<string, any>;
+    raw.activationGates.requiredEvidence = ["edge-owner-approval"];
+    expect(() => parseEdgeBindingsContract(raw)).toThrow("EDGE_BINDINGS_CONFIG_INVALID");
+
+    const contract = parseEdgeBindingsContractJson(contractJson);
+    const base = {
+      status: 200,
+      latencyMs: 1,
+      headers: { "cache-control": "no-store" },
+      request: requestFor("origin-loopback"),
+    };
+    expect(evaluateEdgeProbe(contract, "origin-loopback", {
+      ...base,
+      observedAt: "2026-02-31T00:00:00.000Z",
+    }).reasons).toContain("OBSERVED_AT_INVALID");
+    expect(evaluateEdgeProbe(contract, "origin-loopback", {
+      ...base,
+      observedAt: "0",
+    }).reasons).toContain("OBSERVED_AT_INVALID");
+  });
+
   it("emits only redacted, allowlisted telemetry fields", () => {
     const contract = parseEdgeBindingsContractJson(contractJson);
     const evaluation = evaluateEdgeProbe(contract, "public-https", {

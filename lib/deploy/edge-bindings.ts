@@ -27,6 +27,14 @@ const REQUIRED_TELEMETRY_FIELDS = [
   "outcome",
 ] as const;
 const REQUIRED_DEPENDENCIES = [3, 4, 7, 8, 9, 10, 11, "13B"] as const;
+const REQUIRED_EVIDENCE = [
+  "edge-owner-approval",
+  "tls-certificate-and-dns-binding",
+  "origin-loopback-binding",
+  "header-conformance-probe",
+  "continuous-probe-alert-routing",
+  "immutable-runtime-broker-attestation",
+] as const;
 
 export type EdgeHeaderContract = {
   name: string;
@@ -403,11 +411,10 @@ export function parseEdgeBindingsContract(value: unknown): Readonly<EdgeBindings
     REQUIRED_DEPENDENCIES,
     "activationGates.dependencies",
   );
-  if (!Array.isArray(activationGates.requiredEvidence) || activationGates.requiredEvidence.length === 0) {
-    return fail("activationGates.requiredEvidence must be non-empty");
-  }
-  const requiredEvidence = activationGates.requiredEvidence.map((entry, index) =>
-    requireString(entry, `activationGates.requiredEvidence[${index}]`),
+  const requiredEvidence = requireExactArray(
+    activationGates.requiredEvidence,
+    REQUIRED_EVIDENCE,
+    "activationGates.requiredEvidence",
   );
   requireBoolean(
     activationGates.productionMutationAllowed,
@@ -517,7 +524,7 @@ export function evaluateEdgeProbe(
   }
   if (!Number.isInteger(status) || status < 100 || status > 599) reasons.push("STATUS_INVALID");
   if (!Number.isFinite(latencyMs) || latencyMs < 0) reasons.push("LATENCY_INVALID");
-  if (!Number.isFinite(Date.parse(observedAt))) reasons.push("OBSERVED_AT_INVALID");
+  if (!isStrictObservedAt(observedAt)) reasons.push("OBSERVED_AT_INVALID");
   if (probe.expectedStatus !== undefined && status !== probe.expectedStatus) {
     reasons.push(`STATUS_MISMATCH:${probe.expectedStatus}`);
   }
@@ -578,6 +585,12 @@ export function evaluateEdgeProbe(
     observedAt,
     reasons,
   };
+}
+
+function isStrictObservedAt(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) return false;
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 export function redactProbeTelemetry(
