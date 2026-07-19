@@ -1,8 +1,7 @@
 # Edge bindings and continuous probes readiness
 
-Issue #166 is a dependency-gated, public-safe handoff. The repository does not
-activate Caddy, DNS, TLS, firewall, or host monitoring from this branch. The
-machine-readable contract is `deploy/security/edge-bindings-v1.json`.
+Issue #166 is a dependency-gated, public-safe handoff. The machine-readable
+contract is `deploy/security/edge-bindings-v1.json`.
 
 ## Current state
 
@@ -11,8 +10,10 @@ machine-readable contract is `deploy/security/edge-bindings-v1.json`.
 - The contract is `PREPARATORY` with `activation: DISABLED`. It is an
   acceptance checklist for the eventual edge owner, not a production command
   or a claim that the headers/probes are active.
-- The public probe uses `GET /api/auth/providers`, which is already a bounded,
-  unauthenticated Auth.js metadata route. It records status and latency only;
+- The public probes use `GET /api/auth/providers`, `GET /login`, and
+  `GET /workspaces/probe` (the existing workspace dynamic route renders its
+  credential-free login shell) so every declared no-store route class has
+  direct edge evidence. They record status and latency only;
   response bodies, cookies, authorization headers, query strings, request
   bodies, and client IPs are never retained.
 - The loopback probe verifies the origin independently of the public edge. The
@@ -41,9 +42,20 @@ silently add one at the edge.
 
 The public HTTPS and loopback probes run every 60 seconds with a 10-second and
 5-second timeout respectively. Three consecutive failures open the alert. The
-unknown-host negative probe runs every five minutes and must remain a 4xx. Probe
-requests use no cookies or credentials and discard response bodies. Alert
+unknown-host negative probe runs every five minutes and must remain a 4xx.
+Probe requests use no cookies or credentials and discard response bodies. Alert
 payloads contain only `probeId`, status, latency, timestamp, and outcome.
+The evaluator also requires normalized request metadata (transport, canonical
+connect address, Host header, exact path, and zero redirects) to match the
+configured probe. HTTPS observations must prove certificate verification and
+use the canonical TLS server name; response header names must match the HTTP
+field-name token grammar with no whitespace or invalid characters, and field
+values must not contain prohibited control characters. Cache-Control parsing
+respects quoted commas and only accepts a top-level `no-store` directive.
+The unknown-host negative probe connects to `munjib.andrewchoi.link` and only
+overrides the Host header to `unknown.invalid`; a DNS/TLS failure cannot count
+as a successful 4xx rejection. Malformed headers, timestamps, paths, or request
+metadata fail closed.
 
 ## Activation gates
 
@@ -51,7 +63,7 @@ Do not edit `/etc/caddy/Caddyfile`, DNS, TLS state, firewall rules, or host
 monitoring until all of the following are attached to the same release
 evidence:
 
-1. Leaves 3, 4, 7, 8, 9, 10, 11v2, and 13B are merged and deployed, with their
+1. Leaves 3, 4, 7, 8, 9, 10, 11, and 13B are merged and deployed, with their
    protected artifact owners and database/runtime contracts attested.
 2. The edge owner has recorded certificate/DNS ownership and the exact
    loopback upstream binding; no alternate public origin is accepted.

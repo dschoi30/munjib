@@ -21,7 +21,7 @@ describe("Issue #166 edge bindings readiness contract", () => {
       },
     });
     expect(contract.activationGates.productionMutationAllowed).toBe(false);
-    expect(contract.activationGates.dependencies).toEqual([3, 4, 7, 8, 9, 10, "11v2", "13B"]);
+    expect(contract.activationGates.dependencies).toEqual([3, 4, 7, 8, 9, 10, 11, "13B"]);
   });
 
   it("pins the required security headers and no-store boundary", () => {
@@ -79,10 +79,10 @@ describe("Issue #166 edge bindings readiness contract", () => {
     const runbook = read("docs/runbooks/edge-bindings-readiness.md");
 
     expect(runbook).toContain("activation: DISABLED");
-    expect(runbook).toContain("activate Caddy, DNS, TLS, firewall, or host monitoring");
+    expect(runbook).toContain("Do not edit `/etc/caddy/Caddyfile`, DNS, TLS state, firewall rules, or host");
     expect(runbook).toContain("/api/auth/providers");
     expect(runbook).toContain("response bodies, cookies, authorization headers");
-    expect(runbook).toContain("Leaves 3, 4, 7, 8, 9, 10, 11v2, and 13B");
+    expect(runbook).toContain("Leaves 3, 4, 7, 8, 9, 10, 11, and 13B");
     expect(runbook).toContain("13A/13B immutable broker evidence");
   });
 });

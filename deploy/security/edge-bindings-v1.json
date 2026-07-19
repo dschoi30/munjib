@@ -38,6 +38,47 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "public-login",
+      "transport": "https",
+      "method": "GET",
+      "path": "/login",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
+      "expectedStatus": 200,
+      "requiredHeaders": [
+        "strict-transport-security",
+        "x-content-type-options",
+        "x-frame-options",
+        "referrer-policy",
+        "permissions-policy"
+      ],
+      "cadenceSeconds": 60,
+      "timeoutSeconds": 10,
+      "failureThreshold": 3,
+      "bodyPolicy": "discard"
+    },
+    {
+      "id": "public-workspace",
+      "transport": "https",
+      "method": "GET",
+      "path": "/workspaces/probe",
+      "host": "munjib.andrewchoi.link",
+      "connectAddress": "munjib.andrewchoi.link",
       "expectedStatus": 200,
       "requiredHeaders": [
         "strict-transport-security",
@@ -70,6 +111,7 @@
       "method": "GET",
       "path": "/api/auth/providers",
       "host": "unknown.invalid",
+      "connectAddress": "munjib.andrewchoi.link",
       "expectedStatusClass": "4xx",
       "cadenceSeconds": 300,
       "timeoutSeconds": 10,
@@ -91,7 +133,7 @@
     "retainResponseBody": false
   },
   "activationGates": {
-    "dependencies": [3, 4, 7, 8, 9, 10, "11v2", "13B"],
+    "dependencies": [3, 4, 7, 8, 9, 10, 11, "13B"],
     "requiredEvidence": [
       "edge-owner-approval",
       "tls-certificate-and-dns-binding",
