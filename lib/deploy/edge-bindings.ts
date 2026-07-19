@@ -35,6 +35,8 @@ const REQUIRED_EVIDENCE = [
   "continuous-probe-alert-routing",
   "immutable-runtime-broker-attestation",
 ] as const;
+const UNKNOWN_PROBE_ID = "unknown" as const;
+const UNKNOWN_OBSERVED_AT = "1970-01-01T00:00:00.000Z" as const;
 
 export type EdgeHeaderContract = {
   name: string;
@@ -503,10 +505,7 @@ export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: un
 }
 
 const hasNoStoreDirective = (value: string | undefined): boolean =>
-  value
-    ?.split(/[;,]/)
-    .map((part) => part.trim().toLowerCase())
-    .includes("no-store") ?? false;
+  value?.split(",").some((part) => part.trim().toLowerCase() === "no-store") ?? false;
 
 export function evaluateEdgeProbe(
   contract: Readonly<EdgeBindingsContract>,
@@ -597,11 +596,14 @@ export function redactProbeTelemetry(
   contract: Readonly<EdgeBindingsContract>,
   evaluation: EdgeProbeEvaluation,
 ): EdgeProbeTelemetry {
+  const knownProbe = contract.probes.some((probe) => probe.id === evaluation.probeId);
   const candidate: EdgeProbeTelemetry = {
-    probeId: evaluation.probeId,
+    probeId: knownProbe ? evaluation.probeId : UNKNOWN_PROBE_ID,
     status: evaluation.status,
     latencyMs: evaluation.latencyMs,
-    observedAt: evaluation.observedAt,
+    observedAt: isStrictObservedAt(evaluation.observedAt)
+      ? evaluation.observedAt
+      : UNKNOWN_OBSERVED_AT,
     outcome: evaluation.ok ? "success" : "failure",
   };
   const redacted: Record<string, unknown> = {};

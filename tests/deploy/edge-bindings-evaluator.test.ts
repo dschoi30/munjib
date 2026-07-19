@@ -136,6 +136,16 @@ describe("edge bindings contract evaluator", () => {
       request: requestFor("origin-loopback"),
     });
     expect(noStorePresent.ok).toBe(true);
+
+    const malformedSeparator = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 4,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": "private; no-store" },
+      request: requestFor("origin-loopback"),
+    });
+    expect(malformedSeparator.ok).toBe(false);
+    expect(malformedSeparator.reasons).toContain("CACHE_CONTROL_NO_STORE_MISSING");
   });
 
   it("requires the unknown-host probe to remain in the 4xx class", () => {
@@ -219,6 +229,18 @@ describe("edge bindings contract evaluator", () => {
       outcome: "success",
     });
     expect(JSON.stringify(telemetry)).not.toContain("should-never-appear");
+
+    const untrustedFailure = redactProbeTelemetry(contract, {
+      probeId: "x".repeat(100_000),
+      ok: false,
+      status: Number.NaN,
+      latencyMs: Number.POSITIVE_INFINITY,
+      observedAt: "not-a-timestamp-" + "x".repeat(100_000),
+      reasons: ["OBSERVED_AT_INVALID"],
+    });
+    expect(untrustedFailure.probeId).toBe("unknown");
+    expect(untrustedFailure.observedAt).toBe("1970-01-01T00:00:00.000Z");
+    expect(JSON.stringify(untrustedFailure)).not.toContain("x".repeat(1_000));
   });
 
   it("rejects an attempted activation or unsafe origin in the input contract", () => {
