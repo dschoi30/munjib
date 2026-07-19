@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 357
+source_count: 358
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:14:00+09:00 - Issue #162 status-board implementation order
+
+- Result: Wiki Index now names the pending support-grant/runtime activation and points the next implementation slice to schema/migration plus route integration after the dependency gates, rather than describing the already-merged guard runtime as new work.
+- Source evidence: `wiki/index.md`, `docs/runbooks/auth-abuse-sessions-readiness.md`, PR #191 review threads.
+- Verification: wiki gates.
 
 ## 2026-07-20T07:10:00+09:00 - Issue #162 status-board host-edge gate
 
