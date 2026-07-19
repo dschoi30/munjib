@@ -275,7 +275,9 @@ Aggregate counts also preserve the required organization → workspace → docum
 parent chain and each count is capped at PostgreSQL's signed `bigint`/int64 limit.
 `assertRecoveryCompatibility()` also requires independent evidence to accept the
 recovery-pointer record together with the derived migration/schema contract
-digest; the manifest cannot self-attest that tuple. The public readiness
+digest, with the full pointer projection (image, release evidence, artifact
+set, and accepted contract fields) available to that verifier; the manifest
+cannot self-attest that tuple. The public readiness
 contract marks Phase B as requiring Phase-A acceptance and the exact Phase-A
 envelope through `requiresPhaseAAcceptance` and the
 `phase-b-reuses-phase-a-envelope` invariant.
