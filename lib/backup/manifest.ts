@@ -21,6 +21,7 @@ const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_JOURNAL_SEQUENCE = BigInt("9223372036854775807");
 const MAX_POSTGRES_BIGINT = BigInt("9223372036854775807");
+const MAX_ATTACHMENT_SIZE = BigInt("2147483647");
 const MAX_NESTED_DEPTH = 64;
 const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const EXCLUDED_TABLE_DATA = Object.freeze(["DocumentChunk"] as const);
@@ -370,6 +371,7 @@ function parseAttachmentEntry(value: unknown, index: number): SnapshotManifestV2
   }
   assertDecimal(value.sizeBytes, `${path}.sizeBytes`);
   const size = decimal(value.sizeBytes, `${path}.sizeBytes`);
+  if (size > MAX_ATTACHMENT_SIZE) fail(`${path}.sizeBytes must fit PostgreSQL int32`);
   if (value.relativePath !== null) assertRelativePath(value.relativePath, `${path}.relativePath`);
   if (value.contentSha256 !== null) assertHash(value.contentSha256, `${path}.contentSha256`);
 
@@ -651,6 +653,7 @@ export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, act
     assertId(value.id, `${path}.id`);
     assertRelativePath(value.relativePath, `${path}.relativePath`);
     assertDecimal(value.sizeBytes, `${path}.sizeBytes`);
+    if (decimal(value.sizeBytes, `${path}.sizeBytes`) > MAX_ATTACHMENT_SIZE) fail(`${path}.sizeBytes must fit PostgreSQL int32`);
     assertHash(value.contentSha256, `${path}.contentSha256`);
   }
   if (!equalHash(manifest.database.sha256, actual.database.sha256) || manifest.database.sizeBytes !== actual.database.sizeBytes) fail("database payload does not match manifest");
