@@ -412,6 +412,9 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   if (containingFirst === null && value.exportCheckpointAtSnapshot.sequence !== "0") {
     fail(`${checkpointPath} containing batch fields may be null only at genesis`);
   }
+  if (containingFirst !== null && decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) === BigInt(0)) {
+    fail(`${checkpointPath}.containingBatchFirstSequence must start at sequence one`);
+  }
   if (checkpointSequence > chainSequence) {
     fail(`${checkpointPath}.sequence cannot exceed chainAtSnapshot.sequence`);
   }
@@ -558,6 +561,11 @@ export function snapshotCompatibilityContractSha256(manifest: Pick<SnapshotManif
   return sha256Bytes(Buffer.from(canonical, "utf8"));
 }
 
+/** SHA-256 over the parser's canonical, field-ordered manifest JSON. */
+export function snapshotManifestSha256(manifest: SnapshotManifestV2): string {
+  return sha256Bytes(Buffer.from(JSON.stringify(manifest), "utf8"));
+}
+
 function equalHash(expected: string, actual: string): boolean {
   const left = Buffer.from(expected, "hex");
   const right = Buffer.from(actual, "hex");
@@ -689,6 +697,9 @@ export function parseSnapshotEnvelope(
     envelope.journalSequence !== manifest.journal.exportCheckpointAtSnapshot.sequence
   ) {
     fail("envelope metadata does not match decrypted manifest");
+  }
+  if (!equalHash(envelope.manifestSha256, snapshotManifestSha256(manifest))) {
+    fail("envelope.manifestSha256 does not match decrypted manifest");
   }
   assertNoSensitiveKeys(receipts, "receipts");
   assertRecord(receipts, "receipts");

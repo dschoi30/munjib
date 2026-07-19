@@ -10,6 +10,7 @@ import {
   assertSnapshotImageEvidenceOnly,
   migrationIdsSha256,
   parseSnapshotEnvelope,
+  snapshotManifestSha256,
   parseSnapshotManifest,
   sha256Bytes,
   snapshotCompatibilityContractSha256,
@@ -118,7 +119,7 @@ const completeEnvelope = () => {
       sha256: HASH,
       sizeBytes: "4096",
     },
-    manifestSha256: HASH_2,
+    manifestSha256: snapshotManifestSha256(manifest),
     snapshotImageDigest: IMAGE,
     capabilityFloorSha256: HASH,
     journalSequence: "8",
@@ -145,7 +146,7 @@ const completeEnvelope = () => {
       verified: true,
       sha256: HASH,
       encryptedPayloadSha256: HASH,
-      manifestSha256: HASH_2,
+      manifestSha256: snapshotManifestSha256(manifest),
     },
   };
   return { manifest, envelope, receipts };
@@ -246,6 +247,7 @@ describe("snapshot manifest v2", () => {
 
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "9" } } })).toThrow(/exceed/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, containingBatchFirstSequence: "9" } } })).toThrow(/containingBatchFirstSequence|checkpoint/i);
+    expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, containingBatchFirstSequence: "0" } } })).toThrow(/sequence one|containingBatchFirstSequence/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, entryHash: HASH } } })).toThrow(/same sequence|entryHash/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, chainAtSnapshot: { sequence: "9223372036854775808", entryHash: HASH_2 } } })).toThrow(/int64|sequence/i);
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, chainAtSnapshot: { sequence: "0", entryHash: HASH_2 }, exportCheckpointAtSnapshot: { sequence: "0", entryHash: HASH_2, latestExportBatchDigest: null, containingBatchFirstSequence: null, containingBatchDigest: null } } })).toThrow(/genesis|sequence zero/i);
@@ -294,6 +296,8 @@ describe("snapshot envelope v2", () => {
     const { manifest, envelope, receipts } = completeEnvelope();
     expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "latest" } }, receipts, manifest)).toThrow(/generation/i);
     expect(() => parseSnapshotEnvelope({ ...envelope, ciphertextObject: { ...envelope.ciphertextObject, sizeBytes: "4097" } }, receipts, manifest)).toThrow(/payload/i);
+    const divergentManifest = parseSnapshotManifest({ ...manifest, databaseNameHash: HASH_2 });
+    expect(() => parseSnapshotEnvelope(envelope, receipts, divergentManifest)).toThrow(/manifestSha256|decrypted manifest/i);
     expect(() => parseSnapshotEnvelope({ ...envelope, apiToken: "no" }, receipts, manifest)).toThrow(/sensitive|unknown/i);
     expect(() => assertManifestPayloadIntegrity(completeManifest(), {
       database: { sha256: HASH, sizeBytes: "1024" },

@@ -256,7 +256,10 @@ sequence to the decrypted manifest; `aggregateCounts.attachments` must equal the
 attachment inventory length; and a containing batch start may not exceed its
 checkpoint sequence. Journal chain/checkpoint sequences are also bounded by the
 Leaf 2 signed-int64 ceiling, equal-sequence hashes must agree, and sequence zero
-must use the manifest genesis hash.
+must use the manifest genesis hash. The envelope `manifestSha256` is computed
+over the parser's canonical field-ordered manifest JSON and must match both the
+supplied parsed manifest and the decrypt receipt; a present containing batch
+must start at sequence one or later.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
