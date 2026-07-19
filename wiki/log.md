@@ -19,6 +19,20 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
+
+- Result: `parseSnapshotManifest()` recomputes `migrationIdsSha256(appliedIds)`, bounds decimal strings before `BigInt` conversion, caps every PostgreSQL-backed aggregate count at signed int64, requires full non-zero 40-character runtime source commits, accepts exhaustive attachment inventories beyond the old 100,000-entry parser ceiling, applies the same capacity policy to exhaustive READY archive receipts, requires a document ID on every inventory row, caps manifest and receipt attachment sizes at PostgreSQL/Prisma signed int32, rejects null-like/moving provider-generation aliases, covers all non-null attachment document references across lifecycle states, rejects zero-byte database dumps and zero-byte archives with READY entries, bounds recursive sensitive-key traversal depth, binds organization→workspace→document aggregate parents plus `aggregateCounts.attachments` and document counts to the attachment inventory, requires positive containing-batch starts within the checkpoint, ties latest/containing batch digests together after genesis, ties latest batch digest presence to genesis, rejects positive journal hashes equal to genesis, and enforces Leaf 2 int64/genesis/equal-sequence/different-sequence journal hash rules. `assertRecoveryCompatibility()` now requires independent evidence for the full recovery-pointer projection (including image, release-evidence, artifact-set, and contract fields) and derived migration/schema contract digest; the public readiness contract encodes Phase-B dependence on Phase-A acceptance and exact-envelope reuse. `parseSnapshotEnvelope()` binds envelope identity, epoch, image/capability digests, journal sequence, and the canonical manifest SHA-256 to the decrypted manifest and decrypt receipt.
+- Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review thread.
+- Verification: focused manifest/recovery-contract tests and TypeScript.
+
+## 2026-07-13T16:25:00+09:00 - Issue #168 manifest review follow-up
+
+- Result: backup manifest tests lock non-adjacent duplicate-path rejection, invalid UTC handling, deterministic archive ordering, and strict unknown-record typing; sparse arrays and exact-key receipt/payload validation remain fail closed.
+- Pages: [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review threads.
+- Verification: focused manifest/recovery-contract suites, TypeScript, and wiki gates.
+
 ## 2026-07-20T01:00:00+09:00 - Issue #166 edge probe review reconciliation
 
 - Result: edge activation evidence is now an exact required set, public probes cover the `/api/`, `/login`, and existing workspace dynamic `/workspaces/probe` no-store classes, probe timestamps require strict UTC millisecond ISO round-tripping, no-store root paths are covered at their boundary, Cache-Control accepts only top-level comma-separated directives while preserving quoted commas, redacted telemetry canonicalizes unknown IDs, malformed timestamps, or invalid numerics, probe variants reject incompatible keys, request method and credential omission are bound, HTTPS probes require verified canonical TLS metadata and zero redirects, invalid HTTP-token or whitespace-padded header names and control-character values fail closed, and timeout overruns fail closed.
