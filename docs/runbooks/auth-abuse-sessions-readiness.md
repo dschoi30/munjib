@@ -31,8 +31,10 @@ production mutations.
 
 ## Required gates before activation
 
-The implementation contracts are already present in the reviewed tree. Collect
-the following public-safe evidence before adding the schema migration, route
+Only the merged journal/durable-state helpers and bounded auth-guard
+preparation contracts are present in the reviewed tree; the support-grant and
+runtime activation contracts are still implementation work. Collect the
+following public-safe evidence before adding the schema migration, route
 wrapper, or runtime activation:
 
 1. Leaf 2 has merged and deployed the canonical `authDisabledAt`, BigInt

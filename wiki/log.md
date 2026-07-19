@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:06:00+09:00 - Issue #162 pending implementation wording
+
+- Result: Auth-abuse readiness now limits the “present” claim to merged journal/durable-state and bounded guard preparation; support-grant and runtime activation remain implementation work.
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, PR #191 review thread.
+- Verification: documentation review.
+
 ## 2026-07-20T07:00:00+09:00 - Issue #162 host-edge dependency tracking
 
 - Result: Auth-abuse activation handoff now keeps the Issue #166 host-edge contract explicit alongside the pending support-grant, private runtime, database, and broker gates.
