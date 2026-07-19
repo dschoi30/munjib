@@ -93,6 +93,27 @@ workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
 
+## Active-resource authorization boundary
+
+Issue #159 reserves one shared resolver/lock boundary for future archive,
+document-access, attachment, comment, link, history, AI, and retention callers.
+`lib/authorization/active-resources.ts` delegates document ACL lookup to the
+version-zero Leaf 6 slot and refuses normal authorization until the canonical
+database-time `resolveActiveWorkspaceMembership(workspaceId, userId)` authority
+is installed. It intentionally does not query `WorkspaceMember` as a fallback,
+so a missing authority cannot enumerate archived resources or create a second
+source of truth. `lib/authorization/active-resource-locks.ts` provides the
+schema-safe actor advisory lock and deterministic workspace, sorted-folder, and
+document row locks; it does not introduce archive provenance columns or mutation
+callers.
+
+The Leaf 14 production purge seam is likewise version zero and fail closed. Both
+logical and physical destructive authorization raise an integration-not-installed
+error until independent journal, restore, and provider evidence is composed by
+its own owner. The reserved Leaf 6/Leaf 14 paths and their hashes live in
+`deploy/security/protected-artifact-owners.json`; this branch changes no schema,
+archive state, purge rows, or production behavior.
+
 ### Leaf 2 durable auth-state and journal handoff (Issue #156)
 
 The reviewed Leaf 2 implementation slice defines a fail-closed durable-auth
