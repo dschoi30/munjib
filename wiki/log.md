@@ -19,6 +19,34 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #159 active-resource review follow-up
+
+- Folder boundary locks now reject any archived row as `FOLDER_NOT_FOUND`, matching workspace/document active-resource fail-closed semantics.
+- Folder locks also require `status = ACTIVE`, covering inconsistent rows whose archived status has a null `archivedAt` timestamp.
+- Source evidence: `lib/authorization/active-resource-locks.ts`, `tests/authorization/active-resource-locks.test.ts`, PR #200 review thread.
+- Verification: active-resource resolver/lock focused tests (7 passed), TypeScript, and staged wiki gates.
+
+## 2026-07-13T21:15:00+09:00 - Issue #159 schema-safe resolver and lock contract
+
+- Result: Added the shared active-resource resolver boundary with a deliberate
+  fail-closed database-time membership contract, schema-safe actor/workspace/
+  folder/document lock helpers, and a version-zero Leaf 6 document ACL slot.
+  Added the independently protected Leaf 14 logical/physical purge seam, both
+  fail closed until their owning dependency provides journal, restore, and
+  provider evidence.
+- Safety: No `WorkspaceMember` fallback, schema migration, archive/purge
+  mutation, production caller, or secret-bearing fixture was added.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/authorization/active-resources.ts`,
+  `lib/authorization/active-resource-locks.ts`,
+  `lib/workspaces/active-membership.ts`,
+  `lib/authorization/downstream/leaf6-document-access.ts`,
+  `lib/retention/downstream/leaf14-production-readiness.ts`, and
+  `deploy/security/protected-artifact-owners.json`.
+- Verification: focused resolver/lock/downstream contract tests (including the
+  protected Leaf 6 delegation assertion) and TypeScript
+  verification pass; no production behavior is activated by this slice.
+
 ## 2026-07-19T00:30:00+09:00 - Vault Transit local integration lab
 
 - Result: Implemented Issue #208 Phase A with a digest-pinned Vault Community 2.0.3 Compose lab, loopback-only `127.0.0.1:18200` publication, explicit `vault:lab:*` lifecycle commands, and a generated mode-`0600` token override confined to private temporary state.

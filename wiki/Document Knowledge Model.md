@@ -283,6 +283,16 @@ erDiagram
 
 현재 권한 체크는 주로 workspace role을 기준으로 한다. 자세한 흐름은 [[Auth And Permissions Workflow]]를 본다.
 
+Issue #159의 active-resource 경계는 이 모델 위에 별도 membership 권위를
+추가하지 않는다. `lib/workspaces/active-membership.ts`는 향후 DB-time
+`workspaceId + userId` resolver를 위한 계약이며 현재는 fail closed한다.
+`lib/authorization/active-resource-locks.ts`는 이미 존재하는 Workspace,
+Folder, Document의 `archivedAt`/`status` 컬럼만 사용해 actor advisory lock과
+정렬된 row lock을 제공한다. SupportAccessGrant와 archive-operation provenance
+컬럼은 해당 스키마 migration 전에는 조회하지 않는다. 따라서 active-resource
+resolver, Leaf 6 document ACL slot, Leaf 14 purge readiness seam은 production
+mutation이나 archive/purge state를 아직 활성화하지 않는다.
+
 ## Security journal and durable auth handoff
 
 Issue #156's dependency-safe implementation slice adds no Prisma model or
