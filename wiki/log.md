@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:58:00+09:00 - Issue #165 duplicate metadata inventory hardening
+
+- Result: A physical file is no longer suppressed when valid attachment metadata rows duplicate its storage key; only one validated metadata reference can classify a file as referenced.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review thread.
+- Verification: focused attachment lifecycle inventory tests.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.

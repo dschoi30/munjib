@@ -67,6 +67,22 @@ describe("attachment lifecycle inventory", () => {
     });
   });
 
+  it("emits file state when valid metadata rows duplicate a storage key", () => {
+    const result = reconcileAttachmentLifecycleInventory({
+      attachments: [
+        { workspaceId: "cmworkspace", storageKey: referenced },
+        { workspaceId: "cmworkspace", storageKey: referenced },
+      ],
+      files: [{ storageKey: referenced }],
+    });
+
+    expect(result.entries).toEqual([
+      { storageKey: referenced, classification: "invalid-key", issue: "duplicate-storage-key" },
+      { storageKey: referenced, classification: "invalid-key", issue: "duplicate-storage-key" },
+      { storageKey: referenced, classification: "orphan-bytes" },
+    ]);
+  });
+
   it("uses the issue as a deterministic tie-breaker for same-key entries", () => {
     const result = reconcileAttachmentLifecycleInventory({
       attachments: [{ workspaceId: "another-workspace", storageKey: referenced }],

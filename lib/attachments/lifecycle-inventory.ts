@@ -132,7 +132,7 @@ export function reconcileAttachmentLifecycleInventory(input: {
     const validation = storageKey.isString
       ? validateAttachmentStorageKey(storageKey.value)
       : { valid: false as const, issue: "invalid-storage-key" as const };
-    const referenced = attachmentCounts.has(storageKey.value);
+    const referenced = attachmentCounts.get(storageKey.value) === 1;
     const duplicate = (fileCounts.get(storageKey.value) ?? 0) > 1;
     if (!referenced && validation.valid && !duplicate) {
       entries.push({ storageKey: storageKey.value, classification: "orphan-bytes" });
