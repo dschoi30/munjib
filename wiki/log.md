@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 365
+source_count: 366
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:40:00+09:00 - Issue #160 active mutation and verification matrix
+
+- Result: Issue #160 readiness now covers active-state checks for normal document mutations, adversarial same-tenant permission subjects, and bounded document-scoped history pagination in addition to link reconciliation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:34:00+09:00 - Issue #160 reconciliation verification matrix
 

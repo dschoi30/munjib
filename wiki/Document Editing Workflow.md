@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 104
+source_count: 105
 tags:
   - munjib
   - workflow
@@ -163,6 +163,12 @@ document permission을 매번 재확인하고, server page는 current-view에 �
 검증 matrix는 target 생성뿐 아니라 normal document create/update/restore/move와
 folder rename/move의 각 reconciliation caller에서 authorized source repair와
 unreadable source zero-write 결과를 독립 fixture로 확인해야 한다.
+Normal document create/update/move/archive도 동일한 active-document authority를
+소비해야 하며 archived document id를 가진 stale request는 zero-write로 거부한다.
+Permission subject는 current same-tenant actor tuple만 허용하고 stale membership,
+foreign-tenant, non-actor subject fixture는 모두 deny되어야 한다. History tab은
+authorized large-history fixture에서 bounded page size와 document-scoped cursor를
+검증해야 하며 unbounded version query를 남겨서는 안 된다.
 
 ## UI 세부 사항
 

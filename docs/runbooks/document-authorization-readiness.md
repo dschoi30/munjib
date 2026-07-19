@@ -28,6 +28,10 @@ one contract:
   workspace-wide `updateMany` is never sufficient.
 - Attachment, comment, version, audit, and history reads must re-check the
   current active workspace/document and document permission at the boundary.
+- Normal document create/update/move/archive services must consume the same
+  active-document authority. A stale request naming an archived document must
+  fail closed with zero writes rather than relying on workspace membership and
+  ACL checks alone.
 - Server-rendered document data must expose only the current-view fields, with
   history loaded through authenticated, bounded pages.
 - Explicit permissions must be evaluated only for the actor's current,
@@ -66,6 +70,12 @@ The next implementation pass should verify, with synthetic fixtures only:
 - The same independent source-authority matrix must cover normal document
   create/update/restore/move and folder rename/move callers that invoke link
   reconciliation; target-creation-only coverage is insufficient.
+- The matrix must include stale, foreign-tenant, and non-actor permission
+  subject tuples; removed memberships or a subject from another organization
+  or workspace must never grant access.
+- History verification must include an authorized large-history fixture proving
+  a bounded page size and a document-scoped cursor; an unbounded version query
+  is not an acceptable implementation.
 - Mixed-ACL folder descendants reject the whole transaction with zero writes;
   a cascade containing an archived descendant also rejects with zero writes
   until the separate archive-maintenance authority is available.
