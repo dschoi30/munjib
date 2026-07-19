@@ -23,8 +23,8 @@ links:
 
 - Result: Updated the auth-abuse/session-revocation handoff to distinguish the
   merged Leaf 2 journal/durable-auth and Issue #162 guard contracts (PRs #199
-  and #202) from the still-pending database migration, route activation, and
-  deployment evidence.
+  and #202) from the still-pending support-grant contract, database migration,
+  route activation, and deployment evidence.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`,
   `wiki/Auth And Permissions Workflow.md`, PR #191 review thread.

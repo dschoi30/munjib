@@ -287,9 +287,9 @@ and each encrypted JWT must resolve against a database registry row, user
 limiter identifiers, account identifiers, and client addresses must never enter
 logs, alerts, or persisted limiter records.
 
-The canonical `authDisabledAt`, BigInt `sessionVersion`, support-grant, and
-same-transaction deny-only journal contracts are now present as preparation
-code in PRs #199 and #202, but runtime activation remains blocked until the
+The canonical `authDisabledAt`, BigInt `sessionVersion`, and same-transaction
+deny-only journal helpers are present as preparation code in PRs #199 and #202,
+but the support-grant contract and runtime activation remain pending until the
 database migration, verified private binding/database role, and attested
 delivery-broker host path are accepted (Issues #184 and #185). The current
 `Session` adapter table is not a substitute because runtime auth uses encrypted
