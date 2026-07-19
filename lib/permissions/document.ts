@@ -11,6 +11,13 @@ const permissionRanks: Record<PermissionLevel, number> = {
   MANAGE: 3,
 };
 
+export const workspacePermissionCeilings: Record<WorkspaceRole, PermissionLevel> = {
+  OWNER: "MANAGE",
+  ADMIN: "MANAGE",
+  EDITOR: "WRITE",
+  VIEWER: "READ",
+};
+
 export function highestPermissionLevel(
   permissions: Array<PermissionLevel | null | undefined>,
 ): PermissionLevel | null {
@@ -26,6 +33,20 @@ export function highestPermissionLevel(
   return highest;
 }
 
+/**
+ * A document grant can narrow access, but it cannot elevate an actor beyond
+ * the active workspace role that the canonical resource resolver establishes.
+ */
+export function capDocumentPermissionByWorkspaceRole(
+  workspaceRole: WorkspaceRole | null | undefined,
+  permission: PermissionLevel | null | undefined,
+): PermissionLevel | null {
+  if (!workspaceRole || !permission) return null;
+
+  const ceiling = workspacePermissionCeilings[workspaceRole];
+  return permissionRanks[permission] <= permissionRanks[ceiling] ? permission : ceiling;
+}
+
 export function canReadDocument(input: {
   workspaceRole: WorkspaceRole | null | undefined;
   explicitPermissionCount: number;
@@ -33,7 +54,11 @@ export function canReadDocument(input: {
 }) {
   if (canManageWorkspace(input.workspaceRole)) return true;
   if (input.explicitPermissionCount > 0) {
-    return input.userPermission ? permissionRanks[input.userPermission] >= permissionRanks.READ : false;
+    const effectivePermission = capDocumentPermissionByWorkspaceRole(
+      input.workspaceRole,
+      input.userPermission,
+    );
+    return effectivePermission ? permissionRanks[effectivePermission] >= permissionRanks.READ : false;
   }
   return canReadWorkspace(input.workspaceRole);
 }
@@ -45,7 +70,11 @@ export function canWriteDocument(input: {
 }) {
   if (canManageWorkspace(input.workspaceRole)) return true;
   if (input.explicitPermissionCount > 0) {
-    return input.userPermission ? permissionRanks[input.userPermission] >= permissionRanks.WRITE : false;
+    const effectivePermission = capDocumentPermissionByWorkspaceRole(
+      input.workspaceRole,
+      input.userPermission,
+    );
+    return effectivePermission ? permissionRanks[effectivePermission] >= permissionRanks.WRITE : false;
   }
   return canWriteWorkspace(input.workspaceRole);
 }

@@ -387,7 +387,7 @@ Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 �
 
 ## 권한과 감사
 
-- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다.
+- `Permission`: resource/subject/permission 형태의 세밀한 권한 모델이다. `DOCUMENT` resource에 explicit permission이 있으면 workspace role만으로는 충분하지 않고 사용자 permission이 read/write/manage를 만족해야 한다. Issue #160의 Leaf 6 결정 계약은 이를 active-resource authority 뒤에서만 평가하며, explicit grant의 유효 상한을 현재 workspace role(`VIEWER` read, `EDITOR` write, `ADMIN`/`OWNER` manage)으로 제한한다. Legacy `WorkspaceMember`/`Permission` fallback은 authority를 발행하지 못하고 fail closed한다.
 - `AuditLog`: 문서 생성, 수정, 아카이브, version restore, broken link 기반 생성, attachment upload, comment 생성 같은 mutation 기록을 남긴다.
 
 ## Account identity
