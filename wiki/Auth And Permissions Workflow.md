@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 70
+updated: 2026-07-20
+source_count: 101
 tags:
   - munjib
   - auth
@@ -198,6 +198,23 @@ user/request may appear in a session. Password verification uses
 one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope before
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
+
+### Invite token primitive boundary (Issue #161)
+
+The dependency-safe Leaf 7 slice in `lib/auth/invite-token.ts` generates
+independent 256-bit invitation and attempt secrets, encodes them as canonical
+unpadded base64url, and hashes each with a distinct domain-separated SHA-256
+context before durable persistence. The attempt cookie value is only the opaque
+secret; cookie names and attributes are intentionally outside this module.
+`parseInvitationExchangeBody()` accepts exactly one bounded `bearer` field and
+returns an immutable object, rejecting workspace ids, revisions, and unknown
+metadata. Validation errors are generic and never echo credentials. This is a
+pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
+activation, or production behavior. The exchange parser checks `Reflect.ownKeys`
+so non-enumerable and symbol own metadata cannot bypass the exact shape. Atomic
+invitation consumption, revision
+invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
+follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.
 
 ### Leaf 1 downstream handoff and rollback contract
 
