@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 358
+source_count: 359
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:20:00+09:00 - Issue #163 prompt-lineage and whole-turn contract alignment
+
+- Result: Derived history readiness now persists the union of every current prompt source and inherited lineage, independent of displayed citations, and removes the contradictory USER-row visibility wording from the wiki handoff.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
 
 ## 2026-07-20T07:14:00+09:00 - Issue #163 reset and turn-correlation boundaries
 

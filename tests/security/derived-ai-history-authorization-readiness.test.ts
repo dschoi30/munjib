@@ -25,6 +25,8 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("fails closed");
     expect(runbook).toMatch(/union of all\s+source lineages consumed/i);
     expect(runbook).toMatch(/cannot be relabeled `source-free-v1`/i);
+    expect(runbook).toMatch(/every source supplied\s+to the current prompt/i);
+    expect(runbook).toMatch(/displayed citations are not a\s+complete authorization record/i);
   });
 
   it("covers every derived-history visibility boundary", () => {

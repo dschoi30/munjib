@@ -146,6 +146,10 @@ derived turn이므로 assistant access가 거부되면 paired user row도 함께
 whole-turn suppression은 durable turn-correlation key와 turn-granular
 pagination을 전제로 하며, `threadId`와 개별 message pagination만으로
 동시 전송·legacy orphan·page boundary에서 pair를 추정해서는 안 된다.
+새 answer의 persisted lineage에도 현재 prompt에 공급된 모든 source chunk를
+citation marker가 최종 answer에 등장했는지와 무관하게 포함해야 하며, prior
+lineage와의 union이 authorization record다. 표시된 citation만으로 lineage를
+재구성해서는 안 된다.
 Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
 immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
 migration, route, purge, production activation을 시작하지 않는다.
@@ -301,8 +305,11 @@ tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
 행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
 `legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
 citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
-Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
-row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+Per-row Source-backed decision/tombstone은 `ASSISTANT` row에 대해 계산되지만,
+이는 최종 list/reset DTO에서 일반 `USER` row를 항상 노출해도 된다는 정책이
+아니다. Dependency-complete whole-turn serializer는 durable turn key로
+paired `USER`+`ASSISTANT` rows를 함께 숨기거나 단일 aggregate redaction으로
+대체해야 하며, 이 per-row helper 자체는 list-level pairing을 주장하지 않는다.
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.

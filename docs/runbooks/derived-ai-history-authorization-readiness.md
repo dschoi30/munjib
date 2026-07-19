@@ -17,6 +17,11 @@ mutation.
   source lineages consumed from prior answers or memory context. A turn that
   consumes source-backed context cannot be relabeled `source-free-v1` merely
   because the current retrieval returns no new chunks.
+- Each new answer's persisted lineage must also include every source supplied
+  to the current prompt, including prompt chunks whose citation marker is not
+  present in the final answer. The lineage is the union of those current prompt
+  sources and all inherited prior lineages; displayed citations are not a
+  complete authorization record.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
 - Future integration requirement: the owning serializer must treat each
