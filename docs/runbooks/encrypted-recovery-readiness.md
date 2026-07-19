@@ -40,7 +40,8 @@ receipts without opening a database or storage path. `assertRecoveryCompatibilit
 requires independently supplied capability-floor and full recovery-pointer /
 contract verifiers (including image, release-evidence, and artifact-set fields);
 manifest-owned migration/schema digests are never treated as their own
-attestation.
+attestation. Snapshot runtime source commits are full, non-zero 40-character
+Git object IDs rather than abbreviated or null-looking revisions.
 
 The public envelope parser accepts no signing path until a root ciphertext seal,
 immutable exact-read receipt, and authenticated decrypt verification receipt all

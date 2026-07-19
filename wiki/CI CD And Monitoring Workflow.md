@@ -281,6 +281,8 @@ cannot self-attest that tuple. The public readiness
 contract marks Phase B as requiring Phase-A acceptance and the exact Phase-A
 envelope through `requiresPhaseAAcceptance` and the
 `phase-b-reuses-phase-a-envelope` invariant.
+Snapshot runtime source commits are full, non-zero 40-character Git object IDs
+so runtime evidence cannot use an abbreviated or null-looking revision.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

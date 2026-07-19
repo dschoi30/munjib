@@ -198,6 +198,7 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-02-30T00:00:00.000Z" })).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotManifest({ ...manifest, epochUtc: "2026-13-45T25:61:61.999Z" })).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotManifest({ ...manifest, database: { ...manifest.database, sizeBytes: 1 } })).toThrow(/decimal/i);
+    expect(() => parseSnapshotManifest({ ...manifest, snapshotRuntime: { ...manifest.snapshotRuntime, sourceCommit: "0".repeat(40) } })).toThrow(/commit/i);
     expect(() => parseSnapshotManifest({ ...manifest, databaseNameHash: HASH.toUpperCase() })).toThrow(/hash/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "/absolute" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], relativePath: "documents/" }, manifest.attachments.entries[1]] } })).toThrow(/relative path/i);
