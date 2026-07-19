@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-13
-source_count: 115
+updated: 2026-07-20
+source_count: 117
 tags:
   - munjib
   - workflow
