@@ -427,6 +427,15 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   if (chainSequence === checkpointSequence && value.chainAtSnapshot.entryHash !== value.exportCheckpointAtSnapshot.entryHash) {
     fail(`${checkpointPath}.entryHash must match chainAtSnapshot.entryHash at the same sequence`);
   }
+  if (chainSequence !== checkpointSequence && value.chainAtSnapshot.entryHash === value.exportCheckpointAtSnapshot.entryHash) {
+    fail(`${checkpointPath}.entryHash must differ from chainAtSnapshot.entryHash at a different sequence`);
+  }
+  if (checkpointSequence === BigInt(0) && value.exportCheckpointAtSnapshot.latestExportBatchDigest !== null) {
+    fail(`${checkpointPath}.latestExportBatchDigest must be null at sequence zero`);
+  }
+  if (checkpointSequence > BigInt(0) && value.exportCheckpointAtSnapshot.latestExportBatchDigest === null) {
+    fail(`${checkpointPath}.latestExportBatchDigest is required after genesis`);
+  }
   if (
     containingFirst !== null &&
     decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) > checkpointSequence
@@ -462,6 +471,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   assertLiteral(value.database.format, "postgres-custom", "manifest.database.format");
   assertHash(value.database.sha256, "manifest.database.sha256");
   assertDecimal(value.database.sizeBytes, "manifest.database.sizeBytes");
+  if (decimal(value.database.sizeBytes, "manifest.database.sizeBytes") === BigInt(0)) {
+    fail("manifest.database.sizeBytes must be non-zero");
+  }
   if (!Array.isArray(value.database.excludedTableData) || value.database.excludedTableData.length !== 1 || value.database.excludedTableData[0] !== "DocumentChunk") {
     fail("manifest.database.excludedTableData must equal [DocumentChunk]");
   }
