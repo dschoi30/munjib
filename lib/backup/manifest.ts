@@ -344,7 +344,8 @@ function freeze<T>(value: T): Readonly<T> {
 export function assertNoSensitiveKeys(value: unknown, path = "value", depth = 0): void {
   if (depth > MAX_NESTED_DEPTH) fail(`${path} exceeds maximum nesting depth`);
   if (Array.isArray(value)) {
-    assertDenseArray(value, path, path === "value.attachments.entries" ? Number.MAX_SAFE_INTEGER : undefined);
+    const exhaustiveEntries = path === "value.attachments.entries" || path === "actual.archive.entries";
+    assertDenseArray(value, path, exhaustiveEntries ? Number.MAX_SAFE_INTEGER : undefined);
     value.forEach((item, index) => assertNoSensitiveKeys(item, `${path}[${index}]`, depth + 1));
     return;
   }
@@ -362,7 +363,8 @@ function parseAttachmentEntry(value: unknown, index: number): SnapshotManifestV2
   assertRecord(value, path);
   assertExactKeys(value, ["id", "documentId", "status", "relativePath", "sizeBytes", "contentSha256"], path);
   assertId(value.id, `${path}.id`);
-  if (value.documentId !== null) assertId(value.documentId, `${path}.documentId`);
+  if (value.documentId === null) fail(`${path}.documentId is required for attachment rows`);
+  assertId(value.documentId, `${path}.documentId`);
   if (!["PENDING", "READY", "DELETE_PENDING", "DELETED", "FAILED"].includes(value.status as string)) {
     fail(`${path}.status is not a known attachment state`);
   }
@@ -641,7 +643,7 @@ export function assertManifestPayloadIntegrity(manifest: SnapshotManifestV2, act
   assertDecimal(actual.database.sizeBytes, "actual.database.sizeBytes");
   assertHash(actual.archive.sha256, "actual.archive.sha256");
   assertDecimal(actual.archive.sizeBytes, "actual.archive.sizeBytes");
-  assertDenseArray(actual.archive.entries, "actual.archive.entries");
+  assertDenseArray(actual.archive.entries, "actual.archive.entries", Number.MAX_SAFE_INTEGER);
   for (const [index, value] of actual.archive.entries.entries()) {
     const path = `actual.archive.entries[${index}]`;
     assertRecord(value, path);

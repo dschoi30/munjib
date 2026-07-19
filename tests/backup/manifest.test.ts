@@ -244,16 +244,24 @@ describe("snapshot manifest v2", () => {
     const manifest = completeManifest();
     const entries = Array.from({ length: 100_001 }, (_, index) => ({
       id: `att-${String(index).padStart(6, "0")}`,
-      documentId: null,
-      status: "PENDING" as const,
-      relativePath: null,
-      sizeBytes: "0",
-      contentSha256: null,
+      documentId: "doc-0001",
+      status: "READY" as const,
+      relativePath: `documents/att-${String(index).padStart(6, "0")}.bin`,
+      sizeBytes: "1",
+      contentSha256: HASH_2,
     }));
-    expect(() => parseSnapshotManifest({
+    const parsed = parseSnapshotManifest({
       ...manifest,
-      attachments: { ...manifest.attachments, archiveSizeBytes: "0", entries },
+      attachments: { ...manifest.attachments, archiveSizeBytes: "2048", entries },
       aggregateCounts: { ...manifest.aggregateCounts, attachments: "100001" },
+    });
+    expect(() => assertManifestPayloadIntegrity(parsed, {
+      database: { sha256: HASH, sizeBytes: "1024" },
+      archive: {
+        sha256: HASH_2,
+        sizeBytes: "2048",
+        entries: entries.map(({ id, relativePath, sizeBytes, contentSha256 }) => ({ id, relativePath, sizeBytes, contentSha256 })),
+      },
     })).not.toThrow();
   });
 
@@ -302,6 +310,16 @@ describe("snapshot manifest v2", () => {
       aggregateCounts: { ...manifest.aggregateCounts, documents: "0" },
     };
     expect(() => parseSnapshotManifest(pendingDocumentManifest)).toThrow(/documents/i);
+    const parentlessPendingManifest = {
+      ...manifest,
+      attachments: {
+        ...manifest.attachments,
+        archiveSizeBytes: "0",
+        entries: manifest.attachments.entries.map((entry) => ({ ...entry, documentId: null, status: "PENDING" as const, relativePath: null, sizeBytes: "0", contentSha256: null })),
+      },
+      aggregateCounts: { ...manifest.aggregateCounts, documents: "0" },
+    };
+    expect(() => parseSnapshotManifest(parentlessPendingManifest)).toThrow(/documentId/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },
