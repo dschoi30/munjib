@@ -18,6 +18,7 @@ const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
+const MAX_JOURNAL_SEQUENCE = BigInt("9223372036854775807");
 const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const EXCLUDED_TABLE_DATA = Object.freeze(["DocumentChunk"] as const);
 const SENSITIVE_KEY = /(?:password|secret|token|cookie|email|name|path|query|url|body|content|provider|private|credential|database|host|slug|title|document|attachment)/i;
@@ -391,12 +392,16 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   assertExactKeys(value.chainAtSnapshot, ["sequence", "entryHash"], `${path}.chainAtSnapshot`);
   assertDecimal(value.chainAtSnapshot.sequence, `${path}.chainAtSnapshot.sequence`);
   assertHash(value.chainAtSnapshot.entryHash, `${path}.chainAtSnapshot.entryHash`);
+  const chainSequence = decimal(value.chainAtSnapshot.sequence, `${path}.chainAtSnapshot.sequence`);
+  if (chainSequence > MAX_JOURNAL_SEQUENCE) fail(`${path}.chainAtSnapshot.sequence exceeds Leaf 2 int64 range`);
 
   assertRecord(value.exportCheckpointAtSnapshot, `${path}.exportCheckpointAtSnapshot`);
   const checkpointPath = `${path}.exportCheckpointAtSnapshot`;
   assertExactKeys(value.exportCheckpointAtSnapshot, ["sequence", "entryHash", "latestExportBatchDigest", "containingBatchFirstSequence", "containingBatchDigest"], checkpointPath);
   assertDecimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`);
   assertHash(value.exportCheckpointAtSnapshot.entryHash, `${checkpointPath}.entryHash`);
+  const checkpointSequence = decimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`);
+  if (checkpointSequence > MAX_JOURNAL_SEQUENCE) fail(`${checkpointPath}.sequence exceeds Leaf 2 int64 range`);
   if (value.exportCheckpointAtSnapshot.latestExportBatchDigest !== null) assertHash(value.exportCheckpointAtSnapshot.latestExportBatchDigest, `${checkpointPath}.latestExportBatchDigest`);
   if (value.exportCheckpointAtSnapshot.containingBatchFirstSequence !== null) assertDecimal(value.exportCheckpointAtSnapshot.containingBatchFirstSequence, `${checkpointPath}.containingBatchFirstSequence`);
   if (value.exportCheckpointAtSnapshot.containingBatchDigest !== null) assertHash(value.exportCheckpointAtSnapshot.containingBatchDigest, `${checkpointPath}.containingBatchDigest`);
@@ -407,13 +412,21 @@ function parseJournal(value: unknown): SnapshotManifestV2["journal"] {
   if (containingFirst === null && value.exportCheckpointAtSnapshot.sequence !== "0") {
     fail(`${checkpointPath} containing batch fields may be null only at genesis`);
   }
-  if (decimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`) > decimal(value.chainAtSnapshot.sequence, `${path}.chainAtSnapshot.sequence`)) {
+  if (checkpointSequence > chainSequence) {
     fail(`${checkpointPath}.sequence cannot exceed chainAtSnapshot.sequence`);
+  }
+  if (chainSequence === BigInt(0) && value.chainAtSnapshot.entryHash !== value.genesisHash) {
+    fail(`${path}.chainAtSnapshot.entryHash must match genesisHash at sequence zero`);
+  }
+  if (checkpointSequence === BigInt(0) && value.exportCheckpointAtSnapshot.entryHash !== value.genesisHash) {
+    fail(`${checkpointPath}.entryHash must match genesisHash at sequence zero`);
+  }
+  if (chainSequence === checkpointSequence && value.chainAtSnapshot.entryHash !== value.exportCheckpointAtSnapshot.entryHash) {
+    fail(`${checkpointPath}.entryHash must match chainAtSnapshot.entryHash at the same sequence`);
   }
   if (
     containingFirst !== null &&
-    decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) >
-      decimal(value.exportCheckpointAtSnapshot.sequence, `${checkpointPath}.sequence`)
+    decimal(containingFirst, `${checkpointPath}.containingBatchFirstSequence`) > checkpointSequence
   ) {
     fail(`${checkpointPath}.containingBatchFirstSequence cannot exceed checkpoint sequence`);
   }
