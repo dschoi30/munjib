@@ -19,6 +19,7 @@ const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_JOURNAL_SEQUENCE = BigInt("9223372036854775807");
+const MAX_NESTED_DEPTH = 64;
 const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const EXCLUDED_TABLE_DATA = Object.freeze(["DocumentChunk"] as const);
 const SENSITIVE_KEY = /(?:password|secret|token|cookie|email|name|path|query|url|body|content|provider|private|credential|database|host|slug|title|document|attachment)/i;
@@ -334,10 +335,11 @@ function freeze<T>(value: T): Readonly<T> {
  * fields are explicitly part of the public/private contract; their values are
  * still validated by the schema parser.
  */
-export function assertNoSensitiveKeys(value: unknown, path = "value"): void {
+export function assertNoSensitiveKeys(value: unknown, path = "value", depth = 0): void {
+  if (depth > MAX_NESTED_DEPTH) fail(`${path} exceeds maximum nesting depth`);
   if (Array.isArray(value)) {
     assertDenseArray(value, path);
-    value.forEach((item, index) => assertNoSensitiveKeys(item, `${path}[${index}]`));
+    value.forEach((item, index) => assertNoSensitiveKeys(item, `${path}[${index}]`, depth + 1));
     return;
   }
   if (!isRecord(value)) return;
@@ -345,7 +347,7 @@ export function assertNoSensitiveKeys(value: unknown, path = "value"): void {
     if (SENSITIVE_KEY.test(key) && !ALLOWED_SENSITIVE_KEYS.has(key)) {
       fail(`${path}.${key} is a sensitive or forbidden field`);
     }
-    assertNoSensitiveKeys(child, `${path}.${key}`);
+    assertNoSensitiveKeys(child, `${path}.${key}`, depth + 1);
   }
 }
 

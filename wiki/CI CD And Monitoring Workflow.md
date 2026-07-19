@@ -264,6 +264,8 @@ chain/checkpoint hashes must differ at different sequences; and
 `latestExportBatchDigest` is null only at genesis and required thereafter.
 READY attachment inventories also require a non-zero archive size, and positive
 journal hashes may not reuse the genesis hash.
+Recursive untrusted-key traversal is capped at a bounded depth and fails with the
+domain error before the JavaScript call stack can be exhausted.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
