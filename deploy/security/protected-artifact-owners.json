@@ -97,6 +97,24 @@
       "owner": "invite-signup-gate",
       "version": 0,
       "sha256": "c10903345d620f35d78c2b212dfecb54a2ce5d2e90b39e80497bf7f97de16c8d"
+    },
+    {
+      "selector": "path:lib/authorization/downstream/leaf6-document-access.ts",
+      "kind": "FULL_PATH",
+      "owner": "document-acl-closure",
+      "version": 0,
+      "status": "RESERVED",
+      "creator": "active-resource-boundaries",
+      "sha256": "f470bf663c2ba59e5797e41dcb25b432276aca1417a2e685b9e667df618b5253"
+    },
+    {
+      "selector": "path:lib/retention/downstream/leaf14-production-readiness.ts",
+      "kind": "FULL_PATH",
+      "owner": "encrypted-recovery-readiness",
+      "version": 0,
+      "status": "RESERVED",
+      "creator": "active-resource-boundaries",
+      "sha256": "8a70fd025fffb223bde6df9763c502b51f91a72c162a0d893da62c848cc9e19a"
     }
   ]
 }

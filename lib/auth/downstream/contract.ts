@@ -4,6 +4,7 @@ import { leaf2AuthHooks } from "@/lib/auth/downstream/leaf2";
 import { leaf4AuthHooks } from "@/lib/auth/downstream/leaf4";
 import { leaf7AuthHooks } from "@/lib/auth/downstream/leaf7";
 import { leaf8AuthHooks } from "@/lib/auth/downstream/leaf8";
+import type { DurableAuthState, DurableAuthStateInput } from "@/lib/auth/durable-auth-state";
 
 export type DurableAuthSurface =
   | "PASSWORD"
@@ -13,7 +14,7 @@ export type DurableAuthSurface =
   | "PROVISIONING";
 
 export type AuthDownstreamHooks = Readonly<{
-  assertDurableAuthState(input: { userId: string; surface: DurableAuthSurface }): Promise<void> | void;
+  assertDurableAuthState(input: DurableAuthStateInput): Promise<DurableAuthState | void> | DurableAuthState | void;
   admitPasswordCredentials(input: { userId: string; email: string }): Promise<boolean> | boolean;
   guardOAuthStart(input: { provider: "google" }): Promise<boolean> | boolean;
   reduceSessionImage(input: { userId: string; databaseValue: unknown }): Promise<string | null> | string | null;
