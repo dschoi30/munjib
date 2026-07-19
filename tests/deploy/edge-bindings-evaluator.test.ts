@@ -544,6 +544,26 @@ describe("edge bindings contract evaluator", () => {
     expect(invalidHeaderName.ok).toBe(false);
     expect(invalidHeaderName.reasons).toContain("HEADERS_INVALID");
 
+    const malformedHeaderValue = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 4,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": "no-store", "x-extra": "ok\r\ninjected" },
+      request: requestFor("origin-loopback"),
+    });
+    expect(malformedHeaderValue.ok).toBe(false);
+    expect(malformedHeaderValue.reasons).toContain("HEADERS_INVALID");
+
+    const quotedCacheControl = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 4,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { "cache-control": 'foo="x,no-store,y"' },
+      request: requestFor("origin-loopback"),
+    });
+    expect(quotedCacheControl.ok).toBe(false);
+    expect(quotedCacheControl.reasons).toContain("CACHE_CONTROL_NO_STORE_MISSING");
+
     const unverifiedTls = evaluateEdgeProbe(contract, "public-https", {
       status: 200,
       latencyMs: 42,

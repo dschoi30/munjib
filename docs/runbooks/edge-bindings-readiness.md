@@ -47,7 +47,9 @@ The evaluator also requires normalized request metadata (transport, canonical
 connect address, Host header, exact path, and zero redirects) to match the
 configured probe. HTTPS observations must prove certificate verification and
 use the canonical TLS server name; response header names must match the HTTP
-field-name token grammar with no whitespace or invalid characters.
+field-name token grammar with no whitespace or invalid characters, and field
+values must not contain prohibited control characters. Cache-Control parsing
+respects quoted commas and only accepts a top-level `no-store` directive.
 The unknown-host negative probe connects to `munjib.example.invalid` and only
 overrides the Host header to `unknown.invalid`; a DNS/TLS failure cannot count
 as a successful 4xx rejection. Malformed headers, timestamps, paths, or request
