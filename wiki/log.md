@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T00:18:00+09:00 - Issue #164 IPv6 special-range review fix
+
+- Result: compressed IPv4-compatible and multicast IPv6 destinations now fail closed outside the explicit fixed Ollama gate.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
 ## 2026-07-20T00:10:00+09:00 - Issue #164 provider-boundary review reconciliation
 
 - Result: provider selection inputs require runtime string types, IPv4-mapped IPv6 private destinations are denied, and staging is treated as production-like for HTTPS/private-destination policy.
