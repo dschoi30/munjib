@@ -119,6 +119,37 @@ describe("AI history lineage and visibility contract", () => {
     expect(authorizeSource).not.toHaveBeenCalled();
   });
 
+  it("fails closed when a source-free assistant row still carries source data", () => {
+    const contextMeta = {
+      lineage: { version: 1, kind: "source-free", proof: AI_HISTORY_SOURCE_FREE_PROOF },
+    };
+    const decision = decideAiHistoryVisibility({
+      lineage: parseAiHistoryLineage(contextMeta),
+      authorizeSource: () => true,
+    });
+    const sourceFreeMessage = {
+      ...message,
+      citations: null,
+      contextMeta,
+    };
+
+    expect(
+      toAiHistoryMessageDto(
+        { ...sourceFreeMessage, citations: [{ documentId: "stale-document" }] },
+        decision,
+      ),
+    ).toMatchObject({ visibility: "tombstone" });
+    expect(
+      toAiHistoryMessageDto(
+        {
+          ...sourceFreeMessage,
+          contextMeta: { ...contextMeta, citationChunkIds: ["stale-chunk"] },
+        },
+        decision,
+      ),
+    ).toMatchObject({ visibility: "tombstone" });
+  });
+
   it("returns a non-enumerating, shape-stable tombstone", () => {
     const dto = toAiHistoryMessageDto(message, { visibility: "tombstone" });
 
