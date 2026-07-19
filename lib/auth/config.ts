@@ -354,8 +354,15 @@ export function buildAuthOptions(
         const original = { ...(token as Record<string, unknown>) };
         if (isValidAuthSubject(user?.id)) original.sub = user.id;
         const expectedSub = isValidAuthSubject(original.sub) ? original.sub : undefined;
+        let durableSessionVersion: string | undefined;
         if (expectedSub) {
-          await downstreamHooks.assertDurableAuthState({ userId: expectedSub, surface: "JWT" });
+          const durableState = await downstreamHooks.assertDurableAuthState({
+            userId: expectedSub,
+            surface: "JWT",
+            issuedSessionVersion: original.sessionVersion,
+            issueSessionVersion: isValidAuthSubject(user?.id),
+          });
+          if (durableState) durableSessionVersion = durableState.sessionVersion.toString(10);
         }
         const reduced = sanitizeGoogleJwtToken(
           leaf4SessionMediaHook({ token: original }).token ?? original,
@@ -366,6 +373,8 @@ export function buildAuthOptions(
         );
         if (expectedSub) finalClaims.sub = expectedSub;
         else delete finalClaims.sub;
+        if (durableSessionVersion !== undefined) finalClaims.sessionVersion = durableSessionVersion;
+        else delete finalClaims.sessionVersion;
         return finalClaims as typeof token;
       },
       async session({ session, token }) {
@@ -377,7 +386,11 @@ export function buildAuthOptions(
         }
         if (session.user && userId) {
           session.user.id = userId;
-          await downstreamHooks.assertDurableAuthState({ userId, surface: "SESSION" });
+          await downstreamHooks.assertDurableAuthState({
+            userId,
+            surface: "SESSION",
+            issuedSessionVersion: token.sessionVersion,
+          });
           try {
             session.user.image = await resolveAuthorizationBoundSessionImage(userId, downstreamHooks);
           } catch {

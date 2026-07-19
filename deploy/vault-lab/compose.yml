@@ -1,0 +1,13 @@
+services:
+  vault:
+    image: "${VAULT_LAB_IMAGE:?set repository:version@sha256 digest}"
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    ports:
+      - "127.0.0.1:18200:8200"
+    volumes:
+      - ./vault-lab.hcl:/vault/config/vault-lab.hcl:ro
+    healthcheck:
+      test: ["CMD", "vault", "status", "-address=http://127.0.0.1:8200"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
