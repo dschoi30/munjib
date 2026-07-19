@@ -13,8 +13,9 @@ Workspace AI, comments, and attachment reads/writes. The following paths still
 need one shared active-resource and ACL authority before they can be closed as
 one contract:
 
-- Folder rename/move/cascade operations must authorize every active descendant
-  document before changing any row.
+- Folder rename/move/cascade operations must authorize every descendant folder
+  and document that the mutation actually updates, including archived
+  descendants loaded by the cascade, before changing any row.
 - Broken-link document creation must verify the source document's current read
   and write authority, not only workspace write access.
 - Attachment, comment, version, audit, and history reads must re-check the

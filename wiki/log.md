@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 357
+source_count: 360
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:02:00+09:00 - Issue #160 metadata and descendant coverage
+
+- Result: Refreshed Wiki Log source metadata and clarified that folder path mutations must authorize every descendant row actually updated, including archived descendants loaded by the cascade.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T06:52:00+09:00 - Issue #160 readiness wording correction
 
