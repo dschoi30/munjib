@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-18",
+  "updated": "2026-07-19",
   "pages": [
     {
       "id": "workflow-auth-and-permissions",
@@ -21,7 +21,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 69,
+      "source_count": 70,
       "searchPriority": 50
     },
     {
@@ -132,7 +132,7 @@
         "[[Document Editing Workflow]]",
         "[[Auth And Permissions Workflow]]"
       ],
-      "source_count": 41,
+      "source_count": 42,
       "searchPriority": 50
     },
     {
