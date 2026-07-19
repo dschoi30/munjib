@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 362
+source_count: 364
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:28:00+09:00 - Issue #160 reconciliation caller coverage
+
+- Result: Expanded the document authorization contract to cover every broken-link reconciliation caller, not only target creation, and corrected Wiki Log source_count to include all seven Issue #160 evidence entries.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, `wiki/manifest.json`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:20:00+09:00 - Issue #160 source-link and archived-cascade authority
 

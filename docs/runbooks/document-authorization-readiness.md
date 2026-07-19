@@ -19,11 +19,13 @@ one contract:
   descendants are not covered by that proof; until the archive owner provides a
   separate archive-maintenance authority for each archived row, any cascade
   that would touch an archived descendant must fail closed with zero writes.
-- Broken-link document creation must verify the initiating source document's
-  current read and write authority, not only workspace write access, and must
-  authorize every source document whose broken-link row the target creation
-  would repair. If any affected source is unreadable, the repair must be
-  scoped to authorized sources or the transaction must fail closed.
+- Every broken-link reconciliation caller—including normal document
+  create/update/restore/move, folder rename/move, and explicit broken-link
+  target creation—must verify the initiating source's current read/write
+  authority and authorize every source document whose broken-link row the
+  helper would repair. If any affected source is unreadable, the repair must
+  be scoped to authorized sources or the transaction must fail closed; a
+  workspace-wide `updateMany` is never sufficient.
 - Attachment, comment, version, audit, and history reads must re-check the
   current active workspace/document and document permission at the boundary.
 - Server-rendered document data must expose only the current-view fields, with

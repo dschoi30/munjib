@@ -145,9 +145,12 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 `createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다. 생성 transaction이 commit된 뒤 새 blank document의 saved content 기준으로 RAG chunk replacement를 실행해 기존 stale chunk가 있으면 비운다.
 
 Issue #160 document authorization closure는 이 흐름을 다음 공통 경계로
-확장할 준비를 기록한다. Broken-link 생성은 workspace write 권한만으로
-충분하지 않고 initiating source와 target 생성으로 실제 repair되는 모든
-source document의 현재 권한을 확인해야 한다. Folder tree mutation은 실제로
+확장할 준비를 기록한다. 일반 document create/update/restore/move, folder
+rename/move, broken-link target 생성이 호출하는 모든 broken-link
+reconciliation은 workspace write 권한만으로 충분하지 않다. Initiating source와
+실제로 repair되는 모든 source document의 현재 권한을 확인하고, workspace-wide
+`updateMany`로 unreadable source row까지 바꾸지 않도록 authorized source만
+scope하거나 전체 transaction을 거부해야 한다. Folder tree mutation은 실제로
 갱신하는 모든 active descendant folder/document를 한 번에 검사하며,
 archived descendant는 active-resource proof의 대상이 아니다. 별도
 archive-maintenance authority가 각 archived row를 승인하기 전에는 archived
