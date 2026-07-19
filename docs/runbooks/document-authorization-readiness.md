@@ -14,10 +14,16 @@ need one shared active-resource and ACL authority before they can be closed as
 one contract:
 
 - Folder rename/move/cascade operations must authorize every descendant folder
-  and document that the mutation actually updates, including archived
-  descendants loaded by the cascade, before changing any row.
-- Broken-link document creation must verify the source document's current read
-  and write authority, not only workspace write access.
+  and document that the mutation actually updates before changing any row.
+  Active descendants use the canonical active-resource authority. Archived
+  descendants are not covered by that proof; until the archive owner provides a
+  separate archive-maintenance authority for each archived row, any cascade
+  that would touch an archived descendant must fail closed with zero writes.
+- Broken-link document creation must verify the initiating source document's
+  current read and write authority, not only workspace write access, and must
+  authorize every source document whose broken-link row the target creation
+  would repair. If any affected source is unreadable, the repair must be
+  scoped to authorized sources or the transaction must fail closed.
 - Attachment, comment, version, audit, and history reads must re-check the
   current active workspace/document and document permission at the boundary.
 - Server-rendered document data must expose only the current-view fields, with
@@ -52,8 +58,12 @@ production operation.
 
 The next implementation pass should verify, with synthetic fixtures only:
 
-- Restricted source documents cannot create or repair broken-link targets.
-- Mixed-ACL folder descendants reject the whole transaction with zero writes.
+- Restricted source documents cannot create or repair broken-link targets, and
+  every source row repaired by target creation has an independent authority
+  decision.
+- Mixed-ACL folder descendants reject the whole transaction with zero writes;
+  a cascade containing an archived descendant also rejects with zero writes
+  until the separate archive-maintenance authority is available.
 - Role ceilings prevent explicit grants from exceeding the actor's workspace
   role.
 - Archived or inactive workspaces/documents cannot be read or mutated through

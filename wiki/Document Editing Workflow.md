@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 102
+source_count: 103
 tags:
   - munjib
   - workflow
@@ -146,9 +146,12 @@ Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차
 
 Issue #160 document authorization closure는 이 흐름을 다음 공통 경계로
 확장할 준비를 기록한다. Broken-link 생성은 workspace write 권한만으로
-충분하지 않고 source document의 현재 권한을 확인해야 하며, folder tree
-mutation은 실제로 갱신하는 모든 descendant folder/document를 한 번에
-검사해야 한다(archived descendant 포함). Attachment,
+충분하지 않고 initiating source와 target 생성으로 실제 repair되는 모든
+source document의 현재 권한을 확인해야 한다. Folder tree mutation은 실제로
+갱신하는 모든 active descendant folder/document를 한 번에 검사하며,
+archived descendant는 active-resource proof의 대상이 아니다. 별도
+archive-maintenance authority가 각 archived row를 승인하기 전에는 archived
+descendant를 포함한 cascade를 zero-write로 거부한다. Attachment,
 comment, version, audit/history direct route도 현재 active workspace/document와
 document permission을 매번 재확인하고, server page는 current-view에 필요한
 최소 DTO만 내려야 한다. 이 변경은 Leaf 5 active-resource authority가

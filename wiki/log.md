@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 361
+source_count: 362
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:20:00+09:00 - Issue #160 source-link and archived-cascade authority
+
+- Result: Document authorization readiness now requires authority for every source link row repaired by target creation and explicitly fails closed on cascades touching archived descendants until a separate archive-maintenance authority exists.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:14:00+09:00 - Issue #160 index evidence metadata
 
