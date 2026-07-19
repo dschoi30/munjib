@@ -26,6 +26,9 @@ mutation.
   the authorized lineage or a citation names a document/chunk absent from it.
   The lineage object and each source entry must also match the exact v1 schema;
   nested title/path/denied-source fields are not serialized.
+- Source-backed citations expose only authorized `documentId` and optional
+  authorized `chunkId`; persisted titles, paths, headings, and arbitrary extra
+  fields are unverifiable here and therefore tombstone the row.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.
