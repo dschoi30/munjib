@@ -259,7 +259,9 @@ Leaf 2 signed-int64 ceiling, equal-sequence hashes must agree, and sequence zero
 must use the manifest genesis hash. The envelope `manifestSha256` is computed
 over the parser's canonical field-ordered manifest JSON and must match both the
 supplied parsed manifest and the decrypt receipt; a present containing batch
-must start at sequence one or later.
+must start at sequence one or later. PostgreSQL dump size must be non-zero;
+chain/checkpoint hashes must differ at different sequences; and
+`latestExportBatchDigest` is null only at genesis and required thereafter.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
