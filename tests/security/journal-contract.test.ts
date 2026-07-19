@@ -111,12 +111,15 @@ describe("security journal contract", () => {
   });
 
   it.each([
-    [],
-    [{ sequence: BigInt(0), eventHash: "22".repeat(32) }],
-    [{ sequence: BigInt(-1), eventHash: "22".repeat(32) }],
-    [{ sequence: BigInt(1), eventHash: Buffer.from("2".repeat(64)) }],
-    [{ sequence: BigInt(1), eventHash: "22".repeat(32) }, { sequence: BigInt(2), eventHash: "33".repeat(32) }],
-  ])("rejects malformed append result %#", async (rows) => {
+    { rows: [] },
+    { rows: [{ sequence: BigInt(0), eventHash: "22".repeat(32) }] },
+    { rows: [{ sequence: BigInt(-1), eventHash: "22".repeat(32) }] },
+    { rows: [{ sequence: BigInt(1), eventHash: Buffer.from("2".repeat(64)) }] },
+    { rows: [
+      { sequence: BigInt(1), eventHash: "22".repeat(32) },
+      { sequence: BigInt(2), eventHash: "33".repeat(32) },
+    ] },
+  ])("rejects malformed append result %#", async ({ rows }) => {
     const tx = { $queryRaw: vi.fn().mockResolvedValue(rows) } as never;
     await expect(appendSecurityJournalEvent(tx, {
       kind: "TRIAL_IDENTITY_QUARANTINED",

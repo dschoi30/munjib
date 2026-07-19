@@ -3067,3 +3067,10 @@ links:
 - Review follow-up: Present-but-invalid Vault configuration is classified as unavailable (`69`), public-key creation explicitly reapplies mode `0400` after exclusive creation to defeat restrictive umasks, and signed-envelope output writer failures remain output errors (`74`) without secret-bearing diagnostics.
 - Source evidence: `cmd/munjib-release-sign/main.go`, `cmd/munjib-release-sign/main_test.go`, `internal/delivery/envelope.go`, and `internal/releasesigner/transit.go`.
 - Verification: focused RED/GREEN CLI tests, race-enabled delivery/signer/CLI tests, and a cgo-free Linux/ARM64 cross-build.
+
+## 2026-07-19T17:27:00+09:00 - security-review
+
+- Result: Added explicit regression coverage for malformed security-journal append rows, including empty or multiple rows, non-positive sequences, and non-string hashes.
+- Scope: Test-only follow-up; the fail-closed append validation is unchanged.
+- Source evidence: `tests/security/journal-contract.test.ts`.
+- Verification: 27 focused durable-auth and security-journal tests plus TypeScript compilation.
