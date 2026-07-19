@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:10:00+09:00 - Issue #163 future whole-turn requirement
+
+- Result: Labeled paired USER+ASSISTANT suppression as a future integration requirement so the current per-message helper is not mistaken for list-level behavior.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193 review thread.
+- Verification: focused readiness test.
+
 ## 2026-07-20T07:06:00+09:00 - Issue #163 whole-turn suppression
 
 - Result: Derived AI history readiness now treats persisted `USER`+`ASSISTANT` rows as one turn and suppresses the pair or uses one aggregate redaction when assistant access is denied, preventing unmatched-question position leakage.

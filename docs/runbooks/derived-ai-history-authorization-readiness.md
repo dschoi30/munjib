@@ -19,10 +19,12 @@ mutation.
   because the current retrieval returns no new chunks.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
-- The serializer treats each persisted `USER`+`ASSISTANT` pair as one derived
-  turn. If the assistant decision is denied or unavailable, suppress the whole
-  pair (or use one aggregate redaction) rather than leaving an unmatched user
-  question that reveals the hidden turn's position.
+- Future integration requirement: the owning serializer must treat each
+  persisted `USER`+`ASSISTANT` pair as one derived turn. If the assistant
+  decision is denied or unavailable, it must suppress the whole pair (or use
+  one aggregate redaction) rather than leaving an unmatched user question that
+  reveals the hidden turn's position. The current per-message helper does not
+  claim to perform this list-level pairing.
 - A `source-free-v1` assistant row is visible only when citations are null or
   empty and `contextMeta` contains only the exact lineage proof. Mixed-writer
   or partial-migration rows that retain citation/source metadata fail closed
