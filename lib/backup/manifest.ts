@@ -469,6 +469,9 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   if (value.migrations.appliedIds.some((item) => typeof item !== "string")) fail("manifest.migrations.appliedIds must contain strings");
   const appliedIds = assertCanonicalAscending(value.migrations.appliedIds as string[], "manifest.migrations.appliedIds");
   assertHash(value.migrations.orderedIdsSha256, "manifest.migrations.orderedIdsSha256");
+  if (!equalHash(migrationIdsSha256(appliedIds), value.migrations.orderedIdsSha256)) {
+    fail("manifest.migrations.orderedIdsSha256 must match appliedIds");
+  }
   assertHash(value.migrations.schemaFingerprintSha256, "manifest.migrations.schemaFingerprintSha256");
 
   const parseRuntime = (raw: unknown, path: string) => {

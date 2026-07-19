@@ -239,6 +239,10 @@ describe("snapshot manifest v2", () => {
     const manifest = completeManifest();
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => false })).toThrow(/floor/i);
     expect(() => assertRecoveryCompatibility(manifest, { acceptsCapabilityFloor: () => true })).not.toThrow();
+    expect(() => parseSnapshotManifest({
+      ...manifest,
+      migrations: { ...manifest.migrations, orderedIdsSha256: HASH },
+    })).toThrow(/orderedIdsSha256|migration/i);
 
     expect(() => parseSnapshotManifest({ ...manifest, journal: { ...manifest.journal, exportCheckpointAtSnapshot: { ...manifest.journal.exportCheckpointAtSnapshot, sequence: "9" } } })).toThrow(/exceed/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {

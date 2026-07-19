@@ -207,7 +207,8 @@ until those dependencies and independent restore evidence are complete.
 The dependency-safe v2 manifest slice adds recursive exact-key validation and
 constant-time receipt/integrity helpers in `lib/backup/manifest.ts`. It binds
 database/archive hashes, every attachment state and READY byte hash, ordered
-migrations, capability/evidence hashes, and the Leaf 2 checkpoint while keeping
+migrations (recomputing `migrationIdsSha256(appliedIds)` and rejecting a mismatched
+digest), capability/evidence hashes, and the Leaf 2 checkpoint while keeping
 the private manifest data-only. The public envelope cannot be parsed for signing
 until root seal, immutable exact-read, and authenticated decrypt receipts match;
 `snapshotImageDigest` remains audit evidence and is never a restore selector. No

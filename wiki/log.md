@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T01:08:00+09:00 - Issue #168 migration digest review fix
+
+- Result: `parseSnapshotManifest()` now recomputes `migrationIdsSha256(appliedIds)` and rejects a manifest whose `orderedIdsSha256` attests a different migration set.
+- Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/backup/manifest.ts`, `tests/backup/manifest.test.ts`, PR #206 review thread.
+- Verification: focused manifest/recovery-contract tests and TypeScript.
+
 ## 2026-07-13T16:25:00+09:00 - Issue #168 manifest review follow-up
 
 - Result: backup manifest tests now lock non-adjacent duplicate-path rejection and invalid UTC input handling; the parser retains deterministic code-unit archive ordering and strict unknown-record typing.
