@@ -290,6 +290,8 @@ must be covered by the document count. The same capacity policy applies to
 extracted READY archive receipts, and every inventory row must carry its required
 document ID. Attachment byte sizes are capped at the PostgreSQL/Prisma signed
 32-bit `Int` ceiling for both manifest rows and archive receipts.
+Provider generations also reject null-like and moving aliases (`latest`,
+`current`, `unversioned`, and equivalent sentinels) before receipt matching.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

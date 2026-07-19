@@ -354,6 +354,11 @@ describe("snapshot envelope v2", () => {
     expect(() => parseSnapshotEnvelope(envelope, undefined as never, manifest)).toThrow(SnapshotManifestError);
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: { ...receipts.rootCiphertextSeal, sealed: false as true } }, manifest)).toThrow(/seal/i);
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "latest" } }, manifest)).toThrow(/generation/i);
+    expect(() => parseSnapshotEnvelope(
+      { ...envelope, ciphertextObject: { ...envelope.ciphertextObject, providerGeneration: "current" } },
+      { ...receipts, exactRead: { ...receipts.exactRead, providerGeneration: "current" } },
+      manifest,
+    )).toThrow(/generation/i);
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, decryptVerification: { ...receipts.decryptVerification, verified: false as true } }, manifest)).toThrow(/decrypt/i);
     const inheritedRoot = Object.create(receipts.rootCiphertextSeal) as Record<string, unknown>;
     expect(() => parseSnapshotEnvelope(envelope, { ...receipts, rootCiphertextSeal: inheritedRoot as never }, manifest)).toThrow(/required/i);

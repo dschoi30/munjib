@@ -301,7 +301,7 @@ function assertNonce(value: unknown, path: string): asserts value is string {
 }
 
 function assertGeneration(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || !GENERATION.test(value) || value.toLowerCase() === "latest") {
+  if (typeof value !== "string" || !GENERATION.test(value) || /^(?:latest|current|null|undefined|unversioned)$/i.test(value)) {
     fail(`${path} must be an immutable provider generation`);
   }
 }
