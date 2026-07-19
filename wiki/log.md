@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 361
+source_count: 362
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:42:00+09:00 - public security status signer prerequisite
+
+- Result: Added merged PR #209 / Issue #208 Phase A signer-lab preparation to the authoritative status map, explicitly retaining the #185 production bootstrap and independent attestation gates; refreshed #192/#193 heads.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, `wiki/CI CD And Monitoring Workflow.md`, GitHub PR metadata.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:38:00+09:00 - public security status latest readiness heads
 

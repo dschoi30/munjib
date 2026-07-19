@@ -32,6 +32,7 @@ material do not belong here.
 | #180 | Database-authority contracts merged in PR #181; parent remains open | `issue-180-security-immutable-runtime` / PR #181 | Runtime promotion, rollback/rescan, and recovery qualification are not complete. |
 | #184 | Open implementation PR #188 | `issue-184-security-immutable-runtime-gate` / PR #188 | Remains fail-closed until #185 is independently accepted and CI evidence is available. |
 | #185 | Delivery bundle merged in PR #186 | `issue-185-delivery-substrate-install` / PR #186 (`394cc9b`) | Host broker installation, trust enrollment, and independent attestation remain outside repository evidence. |
+| #208 / signer lab | Phase A preparation merged in PR #209 (`a82bfc2`) | `issue-208-vault-transit-release-signer-local-lab` / PR #209 | Loopback Vault transit lab and local positive/tamper evidence only; same-OCI production bootstrap, `VERIFY_ONLY_OK`, recovery evidence, and independent #185 attestation remain incomplete. |
 | #156 | Implementation merged in PR #199 (`30da043`) | `issue-156-security-trial-isolation-implementation` / PR #199 | Journal/auth contracts only; no migration, Trial disable/quarantine, credential cleanup, support grant, purge, or production operation. Depends on #184/#185. |
 | #159 | Implementation merged in PR #200 (`3a7a3e3`) | `issue-159-active-resolver-implementation` / PR #200 | Active-resource/lock seams fail closed until canonical database-time membership and journal authority are deployed; no purge or production operation. |
 | #160 | Implementation merged in PR #201 (`3cdae74`) | `issue-160-document-acl-implementation` / PR #201 | ACL seam consumes canonical authority and caps grants; no competing resolver, schema/journal change, purge, or production operation. |
@@ -48,8 +49,8 @@ material do not belong here.
 | #189 / #159 readiness | Open PR (`6d63e10`); CI billing-blocked | `issue-159-security-archive-boundaries` / PR #189 | Readiness/runbook only; no archive/purge activation. |
 | #190 | Closed as duplicate | `issue-168-security-backup-restore` / PR #190 | Superseded by the stronger recovery contract merged in PR #206. |
 | #191 / #162 readiness | Open PR (`1cb34bf`); CI billing-blocked | `issue-162-security-auth-abuse-sessions` / PR #191 | Readiness/runbook only; no session/auth-abuse activation. |
-| #192 / #160 readiness | Open PR (`19b16d8`); CI billing-blocked | `issue-160-security-document-acl` / PR #192 | Readiness/runbook only; no ACL route activation. |
-| #193 / #163 readiness | Open PR (`0706332`); CI billing-blocked | `issue-163-security-ai-history-authorization` / PR #193 | Readiness/test handoff only; streamed authorization contract is documented, no history mutation is activated. |
+| #192 / #160 readiness | Open PR (`edac437`); CI billing-blocked | `issue-160-security-document-acl` / PR #192 | Readiness/runbook only; no ACL route activation. |
+| #193 / #163 readiness | Open PR (`02256a9`); CI billing-blocked | `issue-163-security-ai-history-authorization` / PR #193 | Readiness/test handoff only; streamed authorization contract is documented, no history mutation is activated. |
 | #194 / #164 readiness | Open PR (`a10c4f5`); CI billing-blocked | `issue-164-security-ai-provider-policy` / PR #194 | Public-safe policy handoff only; no provider allowlist or route activation. |
 | #196 / #166 readiness | Open PR (`483e417`); CI billing-blocked | `issue-166-security-edge-bindings` / PR #196 | Readiness contract/test only; no edge infrastructure or production traffic change. |
 | #197 | Open status-map PR (this branch); CI billing-blocked | `codex/issue-154-security-hardening-status` / PR #197 | Documentation only; the map never certifies deployment, host attestation, snapshot/restore, purge, or issue closure. |
