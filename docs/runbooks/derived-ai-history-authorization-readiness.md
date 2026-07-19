@@ -62,9 +62,9 @@ verified contracts:
 
 After those gates, the owning implementation must wire the same decision
 helper into thread load, follow-up context, memory refresh, finalization,
-citation serialization, and reset-response serialization, with revocation-race
-coverage. No direct membership fallback or citation-only inference is
-permitted.
+send-completion/`done` serialization, citation serialization, and
+reset-response serialization, with revocation-race coverage. No direct
+membership fallback or citation-only inference is permitted.
 
 For streamed assistant responses, authorization must be established before any
 token is emitted. The implementation must either reauthorize immediately before
@@ -73,13 +73,16 @@ until a final authority recheck succeeds before releasing any token. A
 finalization-only check after `onToken` is insufficient because a source can be
 revoked between tokens.
 
-The eventual thread/list/reset DTOs must suppress each denied `USER`+`ASSISTANT` turn
-at list level or use one aggregate redaction that does not preserve hidden-row
-count or position. It must never emit one tombstone per hidden turn, and it
-must not add a hidden-message count, denied-source count, or other aggregate
-that lets a caller enumerate hidden history. This slice only defines the
-per-row tombstone shape for internal composition; whole-turn list suppression
-and durable turn-key/turn-granular pagination remain integration acceptance
+The eventual thread/list/reset and streamed send-completion/`done` DTOs must
+suppress each denied `USER`+`ASSISTANT` turn at list level or use one aggregate
+redaction that does not preserve hidden-row count or position. Authorization
+must happen before page limits/cursor calculation; an overfetch/refill design
+may return only visible turns and visible-derived page metadata. It must never
+emit one tombstone per hidden turn, and it must not add a hidden-message count,
+denied-source count, or other aggregate that lets a caller enumerate hidden
+history. This slice only defines the per-row tombstone shape for internal
+composition; whole-turn suppression, durable turn keys, turn-granular
+pagination, and send-completion serialization remain integration acceptance
 criteria for the dependency-complete owner.
 
 ## Public-safe evidence

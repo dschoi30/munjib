@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-07-20
-source_count: 118
+source_count: 119
 tags:
   - munjib
   - workflow
@@ -126,8 +126,8 @@ membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 �
 
 Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
 source-backed/source-free lineage를 명시하고, thread load, follow-up
-context, memory refresh, finalization, citation serialization, reset-response
-serialization 각각에서
+context, memory refresh, finalization, send-completion/`done` serialization,
+citation serialization, reset-response serialization 각각에서
 현재 canonical actor/workspace/document authority를 재확인해야 한다. Streamed
 assistant response는 각 token 노출 직전에 재인가하거나 전체 response를 최종
 authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-only 검사는
@@ -309,7 +309,11 @@ Per-row Source-backed decision/tombstone은 `ASSISTANT` row에 대해 계산되�
 이는 최종 list/reset DTO에서 일반 `USER` row를 항상 노출해도 된다는 정책이
 아니다. Dependency-complete whole-turn serializer는 durable turn key로
 paired `USER`+`ASSISTANT` rows를 함께 숨기거나 단일 aggregate redaction으로
-대체해야 하며, 이 per-row helper 자체는 list-level pairing을 주장하지 않는다.
+대체해야 하며, history page limit/cursor를 계산하기 전에 authorization을
+적용해야 한다. 숨겨진 turn을 먼저 page에서 잘라낸 뒤 필터링하지 말고,
+overfetch/refill 결과의 page metadata도 visible turn만으로 계산해야 한다.
+이 per-row helper 자체는 list-level pairing이나 streamed `done` serialization을
+주장하지 않는다.
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.

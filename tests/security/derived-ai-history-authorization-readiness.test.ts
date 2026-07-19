@@ -35,6 +35,7 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toContain("memory refresh");
     expect(runbook).toContain("finalization");
     expect(runbook).toContain("citation serialization");
+    expect(runbook).toContain("send-completion/`done` serialization");
     expect(runbook).toContain("reset-response serialization");
     expect(runbook).toMatch(/reauthorize immediately before\s+each token/i);
     expect(runbook).toMatch(/buffer the entire response\s+until a final authority recheck/i);
@@ -46,16 +47,17 @@ describe("derived AI history authorization readiness contract", () => {
     expect(runbook).toMatch(/answer text,\s+citations,\s+source ids/);
     expect(runbook).toContain("One denied source hides the whole turn");
     expect(runbook).toMatch(/suppress each denied `USER`\+`ASSISTANT` turn\s+at list level/i);
-    expect(runbook).toMatch(/never emit one tombstone per hidden turn/i);
+    expect(runbook).toMatch(/never\s+emit one tombstone per hidden turn/i);
     expect(runbook).toMatch(/suppress each denied `USER`\+`ASSISTANT` turn/i);
     expect(runbook).toMatch(/whole\s+pair/i);
     expect(runbook).toMatch(/durable turn-correlation\s+key/i);
     expect(runbook).toMatch(/turn-granular pagination/i);
+    expect(runbook).toMatch(/authorization\s+must happen before page limits\/cursor calculation/i);
   });
 
   it("keeps destructive data operations outside this leaf", () => {
     expect(runbook).toContain("purge job");
     expect(runbook).toMatch(/production\s+mutation/);
-    expect(runbook).toMatch(/No direct membership\s+fallback/);
+    expect(runbook).toMatch(/No direct\s+membership\s+fallback/);
   });
 });
