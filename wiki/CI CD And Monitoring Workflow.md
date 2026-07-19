@@ -262,6 +262,8 @@ supplied parsed manifest and the decrypt receipt; a present containing batch
 must start at sequence one or later. PostgreSQL dump size must be non-zero;
 chain/checkpoint hashes must differ at different sequences; and
 `latestExportBatchDigest` is null only at genesis and required thereafter.
+READY attachment inventories also require a non-zero archive size, and positive
+journal hashes may not reuse the genesis hash.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
