@@ -23,11 +23,32 @@ export type DurableAuthState = Readonly<{
   sessionVersion: bigint;
 }>;
 
+export type DurableAuthStateInput = Readonly<{
+  userId: string;
+  surface: DurableAuthSurface;
+  issuedSessionVersion?: unknown;
+  issueSessionVersion?: boolean;
+}>;
+
 export function createDurableAuthStateHook(
   db: DurableAuthDatabase,
-): (input: { userId: string; surface: DurableAuthSurface }) => Promise<void> {
+): (input: DurableAuthStateInput) => Promise<DurableAuthState> {
   return async (input) => {
-    await assertCurrentUserAuthEnabled({ db, userId: input.userId, surface: input.surface });
+    const state = await assertCurrentUserAuthEnabled({
+      db,
+      userId: input.userId,
+      surface: input.surface,
+    });
+    if (input.surface === "JWT" || input.surface === "SESSION") {
+      if (input.issuedSessionVersion === undefined) {
+        if (input.surface !== "JWT" || input.issueSessionVersion !== true) {
+          throw new Error("AUTH_SESSION_VERSION_MISSING");
+        }
+      } else if (parseSessionVersion(input.issuedSessionVersion) !== state.sessionVersion) {
+        throw new Error("AUTH_SESSION_REVOKED");
+      }
+    }
+    return state;
   };
 }
 

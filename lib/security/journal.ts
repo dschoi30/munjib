@@ -373,6 +373,7 @@ export async function appendSecurityJournalEvent(
     !row ||
     typeof row.sequence !== "bigint" ||
     row.sequence <= BigInt(0) ||
+    row.sequence > MAX_INT64 ||
     typeof row.eventHash !== "string" ||
     !HASH_PATTERN.test(row.eventHash)
   ) {
