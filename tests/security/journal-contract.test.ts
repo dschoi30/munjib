@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import {
   SECURITY_JOURNAL_EVENT_KINDS,
+  SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND,
   appendSecurityJournalEvent,
   deriveSecurityJournalOperationId,
   encodeSecurityJournalHashPreimage,
@@ -34,6 +35,20 @@ describe("security journal contract", () => {
     expect(SECURITY_JOURNAL_EVENT_KINDS).toContain("AUTH_USER_DISABLED");
     expect(SECURITY_JOURNAL_EVENT_KINDS).toContain("TRIAL_IDENTITY_QUARANTINED");
     expect(SECURITY_JOURNAL_EVENT_KINDS).toHaveLength(26);
+  });
+
+  it("deep-freezes the subject-type contract", () => {
+    expect(Object.isFrozen(SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND)).toBe(true);
+    expect(Object.isFrozen(SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND.AI_HISTORY_REDACTED)).toBe(true);
+    expect(() => {
+      (SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND.AI_HISTORY_REDACTED as unknown as string[]).push(
+        "WORKSPACE",
+      );
+    }).toThrow(TypeError);
+    expect(SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND.AI_HISTORY_REDACTED).toEqual([
+      "AI_CHAT_TURN",
+      "AI_CHAT_MEMORY",
+    ]);
   });
 
   it("parses an exact JSON-safe event without converting BIGINT sequence", () => {
