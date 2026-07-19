@@ -210,6 +210,7 @@ describe("snapshot manifest v2", () => {
   test("enforces attachment state and duplicate rules", () => {
     const manifest = completeManifest();
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "READY", sizeBytes: "0" }, manifest.attachments.entries[1]] } })).toThrow(/non-zero/i);
+    expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], sizeBytes: "2147483648" }, manifest.attachments.entries[1]] } })).toThrow(/size|int32/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [{ ...manifest.attachments.entries[0], status: "PENDING", relativePath: "leak.bin" }, manifest.attachments.entries[1]] } })).toThrow(/non-READY/i);
     expect(() => parseSnapshotManifest({ ...manifest, attachments: { ...manifest.attachments, entries: [manifest.attachments.entries[0], { ...manifest.attachments.entries[1], id: manifest.attachments.entries[0].id }] } })).toThrow(/sorted|duplicate/i);
 
