@@ -148,6 +148,10 @@ describe("AI provider boundary", () => {
         "development",
       ),
     ).toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
+    for (const value of ["https://[::7f00:1]/v1", "https://[ff02::1]/v1"]) {
+      expect(() => validateProviderDestination(value, { id: "ipv6-special-v1", origin: value.slice(0, value.indexOf("/v1")), path: "/v1" }, "development"))
+        .toThrow("AI_PROVIDER_DESTINATION_FORBIDDEN");
+    }
   });
 
   it("permits the fixed local endpoint only in non-production", () => {

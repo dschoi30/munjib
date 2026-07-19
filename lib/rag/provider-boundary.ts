@@ -333,6 +333,13 @@ function isPrivateOrMetadataHost(hostname: string): boolean {
   ) {
     return true;
   }
+  // Compressed IPv6 special ranges include IPv4-compatible loopback/private
+  // forms (for example ::7f00:1) that are not covered by the textual prefix
+  // checks below. Reject the entire ::/96 compatibility space and multicast
+  // destinations unless the caller has the explicit fixed Ollama gate.
+  if (normalized.startsWith("::") || normalized.startsWith("ff")) {
+    return true;
+  }
   if (isIpv4(normalized)) {
     const octets = normalized.split(".").map(Number);
     const [a, b] = octets;
