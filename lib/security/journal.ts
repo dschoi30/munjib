@@ -32,7 +32,7 @@ export const SECURITY_JOURNAL_EVENT_KINDS = Object.freeze([
 
 export type SecurityJournalEventKind = (typeof SECURITY_JOURNAL_EVENT_KINDS)[number];
 
-export const SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND = Object.freeze({
+const SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND_VALUES = {
   AUTH_USER_DISABLED: ["USER"],
   AUTH_CREDENTIAL_INVALIDATED: ["USER"],
   AUTH_OAUTH_ACCOUNT_REVOKED: ["OAUTH_ACCOUNT"],
@@ -59,7 +59,15 @@ export const SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND = Object.freeze({
   ATTACHMENT_QUARANTINED: ["ATTACHMENT"],
   ATTACHMENT_DELETE_REQUESTED: ["ATTACHMENT"],
   ATTACHMENT_DELETED: ["ATTACHMENT"],
-} as const);
+} as const;
+
+for (const subjectTypes of Object.values(SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND_VALUES)) {
+  Object.freeze(subjectTypes);
+}
+
+export const SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND = Object.freeze(
+  SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND_VALUES,
+);
 
 export type SecurityJournalSubjectTypeByKind = {
   [K in SecurityJournalEventKind]: (typeof SECURITY_JOURNAL_SUBJECT_TYPE_BY_KIND)[K][number];

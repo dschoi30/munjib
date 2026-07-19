@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-07-13
-source_count: 159
+updated: 2026-07-19
+source_count: 161
 tags:
   - index
   - munjib
@@ -23,6 +23,7 @@ links:
   - "[[Local Development Workflow]]"
   - "[[RAG Process Workflow]]"
   - "[[CI CD And Monitoring Workflow]]"
+  - "[[Release Signer And Vault Workflow]]"
   - "[[Production Observability Workflow]]"
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
@@ -57,6 +58,7 @@ links:
 - [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 - [[RAG Process Workflow]] - Ask AI RAG의 saved-content-only request, provider/env, indexing, retrieval, LangChain answer, Langfuse/Sentry observability 흐름.
 - [[CI CD And Monitoring Workflow]] - GitHub Actions PR/main CI, OCI native Compose deploy, Docker/Sentry monitoring 구성.
+- [[Release Signer And Vault Workflow]] - 1인 운영에서 Vault Community를 local signer lab과 초기 same-OCI Docker Compose signer로 사용하고, #185 독립 attestation을 위해 dedicated signer VM으로 승격하는 workflow.
 - [[Production Observability Workflow]] - production-style Docker 로그 확인, Sentry error/tracing/runtime metrics/Replay, handled AI 503, low-cardinality app metrics 관측성 흐름.
 - [[Wiki Maintenance Automation]] - Feature Start, Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
 
@@ -76,9 +78,12 @@ links:
 
 ## 상태판
 
+- Vault local signer lab: Issue #208 Phase A provides explicit `vault:lab:*` lifecycle commands, a digest-pinned Vault 2.0.3 loopback-only container, ephemeral mode-`0600` dev-token override, raw mode-`0400` public-key output, and real positive/tamper/expiry/generation/wrong-key integration evidence. Same-OCI production bootstrap, host `VERIFY_ONLY_OK`, recovery evidence, and Issue #185 independent attestation remain incomplete; see [[Release Signer And Vault Workflow]] and [[CI CD And Monitoring Workflow]].
 - Secure runtime: Leaf 3 pins the Next.js 15.5.18 runtime with exact matching ESLint configuration, a paginated advisory gate, a deterministic protected dependency projection, and a local production-like auth/RSC smoke via `pnpm run test:security-runtime`; see [[CI CD And Monitoring Workflow]] and [[Local Development Workflow]].
 - Immutable database authority: Leaf 13B adds append-only migration name/checksum admission, explicit expand/contract classification, NOLOGIN schema ownership, least-privilege Web/RAG roles, fixed libpq credential-file entrypoints, and a PRE_JOURNAL `database-role-v1` manifest/builder; see [[CI CD And Monitoring Workflow]].
 - Leaf 2 contract handoff: Issue #156 now has a dependency-safe typed security-journal parser/append seam and fail-closed durable-auth-state resolver. The default auth hook and database remain unchanged until the deployed Leaf 1/13B proofs and privileged broker allow the journal/auth-tombstone migration; see [[Auth And Permissions Workflow]] and [[Document Knowledge Model]].
+- Delivery substrate packaging: Issue #185 adds a fixed Linux/ARM64 delivery-bundle layout plus SHA-256 manifest/builder/verifier for the Leaf 13A broker, validates binary payloads as ELF64 little-endian AArch64, and uses generated manifest v2 to avoid the legacy static v1 schema collision while keeping `release-verify.pub` as a root-bootstrap external input. This is artifact packaging evidence only; production host installation and trust enrollment remain pending; see [[CI CD And Monitoring Workflow]].
+- Delivery artifact CI: the same Issue #185 contract cross-compiles the three Go delivery programs with a SHA-pinned setup-go action and emits only public SHA-256 metadata in the CI summary; binaries are not uploaded or installed; see [[CI CD And Monitoring Workflow]].
 - Production dependency audit: Issue #171 pins the reviewed transitive production floors (`postcss` 8.5.10, `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, and scoped `minimatch@10.2.5>brace-expansion` 5.0.6) through exact pnpm overrides, preserves minimatch 3 compatibility, and runs the unfiltered `pnpm audit --prod` gate alongside Next.js 15.5.18. Issue #174 additionally scopes `tsx>esbuild` to patched `esbuild` 0.28.1 so the production auth-preflight path is clean without changing the dev-only Vite resolution; see [[CI CD And Monitoring Workflow]].
 - Production Prisma runtime: Issue #182 preserves the generated `.prisma/client` across production dependency pruning with a version-agnostic discovery/copy/restore step and a build-time `require("@prisma/client")` guard; Prisma CLI remains development-only and the existing non-root/Corepack contracts remain unchanged. See [[CI CD And Monitoring Workflow]].
 - 최신 구현 현황: [[Munjib]], [[Project PRD]], [[Document Editing Workflow]]
