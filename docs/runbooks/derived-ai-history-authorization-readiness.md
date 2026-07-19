@@ -51,9 +51,11 @@ citation serialization, with revocation-race coverage. No direct membership
 fallback or citation-only inference is permitted.
 
 For streamed assistant responses, authorization must be established before any
-token is emitted. The implementation must either reauthorize each stream before
-emission or buffer tokens until the final recheck succeeds; a finalization-only
-check after `onToken` is insufficient because a source can be revoked mid-stream.
+token is emitted. The implementation must either reauthorize immediately before
+each token is exposed (not only once per stream), or buffer the entire response
+until a final authority recheck succeeds before releasing any token. A
+finalization-only check after `onToken` is insufficient because a source can be
+revoked between tokens.
 
 The eventual thread DTO must not add a hidden-message count, denied-source
 count, or other aggregate that lets a caller enumerate hidden history. This

@@ -19,6 +19,19 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:55:00+09:00 - Issue #163 stream reauthorization boundary
+
+- Result: Strengthened the derived AI history handoff so streamed responses
+  require reauthorization immediately before each token or buffer the entire
+  response until a final authority check; a single pre-stream check or
+  finalization-only check is insufficient.
+- Maintenance: Removed test-line-ending commentary from the RAG workflow and
+  refreshed `Document Editing Workflow` frontmatter to `updated: 2026-07-20`.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`,
+  PR #193 review threads.
+- Verification: 5 focused readiness tests and TypeScript compilation.
+
 ## 2026-07-20T06:50:00+09:00 - Issue #163 readiness contract test reconciliation
 
 - Result: Preserved the current main runbook and added the missing contract test that asserts the derived AI history readiness handoff remains documentation-only, lineage-gated, whole-turn redacting, and outside destructive purge or broker installation.

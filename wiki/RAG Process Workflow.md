@@ -127,9 +127,10 @@ membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 �
 Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
 source-backed/source-free lineage를 명시하고, thread load, follow-up
 context, memory refresh, finalization, citation serialization 각각에서
-cross-platform runbook assertions remain whitespace-tolerant while preserving
-the same non-enumerating tombstone contract.
-현재 canonical actor/workspace/document authority를 재확인해야 한다. source가
+현재 canonical actor/workspace/document authority를 재확인해야 한다. Streamed
+assistant response는 각 token 노출 직전에 재인가하거나 전체 response를 최종
+authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-only 검사는
+허용하지 않는다. source가
 읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
 citation, document id/title/path, denial reason을 노출하지 않는
 non-enumerating tombstone으로 숨기고 follow-up/memory 입력에서도 제외한다.
