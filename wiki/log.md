@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:58:00+09:00 - Issue #161 iterator-safe readiness arrays
+
+- Result: Invite readiness arrays are copied from validated numeric indices, so caller-controlled `Symbol.iterator` implementations cannot replace canonical values during the immutable return step.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review thread.
+- Verification: focused invite readiness tests.
+
 ## 2026-07-13T14:45:00+09:00 - Issue #161 readiness parser review follow-up
 
 - Invite readiness parsing now requires own object keys, dense canonical arrays, and bracket-safe validated field access; inherited or sparse JSON-like contracts fail closed.

@@ -103,4 +103,22 @@ describe("invite-first signup readiness contract", () => {
       /contract\.Symbol\(secret\) is an unknown field/,
     );
   });
+
+  test("copies canonical array values without invoking a caller iterator", () => {
+    const contract = loadContract() as Record<string, unknown>;
+    const hostilePrerequisites = [...(contract.prerequisites as string[])];
+    Object.defineProperty(hostilePrerequisites, Symbol.iterator, {
+      configurable: true,
+      value: function* () {
+        yield* ["attacker-1", "attacker-2", "attacker-3", "attacker-4", "attacker-5"];
+      },
+    });
+
+    const parsed = parseInviteSignupReadinessContract({
+      ...contract,
+      prerequisites: hostilePrerequisites,
+    });
+
+    expect(parsed.prerequisites).toEqual(INVITE_SIGNUP_PREREQUISITES);
+  });
 });

@@ -98,17 +98,21 @@ function assertCanonicalArray<T extends string>(value: unknown, expected: readon
       fail(`${path} must be a dense array`);
     }
   }
-  if (arr.some((item) => typeof item !== "string")) {
-    fail(`${path} must be an array of strings`);
+  const stringArr: string[] = [];
+  for (let index = 0; index < arr.length; index += 1) {
+    const item = arr[index];
+    if (typeof item !== "string") {
+      fail(`${path} must be an array of strings`);
+    }
+    stringArr.push(item);
   }
-  const stringArr = arr as readonly string[];
   if (stringArr.length !== expected.length || stringArr.some((item, index) => item !== expected[index])) {
     fail(`${path} has a non-canonical order or value`);
   }
   if (new Set(stringArr).size !== stringArr.length) {
     fail(`${path} must not contain duplicates`);
   }
-  return Object.freeze([...stringArr] as T[]);
+  return Object.freeze(stringArr as T[]);
 }
 
 /**
