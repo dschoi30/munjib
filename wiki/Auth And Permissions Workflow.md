@@ -243,7 +243,8 @@ metadata. Validation errors are generic and never echo credentials. This is a
 pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
 activation, or production behavior. The exchange parser and each canonical
 contract array check `Reflect.ownKeys` so non-enumerable and symbol own metadata
-cannot bypass the exact shape. Atomic
+cannot bypass the exact shape; array length is bounded before key scanning and
+indexed values must be own data properties rather than accessors. Atomic
 invitation consumption, revision
 invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
 follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.

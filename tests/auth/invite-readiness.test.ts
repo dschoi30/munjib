@@ -90,6 +90,27 @@ describe("invite-first signup readiness contract", () => {
     );
   });
 
+  test("bounds array length before scanning and rejects accessors", () => {
+    const contract = loadContract() as Record<string, unknown>;
+    const huge = [] as string[];
+    huge.length = 0xffffffff;
+    expect(() => parseInviteSignupReadinessContract({ ...contract, prerequisites: huge })).toThrow(
+      /contract\.prerequisites has a non-canonical length/,
+    );
+
+    const accessor = [...(contract.prerequisites as string[])];
+    Object.defineProperty(accessor, "0", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error("accessor invoked");
+      },
+    });
+    expect(() => parseInviteSignupReadinessContract({ ...contract, prerequisites: accessor })).toThrow(
+      /contract\.prerequisites\.0 must be a data property/,
+    );
+  });
+
   test("rejects non-enumerable and symbol own contract extensions", () => {
     const contract = loadContract() as Record<string, unknown>;
     const hidden = { ...contract } as Record<string, unknown>;

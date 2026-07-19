@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 359
+source_count: 360
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:22:00+09:00 - Issue #161 bounded and accessor-free arrays
+
+- Result: Invite readiness bounds canonical array lengths before key scanning and copies only own data-property values, rejecting huge sparse arrays and accessor properties without executing caller code.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review threads.
+- Verification: invite readiness tests and wiki gates.
 
 ## 2026-07-20T07:16:00+09:00 - Issue #161 nested contract-array own-key guard
 

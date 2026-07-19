@@ -93,6 +93,9 @@ function assertCanonicalArray<T extends string>(value: unknown, expected: readon
     fail(`${path} must be an array of strings`);
   }
   const arr: readonly unknown[] = value;
+  if (arr.length !== expected.length) {
+    fail(`${path} has a non-canonical length`);
+  }
   const expectedOwnKeys = new Set<string>(["length"]);
   for (let index = 0; index < arr.length; index += 1) {
     expectedOwnKeys.add(String(index));
@@ -109,7 +112,11 @@ function assertCanonicalArray<T extends string>(value: unknown, expected: readon
   }
   const stringArr: string[] = [];
   for (let index = 0; index < arr.length; index += 1) {
-    const item = arr[index];
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (!descriptor || !("value" in descriptor)) {
+      fail(`${path}.${index} must be a data property`);
+    }
+    const item = descriptor.value;
     if (typeof item !== "string") {
       fail(`${path} must be an array of strings`);
     }

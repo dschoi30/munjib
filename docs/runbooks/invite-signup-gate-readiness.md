@@ -14,7 +14,10 @@ returns an immutable preparation value. It does not enable signup, read
 production state, accept a capability, or create an account.
 The top-level contract and each canonical string array reject unknown own
 properties, including non-enumerable and symbol keys, before values are
-copied into the immutable result.
+copied into the immutable result. Canonical array lengths are bounded before
+key scanning, and indexed values must be own data properties rather than
+accessors, so hostile in-memory inputs cannot trigger untrusted code or an
+unbounded loop.
 
 The requested production mode is `invite`; until every prerequisite is
 independently attested, the effective mode remains `closed`. The current branch
