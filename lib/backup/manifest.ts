@@ -15,6 +15,7 @@ const IMAGE_DIGEST = /^sha256:[a-f0-9]{64}$/;
 const ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/;
 const COMMIT = /^[a-f0-9]{7,64}$/;
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
+const MAX_DECIMAL_DIGITS = 39;
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
@@ -268,7 +269,9 @@ function assertCommit(value: unknown, path: string): asserts value is string {
 }
 
 function assertDecimal(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || !DECIMAL.test(value)) fail(`${path} must be a canonical unsigned decimal string`);
+  if (typeof value !== "string" || value.length > MAX_DECIMAL_DIGITS || !DECIMAL.test(value)) {
+    fail(`${path} must be a bounded canonical unsigned decimal string`);
+  }
 }
 
 function decimal(value: string, path: string): bigint {

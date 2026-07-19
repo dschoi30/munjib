@@ -269,6 +269,8 @@ domain error before the JavaScript call stack can be exhausted.
 For non-genesis checkpoints, the containing batch digest must equal the latest
 export batch digest, and the declared document count must cover distinct READY
 attachment document references.
+All decimal strings are also bounded before any `BigInt` conversion, preventing
+oversized numeric inputs from consuming unbounded parser resources.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,
