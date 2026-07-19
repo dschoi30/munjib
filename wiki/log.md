@@ -115,7 +115,8 @@ links:
 ## 2026-07-13T14:45:00+09:00 - Issue #156 journal review follow-up
 
 - Reused one module-level `TextEncoder` for security-journal hash preimage encoding; the canonical byte contract is unchanged while repeated event hashing avoids per-field encoder allocation.
-- Source evidence: `lib/security/journal.ts`, PR #199 review threads.
+- Durable auth state now accepts only non-negative `bigint`, safe-integer number, or canonical unsigned decimal string session versions; null, whitespace, signs, leading zeroes, fractions, and non-finite values fail closed as `AUTH_STATE_UNAVAILABLE`.
+- Source evidence: `lib/security/journal.ts`, `lib/auth/durable-auth-state.ts`, PR #199 review threads.
 - Verification: journal/auth focused tests (11 passed), TypeScript, and staged wiki gates.
 
 ## 2026-07-13T14:55:00+09:00 - delivery bundle review wording

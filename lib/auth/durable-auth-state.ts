@@ -45,13 +45,14 @@ function assertUserId(userId: unknown): asserts userId is string {
 }
 
 function parseSessionVersion(value: unknown): bigint {
-  try {
-    const parsed = typeof value === "bigint" ? value : BigInt(value as string | number);
-    if (parsed < BigInt(0)) throw new Error("negative");
-    return parsed;
-  } catch {
-    throw new Error("AUTH_STATE_UNAVAILABLE");
+  if (typeof value === "bigint") {
+    if (value >= BigInt(0)) return value;
+  } else if (typeof value === "number") {
+    if (Number.isSafeInteger(value) && value >= 0) return BigInt(value);
+  } else if (typeof value === "string" && /^(0|[1-9][0-9]*)$/.test(value)) {
+    return BigInt(value);
   }
+  throw new Error("AUTH_STATE_UNAVAILABLE");
 }
 
 /**
