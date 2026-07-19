@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 360
+source_count: 361
 tags:
   - log
   - munjib
@@ -18,6 +18,12 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T07:14:00+09:00 - Issue #160 index evidence metadata
+
+- Result: Incremented Wiki Index source_count for the Issue #160 authorization-readiness evidence and regenerated the manifest metadata.
+- Source evidence: `wiki/index.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
 
 ## 2026-07-20T07:10:00+09:00 - Issue #160 auth workflow metadata refresh
 
