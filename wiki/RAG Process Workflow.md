@@ -269,6 +269,8 @@ row는 질문 기록을 유지하고 분리된 assistant decision을 상속하�
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
+Source-backed 행도 context metadata가 승인된 lineage 밖으로 확장되거나 citation이
+lineage에 없는 document/chunk를 가리키면 전체 행을 tombstone으로 처리한다.
 최종 thread DTO caller는 tombstone 수나
 denied-source 수를 별도 count로 내보내지 않아 hidden-history enumeration을 만들지
 않아야 한다.

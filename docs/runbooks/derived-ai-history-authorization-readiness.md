@@ -22,6 +22,8 @@ mutation.
   empty and `contextMeta` contains only the exact lineage proof. Mixed-writer
   or partial-migration rows that retain citation/source metadata fail closed
   to a tombstone.
+- Source-backed rows likewise fail closed when context metadata extends beyond
+  the authorized lineage or a citation names a document/chunk absent from it.
 
 The helper imports no Prisma client, route code, retention/purge code,
 provider SDK, telemetry, or direct membership/permission lookup.

@@ -223,8 +223,32 @@ export function toAiHistoryMessageDto(
   if (decision.lineage.kind === "source-free" && !isCleanSourceFreeMessage(message)) {
     return createAiHistoryTombstone(message.role);
   }
+  if (decision.lineage.kind === "source-backed" && !isCleanSourceBackedMessage(message, decision.lineage.sources)) {
+    return createAiHistoryTombstone(message.role);
+  }
 
   return createVisibleAiHistoryMessageDto(message);
+}
+
+function isCleanSourceBackedMessage(
+  message: AiHistoryMessageRecord,
+  sources: readonly AiHistorySource[],
+): boolean {
+  if (!isRecord(message.contextMeta) || Object.keys(message.contextMeta).length !== 1 || !("lineage" in message.contextMeta)) {
+    return false;
+  }
+  if (message.citations === null) return true;
+  if (!Array.isArray(message.citations)) return false;
+
+  const allowedDocuments = new Set(sources.map((source) => source.documentId));
+  const allowedPairs = new Set(sources.map((source) => `${source.documentId}\u0000${source.chunkId}`));
+  return message.citations.every((citation) => {
+    if (!isRecord(citation) || !nonEmptyString(citation.documentId)) return false;
+    const documentId = citation.documentId.trim();
+    if (!allowedDocuments.has(documentId)) return false;
+    if (citation.chunkId === undefined) return true;
+    return nonEmptyString(citation.chunkId) && allowedPairs.has(`${documentId}\u0000${citation.chunkId.trim()}`);
+  });
 }
 
 function isCleanSourceFreeMessage(message: AiHistoryMessageRecord): boolean {
