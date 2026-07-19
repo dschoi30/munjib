@@ -18,8 +18,11 @@ beforeAll(() => {
 });
 const requestFor = (probeId: string) =>
   probeId === "origin-loopback"
-    ? {
+      ? {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "http-loopback",
         connectAddress: "127.0.0.1:3000",
         host: "munjib.example.invalid",
@@ -28,6 +31,9 @@ const requestFor = (probeId: string) =>
     : probeId === "unknown-host-rejection"
       ? {
           method: "GET",
+          credentials: "omit",
+          authorizationHeaderPresent: false,
+          cookieHeaderPresent: false,
           transport: "https",
           connectAddress: "munjib.example.invalid",
           host: "unknown.invalid",
@@ -35,6 +41,9 @@ const requestFor = (probeId: string) =>
         }
       : {
           method: "GET",
+          credentials: "omit",
+          authorizationHeaderPresent: false,
+          cookieHeaderPresent: false,
           transport: "https",
           connectAddress: "munjib.example.invalid",
           host: "munjib.example.invalid",
@@ -260,6 +269,8 @@ describe("edge bindings contract evaluator", () => {
       reasons: ["OBSERVED_AT_INVALID"],
     });
     expect(untrustedFailure.probeId).toBe("unknown");
+    expect(untrustedFailure.status).toBe(0);
+    expect(untrustedFailure.latencyMs).toBe(0);
     expect(untrustedFailure.observedAt).toBe("1970-01-01T00:00:00.000Z");
     expect(JSON.stringify(untrustedFailure)).not.toContain("x".repeat(1_000));
   });
@@ -301,6 +312,9 @@ describe("edge bindings contract evaluator", () => {
       },
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "munjib.example.invalid",
@@ -323,6 +337,9 @@ describe("edge bindings contract evaluator", () => {
       },
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "attacker.invalid",
@@ -346,6 +363,9 @@ describe("edge bindings contract evaluator", () => {
       },
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "munjib.example.invalid",
@@ -369,6 +389,9 @@ describe("edge bindings contract evaluator", () => {
       },
       request: {
         method: "POST",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "munjib.example.invalid",
@@ -377,6 +400,34 @@ describe("edge bindings contract evaluator", () => {
     });
     expect(wrongMethod.ok).toBe(false);
     expect(wrongMethod.reasons).toContain("REQUEST_METHOD_MISMATCH");
+
+    const credentialed = evaluateEdgeProbe(contract, "public-https", {
+      status: 200,
+      latencyMs: 42,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: {
+        "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+        "X-Content-Type-Options": "nosniff",
+        "X-Frame-Options": "DENY",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Cache-Control": "no-store",
+      },
+      request: {
+        method: "GET",
+        credentials: "include",
+        authorizationHeaderPresent: true,
+        cookieHeaderPresent: true,
+        transport: "https",
+        connectAddress: "munjib.example.invalid",
+        host: "munjib.example.invalid",
+        path: "/api/auth/providers",
+      },
+    });
+    expect(credentialed.ok).toBe(false);
+    expect(credentialed.reasons).toEqual(
+      expect.arrayContaining(["REQUEST_CREDENTIALS_MISMATCH", "REQUEST_AUTHORIZATION_PRESENT", "REQUEST_COOKIE_PRESENT"]),
+    );
   });
 
   it("pins the unknown-host negative probe to the canonical connect address", () => {
@@ -388,6 +439,9 @@ describe("edge bindings contract evaluator", () => {
       headers: { "cache-control": "no-store" },
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "unknown.invalid",
@@ -403,6 +457,9 @@ describe("edge bindings contract evaluator", () => {
       headers: { "cache-control": "no-store" },
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "unknown.invalid",
         host: "unknown.invalid",
@@ -422,6 +479,9 @@ describe("edge bindings contract evaluator", () => {
       headers: undefined as never,
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "munjib.example.invalid",
@@ -431,6 +491,16 @@ describe("edge bindings contract evaluator", () => {
     expect(malformedHeaders.ok).toBe(false);
     expect(malformedHeaders.reasons).toContain("HEADERS_INVALID");
 
+    const paddedHeaderName = evaluateEdgeProbe(contract, "origin-loopback", {
+      status: 200,
+      latencyMs: 4,
+      observedAt: "2026-07-13T00:00:00.000Z",
+      headers: { " Cache-Control ": "no-store" },
+      request: requestFor("origin-loopback"),
+    });
+    expect(paddedHeaderName.ok).toBe(false);
+    expect(paddedHeaderName.reasons).toContain("HEADERS_INVALID");
+
     const malformedDateAndPath = evaluateEdgeProbe(contract, "public-https", {
       status: 200,
       latencyMs: 42,
@@ -438,6 +508,9 @@ describe("edge bindings contract evaluator", () => {
       headers: {},
       request: {
         method: "GET",
+        credentials: "omit",
+        authorizationHeaderPresent: false,
+        cookieHeaderPresent: false,
         transport: "https",
         connectAddress: "munjib.example.invalid",
         host: "munjib.example.invalid",

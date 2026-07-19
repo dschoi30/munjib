@@ -106,6 +106,9 @@ export type EdgeProbeObservation = {
 
 export type EdgeProbeRequestMetadata = {
   method: string;
+  credentials: string;
+  authorizationHeaderPresent: boolean;
+  cookieHeaderPresent: boolean;
   transport: string;
   connectAddress: string;
   host: string;
@@ -514,6 +517,7 @@ const headerMap = (
   const duplicates = new Set<string>();
   if (typeof Headers !== "undefined" && headers instanceof Headers) {
     for (const [rawName, rawValue] of headers.entries()) {
+      if (rawName !== rawName.trim()) return { values, duplicates, invalid: true };
       const name = rawName.trim().toLowerCase();
       if (!name) return { values, duplicates, invalid: true };
       if (values.has(name)) duplicates.add(name);
@@ -524,7 +528,11 @@ const headerMap = (
   if (!isRecord(headers)) return { values, duplicates, invalid: true };
   const entries = Object.entries(headers);
   for (const [rawName, rawValue] of entries) {
-    if (typeof rawName !== "string" || rawName.trim().length === 0) {
+    if (
+      typeof rawName !== "string" ||
+      rawName.length === 0 ||
+      rawName !== rawName.trim()
+    ) {
       return { values, duplicates, invalid: true };
     }
     if (rawValue === null || rawValue === undefined) continue;
@@ -594,6 +602,11 @@ export function evaluateEdgeProbe(
     if (typeof request.method !== "string" || request.method !== probe.method) {
       reasons.push("REQUEST_METHOD_MISMATCH");
     }
+    if (request.credentials !== "omit") reasons.push("REQUEST_CREDENTIALS_MISMATCH");
+    if (request.authorizationHeaderPresent !== false) {
+      reasons.push("REQUEST_AUTHORIZATION_PRESENT");
+    }
+    if (request.cookieHeaderPresent !== false) reasons.push("REQUEST_COOKIE_PRESENT");
     if (typeof request.transport !== "string" || request.transport !== probe.transport) {
       reasons.push("REQUEST_TRANSPORT_MISMATCH");
     }
@@ -656,10 +669,16 @@ export function redactProbeTelemetry(
   evaluation: EdgeProbeEvaluation,
 ): EdgeProbeTelemetry {
   const knownProbe = contract.probes.some((probe) => probe.id === evaluation.probeId);
+  const status = Number.isInteger(evaluation.status) && evaluation.status >= 100 && evaluation.status <= 599
+    ? evaluation.status
+    : 0;
+  const latencyMs = Number.isFinite(evaluation.latencyMs) && evaluation.latencyMs >= 0
+    ? evaluation.latencyMs
+    : 0;
   const candidate: EdgeProbeTelemetry = {
     probeId: knownProbe ? evaluation.probeId : UNKNOWN_PROBE_ID,
-    status: evaluation.status,
-    latencyMs: evaluation.latencyMs,
+    status,
+    latencyMs,
     observedAt: isStrictObservedAt(evaluation.observedAt)
       ? evaluation.observedAt
       : UNKNOWN_OBSERVED_AT,
