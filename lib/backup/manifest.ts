@@ -20,6 +20,7 @@ const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 const NONCE = /^[a-f0-9]{64}$/;
 const GENERATION = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/;
 const MAX_JOURNAL_SEQUENCE = BigInt("9223372036854775807");
+const MAX_POSTGRES_BIGINT = BigInt("9223372036854775807");
 const MAX_NESTED_DEPTH = 64;
 const SAFE_RELATIVE_PATH = /^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))(?!.*(?:^|\/)\.(?:\/|$))(?!.*\/$)(?!.*\/\/)(?!.*[\u0000-\u001f\u007f])[A-Za-z0-9._-]+(?:\/[A-Za-z0-9._-]+)*$/;
 const EXCLUDED_TABLE_DATA = Object.freeze(["DocumentChunk"] as const);
@@ -522,6 +523,10 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   const organizationCount = decimal(value.aggregateCounts.organizations as string, "manifest.aggregateCounts.organizations");
   const workspaceCount = decimal(value.aggregateCounts.workspaces as string, "manifest.aggregateCounts.workspaces");
   const documentCount = decimal(value.aggregateCounts.documents as string, "manifest.aggregateCounts.documents");
+  const attachmentCount = decimal(value.aggregateCounts.attachments as string, "manifest.aggregateCounts.attachments");
+  for (const [key, count] of Object.entries({ organizations: organizationCount, workspaces: workspaceCount, documents: documentCount, attachments: attachmentCount })) {
+    if (count > MAX_POSTGRES_BIGINT) fail(`manifest.aggregateCounts.${key} must fit PostgreSQL int64`);
+  }
   if (workspaceCount > BigInt(0) && organizationCount === BigInt(0)) {
     fail("manifest.aggregateCounts.organizations must cover workspaces");
   }
@@ -531,7 +536,7 @@ export function parseSnapshotManifest(value: unknown): SnapshotManifestV2 {
   if (documentCount < BigInt(readyDocumentIds.size)) {
     fail("manifest.aggregateCounts.documents must cover READY attachment document references");
   }
-  if (decimal(value.aggregateCounts.attachments as string, "manifest.aggregateCounts.attachments") !== BigInt(entries.length)) {
+  if (attachmentCount !== BigInt(entries.length)) {
     fail("manifest.aggregateCounts.attachments must match attachment inventory");
   }
 

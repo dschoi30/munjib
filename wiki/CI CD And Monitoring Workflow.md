@@ -272,7 +272,7 @@ attachment document references.
 All decimal strings are also bounded before any `BigInt` conversion, preventing
 oversized numeric inputs from consuming unbounded parser resources.
 Aggregate counts also preserve the required organization → workspace → document
-parent chain.
+parent chain and each count is capped at PostgreSQL's signed `bigint`/int64 limit.
 
 Rollback is eligible only for an image that keeps root-managed signing/provider secret
 files and their owner/mode/mount contract, closed password signup and unlinked OAuth,

@@ -265,6 +265,7 @@ describe("snapshot manifest v2", () => {
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, documents: "0" } })).toThrow(/documents|READY/i);
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, workspaces: "0" } })).toThrow(/workspaces|documents/i);
     expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, organizations: "0" } })).toThrow(/organizations|workspaces/i);
+    expect(() => parseSnapshotManifest({ ...manifest, aggregateCounts: { ...manifest.aggregateCounts, organizations: "9223372036854775808" } })).toThrow(/int64|count/i);
     expect(() => assertManifestPayloadIntegrity(manifest, {
       database: { sha256: HASH, sizeBytes: "1024" },
       archive: { sha256: HASH_2, sizeBytes: "2048", entries: [{ id: "att-0001", relativePath: "documents/att-0001.bin", sizeBytes: "42", contentSha256: HASH_2 }] },
