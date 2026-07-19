@@ -21,9 +21,10 @@ production mutations.
   for access-reduction invalidation are still pending.
 - The auth abuse design requires the Leaf 13 private binding, database-role,
   host-edge, and broker attestation gates before any limiter/session migration
-  or authentication-route wrapper is activated. Those capabilities are tracked
-  separately by Issues #184 and #185 and remain draft/uninstalled on the target
-  host.
+  or authentication-route wrapper is activated. The host-edge contract is
+  tracked separately by Issue #166 and remains `PREPARATORY`/`DISABLED`; the
+  private runtime and broker capabilities are tracked by Issues #184 and #185
+  and remain draft/uninstalled on the target host.
 - Leaf 1-owned auth configuration, password verification, adapter, and
   session-image paths are protected seams. This branch does not edit or claim
   them, and it does not add a second local limiter or session decoder.
@@ -38,10 +39,10 @@ wrapper, or runtime activation:
    `sessionVersion`, support-grant, and same-transaction deny-only journal
    contracts. The journal replay ownership map must remain disjoint from the
    Issue #162 credential/OAuth/session reducers.
-2. Leaf 13 has a verified private Web binding and database role, and the
-   delivery broker has an attested host installation/trust path. The production
-   host must report the broker policy/socket readiness without exposing
-   credentials or logs.
+2. Issue #166 has a verified host-edge binding/probe contract, Leaf 13 has a
+   verified private Web binding and database role, and the delivery broker has
+   an attested host installation/trust path. The production host must report
+   the broker policy/socket readiness without exposing credentials or logs.
 3. The exact runtime image, migration identity, owner map, and protected Leaf 1
    hook slot are pinned on the rebased branch. No migration may create a second
    `authDisabledAt` or `sessionVersion` authority, and no route may call a process

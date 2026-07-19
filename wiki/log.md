@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:00:00+09:00 - Issue #162 host-edge dependency tracking
+
+- Result: Auth-abuse activation handoff now keeps the Issue #166 host-edge contract explicit alongside the pending support-grant, private runtime, database, and broker gates.
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, `wiki/Auth And Permissions Workflow.md`, PR #191 review thread.
+- Verification: documentation review and wiki gates.
+
 ## 2026-07-20T06:50:00+09:00 - Issue #162 readiness state refresh
 
 - Result: Updated the auth-abuse/session-revocation handoff to distinguish the
