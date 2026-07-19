@@ -6,7 +6,7 @@
  * after the Leaf 9/13B dependency gates are satisfied.
  */
 
-export type ProviderBoundaryEnvironment = "production" | "development" | "test";
+export type ProviderBoundaryEnvironment = "production" | "staging" | "development" | "test";
 export type AiProviderId = "ollama" | "openai" | "openai-compatible";
 export type AiProviderOutcome = "success" | "error" | "denied" | "timeout" | "cancelled";
 
@@ -52,7 +52,7 @@ const OUTCOMES = new Set<AiProviderOutcome>([
   "timeout",
   "cancelled",
 ]);
-const ENVIRONMENTS = new Set<ProviderBoundaryEnvironment>(["production", "development", "test"]);
+const ENVIRONMENTS = new Set<ProviderBoundaryEnvironment>(["production", "staging", "development", "test"]);
 
 export function createProviderBoundaryPolicy(input: {
   environment: ProviderBoundaryEnvironment;
@@ -160,20 +160,20 @@ export function validateProviderDestination(
     parsed.hash ||
     parsed.origin !== expected.origin ||
     parsed.pathname !== expected.path ||
-    (hasLiteralAddress(parsed.hostname) && environment === "production")
+    (hasLiteralAddress(parsed.hostname) && environment !== "development" && environment !== "test")
   ) {
     throw new Error("AI_PROVIDER_DESTINATION_FORBIDDEN");
   }
 
-  if (environment === "production" && parsed.protocol !== "https:") {
+  if (environment !== "development" && environment !== "test" && parsed.protocol !== "https:") {
     throw new Error("AI_PROVIDER_DESTINATION_FORBIDDEN");
   }
-  if (environment === "production" && expected.allowLoopback) {
+  if (environment !== "development" && environment !== "test" && expected.allowLoopback) {
     throw new Error("AI_PROVIDER_DESTINATION_FORBIDDEN");
   }
   if (
     isPrivateOrMetadataHost(parsed.hostname) &&
-    !(expected.allowLoopback && environment !== "production")
+    !(expected.allowLoopback && (environment === "development" || environment === "test"))
   ) {
     throw new Error("AI_PROVIDER_DESTINATION_FORBIDDEN");
   }
