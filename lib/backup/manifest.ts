@@ -13,7 +13,7 @@ export const SNAPSHOT_ENVELOPE_FORMAT = "munjib-snapshot-envelope-v2" as const;
 const SHA256 = /^[a-f0-9]{64}$/;
 const IMAGE_DIGEST = /^sha256:[a-f0-9]{64}$/;
 const ID = /^[a-z0-9][a-z0-9._:-]{0,127}$/;
-const COMMIT = /^[a-f0-9]{7,64}$/;
+const COMMIT = /^[a-f0-9]{40}$/;
 const DECIMAL = /^(?:0|[1-9][0-9]*)$/;
 const MAX_DECIMAL_DIGITS = 39;
 const UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
@@ -268,7 +268,7 @@ function assertId(value: unknown, path: string): asserts value is string {
 }
 
 function assertCommit(value: unknown, path: string): asserts value is string {
-  if (typeof value !== "string" || !COMMIT.test(value)) fail(`${path} must be a canonical commit id`);
+  if (typeof value !== "string" || !COMMIT.test(value) || /^0+$/.test(value)) fail(`${path} must be a canonical non-zero 40-character commit id`);
 }
 
 function assertDecimal(value: unknown, path: string): asserts value is string {
