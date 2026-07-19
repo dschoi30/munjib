@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T01:00:00+09:00 - Issue #166 edge probe review reconciliation
+
+- Result: edge activation evidence is now an exact required set, public probes cover the `/api/`, `/login`, and existing workspace dynamic `/workspaces/probe` no-store classes, probe timestamps require strict UTC millisecond ISO round-tripping, no-store root paths are covered at their boundary, Cache-Control accepts only top-level comma-separated directives while preserving quoted commas, redacted telemetry canonicalizes unknown IDs, malformed timestamps, or invalid numerics, probe variants reject incompatible keys, request method and credential omission are bound, HTTPS probes require verified canonical TLS metadata and zero redirects, invalid HTTP-token or whitespace-padded header names and control-character values fail closed, and timeout overruns fail closed.
+- Pages: [[index|Wiki Index]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/deploy/edge-bindings.ts`, `tests/deploy/edge-bindings-evaluator.test.ts`, PR #205 review feedback.
+- Verification: focused edge-binding tests and TypeScript.
+
 ## 2026-07-20T00:50:00+09:00 - Issue #164 index and NAT64 review fixes
 
 - Result: Wiki Index frontmatter now reflects the Issue #164 addition, and standard/local-use NAT64 translated IPv6 destinations fail closed outside the fixed Ollama gate.
