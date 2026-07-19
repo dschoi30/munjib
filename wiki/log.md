@@ -19,6 +19,17 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:50:00+09:00 - Issue #162 readiness state refresh
+
+- Result: Updated the auth-abuse/session-revocation handoff to distinguish the
+  merged Leaf 2 journal/durable-auth and Issue #162 guard contracts (PRs #199
+  and #202) from the still-pending database migration, route activation, and
+  deployment evidence.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`,
+  `wiki/Auth And Permissions Workflow.md`, PR #191 review thread.
+- Verification: documentation consistency review and wiki gates.
+
 ## 2026-07-20T06:30:00+09:00 - Issue #162 auth-abuse/session-revocation readiness
 
 - Result: Recorded the documentation-only auth-abuse handoff with the exact `authDisabledAt`, BigInt `sessionVersion`, `support-grant`, and deny-only journal authorities required before implementation.

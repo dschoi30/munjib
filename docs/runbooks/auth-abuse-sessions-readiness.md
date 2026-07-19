@@ -7,15 +7,18 @@ production mutations.
 
 ## Current state
 
-- As of commit `545e8cb` on `origin/main`, the branch has the Leaf 1 authentication runtime and the
-  bounded, process-local password work guard, but it does not yet have a
-  database-authoritative authentication limiter or revocable session registry.
-- `User` has no `authDisabledAt` or `sessionVersion` authority on this branch.
-  The existing Auth.js `Session` table is not the runtime authority because
-  `lib/auth/config.ts` uses encrypted JWT sessions.
-- `lib/auth/downstream/leaf2.ts` currently exposes a no-op durable-state hook;
-  the deny-only security-journal and support-grant contracts required for
-  access-reduction invalidation are not available on the dependency line.
+- As of commit `c742a62` on `origin/main`, the branch includes the reviewed
+  Leaf 1 authentication runtime, the Leaf 2 journal/durable-auth contract from
+  PR #199, and the bounded auth-abuse runtime contract from PR #202. It still
+  does not have a database-authoritative authentication limiter or revocable
+  session registry activated in production.
+- `User` still has no deployed `authDisabledAt` or `sessionVersion` authority
+  on this release line. The existing Auth.js `Session` table is not the runtime
+  authority because `lib/auth/config.ts` uses encrypted JWT sessions.
+- `lib/auth/downstream/leaf2.ts` remains a protected no-op activation slot;
+  the merged journal/durable-state helpers are preparation contracts, while
+  the migration, journal genesis, support-grant, and runtime capability needed
+  for access-reduction invalidation are still pending.
 - The auth abuse design requires the Leaf 13 private binding, database-role,
   host-edge, and broker attestation gates before any limiter/session migration
   or authentication-route wrapper is activated. Those capabilities are tracked
@@ -25,10 +28,11 @@ production mutations.
   session-image paths are protected seams. This branch does not edit or claim
   them, and it does not add a second local limiter or session decoder.
 
-## Required gates before implementation
+## Required gates before activation
 
-Rebase this branch against the dependency commits and collect the following
-public-safe evidence before implementing the first schema or route task:
+The implementation contracts are already present in the reviewed tree. Collect
+the following public-safe evidence before adding the schema migration, route
+wrapper, or runtime activation:
 
 1. Leaf 2 has merged and deployed the canonical `authDisabledAt`, BigInt
    `sessionVersion`, support-grant, and same-transaction deny-only journal
@@ -49,11 +53,13 @@ public-safe evidence before implementing the first schema or route task:
 
 ## Safe next slice
 
-Until the gates above are satisfied, only documentation and contract review are
-safe. The first implementation slice after rebasing should be the exact schema
-and strict runtime contract, followed by focused tests and wiki synchronization.
-It must not create production rows, rotate secrets, install Caddy/systemd
-assets, or change the live authentication path.
+Until the gates above are satisfied, only documentation, contract review, and
+non-mutating test coverage are safe. The next implementation slice is the
+reviewed schema/migration and route integration on top of PRs #199 and #202,
+followed by focused tests and wiki synchronization. It must not create
+production rows, rotate secrets, install Caddy/systemd assets, or change the
+live authentication path before the broker and database-authority evidence is
+accepted.
 
 ## Verification boundary
 
