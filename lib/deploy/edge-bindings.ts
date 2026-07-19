@@ -521,6 +521,7 @@ const headerMap = (
   if (typeof Headers !== "undefined" && headers instanceof Headers) {
     for (const [rawName, rawValue] of headers.entries()) {
       if (!isValidHeaderName(rawName)) return { values, duplicates, invalid: true };
+      if (!isValidHeaderValue(rawValue)) return { values, duplicates, invalid: true };
       const name = rawName.toLowerCase();
       if (values.has(name)) duplicates.add(name);
       values.set(name, rawValue);
@@ -545,6 +546,7 @@ const headerMap = (
         ? rawValue
         : null;
     if (value === null) return { values, duplicates, invalid: true };
+    if (!isValidHeaderValue(value)) return { values, duplicates, invalid: true };
     const name = rawName.toLowerCase();
     if (values.has(name)) duplicates.add(name);
     values.set(name, value);
@@ -554,6 +556,9 @@ const headerMap = (
 
 const isValidHeaderName = (name: string): boolean =>
   /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name);
+
+const isValidHeaderValue = (value: string): boolean =>
+  /^[\t\x20-\x7e\x80-\xff]*$/.test(value);
 
 export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: unknown): boolean {
   if (typeof path !== "string") return false;
@@ -569,8 +574,37 @@ export function isNoStorePath(contract: Readonly<EdgeBindingsContract>, path: un
   });
 }
 
-const hasNoStoreDirective = (value: string | undefined): boolean =>
-  value?.split(",").some((part) => part.trim().toLowerCase() === "no-store") ?? false;
+const hasNoStoreDirective = (value: string | undefined): boolean => {
+  if (value === undefined) return false;
+  const directives: string[] = [];
+  let current = "";
+  let quoted = false;
+  let escaped = false;
+  for (const character of value) {
+    if (escaped) {
+      current += character;
+      escaped = false;
+      continue;
+    }
+    if (quoted && character === "\\") {
+      current += character;
+      escaped = true;
+      continue;
+    }
+    if (character === '"') {
+      quoted = !quoted;
+      current += character;
+    } else if (character === "," && !quoted) {
+      directives.push(current);
+      current = "";
+    } else {
+      current += character;
+    }
+  }
+  if (quoted) return false;
+  directives.push(current);
+  return directives.some((part) => part.trim().toLowerCase() === "no-store");
+};
 
 export function evaluateEdgeProbe(
   contract: Readonly<EdgeBindingsContract>,

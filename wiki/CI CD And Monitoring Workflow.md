@@ -79,7 +79,9 @@ no-store를 확인하고, probe variant별 incompatible key, credential omission
 method, configured timeout 초과를 fail closed한다. HTTPS 관측은 인증서 검증과
 canonical TLS server name을 증명해야 하고 redirect count가 0이어야 한다.
 `Cache-Control` directive는 comma-separated 문법만 인정하고 HTTP token 문법에
-맞지 않거나 whitespace-padded인 header name을 거부한다.
+맞지 않거나 whitespace-padded인 header name을 거부하며, quoted comma 안의
+문자열을 directive separator로 오인하지 않는다. CR/LF 같은 금지 control
+character가 있는 header value도 거부한다.
 실패 telemetry는 allowlist만 내보내며 unknown probe ID, malformed timestamp, invalid
 status/latency는 bounded sentinel (`unknown`, `1970-01-01T00:00:00.000Z`, `0`)로
 정규화한다. 실제 edge
