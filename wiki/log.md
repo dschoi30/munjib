@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-19
-source_count: 351
+updated: 2026-07-20
+source_count: 357
 tags:
   - log
   - munjib
@@ -18,6 +18,31 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-07-20T00:50:00+09:00 - Issue #164 index and NAT64 review fixes
+
+- Result: Wiki Index frontmatter now reflects the Issue #164 addition, and standard/local-use NAT64 translated IPv6 destinations fail closed outside the fixed Ollama gate.
+- Pages: [[index|Wiki Index]], [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:28:00+09:00 - Issue #164 IPv6 hostname classification review fix
+
+- Result: multicast prefix checks now apply only to IPv6 literals, preserving valid server-owned DNS names such as `ffapi.example`.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:18:00+09:00 - Issue #164 IPv6 special-range review fix
+
+- Result: compressed IPv4-compatible and multicast IPv6 destinations now fail closed outside the explicit fixed Ollama gate.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Verification: focused provider-boundary tests and TypeScript.
+
+## 2026-07-20T00:10:00+09:00 - Issue #164 provider-boundary review reconciliation
+
+- Result: provider selection inputs require runtime string types, IPv4-mapped IPv6 private destinations are denied, and staging is treated as production-like for HTTPS/private-destination policy.
+- Pages: [[RAG Process Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/rag/provider-boundary.ts`, `tests/rag/provider-boundary.test.ts`, PR #204 review feedback.
+- Verification: focused provider-boundary tests and TypeScript.
 
 ## 2026-07-19T23:55:00+09:00 - Issue #163 citation canonicalization review fix
 
