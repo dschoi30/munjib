@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-19",
+  "updated": "2026-07-20",
   "pages": [
     {
       "id": "workflow-attachment-lifecycle-readiness",
@@ -46,7 +46,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 101,
+      "source_count": 102,
       "searchPriority": 50
     },
     {
@@ -136,7 +136,7 @@
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Attachment Lifecycle Readiness]]"
       ],
-      "source_count": 101,
+      "source_count": 105,
       "searchPriority": 50
     },
     {
@@ -236,7 +236,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 163,
+      "source_count": 164,
       "searchPriority": 5
     },
     {
@@ -279,7 +279,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 357,
+      "source_count": 366,
       "searchPriority": 1
     },
     {
@@ -454,7 +454,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 117,
+      "source_count": 121,
       "searchPriority": 50
     },
     {
