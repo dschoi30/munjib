@@ -19,6 +19,18 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:45:00+09:00 - Issue #156 capability and source digest hardening
+
+- Result: Leaf 2 dependency verification now rejects non-string capability
+  digests before regular-expression evaluation, preventing arrays or other
+  runtime values from being coerced into a branded string proof. The trusted
+  deployment source digest is now supplied outside the parsed proof envelope,
+  so matching stale proof fields cannot self-authorize a release.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`,
+  `tests/security/leaf-dependencies.test.ts`, PR #187 review thread.
+- Verification: 10 focused Leaf 2 tests and TypeScript compilation.
+
 ## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
 
 - Result: Recorded the Leaf 7 dependency-safe invitation bearer and attempt-secret boundary: canonical 256-bit base64url secrets, domain-separated hash-only persistence, constant-time hash comparison, exact exchange-body parsing, immutable output, and no route/database/URL/logging capabilities.
@@ -26,6 +38,21 @@ links:
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: Issue #161, `lib/auth/invite-token.ts`, `tests/auth/invite-token.test.ts`, `tests/security/invite-token-source-contract.test.ts`, `docs/runbooks/invite-token-primitives.md`.
 - Verification: focused invite-token/source-boundary tests, TypeScript compilation, and wiki manifest/lint/sync checks.
+
+## 2026-07-20T06:10:00+09:00 - Issue #156 trial-isolation dependency seam
+
+- Result: Added the dependency-safe branded `verifyLeaf2Dependencies()` handoff for the future Trial-isolation rollout. It accepts only the expected production source digest, Leaf 1 closed-signup proofs, and Leaf 13 immutable-delivery/rollback/database-role capability proofs.
+- Boundary: The verifier consumes broker-verified proof fields but does not verify signatures or activate production migration, Trial quarantine, membership cleanup, support access, or journal mutation. Those operations remain deferred behind Issues #184 and #185.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, GitHub Issue #156.
+- Verification: `pnpm exec vitest run tests/security/leaf-dependencies.test.ts` (8 tests passed); full TypeScript and wiki gates run during synchronization.
+
+## 2026-07-20T06:12:00+09:00 - Issue #156 verifier review hardening
+
+- Result: `verifyLeaf2Dependencies()` now fails closed for nullish/partial parsed input, pins the expected environment to literal `production`, and requires all Leaf 1/Leaf 13 capability flags to be literal booleans.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, PR #187 review threads.
+- Verification: 8 focused Leaf 2 dependency tests, TypeScript compilation, and wiki gates.
 
 ## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
