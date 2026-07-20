@@ -19,6 +19,19 @@ links:
 
 # Wiki Log
 
+## 2026-07-13T14:45:00+09:00 - Issue #139 registry parser review follow-up
+
+- Hardened the dependency-safe embedding profile parser against nullish identities and non-string provider values; malformed runtime inputs now fail with the stable registry error instead of coercing or throwing a native property error.
+- Source evidence: `lib/rag/embedding-registry.ts`, `tests/rag/embedding-registry.test.ts`, PR #198 review threads.
+- Verification: embedding registry/model-config tests (33 passed), TypeScript, and staged wiki gates.
+
+## 2026-07-13T20:00:00+09:00 - Issue #139 embedding profile readiness
+
+- Result: Added a side-effect-free embedding profile registry contract for the existing Ollama `bge-m3` 1024 index. The versioned profile id is forward-looking while the legacy `indexId` remains `bge-m3`; no runtime index, schema, provider, workspace, or production behavior changed.
+- Coverage: deterministic profile id encoding, exact 1024-dimension validation, registry lookup, caller-supplied provider availability filtering, and absence of secrets/base URLs in registry metadata.
+- Pages: [[RAG Process Workflow]], [[Embedding Profile Registry Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #139 assessment, `lib/rag/model-config.ts`, `lib/rag/embedding-registry.ts`, `tests/rag/embedding-registry.test.ts`.
+- Verification: focused registry/model-config tests, TypeScript, and wiki manifest/lint/sync checks.
 ## 2026-07-20T06:58:00+09:00 - Issue #165 duplicate metadata inventory hardening
 
 - Result: A physical file is no longer suppressed when valid attachment metadata rows duplicate its storage key; only one validated metadata reference can classify a file as referenced.
