@@ -29,6 +29,7 @@ links:
   - "[[Next.js Prisma Monolith]]"
   - "[[Wiki Schema]]"
   - "[[Wiki Maintenance Automation]]"
+  - "[[Security Hardening Public Status]]"
   - "[[Honen Design System]]"
   - "[[designs/index|UI Design Excalidraw Index]]"
   - "[[log|Wiki Log]]"
@@ -63,6 +64,7 @@ links:
 - [[Release Signer And Vault Workflow]] - 1인 운영에서 Vault Community를 local signer lab과 초기 same-OCI Docker Compose signer로 사용하고, #185 독립 attestation을 위해 dedicated signer VM으로 승격하는 workflow.
 - [[Production Observability Workflow]] - production-style Docker 로그 확인, Sentry error/tracing/runtime metrics/Replay, handled AI 503, low-cardinality app metrics 관측성 흐름.
 - [[Wiki Maintenance Automation]] - Feature Start, Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.
+- [[Security Hardening Public Status]] - Issues #154/#167 public-safe parent/child map, draft readiness PRs, dependency gates, and explicit non-claims.
 
 ## 결정
 
