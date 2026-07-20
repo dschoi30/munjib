@@ -254,6 +254,7 @@
         "[[Next.js Prisma Monolith]]",
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]",
+        "[[Security Hardening Public Status]]",
         "[[Honen Design System]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
@@ -502,6 +503,25 @@
         "[[Wiki Maintenance Automation]]"
       ],
       "source_count": 18,
+      "searchPriority": 50
+    },
+    {
+      "id": "security-hardening-public-status",
+      "path": "wiki/Security Hardening Public Status.md",
+      "title": "Security Hardening Public Status",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Issues #154/#167의 public-safe child status, open readiness PR, dependency gate, and non-claim navigation.",
+      "tags": [
+        "security",
+        "deployment",
+        "workflow"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[CI CD And Monitoring Workflow]]"
+      ],
+      "source_count": 1,
       "searchPriority": 50
     },
     {

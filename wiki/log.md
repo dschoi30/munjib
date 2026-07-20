@@ -19,6 +19,60 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:42:00+09:00 - public security status signer prerequisite
+
+- Result: Added merged PR #209 / Issue #208 Phase A signer-lab preparation to the authoritative status map, explicitly retaining the #185 production bootstrap and independent attestation gates; refreshed #192/#193 heads.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, `wiki/CI CD And Monitoring Workflow.md`, GitHub PR metadata.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:38:00+09:00 - public security status latest readiness heads
+
+- Result: Refreshed the hardening status map with latest reviewed heads for PR #161 (`787b998`), #192 (`19b16d8`), and #193 (`0706332`); all remain CI billing-blocked with zero unresolved review threads.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, GitHub PR metadata/review audit.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:24:00+09:00 - public security status production-evidence scope
+
+- Result: Narrowed the public status snapshot so only #155 and #157 are described as production-verified; #158 remains merged/closed without an unsupported deployment claim.
+- Source evidence: `wiki/Security Hardening Public Status.md`, `docs/runbooks/security-hardening-status.md`, PR #197 review thread.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:18:00+09:00 - public security status latest heads
+
+- Result: Refreshed the hardening status map with the latest reviewed heads for PRs #161 (`43311d9`), #191 (`1cb34bf`), #192 (`3721c66`), and #193 (`2432c43`); all remain CI billing-blocked with zero unresolved review threads.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, GitHub PR metadata/review audit.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:08:00+09:00 - public security status head refresh
+
+- Result: Updated the public hardening status map with the latest reviewed heads for PRs #161, #187, #191, #192, #193, and #195; all remain CI billing-blocked with zero unresolved review threads.
+- Follow-up: The status-map row for PR #197 tracks this branch without self-embedding a commit hash.
+- Source evidence: `docs/runbooks/security-hardening-status.md`, GitHub PR checks/review-thread audit.
+- Verification: local status-map tests, TypeScript, and wiki gates.
+
+## 2026-07-20T06:45:00+09:00 - public security status refresh
+
+- Result: Refreshed Issues #154/#167 status from `origin/main` `c742a62`, recorded merged implementation PRs #199–#207, retained open readiness PR handles #187/#189/#191–#196/#198 and signup-gate #161, and closed duplicate PR #190 in the map.
+- External blocker: GitHub Actions for the open readiness PRs are failing before runner start because GitHub reports an account-payment or spending-limit problem; merge/deploy decisions remain paused until `Billing & plans` is repaired.
+- Pages: [[Security Hardening Public Status]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Companion runbook: `docs/runbooks/security-hardening-status.md`.
+- Source evidence: current GitHub PR metadata, merge history, and check-run annotations; no host, secret, account, or restricted operator evidence is recorded.
+- Verification: local status-map/wiki gates only; no issue closure or production mutation is claimed.
+
+## 2026-07-13T14:50:00+09:00 - public security status refresh
+
+- Result: Refreshed the Issues #154/#167 status map from readiness-only handoffs to current draft implementation PRs #198, #199, #200, #201, #202, #203, #204, #195, #205, #206, and #207.
+- Coverage: Updated branch/head handles for embedding registry, journal/auth, active resolver, ACL, auth abuse, AI history, provider boundary, attachment lifecycle, edge evaluator, backup manifest, and invite-token slices while preserving dependency gates and production non-claims.
+- Pages: [[Security Hardening Public Status]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Companion runbook: docs/runbooks/security-hardening-status.md.
+- Source evidence: current GitHub PR metadata and CI status for the listed implementation branches; parent issues #154 and #167 remain open.
+- Verification: wiki manifest/lint/sync checks and focused wiki tests are required before commit; no issue closure or production mutation is claimed.
+
+## 2026-07-13T11:29:29+09:00 - public security hardening status map
+
+- Result: Added a public-safe status/runbook map for parent Issues #154 and #167.
+- Coverage: Maps merged P0 releases, draft readiness PRs, branch handles, dependency gates, and explicit non-claims without host details, secrets, account state, or restricted plan material.
+- Pages: [[Security Hardening Public Status]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]]. Companion runbook: `docs/runbooks/security-hardening-status.md`.
+- Source evidence: `origin/main` `545e8cb`, GitHub-visible issues/PRs #154, #155, #156, #157, #158, #159, #160, #161, #162, #163, #164, #165, #166, #167, #168, #169, #180, #184, #185 and readiness PRs #170, #172, #178, #181, #186, #187, #189, #190, #191, #192, #193, #194, #195, #196. Signup branch/commit `issue-161-security-signup-gate` (`4b22bb2`) is prepared but no PR is currently visible; a separate anticipated #198 was not visible during this recheck.
+- Verification: Wiki manifest/lint/sync gates and focused wiki tests are required before commit; this page does not close any issue or claim deployment/host attestation.
 ## 2026-07-20T07:32:00+09:00 - Issue #161 proxy rejection boundary
 
 - Result: Invite readiness rejects Node proxy contract objects and arrays before any own-key, descriptor, or value inspection, preventing caller-controlled proxy traps from executing.
