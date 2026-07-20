@@ -19,6 +19,13 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:20:00+09:00 - Issue #159 active-resource boundary readiness
+
+- Result: Recorded the dependency-gated active-resource readiness handoff. Resolver and archive-lock callers remain disabled until canonical database-time membership authority, support-access semantics, deny-only journal API, and immutable runtime/broker attestation are independently available.
+- Scope: Public-safe documentation only; no resolver, archive lock caller, schema, journal, purge, or production activation changed.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #159 and `docs/runbooks/active-resource-boundaries-readiness.md`.
+
 ## 2026-07-20T06:45:00+09:00 - Issue #156 capability and source digest hardening
 
 - Result: Leaf 2 dependency verification now rejects non-string capability
