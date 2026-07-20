@@ -329,6 +329,25 @@ The future broker-only path requires the exact digests above,
 the signed envelope. Only after the workflow implements and verifies that gate
 may operators claim that the host no longer performs checkout or source builds.
 
+### Leaf 2 dependency gate (preparatory)
+
+Issue #156 adds `lib/security/leaf-dependencies.ts` as the narrow handoff seam
+for the future Trial-isolation rollout. `verifyLeaf2Dependencies()` accepts only
+an independently trusted production source digest supplied by the deployment
+authority, Leaf 1's closed-password/unlinked-OAuth proofs, and Leaf 13's
+immutable-delivery, rollback, and database-role capability proof, then returns a
+branded value for later migration/apply commands. Signature
+and trust-anchor verification remain the responsibility of the delivery broker;
+the verifier does not manufacture deployment evidence. Parsed input is rejected
+when nullish or partial, `expectedEnvironment` must be literal `production`, and
+all capability flags must be literal booleans rather than merely truthy values.
+
+The production workflow does not invoke a Leaf 2 migration, Trial disable,
+membership cleanup, or support operation yet. Those commands remain blocked until
+the exact private-runtime gate and broker installation are independently accepted
+(Issues #184 and #185). This prevents a preparatory TypeScript seam from being
+mistaken for a production authorization proof.
+
 Before a restricted operator signs or installs a bundle, CI can build and verify
 the public-safe package from the fixed layout. These commands do not sign,
 install, enroll the trust key, or mutate a host:
