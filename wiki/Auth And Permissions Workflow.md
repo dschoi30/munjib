@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 102
+source_count: 104
 tags:
   - munjib
   - auth
@@ -199,6 +199,37 @@ one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
 
+### Invite-first signup readiness handoff
+
+Issue #161 (`issue-161-security-signup-gate`) is the reserved Leaf 7 follow-up
+for invite-first onboarding. Its public preparation contract is
+`deploy/security/signup/invite-first-readiness-v1.json`, and its effective
+production mode remains `closed` until the prerequisite capabilities are
+independently deployed and attested. The preparation branch deliberately adds
+no invitation schema, attempt cookie, link grant, route, middleware, OAuth
+behavior, migration, or production mutation.
+
+The future gate accepts only a provider-verified Google identity with one active
+workspace invitation. A raw invitation bearer may exist only in the client-side
+URL fragment used to begin the exchange and in one guarded, bounded exchange
+request body; the fragment must be scrubbed before history/navigation persists
+it. It must not enter any other request or server-visible URL, cookie, database,
+server component prop, history entry, log, telemetry payload, or OAuth callback;
+the post-exchange attempt remains opaque and its domain-separated hash is the
+only durable lookup value. Invitation consumption, role checks, invalidation,
+and the deny-only journal transition must be atomic, and invitation roles can
+never grant `OWNER`. Matching an invitation or email is not proof of a
+password account, so unauthenticated OAuth collisions must not perform blind
+email linking or create partial rows. Password signup stays closed and all
+responses remain private/no-store with bounded-body, canonical-Origin, and
+Fetch-Metadata checks inherited from the abuse-control owner.
+
+Before implementation starts, the branch must be rebased on the deployed Leaf 1
+auth runtime, Leaf 2 journal/auth-tombstone authority, Issue #162 auth-abuse and
+session capability, and the Leaf 13B/13A private runtime and delivery-broker
+gates tracked by Issues #180/#184/#185. The readiness note at
+`docs/runbooks/invite-signup-gate-readiness.md` records this dependency boundary
+without publishing capability contents or operational evidence.
 ### Invite token primitive boundary (Issue #161)
 
 The dependency-safe Leaf 7 slice in `lib/auth/invite-token.ts` generates
@@ -210,8 +241,12 @@ secret; cookie names and attributes are intentionally outside this module.
 returns an immutable object, rejecting workspace ids, revisions, and unknown
 metadata. Validation errors are generic and never echo credentials. This is a
 pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
-activation, or production behavior. The exchange parser checks `Reflect.ownKeys`
-so non-enumerable and symbol own metadata cannot bypass the exact shape. Atomic
+activation, or production behavior. The exchange parser and each canonical
+contract array check `Reflect.ownKeys` so non-enumerable and symbol own metadata
+cannot bypass the exact shape; array length is bounded before key scanning and
+indexed values and top-level contract fields must be own data properties rather
+than accessors, and Node proxy inputs are rejected before reflective inspection.
+Atomic
 invitation consumption, revision
 invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
 follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.
