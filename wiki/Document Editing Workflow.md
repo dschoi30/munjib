@@ -6,7 +6,7 @@ status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 101
+source_count: 105
 tags:
   - munjib
   - workflow
@@ -153,6 +153,32 @@ Issue #119 adds a `Retention` section to workspace settings. Workspace writers c
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
 `createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다. 생성 transaction이 commit된 뒤 새 blank document의 saved content 기준으로 RAG chunk replacement를 실행해 기존 stale chunk가 있으면 비운다.
+
+Issue #160 document authorization closure는 이 흐름을 다음 공통 경계로
+확장할 준비를 기록한다. 일반 document create/update/restore/move, folder
+rename/move, broken-link target 생성이 호출하는 모든 broken-link
+reconciliation은 workspace write 권한만으로 충분하지 않다. Initiating source와
+실제로 repair되는 모든 source document의 현재 권한을 확인하고, workspace-wide
+`updateMany`로 unreadable source row까지 바꾸지 않도록 authorized source만
+scope하거나 전체 transaction을 거부해야 한다. Folder tree mutation은 실제로
+갱신하는 모든 active descendant folder/document를 한 번에 검사하며,
+archived descendant는 active-resource proof의 대상이 아니다. 별도
+archive-maintenance authority가 각 archived row를 승인하기 전에는 archived
+descendant를 포함한 cascade를 zero-write로 거부한다. Attachment,
+comment, version, audit/history direct route도 현재 active workspace/document와
+document permission을 매번 재확인하고, server page는 current-view에 필요한
+최소 DTO만 내려야 한다. 이 변경은 Leaf 5 active-resource authority가
+머지·검증된 뒤에만 구현하며, 공개 handoff는
+`docs/runbooks/document-authorization-readiness.md`에 유지한다.
+검증 matrix는 target 생성뿐 아니라 normal document create/update/restore/move와
+folder rename/move의 각 reconciliation caller에서 authorized source repair와
+unreadable source zero-write 결과를 독립 fixture로 확인해야 한다.
+Normal document create/update/move/archive도 동일한 active-document authority를
+소비해야 하며 archived document id를 가진 stale request는 zero-write로 거부한다.
+Permission subject는 current same-tenant actor tuple만 허용하고 stale membership,
+foreign-tenant, non-actor subject fixture는 모두 deny되어야 한다. History tab은
+authorized large-history fixture에서 bounded page size와 document-scoped cursor를
+검증해야 하며 unbounded version query를 남겨서는 안 된다.
 
 ## UI 세부 사항
 
