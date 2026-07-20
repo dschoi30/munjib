@@ -106,6 +106,30 @@ describe("attachment service", () => {
     );
   });
 
+  it("fails closed when a persisted storage key is malformed", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const document = await createDocument({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      title: "Malformed Key Target",
+      contentMarkdown: "# Malformed Key Target",
+    });
+    const attachment = await prisma.attachment.create({
+      data: {
+        documentId: document.id,
+        fileName: "notes.txt",
+        mimeType: "text/plain",
+        size: 1,
+        storageKey: "../escape",
+        uploadedById: fixture.user.id,
+      },
+    });
+
+    await expect(getReadableAttachment(attachment.id, fixture.user.id)).rejects.toThrow(
+      SERVICE_ERROR_CODES.ATTACHMENT_STORAGE_KEY_INVALID,
+    );
+  });
+
   it("uploads a pasted image attachment without changing document markdown or versions", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const document = await createDocument({

@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 101
+source_count: 104
 tags:
   - munjib
   - auth
@@ -160,7 +160,7 @@ range. It does not create tables, roles, extensions, or perform a production mut
 
 This is a pre-migration handoff only. The default auth hook remains unchanged,
 the `User` columns and journal tables are not present on `origin/main`, and
-Trial disable, credential/session cleanup, journal genesis, support access, and
+Trial disable, credential/session cleanup, journal genesis, support-grant, and
 production migration stay gated on the deployed Leaf 1/13B proofs and the
 privileged broker. Evidence is tracked in Issue #156's implementation branch.
 
@@ -199,6 +199,37 @@ one bounded, parameter-pinned scrypt path and upgrades the exact legacy envelope
 session issuance. The `auth-runtime` Playwright oracle exercises this boundary with
 synthetic `example.test` identities only; it never calls Google.
 
+### Invite-first signup readiness handoff
+
+Issue #161 (`issue-161-security-signup-gate`) is the reserved Leaf 7 follow-up
+for invite-first onboarding. Its public preparation contract is
+`deploy/security/signup/invite-first-readiness-v1.json`, and its effective
+production mode remains `closed` until the prerequisite capabilities are
+independently deployed and attested. The preparation branch deliberately adds
+no invitation schema, attempt cookie, link grant, route, middleware, OAuth
+behavior, migration, or production mutation.
+
+The future gate accepts only a provider-verified Google identity with one active
+workspace invitation. A raw invitation bearer may exist only in the client-side
+URL fragment used to begin the exchange and in one guarded, bounded exchange
+request body; the fragment must be scrubbed before history/navigation persists
+it. It must not enter any other request or server-visible URL, cookie, database,
+server component prop, history entry, log, telemetry payload, or OAuth callback;
+the post-exchange attempt remains opaque and its domain-separated hash is the
+only durable lookup value. Invitation consumption, role checks, invalidation,
+and the deny-only journal transition must be atomic, and invitation roles can
+never grant `OWNER`. Matching an invitation or email is not proof of a
+password account, so unauthenticated OAuth collisions must not perform blind
+email linking or create partial rows. Password signup stays closed and all
+responses remain private/no-store with bounded-body, canonical-Origin, and
+Fetch-Metadata checks inherited from the abuse-control owner.
+
+Before implementation starts, the branch must be rebased on the deployed Leaf 1
+auth runtime, Leaf 2 journal/auth-tombstone authority, Issue #162 auth-abuse and
+session capability, and the Leaf 13B/13A private runtime and delivery-broker
+gates tracked by Issues #180/#184/#185. The readiness note at
+`docs/runbooks/invite-signup-gate-readiness.md` records this dependency boundary
+without publishing capability contents or operational evidence.
 ### Invite token primitive boundary (Issue #161)
 
 The dependency-safe Leaf 7 slice in `lib/auth/invite-token.ts` generates
@@ -210,8 +241,12 @@ secret; cookie names and attributes are intentionally outside this module.
 returns an immutable object, rejecting workspace ids, revisions, and unknown
 metadata. Validation errors are generic and never echo credentials. This is a
 pure preparation boundary: it adds no schema, route, middleware, OAuth, signup
-activation, or production behavior. The exchange parser checks `Reflect.ownKeys`
-so non-enumerable and symbol own metadata cannot bypass the exact shape. Atomic
+activation, or production behavior. The exchange parser and each canonical
+contract array check `Reflect.ownKeys` so non-enumerable and symbol own metadata
+cannot bypass the exact shape; array length is bounded before key scanning and
+indexed values and top-level contract fields must be own data properties rather
+than accessors, and Node proxy inputs are rejected before reflective inspection.
+Atomic
 invitation consumption, revision
 invalidation, Leaf 8 exchange guards, and provider-link policy remain gated
 follow-ups. See `docs/runbooks/invite-token-primitives.md` and Issue #161.
@@ -253,6 +288,17 @@ v1 capability fragment lists the evidence tests and required `secure-next-runtim
 capability. Generated candidate envelopes remain untracked and are published only by
 Leaf 13A's dispatcher.
 
+Issue #156's Trial-isolation work is intentionally staged behind this handoff:
+the reserved `lib/auth/downstream/leaf2.ts` slot remains a no-op until the broker
+issues matching Leaf 1/Leaf 13 deployment proofs. No auth tombstone, session
+version bump, Trial quarantine, or support grant may run from the preparatory seam
+alone.
+
+The verifier rejects nullish or partial parsed envelopes with `LEAF2_INPUT_INVALID`,
+requires the caller environment to be the literal `production`, and accepts proof
+flags only when they are literal booleans. This prevents a parsed staging envelope
+or truthy string field from being promoted into a production dependency proof.
+
 The closed production invariant is intentionally explicit: Google accepts only the
 **exact linked Google Account**, and callback denial plus the adapter guard produce
 **zero User or Account creation**. Provider credentials and an **external profile image**
@@ -275,6 +321,31 @@ before the transactional upsert, matching the password login normalizer.
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
+
+## Issue #162 auth-abuse/session-revocation readiness
+
+Issue #162 (`issue-162-security-auth-abuse-sessions`) remains a dependency-gated
+readiness handoff on the current release line. The eventual authority is
+PostgreSQL, not the existing process-local password work limiter: every
+authentication entry point must fail closed when the guard store is unavailable,
+and each encrypted JWT must resolve against a database registry row, user
+`sessionVersion`, disabled state, and expiry on every request. Raw session IDs,
+limiter identifiers, account identifiers, and client addresses must never enter
+logs, alerts, or persisted limiter records.
+
+The canonical `authDisabledAt`, BigInt `sessionVersion`, and same-transaction
+deny-only journal helpers are present as preparation code in PRs #199 and #202,
+but the support-grant contract and runtime activation remain pending until the
+Issue #166 host-edge contract, database migration, verified private
+binding/database role, and attested delivery-broker host path are accepted
+(Issues #166, #184, and #185). The current
+`Session` adapter table is not a substitute because runtime auth uses encrypted
+JWTs. Leaf 1's config/password/adapter/session-image paths remain protected
+seams; Issue #162 must compose the reserved downstream slot without claiming
+those files or adding a second session decoder.
+
+The public-safe handoff and gate checklist live in
+`docs/runbooks/auth-abuse-sessions-readiness.md`.
 
 ## Cookie namespace
 
@@ -398,6 +469,23 @@ and `mjtrial@munjib.com` as `VIEWER`. Workspace rename/archive require
 - `MANAGE`는 read/write보다 높은 권한으로 취급된다.
 
 Workspace page는 문서 목록과 search 대상에서 읽을 수 없는 문서를 제외한다. Link panel도 outgoing target과 backlink source document를 permission-aware하게 필터링한다.
+
+### Issue #160 document authorization closure
+
+Issue #160은 문서 ACL을 개별 helper의 모음이 아니라 하나의 active-resource
+권한 경계로 닫는 후속 작업이다. 현재 baseline은 일반 문서 service, workspace
+page, wiki-link panel, Ask AI/Workspace AI, comments, attachments에서
+document-level permission을 확인하지만, folder descendant mutation, broken-link
+source authorization, history/metadata DTO, direct attachment/comment/history
+route의 active-state 재확인은 같은 authority로 아직 통합되지 않았다.
+
+이 작업은 Leaf 5 active-resource authority가 제공하는 database-time active
+workspace/document resolver와 transaction-safe membership boundary를 선행
+조건으로 한다. 그 전에는 직접 membership 조회나 별도 ACL helper를 추가하지
+않으며, 공개 handoff와 다음 구현 검증 목록은
+`docs/runbooks/document-authorization-readiness.md`에 기록한다.
+해당 runbook은 검증 항목을 문장부호가 있는 문장으로 유지하고, 내부 식별자는
+`ID`처럼 표준 표기로 기록한다.
 
 ## 문서 service에서의 권한 적용
 
