@@ -162,6 +162,28 @@
       "searchPriority": 50
     },
     {
+      "id": "concept-embedding-profile-registry-readiness",
+      "path": "wiki/Embedding Profile Registry Readiness.md",
+      "title": "Embedding Profile Registry Readiness",
+      "type": "concept",
+      "status": "active",
+      "summary": "Issue #139의 embedding profile metadata와 runtime/schema activation dependency gate.",
+      "tags": [
+        "munjib",
+        "ai",
+        "rag",
+        "embedding",
+        "security"
+      ],
+      "links": [
+        "[[RAG Process Workflow]]",
+        "[[index|Wiki Index]]",
+        "[[log|Wiki Log]]"
+      ],
+      "source_count": 4,
+      "searchPriority": 50
+    },
+    {
       "id": "concept-folder-hierarchy-model",
       "path": "wiki/Folder Hierarchy Model.md",
       "title": "Folder Hierarchy Model",

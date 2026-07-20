@@ -235,6 +235,8 @@ Issue #164의 pre-gate 경계 슬라이스는 `lib/rag/provider-boundary.ts`에 
 
 Embedding provider/model/dimension 변경은 아직 reindex workflow와 vector dimension migration을 포함하지 않는다. Issue #104 direct Ask path는 embedding이나 vector retrieval을 사용하지 않으므로 current document answer를 embedding config parsing이나 embedding index guard에 묶지 않는다. Existing `DocumentChunk` indexing과 workspace chatbot retrieval은 current indexed identity인 Ollama `bge-m3` 1024가 아니면 partial or incompatible vector access를 만들지 않고 fail-fast한다.
 
+Issue #139의 dependency-safe preparation은 `lib/rag/embedding-registry.ts`에 server/client-safe profile metadata와 deterministic versioned profile id contract만 추가한다. Registry는 현재 live profile 하나만 노출하고 legacy `indexId` `bge-m3`를 보존한다. Helper는 caller가 제공한 provider availability map만 필터링하며 env, credential, provider network, workspace data, schema, backfill, reindex, activation을 읽거나 실행하지 않는다. 1024 차원 guard와 future desired/active profile 경계는 [[Embedding Profile Registry Readiness]]에 기록한다. #184/#185 immutable runtime/delivery broker, Leaf 13B database authority, and an explicitly owned maintenance role are required before settings schema or runtime profile switching can begin.
+
 ## Retrieval And Ranking
 
 Issue #104 direct Ask path는 retrieval scope expansion을 기본으로 사용하지 않는다. 현재 문서 질문은 selected saved markdown을 직접 pack하고, citation도 현재 문서 section만 가리킨다. Heading이 없는 긴 문서와 budget보다 큰 headed section은 전체 body를 앞에서부터 자르지 않고 paragraph/chunk sections로 나눠 관련 evidence가 뒤쪽에 있어도 context 후보가 될 수 있게 한다. Direct prompt는 각 selected section content 앞에 `[n] Document > Heading` label을 inline으로 붙여 model이 context text와 citation number를 같은 block에서 볼 수 있게 한다.
