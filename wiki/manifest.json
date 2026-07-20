@@ -1,7 +1,32 @@
 {
   "version": 1,
-  "updated": "2026-07-19",
+  "updated": "2026-07-20",
   "pages": [
+    {
+      "id": "workflow-attachment-lifecycle-readiness",
+      "path": "wiki/Attachment Lifecycle Readiness.md",
+      "title": "Attachment Lifecycle Readiness",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Issue #165 첨부 파일 lifecycle hardening의 현재 contract, dependency gate, preparation-only evidence 경계.",
+      "tags": [
+        "munjib",
+        "security",
+        "attachments",
+        "lifecycle",
+        "readiness"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[Document Editing Workflow]]",
+        "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Document Knowledge Model]]",
+        "[[CI CD And Monitoring Workflow]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 8,
+      "searchPriority": 50
+    },
     {
       "id": "workflow-auth-and-permissions",
       "path": "wiki/Auth And Permissions Workflow.md",
@@ -108,9 +133,10 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Auth And Permissions Workflow]]",
-        "[[Markdown Import And Clipboard Paste Workflow]]"
+        "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Attachment Lifecycle Readiness]]"
       ],
-      "source_count": 101,
+      "source_count": 105,
       "searchPriority": 50
     },
     {
@@ -133,6 +159,28 @@
         "[[Auth And Permissions Workflow]]"
       ],
       "source_count": 42,
+      "searchPriority": 50
+    },
+    {
+      "id": "concept-embedding-profile-registry-readiness",
+      "path": "wiki/Embedding Profile Registry Readiness.md",
+      "title": "Embedding Profile Registry Readiness",
+      "type": "concept",
+      "status": "active",
+      "summary": "Issue #139의 embedding profile metadata와 runtime/schema activation dependency gate.",
+      "tags": [
+        "munjib",
+        "ai",
+        "rag",
+        "embedding",
+        "security"
+      ],
+      "links": [
+        "[[RAG Process Workflow]]",
+        "[[index|Wiki Index]]",
+        "[[log|Wiki Log]]"
+      ],
+      "source_count": 4,
       "searchPriority": 50
     },
     {
@@ -196,6 +244,7 @@
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
         "[[Markdown Import And Clipboard Paste Workflow]]",
+        "[[Attachment Lifecycle Readiness]]",
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
         "[[RAG Process Workflow]]",
@@ -209,7 +258,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 163,
+      "source_count": 164,
       "searchPriority": 5
     },
     {
@@ -252,7 +301,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 362,
+      "source_count": 366,
       "searchPriority": 1
     },
     {
@@ -427,7 +476,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 117,
+      "source_count": 121,
       "searchPriority": 50
     },
     {

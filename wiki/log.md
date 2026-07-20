@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 362
+source_count: 366
 tags:
   - log
   - munjib
@@ -72,6 +72,281 @@ links:
 - Invite readiness parsing now requires own object keys, dense canonical arrays, and bracket-safe validated field access; inherited or sparse JSON-like contracts fail closed.
 - Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review threads.
 - Verification: invite readiness focused tests (5 passed), TypeScript, and staged wiki gates.
+## 2026-07-13T14:45:00+09:00 - Issue #139 registry parser review follow-up
+
+- Hardened the dependency-safe embedding profile parser against nullish identities and non-string provider values; malformed runtime inputs now fail with the stable registry error instead of coercing or throwing a native property error.
+- Source evidence: `lib/rag/embedding-registry.ts`, `tests/rag/embedding-registry.test.ts`, PR #198 review threads.
+- Verification: embedding registry/model-config tests (33 passed), TypeScript, and staged wiki gates.
+
+## 2026-07-13T20:00:00+09:00 - Issue #139 embedding profile readiness
+
+- Result: Added a side-effect-free embedding profile registry contract for the existing Ollama `bge-m3` 1024 index. The versioned profile id is forward-looking while the legacy `indexId` remains `bge-m3`; no runtime index, schema, provider, workspace, or production behavior changed.
+- Coverage: deterministic profile id encoding, exact 1024-dimension validation, registry lookup, caller-supplied provider availability filtering, and absence of secrets/base URLs in registry metadata.
+- Pages: [[RAG Process Workflow]], [[Embedding Profile Registry Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #139 assessment, `lib/rag/model-config.ts`, `lib/rag/embedding-registry.ts`, `tests/rag/embedding-registry.test.ts`.
+- Verification: focused registry/model-config tests, TypeScript, and wiki manifest/lint/sync checks.
+## 2026-07-20T06:58:00+09:00 - Issue #165 duplicate metadata inventory hardening
+
+- Result: A physical file is no longer suppressed when valid attachment metadata rows duplicate its storage key; only one validated metadata reference can classify a file as referenced.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review thread.
+- Verification: focused attachment lifecycle inventory tests.
+
+## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
+
+- Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
+- Pages: [[Attachment Lifecycle Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/lifecycle-contract.ts`, `tests/attachments/lifecycle-contract.test.ts`, PR #195 review thread.
+- Verification: focused lifecycle-contract tests, wiki manifest/lint/sync checks.
+
+## 2026-07-13T13:40:00+09:00 - Issue #165 review hardening for malformed inventory input
+
+- Result: Tightened the preparation primitive after review. The lifecycle
+  contract parser now requires canonical fields to be own properties, blocking
+  inherited/prototype-polluted values. Inventory inputs accept unknown runtime
+  shapes, normalize non-string keys to a non-sensitive sentinel, classify them
+  as `invalid-key` without throwing, and sort using UTF-16 code units for
+  locale-independent deterministic output.
+- Verification: focused attachment contract/inventory/storage-key/route tests
+  (23 passed) and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T13:20:00+09:00 - Issue #165 preparation inventory and storage-key guard
+
+- Result: Added a dependency-safe, non-destructive attachment lifecycle slice.
+  `storage-key.ts` validates workspace-scoped UUID keys and path containment on
+  every attachment service read/write; malformed persisted keys fail closed as
+  `ATTACHMENT_STORAGE_KEY_INVALID` and the API route returns the same 404 as a
+  missing attachment. `lifecycle-inventory.ts` deterministically reconciles
+  broker-provided metadata/file manifests into referenced, missing-bytes,
+  orphan-bytes, and invalid-key counts with `mutationAllowed: false`.
+- Boundary: No Prisma query, filesystem enumeration, delete, scheduler,
+  migration, production volume access, or ACL bypass was added. Candidate
+  callers must still satisfy the Phase A dependency attestation.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Knowledge Model]],
+  [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]],
+  [[log|Wiki Log]].
+- Source evidence: `lib/attachments/storage-key.ts`,
+  `lib/attachments/lifecycle-inventory.ts`, `lib/attachments/service.ts`,
+  `app/api/attachments/[attachmentId]/route.ts`, and attachment tests.
+- Verification: focused attachment lifecycle/route tests and
+  `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T11:25:00+09:00 - Issue #165 attachment lifecycle readiness handoff
+
+- Result: Added a public-safe, preparation-only attachment lifecycle contract and runbook. The contract records the current transaction/ACL/preview boundaries, the orphan-byte and abandoned-paste gaps, dependency gates for Issues #2/#4/#5/#6 and Leaf 13B, and the later Issue #164 provider-policy v2 boundary without enabling deletion, schema changes, or production scheduling.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/service.ts`, `app/api/attachments/[attachmentId]/route.ts`, `lib/documents/purge-archived.ts`, `components/document-editor/markdown-preview.tsx`, `deploy/attachments/attachment-lifecycle-readiness-v1.json`, `lib/attachments/lifecycle-contract.ts`, and attachment/purge tests.
+- Verification: focused lifecycle contract tests, TypeScript, and wiki manifest/lint/sync gates.
+## 2026-07-20T06:10:00+09:00 - Issue #164 policy readiness reconciliation
+
+- Result: Preserved the public-safe AI provider policy handoff and the review-hardened request-boundary contract. Readiness coverage rejects bare credential, endpoint, and embedding field names in both AI routes, including nested `body.value` payload shapes, while live provider activation remains gated.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #164, `docs/runbooks/ai-provider-policy-readiness.md`, `tests/security/ai-provider-policy-readiness.test.ts`, PR #194 review thread.
+- Verification: focused readiness test and wiki manifest/lint/sync checks.
+## 2026-07-20T07:40:00+09:00 - Issue #163 bounded lineage and atomic memory summary
+
+- Result: Derived history readiness now fails closed when bounded lineage is exceeded (no prior-context rollover) and requires memorySummary plus lineage to persist and serialize as one matching atomic pair.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:36:00+09:00 - Issue #163 memory summary and bounded lineage
+
+- Result: Derived history readiness now protects `memorySummary` in GET/reset/streamed `done` DTOs and bounds deduplicated transitive lineage at 256 sources or 32,768 bytes without dropping authorization dependencies.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:30:00+09:00 - Issue #163 completion and pagination visibility boundaries
+
+- Result: Derived history readiness now treats streamed send-completion/`done` serialization as a distinct visibility boundary and requires authorization before page limits/cursors, with visible-only overfetch/refill metadata.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:20:00+09:00 - Issue #163 prompt-lineage and whole-turn contract alignment
+
+- Result: Derived history readiness now persists the union of every current prompt source and inherited lineage, independent of displayed citations, and removes the contradictory USER-row visibility wording from the wiki handoff.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:14:00+09:00 - Issue #163 reset and turn-correlation boundaries
+
+- Result: Derived AI history readiness now includes reset-response serialization and requires a durable turn key with turn-granular pagination before whole-turn suppression can be trusted across concurrent sends, orphan rows, or page boundaries.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:10:00+09:00 - Issue #163 future whole-turn requirement
+
+- Result: Labeled paired USER+ASSISTANT suppression as a future integration requirement so the current per-message helper is not mistaken for list-level behavior.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T07:06:00+09:00 - Issue #163 whole-turn suppression
+
+- Result: Derived AI history readiness now treats persisted `USER`+`ASSISTANT` rows as one turn and suppresses the pair or uses one aggregate redaction when assistant access is denied, preventing unmatched-question position leakage.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T07:00:00+09:00 - Issue #163 transitive lineage and list suppression
+
+- Result: Derived AI history readiness now requires follow-up answers and refreshed memory summaries to inherit the union of consumed source lineages, and requires list-level suppression or aggregate redaction instead of one tombstone per hidden row.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review threads.
+- Verification: focused readiness test.
+
+## 2026-07-20T06:56:00+09:00 - Issue #163 stream contract assertion hardening
+
+- Result: The readiness test now requires both halves of the streamed authorization contract: immediate per-token reauthorization and whole-response buffering until a final authority recheck.
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T06:55:00+09:00 - Issue #163 stream reauthorization boundary
+
+- Result: Strengthened the derived AI history handoff so streamed responses
+  require reauthorization immediately before each token or buffer the entire
+  response until a final authority check; a single pre-stream check or
+  finalization-only check is insufficient.
+- Maintenance: Removed test-line-ending commentary from the RAG workflow and
+  refreshed `Document Editing Workflow` frontmatter to `updated: 2026-07-20`.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`,
+  PR #193 review threads.
+- Verification: 5 focused readiness tests and TypeScript compilation.
+
+## 2026-07-20T06:50:00+09:00 - Issue #163 readiness contract test reconciliation
+
+- Result: Preserved the current main runbook and added the missing contract test that asserts the derived AI history readiness handoff remains documentation-only, lineage-gated, whole-turn redacting, and outside destructive purge or broker installation.
+- Scope: No runtime history authorization behavior or schema mutation changed; the existing implementation and runbook remain the authoritative main content.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193.
+
+## 2026-07-20T06:52:00+09:00 - Issue #163 streaming authorization review hardening
+
+- Result: The readiness contract now requires authorization before any streamed token is emitted, or buffering until the final recheck succeeds; a finalization-only check after `onToken` is explicitly insufficient for mid-stream revocation.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: 5 focused readiness tests and TypeScript compilation.
+## 2026-07-20T07:40:00+09:00 - Issue #160 active mutation and verification matrix
+
+- Result: Issue #160 readiness now covers active-state checks for normal document mutations, adversarial same-tenant permission subjects, and bounded document-scoped history pagination in addition to link reconciliation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:34:00+09:00 - Issue #160 reconciliation verification matrix
+
+- Result: Document authorization verification now requires independent source-authority fixtures for every link-reconciliation caller, including normal document and folder rename/move paths, not only broken-link target creation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:28:00+09:00 - Issue #160 reconciliation caller coverage
+
+- Result: Expanded the document authorization contract to cover every broken-link reconciliation caller, not only target creation, and corrected Wiki Log source_count to include all seven Issue #160 evidence entries.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, `wiki/manifest.json`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:20:00+09:00 - Issue #160 source-link and archived-cascade authority
+
+- Result: Document authorization readiness now requires authority for every source link row repaired by target creation and explicitly fails closed on cascades touching archived descendants until a separate archive-maintenance authority exists.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:14:00+09:00 - Issue #160 index evidence metadata
+
+- Result: Incremented Wiki Index source_count for the Issue #160 authorization-readiness evidence and regenerated the manifest metadata.
+- Source evidence: `wiki/index.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:10:00+09:00 - Issue #160 auth workflow metadata refresh
+
+- Result: Incremented Auth And Permissions Workflow source_count to 102 for the new Issue #160 readiness evidence and regenerated the manifest.
+- Source evidence: `wiki/Auth And Permissions Workflow.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki gates.
+
+## 2026-07-20T07:02:00+09:00 - Issue #160 metadata and descendant coverage
+
+- Result: Refreshed Wiki Log source metadata and clarified that folder path mutations must authorize every descendant row actually updated, including archived descendants loaded by the cascade.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T06:52:00+09:00 - Issue #160 readiness wording correction
+
+- Result: Changed the status-map wording from “closes” to “records” so the
+  documentation-only ACL handoff does not imply that Leaf 5 authority or route
+  behavior is already active.
+- Pages: [[index|Wiki Index]], [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `wiki/index.md`, PR #192 review thread.
+- Verification: wiki gates.
+
+## 2026-07-20T06:40:00+09:00 - Issue #160 document authorization readiness
+
+- Result: Recorded the dependency-gated document authorization closure: descendant-folder authorization, broken-link source checks, active attachment/comment/history routes, role-capped document permissions, minimal current-view DTOs, and authenticated history pagination remain tied to the active-resource authority.
+- Scope: No competing membership lookup, ACL helper, schema mutation, or production activation was added.
+- Pages: [[Auth And Permissions Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `lib/documents/service.ts`, `lib/folders/service.ts`, `lib/attachments/service.ts`, `lib/comments/service.ts`, `lib/wiki-links/service.ts`, and current permission tests.
+
+## 2026-07-20T06:41:00+09:00 - Issue #160 documentation review follow-up
+
+- Result: Readiness bullets use sentence capitalization, terminal punctuation, and the standard `ID` abbreviation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, PR #192 review threads.
+- Verification: documentation diff review and wiki manifest/lint/sync checks.
+## 2026-07-20T07:14:00+09:00 - Issue #162 status-board implementation order
+
+- Result: Wiki Index now names the pending support-grant/runtime activation and points the next implementation slice to schema/migration plus route integration after the dependency gates, rather than describing the already-merged guard runtime as new work.
+- Source evidence: `wiki/index.md`, `docs/runbooks/auth-abuse-sessions-readiness.md`, PR #191 review threads.
+- Verification: wiki gates.
+
+## 2026-07-20T07:10:00+09:00 - Issue #162 status-board host-edge gate
+
+- Result: Wiki Index status-board now includes Issue #166 host-edge binding/probe acceptance alongside the Leaf 2 and Leaf 13 prerequisites.
+- Source evidence: `wiki/index.md`, PR #191 review thread.
+- Verification: wiki gates.
+
+## 2026-07-20T07:06:00+09:00 - Issue #162 pending implementation wording
+
+- Result: Auth-abuse readiness now limits the “present” claim to merged journal/durable-state and bounded guard preparation; support-grant and runtime activation remain implementation work.
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, PR #191 review thread.
+- Verification: documentation review.
+
+## 2026-07-20T07:00:00+09:00 - Issue #162 host-edge dependency tracking
+
+- Result: Auth-abuse activation handoff now keeps the Issue #166 host-edge contract explicit alongside the pending support-grant, private runtime, database, and broker gates.
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, `wiki/Auth And Permissions Workflow.md`, PR #191 review thread.
+- Verification: documentation review and wiki gates.
+
+## 2026-07-20T06:50:00+09:00 - Issue #162 readiness state refresh
+
+- Result: Updated the auth-abuse/session-revocation handoff to distinguish the
+  merged Leaf 2 journal/durable-auth and Issue #162 guard contracts (PRs #199
+  and #202) from the still-pending support-grant contract, database migration,
+  route activation, and deployment evidence.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`,
+  `wiki/Auth And Permissions Workflow.md`, PR #191 review thread.
+- Verification: documentation consistency review and wiki gates.
+
+## 2026-07-20T06:45:00+09:00 - Issue #156 capability and source digest hardening
+
+- Result: Leaf 2 dependency verification now rejects non-string capability
+  digests before regular-expression evaluation, preventing arrays or other
+  runtime values from being coerced into a branded string proof. The trusted
+  deployment source digest is now supplied outside the parsed proof envelope,
+  so matching stale proof fields cannot self-authorize a release.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`,
+  `tests/security/leaf-dependencies.test.ts`, PR #187 review thread.
+- Verification: 10 focused Leaf 2 tests and TypeScript compilation.
+
+## 2026-07-20T06:30:00+09:00 - Issue #162 auth-abuse/session-revocation readiness
+
+- Result: Recorded the documentation-only auth-abuse handoff with the exact `authDisabledAt`, BigInt `sessionVersion`, `support-grant`, and deny-only journal authorities required before implementation.
+- Scope: Current encrypted-JWT runtime remains unchanged; no schema migration, secret rotation, route activation, host installation, or production mutation was performed.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/auth-abuse-sessions-readiness.md`, `prisma/schema.prisma`, `lib/auth/config.ts`, `lib/auth/downstream/leaf2.ts`, Issues #162, #184, and #185.
+
+## 2026-07-20T06:20:00+09:00 - Issue #159 active-resource boundary readiness
+
+- Result: Recorded the dependency-gated active-resource readiness handoff. Resolver and archive-lock callers remain disabled until canonical database-time membership authority, support-access semantics, deny-only journal API, and immutable runtime/broker attestation are independently available.
+- Scope: Public-safe documentation only; no resolver, archive lock caller, schema, journal, purge, or production activation changed.
+- Pages: [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: GitHub Issue #159 and `docs/runbooks/active-resource-boundaries-readiness.md`.
+
 ## 2026-07-20T05:54:00+09:00 - Issue #161 invite token primitive boundary
 
 - Result: Recorded the Leaf 7 dependency-safe invitation bearer and attempt-secret boundary: canonical 256-bit base64url secrets, domain-separated hash-only persistence, constant-time hash comparison, exact exchange-body parsing, immutable output, and no route/database/URL/logging capabilities.
@@ -79,6 +354,21 @@ links:
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: Issue #161, `lib/auth/invite-token.ts`, `tests/auth/invite-token.test.ts`, `tests/security/invite-token-source-contract.test.ts`, `docs/runbooks/invite-token-primitives.md`.
 - Verification: focused invite-token/source-boundary tests, TypeScript compilation, and wiki manifest/lint/sync checks.
+
+## 2026-07-20T06:10:00+09:00 - Issue #156 trial-isolation dependency seam
+
+- Result: Added the dependency-safe branded `verifyLeaf2Dependencies()` handoff for the future Trial-isolation rollout. It accepts only the expected production source digest, Leaf 1 closed-signup proofs, and Leaf 13 immutable-delivery/rollback/database-role capability proofs.
+- Boundary: The verifier consumes broker-verified proof fields but does not verify signatures or activate production migration, Trial quarantine, membership cleanup, support access, or journal mutation. Those operations remain deferred behind Issues #184 and #185.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, GitHub Issue #156.
+- Verification: `pnpm exec vitest run tests/security/leaf-dependencies.test.ts` (8 tests passed); full TypeScript and wiki gates run during synchronization.
+
+## 2026-07-20T06:12:00+09:00 - Issue #156 verifier review hardening
+
+- Result: `verifyLeaf2Dependencies()` now fails closed for nullish/partial parsed input, pins the expected environment to literal `production`, and requires all Leaf 1/Leaf 13 capability flags to be literal booleans.
+- Pages: [[Auth And Permissions Workflow]], [[CI CD And Monitoring Workflow]], [[log|Wiki Log]].
+- Source evidence: `lib/security/leaf-dependencies.ts`, `tests/security/leaf-dependencies.test.ts`, PR #187 review threads.
+- Verification: 8 focused Leaf 2 dependency tests, TypeScript compilation, and wiki gates.
 
 ## 2026-07-20T01:08:00+09:00 - Issue #168 manifest binding review fixes
 
@@ -3317,3 +3607,6 @@ links:
 - Result: Invite signup readiness exact-key validation now rejects non-enumerable and symbol own extensions as unknown fields, preserving the fail-closed contract boundary for in-memory objects.
 - Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review thread.
 - Verification: focused invite readiness tests.
+- Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
+- Verification: focused attachment lifecycle inventory tests.

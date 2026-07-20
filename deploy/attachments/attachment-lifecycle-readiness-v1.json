@@ -1,0 +1,52 @@
+{
+  "format": "munjib-attachment-lifecycle-readiness-v1",
+  "version": 1,
+  "phases": {
+    "phaseA": {
+      "mode": "PREPARATION_ONLY",
+      "required": true,
+      "dependencies": [
+        "issue-2-document-crud",
+        "issue-4-editor-paste",
+        "issue-5-link-reconciliation",
+        "issue-6-document-authorization",
+        "leaf-13b-database-authority"
+      ],
+      "allowedActions": [
+        "inventory-db-rows",
+        "verify-storage-key-shape",
+        "dry-run-reconcile"
+      ]
+    },
+    "phaseB": {
+      "mode": "CANDIDATE_ISOLATED",
+      "required": true,
+      "dependencies": [
+        "issue-2-document-crud",
+        "issue-4-editor-paste",
+        "issue-5-link-reconciliation",
+        "issue-6-document-authorization",
+        "leaf-13b-database-authority",
+        "issue-164-ai-provider-policy-v2"
+      ],
+      "allowedActions": [
+        "quiesce-attachment-writes",
+        "manifest-db-and-files",
+        "restore-never-production"
+      ]
+    }
+  },
+  "invariants": [
+    "attachment-row-document-workspace-must-match",
+    "storage-key-is-workspace-scoped-and-path-safe",
+    "v1-never-deletes-attachment-bytes",
+    "purge-is-idempotent-and-audited",
+    "no-production-mutation-before-dependency-attestation"
+  ],
+  "deferred": [
+    "production-orphan-gc",
+    "document-purge-cascade-file-cleanup",
+    "pending-paste-expiry",
+    "ai-history-attachment-reference-policy-v2"
+  ]
+}

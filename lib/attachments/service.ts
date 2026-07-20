@@ -15,6 +15,7 @@ import { scheduleSavedDocumentIndex } from "@/lib/rag/index-document";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { markdownToPlainText } from "@/lib/text/plain-text";
 import { reconcileDocumentLinks } from "@/lib/wiki-links/reconcile";
+import { resolveAttachmentStoragePath } from "@/lib/attachments/storage-key";
 
 const maxAttachmentBytes = 5 * 1024 * 1024;
 const allowedMimeTypes = new Set([
@@ -58,7 +59,7 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
 
   const safeFileName = sanitizeFileName(input.fileName);
   const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName}`;
-  const absolutePath = attachmentPath(storageKey);
+  const absolutePath = attachmentPath(storageKey, document.workspaceId);
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, input.bytes);
 
@@ -165,7 +166,7 @@ export async function uploadPastedDocumentImageAttachment(input: UploadDocumentA
 
   const safeFileName = sanitizePastedImageFileName(input.fileName, input.mimeType);
   const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName}`;
-  const absolutePath = attachmentPath(storageKey);
+  const absolutePath = attachmentPath(storageKey, document.workspaceId);
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, input.bytes);
 
@@ -239,7 +240,7 @@ export async function getReadableAttachment(attachmentId: string, actorId: strin
   try {
     return {
       attachment,
-      bytes: await readFile(attachmentPath(attachment.storageKey)),
+      bytes: await readFile(attachmentPath(attachment.storageKey, attachment.document.workspaceId)),
     };
   } catch (error) {
     if (isMissingAttachmentFileError(error)) {
@@ -301,8 +302,16 @@ async function nextVersionNumber(tx: Prisma.TransactionClient, documentId: strin
   return latest ? latest.versionNumber + 1 : 1;
 }
 
-function attachmentPath(storageKey: string) {
-  return path.join(process.cwd(), "storage", "attachments", storageKey);
+function attachmentPath(storageKey: string, workspaceId: string) {
+  try {
+    return resolveAttachmentStoragePath(
+      path.join(process.cwd(), "storage", "attachments"),
+      storageKey,
+      workspaceId,
+    );
+  } catch {
+    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_STORAGE_KEY_INVALID);
+  }
 }
 
 function isMissingAttachmentFileError(error: unknown) {

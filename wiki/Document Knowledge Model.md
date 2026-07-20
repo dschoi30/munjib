@@ -381,6 +381,7 @@ Issue #34 graph view는 새 storage model을 추가하지 않는다. Workspace p
 ## 첨부와 댓글
 
 - `Attachment`: 문서에 업로드된 file metadata다. 실제 bytes는 `storage/attachments/<workspaceId>/<uuid>-<safeFileName>` 아래 저장되고 DB에는 fileName, mimeType, size, storageKey, uploadedById를 둔다.
+- Attachment storage key는 `lib/attachments/storage-key.ts`가 workspace-scoped UUID 형식과 root containment를 검증한 뒤에만 서비스 read/write path로 변환한다. `lib/attachments/lifecycle-inventory.ts`의 preparation-only reconciliation은 metadata row와 broker-provided file manifest를 삭제 없이 deterministic하게 대조한다.
 - `Comment`: 문서 comment다. `body`, `userId`, `createdAt`, optional `resolvedAt`을 가진다.
 
 Manual attachment upload는 markdown link를 문서 본문 끝에 append하고 새 document version과 audit log를 남긴다. Paste-only image attachment upload는 clipboard image bytes를 같은 `Attachment` storage model에 저장하지만 document markdown과 versions는 변경하지 않고, editor cursor insertion용 image markdown을 service return value로 돌려준다. Comment 생성은 write 가능한 사용자만 수행할 수 있고 `comment.created` audit log를 남긴다.
