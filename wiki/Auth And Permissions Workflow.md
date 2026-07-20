@@ -160,7 +160,7 @@ range. It does not create tables, roles, extensions, or perform a production mut
 
 This is a pre-migration handoff only. The default auth hook remains unchanged,
 the `User` columns and journal tables are not present on `origin/main`, and
-Trial disable, credential/session cleanup, journal genesis, support access, and
+Trial disable, credential/session cleanup, journal genesis, support-grant, and
 production migration stay gated on the deployed Leaf 1/13B proofs and the
 privileged broker. Evidence is tracked in Issue #156's implementation branch.
 
@@ -286,6 +286,31 @@ before the transactional upsert, matching the password login normalizer.
 ## Session helper
 
 서버 컴포넌트와 server action은 `requireCurrentUser()`를 통해 현재 사용자를 요구한다. 로그인되지 않은 상태에서 보호된 workspace로 접근하면 로그인 흐름으로 이동한다.
+
+## Issue #162 auth-abuse/session-revocation readiness
+
+Issue #162 (`issue-162-security-auth-abuse-sessions`) remains a dependency-gated
+readiness handoff on the current release line. The eventual authority is
+PostgreSQL, not the existing process-local password work limiter: every
+authentication entry point must fail closed when the guard store is unavailable,
+and each encrypted JWT must resolve against a database registry row, user
+`sessionVersion`, disabled state, and expiry on every request. Raw session IDs,
+limiter identifiers, account identifiers, and client addresses must never enter
+logs, alerts, or persisted limiter records.
+
+The canonical `authDisabledAt`, BigInt `sessionVersion`, and same-transaction
+deny-only journal helpers are present as preparation code in PRs #199 and #202,
+but the support-grant contract and runtime activation remain pending until the
+Issue #166 host-edge contract, database migration, verified private
+binding/database role, and attested delivery-broker host path are accepted
+(Issues #166, #184, and #185). The current
+`Session` adapter table is not a substitute because runtime auth uses encrypted
+JWTs. Leaf 1's config/password/adapter/session-image paths remain protected
+seams; Issue #162 must compose the reserved downstream slot without claiming
+those files or adding a second session decoder.
+
+The public-safe handoff and gate checklist live in
+`docs/runbooks/auth-abuse-sessions-readiness.md`.
 
 ## Cookie namespace
 
