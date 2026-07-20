@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 358
+source_count: 366
 tags:
   - log
   - munjib
@@ -19,6 +19,69 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:40:00+09:00 - Issue #160 active mutation and verification matrix
+
+- Result: Issue #160 readiness now covers active-state checks for normal document mutations, adversarial same-tenant permission subjects, and bounded document-scoped history pagination in addition to link reconciliation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:34:00+09:00 - Issue #160 reconciliation verification matrix
+
+- Result: Document authorization verification now requires independent source-authority fixtures for every link-reconciliation caller, including normal document and folder rename/move paths, not only broken-link target creation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:28:00+09:00 - Issue #160 reconciliation caller coverage
+
+- Result: Expanded the document authorization contract to cover every broken-link reconciliation caller, not only target creation, and corrected Wiki Log source_count to include all seven Issue #160 evidence entries.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, `wiki/manifest.json`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:20:00+09:00 - Issue #160 source-link and archived-cascade authority
+
+- Result: Document authorization readiness now requires authority for every source link row repaired by target creation and explicitly fails closed on cascades touching archived descendants until a separate archive-maintenance authority exists.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:14:00+09:00 - Issue #160 index evidence metadata
+
+- Result: Incremented Wiki Index source_count for the Issue #160 authorization-readiness evidence and regenerated the manifest metadata.
+- Source evidence: `wiki/index.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T07:10:00+09:00 - Issue #160 auth workflow metadata refresh
+
+- Result: Incremented Auth And Permissions Workflow source_count to 102 for the new Issue #160 readiness evidence and regenerated the manifest.
+- Source evidence: `wiki/Auth And Permissions Workflow.md`, `wiki/manifest.json`, PR #192 review thread.
+- Verification: wiki gates.
+
+## 2026-07-20T07:02:00+09:00 - Issue #160 metadata and descendant coverage
+
+- Result: Refreshed Wiki Log source metadata and clarified that folder path mutations must authorize every descendant row actually updated, including archived descendants loaded by the cascade.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `wiki/Document Editing Workflow.md`, PR #192 review threads.
+- Verification: wiki manifest/lint/sync checks.
+
+## 2026-07-20T06:52:00+09:00 - Issue #160 readiness wording correction
+
+- Result: Changed the status-map wording from “closes” to “records” so the
+  documentation-only ACL handoff does not imply that Leaf 5 authority or route
+  behavior is already active.
+- Pages: [[index|Wiki Index]], [[Auth And Permissions Workflow]], [[log|Wiki Log]].
+- Source evidence: `wiki/index.md`, PR #192 review thread.
+- Verification: wiki gates.
+
+## 2026-07-20T06:40:00+09:00 - Issue #160 document authorization readiness
+
+- Result: Recorded the dependency-gated document authorization closure: descendant-folder authorization, broken-link source checks, active attachment/comment/history routes, role-capped document permissions, minimal current-view DTOs, and authenticated history pagination remain tied to the active-resource authority.
+- Scope: No competing membership lookup, ACL helper, schema mutation, or production activation was added.
+- Pages: [[Auth And Permissions Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, `lib/documents/service.ts`, `lib/folders/service.ts`, `lib/attachments/service.ts`, `lib/comments/service.ts`, `lib/wiki-links/service.ts`, and current permission tests.
+
+## 2026-07-20T06:41:00+09:00 - Issue #160 documentation review follow-up
+
+- Result: Readiness bullets use sentence capitalization, terminal punctuation, and the standard `ID` abbreviation.
+- Source evidence: `docs/runbooks/document-authorization-readiness.md`, PR #192 review threads.
+- Verification: documentation diff review and wiki manifest/lint/sync checks.
 ## 2026-07-20T07:14:00+09:00 - Issue #162 status-board implementation order
 
 - Result: Wiki Index now names the pending support-grant/runtime activation and points the next implementation slice to schema/migration plus route integration after the dependency gates, rather than describing the already-merged guard runtime as new work.

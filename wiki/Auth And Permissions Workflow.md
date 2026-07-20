@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-07-20
-source_count: 101
+source_count: 102
 tags:
   - munjib
   - auth
@@ -434,6 +434,23 @@ and `mjtrial@munjib.com` as `VIEWER`. Workspace rename/archive require
 - `MANAGE`는 read/write보다 높은 권한으로 취급된다.
 
 Workspace page는 문서 목록과 search 대상에서 읽을 수 없는 문서를 제외한다. Link panel도 outgoing target과 backlink source document를 permission-aware하게 필터링한다.
+
+### Issue #160 document authorization closure
+
+Issue #160은 문서 ACL을 개별 helper의 모음이 아니라 하나의 active-resource
+권한 경계로 닫는 후속 작업이다. 현재 baseline은 일반 문서 service, workspace
+page, wiki-link panel, Ask AI/Workspace AI, comments, attachments에서
+document-level permission을 확인하지만, folder descendant mutation, broken-link
+source authorization, history/metadata DTO, direct attachment/comment/history
+route의 active-state 재확인은 같은 authority로 아직 통합되지 않았다.
+
+이 작업은 Leaf 5 active-resource authority가 제공하는 database-time active
+workspace/document resolver와 transaction-safe membership boundary를 선행
+조건으로 한다. 그 전에는 직접 membership 조회나 별도 ACL helper를 추가하지
+않으며, 공개 handoff와 다음 구현 검증 목록은
+`docs/runbooks/document-authorization-readiness.md`에 기록한다.
+해당 runbook은 검증 항목을 문장부호가 있는 문장으로 유지하고, 내부 식별자는
+`ID`처럼 표준 표기로 기록한다.
 
 ## 문서 service에서의 권한 적용
 
