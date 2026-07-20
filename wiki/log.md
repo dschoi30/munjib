@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:10:00+09:00 - Issue #164 policy readiness reconciliation
+
+- Result: Preserved the public-safe AI provider policy handoff and the review-hardened request-boundary contract. Readiness coverage rejects bare credential, endpoint, and embedding field names in both AI routes, including nested `body.value` payload shapes, while live provider activation remains gated.
+- Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: Issue #164, `docs/runbooks/ai-provider-policy-readiness.md`, `tests/security/ai-provider-policy-readiness.test.ts`, PR #194 review thread.
+- Verification: focused readiness test and wiki manifest/lint/sync checks.
 ## 2026-07-20T07:40:00+09:00 - Issue #163 bounded lineage and atomic memory summary
 
 - Result: Derived history readiness now fails closed when bounded lineage is exceeded (no prior-context rollover) and requires memorySummary plus lineage to persist and serialize as one matching atomic pair.
