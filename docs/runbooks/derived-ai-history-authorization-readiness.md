@@ -13,11 +13,32 @@ mutation.
   fails closed to a non-enumerating tombstone.
 - Source-backed turns require every source to pass a caller-supplied canonical
   source-authority callback. One denied source hides the whole turn.
+- Follow-up answers and refreshed `memorySummary` must inherit the union of all
+  source lineages consumed from prior answers or memory context. A turn that
+  consumes source-backed context cannot be relabeled `source-free-v1` merely
+  because the current retrieval returns no new chunks.
+- Each new answer's persisted lineage must also include every source supplied
+  to the current prompt, including prompt chunks whose citation marker is not
+  present in the final answer. The lineage is the union of those current prompt
+  sources and all inherited prior lineages; displayed citations are not a
+  complete authorization record.
+- Lineage entries must be deduplicated by canonical document/chunk key and
+  bounded at `MAX_DERIVED_LINEAGE_SOURCES=256` and
+  `MAX_DERIVED_LINEAGE_BYTES=32768`. Exceeding either bound must fail closed
+  before generation/persistence. Rollover that carries prior context is not
+  permitted in this slice; a future compacting proof must be a separate
+  reviewed contract. It must never truncate sources merely to fit.
 - Tombstones omit internal message ids, timestamps, answer text, citations,
   source ids, context metadata, model ids, counts, and denial reasons.
-- The serializer scopes tombstones to derived `ASSISTANT` rows. Normal
-  user-authored `USER` questions remain visible and never inherit a detached
-  assistant decision.
+- Future integration requirement: the owning serializer must treat each
+  persisted `USER`+`ASSISTANT` pair as one derived turn. If the assistant
+  decision is denied or unavailable, it must suppress the whole pair (or use
+  one aggregate redaction) rather than leaving an unmatched user question that
+  reveals the hidden turn's position. This requires a durable turn-correlation
+  key and turn-granular pagination; `threadId` plus individually paginated
+  message rows cannot safely reconstruct pairs across concurrent sends, legacy
+  orphan rows, or page boundaries. The current per-message helper does not
+  claim to perform this list-level pairing.
 - A `source-free-v1` assistant row is visible only when citations are null or
   empty and `contextMeta` contains only the exact lineage proof. Mixed-writer
   or partial-migration rows that retain citation/source metadata fail closed
@@ -46,15 +67,34 @@ verified contracts:
    attestation.
 
 After those gates, the owning implementation must wire the same decision
-helper into thread load, follow-up context, memory refresh, finalization, and
-citation serialization, with revocation-race coverage. No direct membership
-fallback or citation-only inference is permitted.
+helper into thread load, follow-up context, memory refresh, finalization,
+send-completion/`done` serialization, citation serialization, and
+reset-response serialization, with revocation-race coverage. Every GET,
+reset, and streamed `done` DTO must independently authorize the derived
+`memorySummary` lineage and omit or redact `memorySummary` when it is denied;
+the exact summary value and its lineage must be persisted atomically and
+serialized only as a matching pair. Authorizing message rows alone is
+insufficient. No direct membership fallback or citation-only inference is
+permitted.
 
-The eventual thread DTO must not add a hidden-message count, denied-source
-count, or other aggregate that lets a caller enumerate hidden history. This
-slice only defines the per-row tombstone shape; list-level filtering/count
-behavior remains an integration acceptance criterion for the dependency-
-complete owner.
+For streamed assistant responses, authorization must be established before any
+token is emitted. The implementation must either reauthorize immediately before
+each token is exposed (not only once per stream), or buffer the entire response
+until a final authority recheck succeeds before releasing any token. A
+finalization-only check after `onToken` is insufficient because a source can be
+revoked between tokens.
+
+The eventual thread/list/reset and streamed send-completion/`done` DTOs must
+suppress each denied `USER`+`ASSISTANT` turn at list level or use one aggregate
+redaction that does not preserve hidden-row count or position. Authorization
+must happen before page limits/cursor calculation; an overfetch/refill design
+may return only visible turns and visible-derived page metadata. It must never
+emit one tombstone per hidden turn, and it must not add a hidden-message count,
+denied-source count, or other aggregate that lets a caller enumerate hidden
+history. This slice only defines the per-row tombstone shape for internal
+composition; whole-turn suppression, durable turn keys, turn-granular
+pagination, and send-completion serialization remain integration acceptance
+criteria for the dependency-complete owner.
 
 ## Public-safe evidence
 

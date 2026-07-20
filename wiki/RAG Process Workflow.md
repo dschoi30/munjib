@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-07-20
-source_count: 117
+source_count: 121
 tags:
   - munjib
   - workflow
@@ -114,6 +114,49 @@ Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]
 Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 active workspace membership check, permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다. Issue #147 review follow-up 이후 archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 Ask AI context를 읽지 않는다.
 
 Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
+
+### Derived AI history authorization readiness (Issue #163)
+
+현재 `AiChatThread`/`AiChatMessage` history는 actor의 active workspace
+membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 권한이
+나중에 철회되었는지까지 재검증하지 않는다. Answer body와 rolling
+`memorySummary`도 derived content이므로 citation link만 검사해서는 충분하지
+않다. 자세한 public-safe handoff는
+`docs/runbooks/derived-ai-history-authorization-readiness.md`에 둔다.
+
+Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
+source-backed/source-free lineage를 명시하고, thread load, follow-up
+context, memory refresh, finalization, send-completion/`done` serialization,
+citation serialization, reset-response serialization 각각에서
+현재 canonical actor/workspace/document authority를 재확인해야 한다. Streamed
+assistant response는 각 token 노출 직전에 재인가하거나 전체 response를 최종
+authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-only 검사는
+허용하지 않는다. source가
+읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
+citation, document id/title/path, denial reason을 노출하지 않는
+non-enumerating tombstone으로 숨기고 follow-up/memory 입력에서도 제외한다.
+Follow-up answer와 refreshed `memorySummary`는 prior answer/memory에서 소비한
+모든 source lineage의 union을 상속해야 하며, 새 retrieval chunk가 없다는
+이유만으로 `source-free-v1`로 재분류할 수 없다. Thread/list DTO는 denied
+assistant row를 list-level에서 필터링하거나 hidden row 수·위치를 보존하지
+않는 단일 aggregate redaction으로 표현해야 하며, hidden row마다 tombstone을
+하나씩 반환해서는 안 된다. Persisted `USER`+`ASSISTANT` pair는 하나의
+derived turn이므로 assistant access가 거부되면 paired user row도 함께
+숨겨 unmatched question으로 hidden turn의 위치를 드러내지 않아야 한다. 이
+whole-turn suppression은 durable turn-correlation key와 turn-granular
+pagination을 전제로 하며, `threadId`와 개별 message pagination만으로
+동시 전송·legacy orphan·page boundary에서 pair를 추정해서는 안 된다.
+새 answer의 persisted lineage에도 현재 prompt에 공급된 모든 source chunk를
+citation marker가 최종 answer에 등장했는지와 무관하게 포함해야 하며, prior
+lineage와의 union이 authorization record다. 표시된 citation만으로 lineage를
+재구성해서는 안 된다. Lineage entry는 canonical document/chunk key로 dedupe하고
+`MAX_DERIVED_LINEAGE_SOURCES=256`, `MAX_DERIVED_LINEAGE_BYTES=32768` 한도를
+지켜야 한다. 한도를 넘으면 source를 잘라내지 말고 generation/persistence 전에
+fail closed한다. Prior context를 들고 rollover하는 것은 이 slice에서 허용하지
+않으며, compacting proof는 별도 reviewed contract여야 한다.
+Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
+immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
+migration, route, purge, production activation을 시작하지 않는다.
 
 ## Steps
 
@@ -269,8 +312,18 @@ tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
 행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
 `legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
 citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
-Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
-row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+Per-row Source-backed decision/tombstone은 `ASSISTANT` row에 대해 계산되지만,
+이는 최종 list/reset DTO에서 일반 `USER` row를 항상 노출해도 된다는 정책이
+아니다. Dependency-complete whole-turn serializer는 durable turn key로
+paired `USER`+`ASSISTANT` rows를 함께 숨기거나 단일 aggregate redaction으로
+대체해야 하며, history page limit/cursor를 계산하기 전에 authorization을
+적용해야 한다. 숨겨진 turn을 먼저 page에서 잘라낸 뒤 필터링하지 말고,
+overfetch/refill 결과의 page metadata도 visible turn만으로 계산해야 한다.
+이 per-row helper 자체는 list-level pairing이나 streamed `done` serialization을
+주장하지 않는다. GET, reset, streamed `done` DTO는 message rows와 별도로
+derived `memorySummary` lineage를 재인가하고, 거부되면 `memorySummary`를
+omit/redact해야 한다. Summary value와 lineage는 하나의 atomic persistence
+envelope/transaction으로 저장하고, serialization도 matching pair만 읽어야 한다.
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.

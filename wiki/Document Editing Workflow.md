@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-07-09
-source_count: 101
+updated: 2026-07-20
+source_count: 105
 tags:
   - munjib
   - workflow
@@ -73,6 +73,16 @@ Issue #100 구현은 AI answer generation boundary를 provider-neutral LangChain
 Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/workspace별 chat model id override를 저장했다. Issue #109 이후 이 state는 provider+model override로 확장되며, `munjib:rag-chat-model:<workspaceSlug>` `localStorage` key는 JSON `{ chatProvider, chatModel }` setting을 저장하고 legacy string 값도 계속 읽는다. Settings UI는 provider selector, custom model id 입력, provider-filtered custom model list를 제공하며 API key/base URL은 노출하지 않는다. Static presets are shown only for the `openai-compatible` provider so Ollama/OpenAI users can keep typing model ids directly without seeing OpenRouter choices. `Save custom model`은 현재 provider+model pair를 override와 `munjib:rag-custom-chat-models:<workspaceSlug>` custom list에 함께 저장한다. Ask AI panel과 workspace chatbot은 같은 tab custom event와 cross-tab storage event를 통해 열린 패널에 provider+model 변경을 반영하고, request에는 optional `chatProvider`와 `chatModel`을 함께 보낸다. Server는 validated provider+model으로 answer-generation chat config만 다시 만들고 provider credential/base URL과 embedding/index configuration은 server env를 그대로 사용한다.
 
 Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Issue #126 이후 submit/model/placeholder/error/thinking text는 shared i18n catalog를 통해 현재 display language의 영어/한국어 copy로 렌더링된다. Indicator는 elapsed-time status key를 유지하므로 언어 전환 시 현재 단계의 text가 새 display language로 다시 렌더링된다. Workspace page는 같은 indicator를 쓰는 `WorkspaceChatbot`을 우측 하단 fixed AI icon launcher로 mount한다. Icon을 클릭하면 compact chat panel이 열리고 active thread history와 effective model id를 표시하며, message send는 selected document id, optional settings-panel `chatProvider`/`chatModel` override, and optional display-language `uiLanguage`를 API에 함께 보낼 수 있다. Service는 recent thread history와 current message를 합친 conversation-aware query로 retrieval embedding을 만들고, readable selected document chunks를 prompt cap 전에 우선 배치한다. `uiLanguage`는 retrieval query를 바꾸지 않고 prompt fallback/status phrasing instruction에만 전달된다. Validated override가 있으면 provider credential/base URL은 server env에서 읽고 embedding index identity는 유지한 채 answer generation `chat` config만 provider+model 기준으로 바꾼다. Reset은 active thread를 archive한 뒤 visible conversation을 비운다. Chatbot client는 workspace 전환, delayed thread load, delayed send response, reset pending 중 send race를 generation/version guard와 disabled controls로 방어한다.
+
+Issue #163 derived AI history authorization은 이 persistence/display contract의
+후속 보안 gate다. `AiChatThread`/`AiChatMessage` answer와 memory를 replay할
+때는 현재 document/source 권한을 다시 확인해야 하며, source-backed lineage를
+증명할 수 없거나 source가 unreadable한 whole turn은 non-enumerating tombstone으로
+숨겨야 한다. Thread load, follow-up, memory refresh, finalization, citation
+navigation 모두 같은 canonical authority를 사용해야 한다. 현재 branch는
+`docs/runbooks/derived-ai-history-authorization-readiness.md`의
+documentation-only handoff만 포함하고, dependency leaf가 제공할 authority와
+immutable migration gate 전에는 schema/route/production behavior를 바꾸지 않는다.
 
 Issue #122 이후 `WorkspaceChatbot` open/closed state is restored per workspace from the same aggregate workspace UI key. Stored open state automatically opens the panel and loads that workspace thread after hydration; closing only persists `workspaceChatOpen=false` and does not alter chat draft, pending request, persisted thread, selected document id, or model override state.
 
@@ -143,6 +153,32 @@ Issue #119 adds a `Retention` section to workspace settings. Workspace writers c
 Issue #20의 folder archive 정책은 비어 있지 않은 folder archive를 차단하는 것이다. 사용자는 먼저 하위 folder/document를 이동하거나 archive해야 한다. Recursive archive/restore는 MVP 범위에서 제외한다.
 
 `createDocumentFromBrokenLink()`는 broken `DocumentLink`에서 target title을 가져와 루트 경로의 blank document를 만들고, 같은 raw target title을 가진 broken links를 repair한다. 생성 transaction이 commit된 뒤 새 blank document의 saved content 기준으로 RAG chunk replacement를 실행해 기존 stale chunk가 있으면 비운다.
+
+Issue #160 document authorization closure는 이 흐름을 다음 공통 경계로
+확장할 준비를 기록한다. 일반 document create/update/restore/move, folder
+rename/move, broken-link target 생성이 호출하는 모든 broken-link
+reconciliation은 workspace write 권한만으로 충분하지 않다. Initiating source와
+실제로 repair되는 모든 source document의 현재 권한을 확인하고, workspace-wide
+`updateMany`로 unreadable source row까지 바꾸지 않도록 authorized source만
+scope하거나 전체 transaction을 거부해야 한다. Folder tree mutation은 실제로
+갱신하는 모든 active descendant folder/document를 한 번에 검사하며,
+archived descendant는 active-resource proof의 대상이 아니다. 별도
+archive-maintenance authority가 각 archived row를 승인하기 전에는 archived
+descendant를 포함한 cascade를 zero-write로 거부한다. Attachment,
+comment, version, audit/history direct route도 현재 active workspace/document와
+document permission을 매번 재확인하고, server page는 current-view에 필요한
+최소 DTO만 내려야 한다. 이 변경은 Leaf 5 active-resource authority가
+머지·검증된 뒤에만 구현하며, 공개 handoff는
+`docs/runbooks/document-authorization-readiness.md`에 유지한다.
+검증 matrix는 target 생성뿐 아니라 normal document create/update/restore/move와
+folder rename/move의 각 reconciliation caller에서 authorized source repair와
+unreadable source zero-write 결과를 독립 fixture로 확인해야 한다.
+Normal document create/update/move/archive도 동일한 active-document authority를
+소비해야 하며 archived document id를 가진 stale request는 zero-write로 거부한다.
+Permission subject는 current same-tenant actor tuple만 허용하고 stale membership,
+foreign-tenant, non-actor subject fixture는 모두 deny되어야 한다. History tab은
+authorized large-history fixture에서 bounded page size와 document-scoped cursor를
+검증해야 하며 unbounded version query를 남겨서는 안 된다.
 
 ## UI 세부 사항
 
