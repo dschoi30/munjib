@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-07-20
-source_count: 117
+source_count: 121
 tags:
   - munjib
   - workflow
@@ -115,6 +115,49 @@ Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 �
 
 Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
+### Derived AI history authorization readiness (Issue #163)
+
+현재 `AiChatThread`/`AiChatMessage` history는 actor의 active workspace
+membership를 확인한 뒤 표시되지만, 과거 answer가 참조한 문서 권한이
+나중에 철회되었는지까지 재검증하지 않는다. Answer body와 rolling
+`memorySummary`도 derived content이므로 citation link만 검사해서는 충분하지
+않다. 자세한 public-safe handoff는
+`docs/runbooks/derived-ai-history-authorization-readiness.md`에 둔다.
+
+Issue #163은 dependency-gated readiness만 기록한다. 향후 구현은
+source-backed/source-free lineage를 명시하고, thread load, follow-up
+context, memory refresh, finalization, send-completion/`done` serialization,
+citation serialization, reset-response serialization 각각에서
+현재 canonical actor/workspace/document authority를 재확인해야 한다. Streamed
+assistant response는 각 token 노출 직전에 재인가하거나 전체 response를 최종
+authority 재검증 전까지 buffer해야 하며, `onToken` 뒤 finalization-only 검사는
+허용하지 않는다. source가
+읽을 수 없거나 legacy lineage를 증명할 수 없는 derived turn은 answer,
+citation, document id/title/path, denial reason을 노출하지 않는
+non-enumerating tombstone으로 숨기고 follow-up/memory 입력에서도 제외한다.
+Follow-up answer와 refreshed `memorySummary`는 prior answer/memory에서 소비한
+모든 source lineage의 union을 상속해야 하며, 새 retrieval chunk가 없다는
+이유만으로 `source-free-v1`로 재분류할 수 없다. Thread/list DTO는 denied
+assistant row를 list-level에서 필터링하거나 hidden row 수·위치를 보존하지
+않는 단일 aggregate redaction으로 표현해야 하며, hidden row마다 tombstone을
+하나씩 반환해서는 안 된다. Persisted `USER`+`ASSISTANT` pair는 하나의
+derived turn이므로 assistant access가 거부되면 paired user row도 함께
+숨겨 unmatched question으로 hidden turn의 위치를 드러내지 않아야 한다. 이
+whole-turn suppression은 durable turn-correlation key와 turn-granular
+pagination을 전제로 하며, `threadId`와 개별 message pagination만으로
+동시 전송·legacy orphan·page boundary에서 pair를 추정해서는 안 된다.
+새 answer의 persisted lineage에도 현재 prompt에 공급된 모든 source chunk를
+citation marker가 최종 answer에 등장했는지와 무관하게 포함해야 하며, prior
+lineage와의 union이 authorization record다. 표시된 citation만으로 lineage를
+재구성해서는 안 된다. Lineage entry는 canonical document/chunk key로 dedupe하고
+`MAX_DERIVED_LINEAGE_SOURCES=256`, `MAX_DERIVED_LINEAGE_BYTES=32768` 한도를
+지켜야 한다. 한도를 넘으면 source를 잘라내지 말고 generation/persistence 전에
+fail closed한다. Prior context를 들고 rollover하는 것은 이 slice에서 허용하지
+않으며, compacting proof는 별도 reviewed contract여야 한다.
+Leaf 2/4/6/13B의 membership/session, AI output/egress, document authority,
+immutable migration contracts가 rebased branch에 들어오기 전에는 schema,
+migration, route, purge, production activation을 시작하지 않는다.
+
 ## Steps
 
 Ask AI direct-context request:
@@ -135,6 +178,7 @@ Workspace chatbot UI/API/service request:
 1. `WorkspaceChatbot`은 workspace page에 fixed bottom-right launcher로 mount된다. Icon을 클릭하면 compact panel을 열고 `/assistant/thread`를 GET해 active thread와 message history를 불러오며, 현재 browser override 또는 server default 기준 effective model id를 header 아래에 표시한다.
 2. Panel submit은 trimmed message, 현재 selected document id, current display language의 `uiLanguage`, browser/workspace-scoped optional `chatProvider`/`chatModel` override를 `/assistant/messages`에 POST한다. Message fetch는 `AbortController.signal`을 사용하며, reset과 workspace change cleanup은 active send를 abort한다. Blank message, active send, pending answer, pending reset 중에는 submit handler가 새 send를 막고, reset 중에는 input/send/reset controls를 비활성화한다. Workspace AI launcher/panel/reset/close/send labels, empty state, placeholder, generic unavailable error, model label, and thinking text are catalog-backed; persisted user/assistant message content and citations stay unchanged.
 3. Message route는 malformed JSON을 `INVALID_JSON`, blank message를 `MESSAGE_REQUIRED`, invalid `selectedDocumentId`를 `INVALID_SELECTED_DOCUMENT_ID`, invalid provider/model override를 `INVALID_CHAT_MODEL`로 service 호출 전에 정규화한다. Invalid `uiLanguage`는 request rejection이 아니라 no UI language hint로 무시한다. `chatProvider`가 있으면 matching `chatModel`도 필요하므로 provider-only payload는 service에 전달하지 않는다.
+   Request source contracts assert the absence of bare credential, endpoint, and embedding field names, including nested `body.value` payload shapes.
 4. `prepareWorkspaceChatMessageStream()`는 message를 trim하고 빈 메시지면 `MESSAGE_REQUIRED`를 던진다.
 5. Requested slug가 현재 actor membership이 있는 active workspace인지 확인하고 active documents를 load한 뒤, workspace role과 explicit document permissions로 readable active document ids를 계산한다. Archived workspace는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 chat thread나 message를 만들지 않는다.
 6. `getOrCreateActiveThread()`는 `(workspaceId, userId)`의 active thread를 재사용하거나 생성한다. Concurrent create race는 PostgreSQL partial unique index의 `P2002`를 잡고 active thread를 다시 읽어 처리한다.
@@ -184,6 +228,8 @@ MUNJIB_RAG_EMBED_DIMENSIONS=1024
 Issue #100 이후 chat/embedding provider boundary는 LangChain model factory가 맡는다. Official OpenAI는 `OPENAI_API_KEY` 또는 `MUNJIB_OPENAI_API_KEY`를 요구하고 optional `MUNJIB_OPENAI_BASE_URL`을 LangChain/OpenAI SDK configuration으로 전달한다. OpenAI-compatible provider는 `MUNJIB_OPENAI_COMPATIBLE_BASE_URL`을 요구하지만 API key는 local unauthenticated endpoint 지원을 위해 선택값이며, runtime factory는 non-secret placeholder key로 SDK credential preflight를 통과시킨다.
 
 Issue #102 이후 OpenRouter 같은 OpenAI-compatible cloud chat model 테스트는 server env에 provider/base URL/API key/default model을 둔 뒤, workspace settings panel에서 browser/workspace-scoped chat model id override를 저장하는 방식으로 시작했다. Issue #109는 이 surface를 provider+model override로 확장해 settings panel이 `ollama`, `openai`, `openai-compatible` 중 chat provider와 model id를 함께 저장하고, Ask AI request와 workspace chatbot message request의 optional `chatProvider`/`chatModel` fields로 전달하게 한다. Server는 validated provider+model으로 answer-generation `chat` config만 다시 만들고, API key/base URL은 provider별 server env에서 읽으며, embedding provider/model/dimension과 vector index identity는 request에서 받지 않는다. A complete provider+model override is resolved before reading the default chat provider config, so an Ollama override can still run when the default OpenAI-compatible chat provider env is incomplete; the selected override provider must still have its own required server-side config. OpenRouter presets include `google/gemma-4-31b-it:free`, `google/gemma-4-26b-a4b-it:free`, `openai/gpt-oss-20b:free`, and `openai/gpt-oss-120b:free`, all stored with `openai-compatible`. Static presets are shown only when the selected provider is `openai-compatible`; Ollama and OpenAI keep direct model-id input plus provider-filtered custom models. The settings panel distinguishes malformed model ids from provider-incompatible ids and `Save custom model` also registers the custom provider+model pair in a browser/workspace custom list. Legacy string-only browser storage remains readable through the current default or inferred provider. Issue #133 adds a server-derived chat provider availability map: Ollama is always shown, official OpenAI is shown only when `OPENAI_API_KEY` or `MUNJIB_OPENAI_API_KEY` is present, and OpenAI-compatible/OpenRouter is shown only when `MUNJIB_OPENAI_COMPATIBLE_BASE_URL` is present. The settings panel hides unavailable providers and ignores stale browser overrides for unavailable providers; Ask AI and Workspace AI clients also drop those stale overrides before sending requests so missing server env does not keep producing provider-configuration 503s from old localStorage values. PR #134 review follow-up makes the client fallback explicit: if no usable stored override exists and the server default provider is unavailable, Ask AI and Workspace AI send the first available provider's reset-default provider/model pair instead of omitting override fields and falling back to the broken server default.
+
+Issue #164 security review records the remaining policy boundary in `docs/runbooks/ai-provider-policy-readiness.md`: request validation prevents client-supplied credentials, base URLs, and embedding settings, but the current release still treats provider availability as a UI hint and accepts any syntactically valid model id for a configured provider. A future policy resolver must be server-owned, shared by Ask AI and Workspace AI, and fail closed on provider/model/destination allowlists before model construction. Its destination contract must include chat, embedding, and optional Langfuse egress while keeping secrets, URLs, prompts, retrieved content, and provider response bodies out of telemetry. Activation is gated on Issues #139, #160, #163, #184, and #185; this handoff does not change live provider or schema behavior.
 
 Issue #164의 pre-gate 경계 슬라이스는 `lib/rag/provider-boundary.ts`에 route/DB/secret 의존성 없이 고정되어 있다. 브라우저 요청은 opaque `selectionId`만 통과하고 provider/model, credential, base URL, embedding identity, policy-bypass 필드는 fail-closed로 거부한다. 서버가 소유한 선택 항목만 resolve할 수 있으며 disabled 항목과 raw `provider:model` 문자열은 거부된다. 고정 endpoint 검증은 userinfo, query/fragment, alternate port, scheme/path 불일치, production literal/private/metadata/loopback 목적지를 거부하고, `http://ollama:11434`는 명시적인 non-production local gate에서만 허용한다. `sanitizeAiProviderTelemetry()`는 operation/provider/model/policyVersion/outcome/latency/usage만 bounded allowlist로 반환하고 prompt, response, workspace/user/source identity, URL, header는 복사하지 않는다. 이 모듈은 Issue #139/#160/#163/#184/#185 dependency gate가 닫힌 뒤 Ask AI/Workspace AI 및 Leaf 10 transport가 소비할 후보이며, 현재 route/provider activation이나 migration은 수행하지 않는다. 경계는 selection/model/endpoint 입력의 런타임 타입을 재검증하고 IPv4-mapped IPv6 사설 주소도 거부한다.
 
@@ -268,8 +314,18 @@ tombstone DTO 경계를 둔다. `contextMeta.lineage`의 명시적 v1
 행과 누락/오염된 lineage를 citation id나 chunk count만으로 추론하지 않고
 `legacy-unproven`으로 분류해 숨긴다. 숨김 DTO에는 내부 message id, 시간, answer,
 citations, source ids, context metadata, model, count, denial reason을 복사하지 않는다.
-Source-backed decision/tombstone은 `ASSISTANT` row에만 적용하며, 일반 `USER`
-row는 질문 기록을 유지하고 분리된 assistant decision을 상속하지 않는다.
+Per-row Source-backed decision/tombstone은 `ASSISTANT` row에 대해 계산되지만,
+이는 최종 list/reset DTO에서 일반 `USER` row를 항상 노출해도 된다는 정책이
+아니다. Dependency-complete whole-turn serializer는 durable turn key로
+paired `USER`+`ASSISTANT` rows를 함께 숨기거나 단일 aggregate redaction으로
+대체해야 하며, history page limit/cursor를 계산하기 전에 authorization을
+적용해야 한다. 숨겨진 turn을 먼저 page에서 잘라낸 뒤 필터링하지 말고,
+overfetch/refill 결과의 page metadata도 visible turn만으로 계산해야 한다.
+이 per-row helper 자체는 list-level pairing이나 streamed `done` serialization을
+주장하지 않는다. GET, reset, streamed `done` DTO는 message rows와 별도로
+derived `memorySummary` lineage를 재인가하고, 거부되면 `memorySummary`를
+omit/redact해야 한다. Summary value와 lineage는 하나의 atomic persistence
+envelope/transaction으로 저장하고, serialization도 matching pair만 읽어야 한다.
 `source-free-v1` assistant row도 citations가 null/empty이고 `contextMeta`가 정확한
 lineage proof만 포함할 때만 visible이다. citation/source metadata가 남은 혼합 writer
 또는 부분 migration 행은 proof를 신뢰하지 않고 tombstone으로 fail closed한다.
