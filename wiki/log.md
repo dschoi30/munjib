@@ -19,6 +19,59 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:32:00+09:00 - Issue #161 proxy rejection boundary
+
+- Result: Invite readiness rejects Node proxy contract objects and arrays before any own-key, descriptor, or value inspection, preventing caller-controlled proxy traps from executing.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness tests and wiki gates.
+
+## 2026-07-20T07:26:00+09:00 - Issue #161 top-level data-property guard
+
+- Result: Invite readiness now rejects accessor properties on top-level contract fields as well as nested arrays, keeping the parser side-effect-free before consuming untrusted values.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness tests and wiki gates.
+
+## 2026-07-20T07:22:00+09:00 - Issue #161 bounded and accessor-free arrays
+
+- Result: Invite readiness bounds canonical array lengths before key scanning and copies only own data-property values, rejecting huge sparse arrays and accessor properties without executing caller code.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review threads.
+- Verification: invite readiness tests and wiki gates.
+
+## 2026-07-20T07:16:00+09:00 - Issue #161 nested contract-array own-key guard
+
+- Result: Invite readiness now rejects non-enumerable and symbol own keys on nested canonical arrays before copying immutable values, matching the top-level exact-key policy.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness tests and wiki gates.
+
+## 2026-07-20T07:12:00+09:00 - Issue #161 workflow bearer transport alignment
+
+- Result: Auth And Permissions Workflow now matches the guarded Leaf 7 contract: a raw bearer may appear in the client fragment and one bounded exchange body, then only the opaque attempt/hash crosses durable boundaries.
+- Source evidence: `wiki/Auth And Permissions Workflow.md`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite signup readiness test and wiki manifest/lint checks.
+
+## 2026-07-20T07:10:00+09:00 - Issue #161 guarded exchange body boundary
+
+- Result: The Leaf 7 contract now permits the raw bearer only in the client fragment and one guarded bounded exchange request body; all unintended request/server-visible and durable sinks remain forbidden.
+- Source evidence: `lib/auth/invite-readiness.ts`, `deploy/security/signup/invite-first-readiness-v1.json`, invite readiness runbooks, PR #161 review thread.
+- Verification: invite readiness and signup readiness tests.
+
+## 2026-07-20T07:04:00+09:00 - Issue #161 fragment-only bearer transport
+
+- Result: Narrowed the Leaf 7 raw-bearer invariant to permit only a client-side URL fragment for immediate exchange, with mandatory scrubbing before request/navigation boundaries; request/server-visible URLs and durable or observable sinks remain forbidden.
+- Source evidence: `lib/auth/invite-readiness.ts`, `deploy/security/signup/invite-first-readiness-v1.json`, `docs/runbooks/invite-signup-gate-readiness.md`, PR #161 review thread.
+- Verification: invite readiness and signup readiness tests.
+
+## 2026-07-20T06:58:00+09:00 - Issue #161 iterator-safe readiness arrays
+
+- Result: Invite readiness arrays are copied from validated numeric indices, so caller-controlled `Symbol.iterator` implementations cannot replace canonical values during the immutable return step.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review thread.
+- Verification: focused invite readiness tests.
+
+## 2026-07-13T14:45:00+09:00 - Issue #161 readiness parser review follow-up
+
+- Invite readiness parsing now requires own object keys, dense canonical arrays, and bracket-safe validated field access; inherited or sparse JSON-like contracts fail closed.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review threads.
+- Verification: invite readiness focused tests (5 passed), TypeScript, and staged wiki gates.
 ## 2026-07-13T14:45:00+09:00 - Issue #139 registry parser review follow-up
 
 - Hardened the dependency-safe embedding profile parser against nullish identities and non-string provider values; malformed runtime inputs now fail with the stable registry error instead of coercing or throwing a native property error.
@@ -3485,6 +3538,25 @@ links:
 ## 2026-07-13T17:25:00+09:00 - maintenance
 
 - Result: Kept the SDD task report local-only after the portability follow-up; the public Issue #182 diff contains only Docker, test, and wiki changes.
+## 2026-07-13T00:00:00+09:00 - security-signup-readiness
+
+- Result: Issue #161 (`issue-161-security-signup-gate`) has a public-safe
+  `PREPARATION_ONLY` readiness contract and immutable parser for Leaf 7's
+  invite-first signup handoff. The branch intentionally performs no auth schema,
+  route, middleware, OAuth, edge, or production mutation.
+- Boundary: Production remains effectively closed until the deployed Leaf 1
+  auth runtime, Leaf 2 journal/auth-tombstone authority, Issue #162 abuse/session
+  capability, and Leaf 13B/13A private runtime and broker gates (#180/#184/#185)
+  are independently attested. The future flow is verified-Google-only,
+  raw-bearer-zero fragment to opaque attempt, atomic invitation consumption,
+  no blind email linking or `OWNER` grants, and private/no-store bounded
+  mutations.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]].
+- Source evidence: `deploy/security/signup/invite-first-readiness-v1.json`,
+  `lib/auth/invite-readiness.ts`,
+  `docs/runbooks/invite-signup-gate-readiness.md`, and focused readiness tests.
+- Verification: `pnpm exec vitest run tests/auth/invite-readiness.test.ts
+  tests/security/invite-signup-readiness.test.ts --reporter=dot`.
 
 ## 2026-07-18T00:00:00+09:00 - release-security
 
@@ -3532,6 +3604,9 @@ links:
 
 ## 2026-07-20T06:55:00+09:00 - security-review
 
+- Result: Invite signup readiness exact-key validation now rejects non-enumerable and symbol own extensions as unknown fields, preserving the fail-closed contract boundary for in-memory objects.
+- Source evidence: `lib/auth/invite-readiness.ts`, `tests/auth/invite-readiness.test.ts`, PR #161 review thread.
+- Verification: focused invite readiness tests.
 - Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
 - Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
 - Verification: focused attachment lifecycle inventory tests.
