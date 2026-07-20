@@ -19,6 +19,57 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T06:58:00+09:00 - Issue #165 duplicate metadata inventory hardening
+
+- Result: A physical file is no longer suppressed when valid attachment metadata rows duplicate its storage key; only one validated metadata reference can classify a file as referenced.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review thread.
+- Verification: focused attachment lifecycle inventory tests.
+
+## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
+
+- Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
+- Pages: [[Attachment Lifecycle Readiness]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/lifecycle-contract.ts`, `tests/attachments/lifecycle-contract.test.ts`, PR #195 review thread.
+- Verification: focused lifecycle-contract tests, wiki manifest/lint/sync checks.
+
+## 2026-07-13T13:40:00+09:00 - Issue #165 review hardening for malformed inventory input
+
+- Result: Tightened the preparation primitive after review. The lifecycle
+  contract parser now requires canonical fields to be own properties, blocking
+  inherited/prototype-polluted values. Inventory inputs accept unknown runtime
+  shapes, normalize non-string keys to a non-sensitive sentinel, classify them
+  as `invalid-key` without throwing, and sort using UTF-16 code units for
+  locale-independent deterministic output.
+- Verification: focused attachment contract/inventory/storage-key/route tests
+  (23 passed) and `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T13:20:00+09:00 - Issue #165 preparation inventory and storage-key guard
+
+- Result: Added a dependency-safe, non-destructive attachment lifecycle slice.
+  `storage-key.ts` validates workspace-scoped UUID keys and path containment on
+  every attachment service read/write; malformed persisted keys fail closed as
+  `ATTACHMENT_STORAGE_KEY_INVALID` and the API route returns the same 404 as a
+  missing attachment. `lifecycle-inventory.ts` deterministically reconciles
+  broker-provided metadata/file manifests into referenced, missing-bytes,
+  orphan-bytes, and invalid-key counts with `mutationAllowed: false`.
+- Boundary: No Prisma query, filesystem enumeration, delete, scheduler,
+  migration, production volume access, or ACL bypass was added. Candidate
+  callers must still satisfy the Phase A dependency attestation.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Knowledge Model]],
+  [[Markdown Import And Clipboard Paste Workflow]], [[index|Wiki Index]],
+  [[log|Wiki Log]].
+- Source evidence: `lib/attachments/storage-key.ts`,
+  `lib/attachments/lifecycle-inventory.ts`, `lib/attachments/service.ts`,
+  `app/api/attachments/[attachmentId]/route.ts`, and attachment tests.
+- Verification: focused attachment lifecycle/route tests and
+  `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-13T11:25:00+09:00 - Issue #165 attachment lifecycle readiness handoff
+
+- Result: Added a public-safe, preparation-only attachment lifecycle contract and runbook. The contract records the current transaction/ACL/preview boundaries, the orphan-byte and abandoned-paste gaps, dependency gates for Issues #2/#4/#5/#6 and Leaf 13B, and the later Issue #164 provider-policy v2 boundary without enabling deletion, schema changes, or production scheduling.
+- Pages: [[Attachment Lifecycle Readiness]], [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[Document Knowledge Model]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `lib/attachments/service.ts`, `app/api/attachments/[attachmentId]/route.ts`, `lib/documents/purge-archived.ts`, `components/document-editor/markdown-preview.tsx`, `deploy/attachments/attachment-lifecycle-readiness-v1.json`, `lib/attachments/lifecycle-contract.ts`, and attachment/purge tests.
+- Verification: focused lifecycle contract tests, TypeScript, and wiki manifest/lint/sync gates.
 ## 2026-07-20T06:10:00+09:00 - Issue #164 policy readiness reconciliation
 
 - Result: Preserved the public-safe AI provider policy handoff and the review-hardened request-boundary contract. Readiness coverage rejects bare credential, endpoint, and embedding field names in both AI routes, including nested `body.value` payload shapes, while live provider activation remains gated.
@@ -3465,3 +3516,9 @@ links:
 - Pages: [[RAG Process Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: GitHub Issue #163, `lib/rag/ai-history-authorization.ts`, `tests/rag/ai-history-authorization.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`.
 - Verification: `pnpm exec vitest run tests/rag/ai-history-authorization.test.ts --reporter=dot`, `pnpm exec tsc --noEmit --pretty false`.
+
+## 2026-07-20T06:55:00+09:00 - security-review
+
+- Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
+- Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
+- Verification: focused attachment lifecycle inventory tests.

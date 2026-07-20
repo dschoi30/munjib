@@ -16,6 +16,7 @@ export async function GET(
     const message = error instanceof Error ? error.message : "";
     if (
       message === SERVICE_ERROR_CODES.ATTACHMENT_NOT_FOUND ||
+      message === SERVICE_ERROR_CODES.ATTACHMENT_STORAGE_KEY_INVALID ||
       message === "WORKSPACE_READ_FORBIDDEN" ||
       message === "DOCUMENT_READ_FORBIDDEN"
     ) {
