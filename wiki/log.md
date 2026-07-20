@@ -19,6 +19,87 @@ links:
 
 # Wiki Log
 
+## 2026-07-20T07:40:00+09:00 - Issue #163 bounded lineage and atomic memory summary
+
+- Result: Derived history readiness now fails closed when bounded lineage is exceeded (no prior-context rollover) and requires memorySummary plus lineage to persist and serialize as one matching atomic pair.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:36:00+09:00 - Issue #163 memory summary and bounded lineage
+
+- Result: Derived history readiness now protects `memorySummary` in GET/reset/streamed `done` DTOs and bounds deduplicated transitive lineage at 256 sources or 32,768 bytes without dropping authorization dependencies.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:30:00+09:00 - Issue #163 completion and pagination visibility boundaries
+
+- Result: Derived history readiness now treats streamed send-completion/`done` serialization as a distinct visibility boundary and requires authorization before page limits/cursors, with visible-only overfetch/refill metadata.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:20:00+09:00 - Issue #163 prompt-lineage and whole-turn contract alignment
+
+- Result: Derived history readiness now persists the union of every current prompt source and inherited lineage, independent of displayed citations, and removes the contradictory USER-row visibility wording from the wiki handoff.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:14:00+09:00 - Issue #163 reset and turn-correlation boundaries
+
+- Result: Derived AI history readiness now includes reset-response serialization and requires a durable turn key with turn-granular pagination before whole-turn suppression can be trusted across concurrent sends, orphan rows, or page boundaries.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review threads.
+- Verification: focused readiness test and wiki gates.
+
+## 2026-07-20T07:10:00+09:00 - Issue #163 future whole-turn requirement
+
+- Result: Labeled paired USER+ASSISTANT suppression as a future integration requirement so the current per-message helper is not mistaken for list-level behavior.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T07:06:00+09:00 - Issue #163 whole-turn suppression
+
+- Result: Derived AI history readiness now treats persisted `USER`+`ASSISTANT` rows as one turn and suppresses the pair or uses one aggregate redaction when assistant access is denied, preventing unmatched-question position leakage.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, readiness tests, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T07:00:00+09:00 - Issue #163 transitive lineage and list suppression
+
+- Result: Derived AI history readiness now requires follow-up answers and refreshed memory summaries to inherit the union of consumed source lineages, and requires list-level suppression or aggregate redaction instead of one tombstone per hidden row.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `wiki/RAG Process Workflow.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review threads.
+- Verification: focused readiness test.
+
+## 2026-07-20T06:56:00+09:00 - Issue #163 stream contract assertion hardening
+
+- Result: The readiness test now requires both halves of the streamed authorization contract: immediate per-token reauthorization and whole-response buffering until a final authority recheck.
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: focused readiness test.
+
+## 2026-07-20T06:55:00+09:00 - Issue #163 stream reauthorization boundary
+
+- Result: Strengthened the derived AI history handoff so streamed responses
+  require reauthorization immediately before each token or buffer the entire
+  response until a final authority check; a single pre-stream check or
+  finalization-only check is insufficient.
+- Maintenance: Removed test-line-ending commentary from the RAG workflow and
+  refreshed `Document Editing Workflow` frontmatter to `updated: 2026-07-20`.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`,
+  PR #193 review threads.
+- Verification: 5 focused readiness tests and TypeScript compilation.
+
+## 2026-07-20T06:50:00+09:00 - Issue #163 readiness contract test reconciliation
+
+- Result: Preserved the current main runbook and added the missing contract test that asserts the derived AI history readiness handoff remains documentation-only, lineage-gated, whole-turn redacting, and outside destructive purge or broker installation.
+- Scope: No runtime history authorization behavior or schema mutation changed; the existing implementation and runbook remain the authoritative main content.
+- Pages: [[RAG Process Workflow]], [[Document Editing Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `tests/security/derived-ai-history-authorization-readiness.test.ts`, `docs/runbooks/derived-ai-history-authorization-readiness.md`, PR #193.
+
+## 2026-07-20T06:52:00+09:00 - Issue #163 streaming authorization review hardening
+
+- Result: The readiness contract now requires authorization before any streamed token is emitted, or buffering until the final recheck succeeds; a finalization-only check after `onToken` is explicitly insufficient for mid-stream revocation.
+- Source evidence: `docs/runbooks/derived-ai-history-authorization-readiness.md`, `tests/security/derived-ai-history-authorization-readiness.test.ts`, PR #193 review thread.
+- Verification: 5 focused readiness tests and TypeScript compilation.
 ## 2026-07-20T07:40:00+09:00 - Issue #160 active mutation and verification matrix
 
 - Result: Issue #160 readiness now covers active-state checks for normal document mutations, adversarial same-tenant permission subjects, and bounded document-scoped history pagination in addition to link reconciliation.
