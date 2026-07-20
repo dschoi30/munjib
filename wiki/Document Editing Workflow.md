@@ -74,6 +74,16 @@ Issue #102 구현은 workspace settings dialog에 AI tab을 추가해 browser/wo
 
 Issue #104 UI/backend slice는 Ask AI panel의 pending request 상태에 공통 `ThinkingIndicator`를 붙이고 Ask AI service를 direct-context path로 전환했다. Issue #126 이후 submit/model/placeholder/error/thinking text는 shared i18n catalog를 통해 현재 display language의 영어/한국어 copy로 렌더링된다. Indicator는 elapsed-time status key를 유지하므로 언어 전환 시 현재 단계의 text가 새 display language로 다시 렌더링된다. Workspace page는 같은 indicator를 쓰는 `WorkspaceChatbot`을 우측 하단 fixed AI icon launcher로 mount한다. Icon을 클릭하면 compact chat panel이 열리고 active thread history와 effective model id를 표시하며, message send는 selected document id, optional settings-panel `chatProvider`/`chatModel` override, and optional display-language `uiLanguage`를 API에 함께 보낼 수 있다. Service는 recent thread history와 current message를 합친 conversation-aware query로 retrieval embedding을 만들고, readable selected document chunks를 prompt cap 전에 우선 배치한다. `uiLanguage`는 retrieval query를 바꾸지 않고 prompt fallback/status phrasing instruction에만 전달된다. Validated override가 있으면 provider credential/base URL은 server env에서 읽고 embedding index identity는 유지한 채 answer generation `chat` config만 provider+model 기준으로 바꾼다. Reset은 active thread를 archive한 뒤 visible conversation을 비운다. Chatbot client는 workspace 전환, delayed thread load, delayed send response, reset pending 중 send race를 generation/version guard와 disabled controls로 방어한다.
 
+Issue #163 derived AI history authorization은 이 persistence/display contract의
+후속 보안 gate다. `AiChatThread`/`AiChatMessage` answer와 memory를 replay할
+때는 현재 document/source 권한을 다시 확인해야 하며, source-backed lineage를
+증명할 수 없거나 source가 unreadable한 whole turn은 non-enumerating tombstone으로
+숨겨야 한다. Thread load, follow-up, memory refresh, finalization, citation
+navigation 모두 같은 canonical authority를 사용해야 한다. 현재 branch는
+`docs/runbooks/derived-ai-history-authorization-readiness.md`의
+documentation-only handoff만 포함하고, dependency leaf가 제공할 authority와
+immutable migration gate 전에는 schema/route/production behavior를 바꾸지 않는다.
+
 Issue #122 이후 `WorkspaceChatbot` open/closed state is restored per workspace from the same aggregate workspace UI key. Stored open state automatically opens the panel and loads that workspace thread after hydration; closing only persists `workspaceChatOpen=false` and does not alter chat draft, pending request, persisted thread, selected document id, or model override state.
 
 ## 생성 흐름
