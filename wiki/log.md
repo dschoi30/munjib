@@ -179,6 +179,13 @@ links:
 - Source evidence: `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md` and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
 - Verification: Final TypeScript compilation, 165 test files with 1,497 tests, wiki manifest/lint, shell syntax, and whitespace checks pass before publication.
 
+## 2026-08-17T00:42:00+09:00 - dependency-security
+
+- Result: PR #211 CI feedback updates the reviewed 15.x runtime to Next.js and matching ESLint config 15.5.21, NextAuth 4.24.15, and Prisma adapter 2.11.3 with Auth core 0.41.3.
+- Coverage: Exact patched overrides now cover PostCSS 8.5.23, scoped brace-expansion 5.0.9, OpenTelemetry Jaeger 2.9.0, fast-uri 3.1.5, nanoid 3.3.18, protobufjs 7.6.5, and sharp 0.35.0 while preserving the existing UUID, OpenTelemetry core, and scoped esbuild floors.
+- Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `tests/security/next-runtime-version.test.ts`.
+- Verification: Worktree-only `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities and 67 focused runtime/auth/audit/workflow tests pass.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
