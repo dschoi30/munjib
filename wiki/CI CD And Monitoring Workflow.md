@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-08-17
-source_count: 66
+source_count: 67
 tags:
   - munjib
   - workflow
@@ -127,7 +127,7 @@ static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 �
 ## Security-critical runtime gate
 
 Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
-`eslint-config-next` 15.5.18 specifications. The repository contract checks the
+`eslint-config-next` 15.5.21 specifications. The repository contract checks the
 resolved pnpm graph, a deterministic projection of the Next.js/React runtime
 roots, and a paginated advisory gate without persisting advisory response bodies.
 Production runtime smoke fixtures read passwords only from a file and emit no
@@ -144,12 +144,14 @@ a route interception before response fulfillment. Static contract tests cover
 these review-critical lifecycle guarantees.
 
 Issue #171 adds a production dependency audit gate for the same runtime graph.
-`package.json` uses exact pnpm overrides for `postcss` 8.5.10, `uuid` 11.1.1,
-`minimatch@10.2.5>brace-expansion` 5.0.6, and `@opentelemetry/core` 2.8.0.
+`package.json` uses exact pnpm overrides for `postcss` 8.5.23, `uuid` 11.1.1,
+`minimatch@10.2.5>brace-expansion` 5.0.9, `@opentelemetry/core` 2.8.0,
+`@opentelemetry/propagator-jaeger` 2.9.0, `fast-uri` 3.1.5, `nanoid` 3.3.18,
+`protobufjs` 7.6.5, and `sharp` 0.35.0.
 The scoped brace override preserves the callable `minimatch@3` development
 path while patching the production/Sentry `minimatch@10` path. The lockfile
 must resolve those patched versions on production paths while keeping the
-Next.js 15.5.18 pin unchanged. Compatibility contracts cover NextAuth JWT UUID
+Next.js 15.5.21 and NextAuth 4.24.15 are the current patched floors. Compatibility contracts cover NextAuth JWT UUID
 generation, minimatch major compatibility, and Sentry/OpenTelemetry module
 loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
 paginated Next.js advisory checker, both immediately after the frozen install.
