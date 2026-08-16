@@ -166,6 +166,13 @@ links:
 - Source evidence: `.github/workflows/ci-cd.yml`, `.github/workflows/runner-smoke.yml`, and `tests/github-actions/ci-cd.test.ts`.
 - Verification: TypeScript compilation, 12 focused workflow/wrapper tests, 165 full test files with 1,497 tests, and whitespace checks pass.
 
+## 2026-08-17T00:08:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 adds a beginner-oriented Bastion bootstrap, readiness, cutover, disablement, and recovery runbook and updates the durable CI/CD and signer boundaries.
+- Boundary: The documented MVP uses the existing single OCI, outbound-only repository runner, no public SSH, no Docker group, and one fixed sudo wrapper. Vault, bundle signer, Issue #185 independent attestation, and PR #188 immutable delivery remain post-MVP and are not implied by this automation.
+- Pages: [[CI CD And Monitoring Workflow]], [[Release Signer And Vault Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/private-oci-self-hosted-runner.md`, Issue #210, and the reviewed workflow/wrapper source.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
