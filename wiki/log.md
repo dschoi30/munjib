@@ -159,6 +159,13 @@ links:
 - Source evidence: `scripts/deploy/munjib-deploy.sh`, `deploy/sudoers/munjib-actions-runner`, and `tests/deploy/self-hosted-deploy-contract.test.ts`.
 - Verification: `bash -n`, 10 focused deploy contract tests, and forbidden privilege/secret-pattern searches pass.
 
+## 2026-08-17T00:02:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 changes the reviewed CI/CD source so PR and main validation stay on GitHub-hosted runners while only successful `main` deployment targets the repository-scoped OCI runner labels `self-hosted`, `linux`, `ARM64`, and `munjib-production`.
+- Boundary: The deploy job is serialized, passes the exact SHA and ephemeral job token to the fixed sudo wrapper, removes direct SSH deployment and deploy-secret references, and adds a permanent manual-only read-only runner smoke workflow. This source has not been merged or installed in production.
+- Source evidence: `.github/workflows/ci-cd.yml`, `.github/workflows/runner-smoke.yml`, and `tests/github-actions/ci-cd.test.ts`.
+- Verification: TypeScript compilation, 12 focused workflow/wrapper tests, 165 full test files with 1,497 tests, and whitespace checks pass.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
