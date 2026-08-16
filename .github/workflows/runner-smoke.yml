@@ -1,0 +1,25 @@
+name: Production runner smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on:
+      - self-hosted
+      - linux
+      - ARM64
+      - munjib-production
+    timeout-minutes: 5
+    steps:
+      - name: Verify runner identity and outbound health
+        run: |
+          set -euo pipefail
+          test "$(id -un)" = munjib-runner
+          test "$(uname -m)" = aarch64
+          ! id -nG | tr ' ' '\n' | grep -Fx docker
+          curl --fail --silent --show-error --location --max-time 20 https://github.com/ >/dev/null
+          curl --fail --silent --show-error --location --max-time 20 https://munjib.example.invalid >/dev/null
