@@ -145,6 +145,13 @@ links:
 - Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review thread.
 - Verification: focused attachment lifecycle inventory tests.
 
+## 2026-08-16T23:57:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 defines the RED source contract for a repository-scoped self-hosted deployment runner on the existing private OCI host.
+- Boundary: The test requires an exact main SHA, stdin-only ephemeral GitHub token, fixed host paths, serialized deployment, ordered preflight/migration/index/health checks, and one narrow sudo wrapper. No production runner, host file, firewall rule, or deployment workflow has changed yet.
+- Source evidence: `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md`, and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
+- Verification: The focused Vitest suite fails with `ENOENT` because the reviewed wrapper and sudoers source do not exist yet, establishing the intended RED state.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
