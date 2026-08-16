@@ -173,6 +173,12 @@ links:
 - Pages: [[CI CD And Monitoring Workflow]], [[Release Signer And Vault Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: `docs/runbooks/private-oci-self-hosted-runner.md`, Issue #210, and the reviewed workflow/wrapper source.
 
+## 2026-08-17T00:10:00+09:00 - private-oci-cd-runner
+
+- Result: Added the approved Issue #210 architecture specification and task-by-task implementation plan to the branch as review evidence.
+- Source evidence: `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md` and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
+- Verification: Final TypeScript compilation, 165 test files with 1,497 tests, wiki manifest/lint, shell syntax, and whitespace checks pass before publication.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
