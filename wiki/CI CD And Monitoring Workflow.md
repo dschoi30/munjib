@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-07-19
-source_count: 62
+updated: 2026-08-17
+source_count: 66
 tags:
   - munjib
   - workflow
@@ -310,12 +310,29 @@ readability. A rollback image that cannot parse an existing v1 row is ineligible
 `email_verified` alone is never sufficient to admit OAuth. Leaf 13A publishes generated
 exact-candidate envelopes; they are not committed to this repository.
 
-### Main deploy: current SSH checkout/native-build path
+### Main deploy: private OCI self-hosted runner path
 
-The current `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
-every `main` push. It uses `appleboy/ssh-action`, fetches and checks out the exact
-`github.sha` on the OCI host, then runs the native Docker Compose build,
-migration, RAG index, service replacement, and health checks documented below.
+The reviewed `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
+every `main` push. PR and main validation stay on GitHub-hosted `ubuntu-latest`;
+only deploy targets the repository-scoped labels `self-hosted`, `linux`, `ARM64`,
+and `munjib-production`. The runner on the existing private OCI connects outbound
+over HTTPS 443, so no inbound runner port or public SSH rule is required.
+
+The unprivileged `munjib-runner` account has no Docker group or SSH key. It may
+sudo only `/usr/local/sbin/munjib-deploy`. The root-owned wrapper accepts one exact
+40-character SHA and an ephemeral GitHub token on stdin, admits only `origin/main`,
+serializes deployments, and uses fixed `/home/ubuntu/munjib`, `/etc/munjib/env`,
+`/etc/munjib/secrets`, `/var/lib/munjib/deploy/current-sha`, and
+`/run/lock/munjib-deploy.lock` paths. Host-local secret files are no longer
+rewritten from GitHub secrets on each deploy.
+
+The wrapper performs the native Docker Compose build, auth preflight, migration,
+RAG index, service replacement, local/public health checks, and deployed-SHA state
+update. Production deploy concurrency is `munjib-production` with cancellation
+disabled. The permanent `Production runner smoke` workflow is manual-only and
+read-only. Exact bootstrap, readiness, disablement, and recovery steps are in
+`docs/runbooks/private-oci-self-hosted-runner.md`.
+
 There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
 the broker-only exact-digest submission path is not active production behavior.
 
@@ -373,17 +390,18 @@ programs are cross-compiled with `CGO_ENABLED=0`, `GOOS=linux`, and
 only target, v2 bundle format, artifact names, and SHA-256 lines. The binaries and bundle are
 kept in the runner's temporary directory; no binary upload, signing key,
 trust-key enrollment, SSH mutation, or host install occurs. This step is part
-of `ci` so a failed artifact contract blocks a main deploy, while the current
-SSH checkout/native-build deploy job remains unchanged.
+of `ci` so a failed artifact contract blocks a main deploy. The current MVP
+deploy still performs an OCI native source build through the fixed self-hosted
+runner wrapper; it does not activate the signed broker path.
 
-Required GitHub secrets:
+Obsolete direct-SSH GitHub secrets, removed only after runner cutover succeeds:
 
 ```text
-DEPLOY_HOST=146.56.170.25
-DEPLOY_USER=ubuntu
-DEPLOY_SSH_KEY=<OCI private key>
-DEPLOY_PATH=/home/ubuntu/munjib
-DEPLOY_PORT=22
+DEPLOY_HOST
+DEPLOY_USER
+DEPLOY_SSH_KEY
+DEPLOY_PATH
+DEPLOY_PORT
 ```
 
 Current OCI production domain:
@@ -419,7 +437,7 @@ present in this repository/host context, so this flow is documented but cannot
 be claimed as production-ready.
 
 <details>
-<summary>Current checkout/native-build flow implemented by ci-cd.yml</summary>
+<summary>Historical direct-SSH checkout/native-build flow (inactive after Issue #210 cutover)</summary>
 
 Current deploy sequence:
 
@@ -472,9 +490,9 @@ done
 sudo docker image prune -f
 ```
 
-이 deploy는 server checkout에서 Actions-provided ephemeral `github.token`을 Git HTTP extraheader로 사용해 repository `main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고, OCI ARM64 host에서 `web`과 `tools` image를 직접 build한다. 이 fetch 방식은 OCI server checkout의 stored HTTPS credential/token에 의존하지 않으며 token을 remote `.git/config`에 저장하지 않는다. OCI instance의 `ubuntu` user는 Docker socket에 직접 접근하지 못하므로 remote deploy는 `sudo docker` / `sudo env ... docker compose`를 사용한다. Build와 `up -d web`에는 release env를 전달하고, `tools` command는 이미 build된 image 선택에 필요한 `WEB_IMAGE`만 전달한다. Server checkout 기준으로 native build된 `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Remote script 안에서는 hairpin NAT 영향을 피하기 위해 `http://127.0.0.1:3000`에 `Host: munjib.andrewchoi.link` header를 붙인 local health check를 최대 10회 재시도하고, 성공 후 dangling image 정리를 위해 `sudo docker image prune -f`를 실행한다. SSH deploy step 뒤에는 GitHub-hosted runner에서 `https://munjib.andrewchoi.link` public health check를 별도 실행해 DNS/TLS/Caddy public path를 확인한다.
+이 deploy는 Actions-provided ephemeral `github.token`을 stdin으로 root-owned wrapper에 전달한다. Wrapper는 token을 Git HTTP extraheader로만 사용해 repository `main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고 token/header 변수를 즉시 비운다. Token을 `.git/config`, credential helper, 임시 파일에 저장하지 않는다. OCI ARM64 host에서 `web`과 `tools` image를 직접 build하고, native `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Hairpin NAT 영향을 피하는 local health check와 public HTTPS health check가 모두 성공한 뒤에만 `current-sha`를 atomically 갱신하고 dangling image를 정리한다.
 
-Secret install은 `umask 077` 아래에서 protected SSH channel의 process environment를 root-only temporary descriptor에 pipe하고 `chown 10001:10001`, `chmod 0400`, atomic `mv` 순서로 완료한다. 값은 argv, shell trace, GitHub output, Compose interpolation, checked-in env 파일에 쓰지 않는다. `auth-preflight`가 같은 runtime image에서 strict auth environment를 검사하고 성공한 뒤에만 service를 제거하고 Prisma migration, RAG index, Web replacement를 시작한다. Preflight 실패는 `set -euo pipefail`로 migration이나 current-container replacement를 중단한다. `docker-compose.dev.yml`만 direct `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET`와 development flags를 허용하며 production workflow에서는 사용하지 않는다.
+Production secret은 root 관리 `/etc/munjib/secrets/nextauth-current`와 조건부 `google-client-current`에 이미 존재해야 한다. Runner와 workflow는 값을 읽거나 다시 설치하지 않는다. `auth-preflight`가 같은 runtime image에서 strict auth environment를 검사하고 성공한 뒤에만 service를 제거하고 Prisma migration, RAG index, Web replacement를 시작한다. Preflight 실패는 `set -euo pipefail`로 migration이나 current-container replacement를 중단한다. `docker-compose.dev.yml`만 direct `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET`와 development flags를 허용하며 production workflow에서는 사용하지 않는다.
 
 현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
 
@@ -587,13 +605,13 @@ Privacy contract:
 
 CI failure는 deploy를 막는다. Test, Next build, Docker `runner` build 중 하나라도 실패하면 production deploy가 일어나지 않는다.
 
-Deploy secret이 빠지거나 SSH 접속이 실패하면 deploy job이 실패한다. PR validation에는 deploy secrets가 필요하지 않다.
+Runner가 offline이면 deploy job은 queued 상태로 남는다. Wrapper, sudoers, host-local env/secret, exact-main admission 중 하나가 실패하면 deploy job이 non-zero로 끝난다. PR validation에는 production runner나 deploy secrets가 필요하지 않다.
 
-Server checkout에서 Actions token 기반 repository fetch나 `DEPLOY_SHA` detached checkout이 실패하면 deploy가 source sync 단계에서 멈춘다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
+Server checkout에서 Actions token 기반 repository fetch나 exact SHA detached checkout이 실패하면 deploy가 source sync 단계에서 멈춘다. OCI host native Docker build가 실패하면 deploy가 `docker compose build web tools` 단계에서 멈춘다.
 
 GHCR image가 `linux/arm64` manifest를 포함하지 않으면 OCI deploy는 과거 `docker compose pull web` 단계에서 `no matching manifest for linux/arm64/v8` 오류로 실패했다. Issue #96은 publish job을 QEMU 기반 multi-platform build/push로 바꾸는 중간 fix였고, Issue #98은 long-running QEMU publish를 제거해 OCI host에서 ARM64 image를 직접 build하도록 바꾼 현재 fix다.
 
-Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. Remote local health check가 실패하면 public runner health check까지 가지 않고 deploy가 실패한다. Remote local health check는 app container response를 확인하고, public runner health check는 외부 DNS/TLS/Caddy path를 확인한다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
+Prisma migration이나 RAG vector index setup이 실패하면 `web` restart 전에 deploy가 멈춘다. Local 또는 public health check가 실패하면 wrapper는 이전 `current-sha` 기록을 보존하고 실패한다. DB migration을 자동 역방향 rollback한다고 주장하지 않는다. Runner 장애 시 실행 중인 서비스는 유지하고 Bastion 수동 배포로 복구하며 public SSH는 다시 열지 않는다. pgvector extension/table/index 상태 문제는 GitHub Actions service DB와 production DB 양쪽에서 확인해야 한다.
 
 Browser Sentry 설정은 build-time bundle이다. `NEXT_PUBLIC_SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_ENVIRONMENT`, `NEXT_PUBLIC_SENTRY_RELEASE`, `NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE`, `NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE`가 잘못된 image를 이미 build했다면 production runtime env 수정만으로 browser bundle이 고쳐지지 않는다. Native OCI deploy에서는 host-local `/etc/munjib/env`와 deploy job release env를 고친 뒤 새 build가 필요하다.
 
