@@ -152,6 +152,13 @@ links:
 - Source evidence: `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md`, and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
 - Verification: The focused Vitest suite fails with `ENOENT` because the reviewed wrapper and sudoers source do not exist yet, establishing the intended RED state.
 
+## 2026-08-16T23:59:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 adds the reviewed source for a fixed production deployment wrapper and the single-command `munjib-runner` sudo boundary. These files are repository artifacts only and have not been installed on OCI.
+- Security boundary: The wrapper validates one exact lowercase commit SHA, reads the ephemeral GitHub token only from stdin, admits only `origin/main`, uses fixed host paths and a deployment lock, preserves host-local secrets, and records the deployed SHA only after local and public health checks.
+- Source evidence: `scripts/deploy/munjib-deploy.sh`, `deploy/sudoers/munjib-actions-runner`, and `tests/deploy/self-hosted-deploy-contract.test.ts`.
+- Verification: `bash -n`, 10 focused deploy contract tests, and forbidden privilege/secret-pattern searches pass.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.

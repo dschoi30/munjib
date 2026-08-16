@@ -40,8 +40,8 @@ describe("private OCI self-hosted deployment boundary", () => {
     const migrate = wrapper.indexOf("pnpm exec prisma migrate deploy");
     const index = wrapper.indexOf("pnpm run db:rag:index");
     const up = wrapper.indexOf("up -d web");
-    const localHealth = wrapper.indexOf("http://127.0.0.1:3000");
-    const publicHealth = wrapper.indexOf("https://munjib.example.invalid");
+    const localHealth = wrapper.indexOf('--header "Host: $health_host" "$health_url"');
+    const publicHealth = wrapper.indexOf('"$public_health_url" >/dev/null');
     const stateWrite = wrapper.indexOf('mv -f "$state_tmp" "$state_file"');
 
     expect(preflight).toBeGreaterThan(-1);
