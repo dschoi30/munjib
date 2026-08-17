@@ -66,6 +66,12 @@ describe("private OCI self-hosted deployment boundary", () => {
     expect(wrapper).toContain("--filter reference='munjib-web:*'");
     expect(wrapper).toContain('[[ "$image_ref" == "$web_image" ]]');
     expect(wrapper).toContain('[[ "$image_ref" == "munjib-web:$previous_sha" ]]');
+    expect(wrapper).toContain(
+      'docker image inspect "munjib-web:$previous_sha" >/dev/null 2>&1',
+    );
+    expect(wrapper).toContain(
+      '[[ "$preserve_legacy_latest" == true && "$image_ref" == "munjib-web:latest" ]]',
+    );
     expect(wrapper).toContain('docker image rm "$image_ref"');
     expect(wrapper).not.toContain("docker image prune --all");
   });

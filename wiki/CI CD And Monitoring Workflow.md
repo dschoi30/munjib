@@ -336,7 +336,10 @@ disabled. Workflow-level cancellation remains enabled for superseded PR runs but
 is disabled for every `main` run, so a newer push cannot terminate a deployment
 after migration or indexing. After a successful deploy, image cleanup keeps only
 the current and immediately previous `munjib-web:<sha>` tags and removes older
-Munjib web tags without pruning unrelated images. The permanent `Production runner smoke` workflow is manual-only and
+Munjib web tags without pruning unrelated images. During the first cutover, when
+the bootstrapped SHA does not yet have a matching image tag, legacy
+`munjib-web:latest` is retained for one rollback generation. The permanent
+`Production runner smoke` workflow is manual-only and
 read-only. Exact bootstrap, readiness, disablement, and recovery steps are in
 `docs/runbooks/private-oci-self-hosted-runner.md`.
 

@@ -166,7 +166,9 @@ generic `bash`, `sh`, `docker`, `git`, `systemctl`, editor 또는 파일 복사 
 운영 `main` workflow와 deploy job은 실행 중 취소되지 않는다. 새 `main` push가
 도착해도 현재 배포가 health check와 SHA 기록을 마친 뒤 다음 배포가 시작된다.
 성공한 배포는 현재와 직전 `munjib-web:<sha>` 이미지 태그만 남기고 더 오래된
-Munjib web 태그를 정리한다. 다른 repository의 Docker 이미지는 이 정리 대상이 아니다.
+Munjib web 태그를 정리한다. 최초 전환에서 직전 SHA 태그가 아직 없다면 기존
+`munjib-web:latest`를 한 세대 보존하고, 다음 성공 배포부터 SHA 태그 2세대
+보존으로 전환한다. 다른 repository의 Docker 이미지는 이 정리 대상이 아니다.
 
 첫 배포 후 Bastion에서 독립 확인한다.
 

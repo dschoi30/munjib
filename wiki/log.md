@@ -198,6 +198,12 @@ links:
 - Source evidence: PR #211 review threads, `.github/workflows/ci-cd.yml`, `scripts/deploy/munjib-deploy.sh`, `tests/github-actions/ci-cd.test.ts`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and `docs/runbooks/private-oci-self-hosted-runner.md`.
 - Verification: Both new contract assertions failed against the reviewed implementation and pass after the scoped fixes; shell syntax passes.
 
+## 2026-08-17T17:29:00+09:00 - private-oci-cd-runner bootstrap rollback retention
+
+- Result: PR #211 follow-up review identified that the first cutover has a bootstrapped SHA but may still use the legacy `munjib-web:latest` image tag. Cleanup now preserves `latest` only while the previous SHA tag is absent, then automatically transitions to current-plus-previous SHA retention on later deploys.
+- Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The new bootstrap-retention assertion failed against the prior cleanup loop and passes after the legacy fallback; shell syntax passes.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
