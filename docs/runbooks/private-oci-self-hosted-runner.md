@@ -163,6 +163,11 @@ generic `bash`, `sh`, `docker`, `git`, `systemctl`, editor 또는 파일 복사 
 6. 첫 `main` run에서 CI 후 Deploy job이 runner에 배정되는지 확인한다.
 7. job 출력의 `deployed_sha=<main-sha>`를 확인한다. token이나 secret 값은 출력되면 안 된다.
 
+운영 `main` workflow와 deploy job은 실행 중 취소되지 않는다. 새 `main` push가
+도착해도 현재 배포가 health check와 SHA 기록을 마친 뒤 다음 배포가 시작된다.
+성공한 배포는 현재와 직전 `munjib-web:<sha>` 이미지 태그만 남기고 더 오래된
+Munjib web 태그를 정리한다. 다른 repository의 Docker 이미지는 이 정리 대상이 아니다.
+
 첫 배포 후 Bastion에서 독립 확인한다.
 
 ```bash

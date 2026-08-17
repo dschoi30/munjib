@@ -28,6 +28,8 @@ flock -n 9 || { printf '%s\n' "deployment already in progress" >&2; exit 75; }
 
 install -d -o root -g root -m 0755 "$state_dir"
 [[ -s "$state_file" ]] || { printf '%s\n' "current deployment state not bootstrapped" >&2; exit 69; }
+previous_sha="$(tr -d '\n' < "$state_file")"
+[[ "$previous_sha" =~ ^[a-f0-9]{40}$ ]] || { printf '%s\n' "invalid current deployment state" >&2; exit 69; }
 
 git_auth_header="$(printf 'x-access-token:%s' "$deploy_token" | base64 | tr -d '\n')"
 deploy_token=
@@ -115,5 +117,13 @@ chmod 0444 "$state_tmp"
 mv -f "$state_tmp" "$state_file"
 state_tmp=
 
+while IFS= read -r image_ref; do
+  [[ "$image_ref" == "$web_image" ]] && continue
+  [[ "$image_ref" == "munjib-web:$previous_sha" ]] && continue
+  if ! docker image rm "$image_ref"; then
+    printf 'warning: could not remove old image %s\n' "$image_ref" >&2
+  fi
+done < <(docker image ls --format '{{.Repository}}:{{.Tag}}' --filter reference='munjib-web:*')
+previous_sha=
 docker image prune -f
 printf 'deployed_sha=%s\n' "$deploy_sha"

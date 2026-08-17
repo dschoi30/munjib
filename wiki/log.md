@@ -192,6 +192,12 @@ links:
 - Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
 - Verification: The focused contract test failed against the old bare fetch refspec and passes with the explicit remote-tracking destination; shell syntax passes.
 
+## 2026-08-17T17:09:00+09:00 - private-oci-cd-runner cancellation and image retention review
+
+- Result: PR #211 review found that workflow-level cancellation could still interrupt an active main deployment and that per-SHA web images had no bounded retention. Main workflows now disable cancellation, while superseded PR workflows remain cancelable; successful deploy cleanup keeps the current and immediately previous `munjib-web:<sha>` tags and removes older Munjib web tags only.
+- Source evidence: PR #211 review threads, `.github/workflows/ci-cd.yml`, `scripts/deploy/munjib-deploy.sh`, `tests/github-actions/ci-cd.test.ts`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and `docs/runbooks/private-oci-self-hosted-runner.md`.
+- Verification: Both new contract assertions failed against the reviewed implementation and pass after the scoped fixes; shell syntax passes.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.

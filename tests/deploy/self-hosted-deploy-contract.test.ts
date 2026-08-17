@@ -58,6 +58,18 @@ describe("private OCI self-hosted deployment boundary", () => {
     expect(stateWrite).toBeGreaterThan(publicHealth);
   });
 
+  test("retains only the current and previous production image tags", () => {
+    expect(wrapper).toContain('previous_sha="$(tr -d \'\\n\' < "$state_file")"');
+    expect(wrapper).toContain(
+      '[[ "$previous_sha" =~ ^[a-f0-9]{40}$ ]]',
+    );
+    expect(wrapper).toContain("--filter reference='munjib-web:*'");
+    expect(wrapper).toContain('[[ "$image_ref" == "$web_image" ]]');
+    expect(wrapper).toContain('[[ "$image_ref" == "munjib-web:$previous_sha" ]]');
+    expect(wrapper).toContain('docker image rm "$image_ref"');
+    expect(wrapper).not.toContain("docker image prune --all");
+  });
+
   test("authorizes only the fixed wrapper through sudo", () => {
     expect(sudoers).toContain(
       "munjib-runner ALL=(root) NOPASSWD: /usr/local/sbin/munjib-deploy *",
