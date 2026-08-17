@@ -34,7 +34,7 @@ deploy_token=
 
 sudo -u ubuntu git -C "$repo_dir" \
   -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_header" \
-  fetch --force "https://github.com/dschoi30/munjib.git" main
+  fetch --force "https://github.com/dschoi30/munjib.git" "main:refs/remotes/origin/main"
 git_auth_header=
 
 sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$deploy_sha" origin/main

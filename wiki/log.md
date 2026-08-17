@@ -186,6 +186,12 @@ links:
 - Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `tests/security/next-runtime-version.test.ts`.
 - Verification: Worktree-only `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities and 67 focused runtime/auth/audit/workflow tests pass.
 
+## 2026-08-17T16:57:00+09:00 - private-oci-cd-runner review follow-up
+
+- Result: PR #211 review found that URL-based `git fetch ... main` updated only `FETCH_HEAD`, leaving the `origin/main` ancestry gate stale. The wrapper now fetches `main:refs/remotes/origin/main` explicitly before validating the requested SHA.
+- Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
+- Verification: The focused contract test failed against the old bare fetch refspec and passes with the explicit remote-tracking destination; shell syntax passes.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
