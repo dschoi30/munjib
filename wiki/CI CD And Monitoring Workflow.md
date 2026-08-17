@@ -332,7 +332,11 @@ rewritten from GitHub secrets on each deploy.
 The wrapper performs the native Docker Compose build, auth preflight, migration,
 RAG index, service replacement, local/public health checks, and deployed-SHA state
 update. Production deploy concurrency is `munjib-production` with cancellation
-disabled. The permanent `Production runner smoke` workflow is manual-only and
+disabled. Workflow-level cancellation remains enabled for superseded PR runs but
+is disabled for every `main` run, so a newer push cannot terminate a deployment
+after migration or indexing. After a successful deploy, image cleanup keeps only
+the current and immediately previous `munjib-web:<sha>` tags and removes older
+Munjib web tags without pruning unrelated images. The permanent `Production runner smoke` workflow is manual-only and
 read-only. Exact bootstrap, readiness, disablement, and recovery steps are in
 `docs/runbooks/private-oci-self-hosted-runner.md`.
 

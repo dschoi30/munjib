@@ -17,6 +17,10 @@ describe("GitHub Actions CI/CD workflow", () => {
         branches: ["main"],
       },
     });
+    expect(workflow.concurrency).toEqual({
+      group: "munjib-${{ github.ref }}",
+      "cancel-in-progress": "${{ github.ref != 'refs/heads/main' }}",
+    });
   });
 
   test("uses least-privilege repository read permissions", () => {
