@@ -30,6 +30,10 @@ install -d -o root -g root -m 0755 "$state_dir"
 [[ -s "$state_file" ]] || { printf '%s\n' "current deployment state not bootstrapped" >&2; exit 69; }
 previous_sha="$(tr -d '\n' < "$state_file")"
 [[ "$previous_sha" =~ ^[a-f0-9]{40}$ ]] || { printf '%s\n' "invalid current deployment state" >&2; exit 69; }
+preserve_legacy_latest=false
+if ! docker image inspect "munjib-web:$previous_sha" >/dev/null 2>&1; then
+  preserve_legacy_latest=true
+fi
 
 git_auth_header="$(printf 'x-access-token:%s' "$deploy_token" | base64 | tr -d '\n')"
 deploy_token=
@@ -120,10 +124,12 @@ state_tmp=
 while IFS= read -r image_ref; do
   [[ "$image_ref" == "$web_image" ]] && continue
   [[ "$image_ref" == "munjib-web:$previous_sha" ]] && continue
+  [[ "$preserve_legacy_latest" == true && "$image_ref" == "munjib-web:latest" ]] && continue
   if ! docker image rm "$image_ref"; then
     printf 'warning: could not remove old image %s\n' "$image_ref" >&2
   fi
 done < <(docker image ls --format '{{.Repository}}:{{.Tag}}' --filter reference='munjib-web:*')
 previous_sha=
+preserve_legacy_latest=false
 docker image prune -f
 printf 'deployed_sha=%s\n' "$deploy_sha"
