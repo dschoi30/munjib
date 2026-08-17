@@ -29,7 +29,12 @@ describe("private OCI self-hosted deployment boundary", () => {
   });
 
   test("proves the SHA belongs to main before mutation", () => {
-    expect(wrapper).toContain('fetch --force "https://github.com/dschoi30/munjib.git" main');
+    expect(wrapper).toContain(
+      'fetch --force "https://github.com/dschoi30/munjib.git" "main:refs/remotes/origin/main"',
+    );
+    expect(wrapper).not.toContain(
+      'fetch --force "https://github.com/dschoi30/munjib.git" main\n',
+    );
     expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$deploy_sha" origin/main');
     expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" checkout --detach "$deploy_sha"');
     expect(wrapper).toContain('[[ "$(sudo -u ubuntu git -C "$repo_dir" rev-parse HEAD)" == "$deploy_sha" ]]');

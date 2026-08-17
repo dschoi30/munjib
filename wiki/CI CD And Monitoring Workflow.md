@@ -322,7 +322,8 @@ over HTTPS 443, so no inbound runner port or public SSH rule is required.
 
 The unprivileged `munjib-runner` account has no Docker group or SSH key. It may
 sudo only `/usr/local/sbin/munjib-deploy`. The root-owned wrapper accepts one exact
-40-character SHA and an ephemeral GitHub token on stdin, admits only `origin/main`,
+40-character SHA and an ephemeral GitHub token on stdin, explicitly refreshes
+`main:refs/remotes/origin/main`, and admits only that refreshed `origin/main`,
 serializes deployments, and uses fixed `/home/ubuntu/munjib`, `/etc/munjib/env`,
 `/etc/munjib/secrets`, `/var/lib/munjib/deploy/current-sha`, and
 `/run/lock/munjib-deploy.lock` paths. Host-local secret files are no longer
