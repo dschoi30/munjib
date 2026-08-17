@@ -204,6 +204,12 @@ links:
 - Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
 - Verification: The new bootstrap-retention assertion failed against the prior cleanup loop and passes after the legacy fallback; shell syntax passes.
 
+## 2026-08-17T17:41:00+09:00 - production runner smoke ref guard
+
+- Result: PR #211 review identified that manual workflow dispatch can select a non-default ref. The production runner smoke job now requires `github.ref == 'refs/heads/main'`, so an accidental feature-branch dispatch is skipped.
+- Source evidence: PR #211 review thread, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The new smoke-ref contract failed before the job guard and passes after it.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
