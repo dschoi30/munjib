@@ -339,7 +339,8 @@ the current and immediately previous `munjib-web:<sha>` tags and removes older
 Munjib web tags without pruning unrelated images. During the first cutover, when
 the bootstrapped SHA does not yet have a matching image tag, legacy
 `munjib-web:latest` is retained for one rollback generation. The permanent
-`Production runner smoke` workflow is manual-only and
+`Production runner smoke` workflow is manual-only, accepts jobs only when
+`github.ref` is `refs/heads/main`, and is
 read-only. Exact bootstrap, readiness, disablement, and recovery steps are in
 `docs/runbooks/private-oci-self-hosted-runner.md`.
 

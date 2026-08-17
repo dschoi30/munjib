@@ -154,6 +154,7 @@ describe("GitHub Actions CI/CD workflow", () => {
 
     expect(smoke.on).toEqual({ workflow_dispatch: null });
     expect(smoke.permissions).toEqual({ contents: "read" });
+    expect(smoke.jobs.smoke.if).toBe("github.ref == 'refs/heads/main'");
     expect(smoke.jobs.smoke["runs-on"]).toEqual([
       "self-hosted",
       "linux",
