@@ -3803,3 +3803,11 @@ links:
 - Integration ruling: The legacy `legacy-account-2@example.invalid` identity is neither queried nor reactivated. Task 5 must use a visitor-keyed non-shared conversation path or an explicitly stateless path; mapping every anonymous visitor to one `AiChatThread.userId` is forbidden.
 - Source evidence: approved Issue #212 design, Task 3 implementation ruling, `lib/auth/trial-visitor.ts`, `lib/auth/trial-entitlement.ts`, `lib/auth/session.ts`, `app/api/trial/entitlement/route.ts`, and focused auth tests.
 - Verification: strict RED/GREEN cycles for missing actor/entitlement modules, exact workspace authorization, global-cap configuration, canonical Turnstile binding, malformed challenge rejection, and bounded timeout; focused auth suites and TypeScript compilation passed.
+
+## 2026-08-25T15:30:00+09:00 - anonymous Trial actor review hardening
+
+- Result: Task 3 now binds the Trial principal to the immutable demo workspace ID and authorizes only after comparing that ID with the resolved workspace row; a same-slug workspace in another organization is denied.
+- Ingress boundary: Staging/production network evidence now requires a strict file-backed edge-proof secret and a fresh HMAC over the normalized client IP, request method, and pathname. Missing, spoofed, stale, or context-replayed proofs fail closed, while raw-header trust is limited to an explicit development-only mode.
+- Rotation and provider bounds: A previous visitor signing key requires an exact cutoff and is accepted only before it. Future-issued tokens and signed lifetimes over 180 days are rejected. Turnstile response bodies are cancelled as soon as the streamed body exceeds 8 KiB.
+- Source evidence: Issue #212 Task 3 review ruling, `lib/auth/trial-entitlement.ts`, `lib/auth/trial-visitor.ts`, `lib/security/trial-network-bucket.ts`, and focused auth/security tests.
+- Verification: RED/GREEN coverage includes cross-organization same-slug denial, missing/spoofed/stale edge proofs, previous-key cutoff, token-time bounds, and streaming body cancellation; focused tests, TypeScript compilation, and wiki gates passed.

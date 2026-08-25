@@ -159,7 +159,13 @@ export function verifyTrialVisitorToken(
     }
   }
   const now = requireValidDate(options.now);
-  if (!signatureMatches || payload.exp <= Math.floor(now.getTime() / 1000)) return { ok: false };
+  const nowSeconds = Math.floor(now.getTime() / 1000);
+  if (
+    !signatureMatches ||
+    payload.iat > nowSeconds ||
+    payload.exp <= nowSeconds ||
+    payload.exp - payload.iat > DEFAULT_TTL_SECONDS
+  ) return { ok: false };
   if (options.visitorDigestKey === undefined) return { ok: false };
 
   let trialVisitorSubject: string;

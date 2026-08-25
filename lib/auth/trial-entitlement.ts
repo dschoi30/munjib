@@ -1,3 +1,4 @@
+import { createHmac, timingSafeEqual } from "node:crypto";
 import type { TrialAiAdmissionInput } from "@/lib/rag/trial-ai-admission";
 import { prisma } from "@/lib/db/client";
 import {
@@ -9,6 +10,7 @@ import {
 } from "@/lib/auth/trial-visitor";
 import {
   deriveTrialNetworkBucket,
+  normalizeTrialNetworkInput,
   resolveKstUsageWindow,
 } from "@/lib/security/trial-network-bucket";
 import {
@@ -24,11 +26,16 @@ const TURNSTILE_ACTION = "trial_entitlement";
 const VISITOR_DAILY_LIMIT = 3 as const;
 const MAX_CHALLENGE_TOKEN_BYTES = 2_048;
 const MAX_TURNSTILE_RESPONSE_BYTES = 8_192;
+const NETWORK_EVIDENCE_DOMAIN = "munjib/trial-network-evidence/v1\0";
+const NETWORK_EVIDENCE_MAX_SKEW_SECONDS = 30;
+const NETWORK_TIMESTAMP_HEADER = "x-munjib-trusted-network-timestamp";
+const NETWORK_PROOF_HEADER = "x-munjib-trusted-network-proof";
 
 export const TRIAL_VISITOR_SIGNING_KEY_PATH = "/run/secrets/munjib_trial_visitor_signing_key";
 export const TRIAL_VISITOR_PREVIOUS_SIGNING_KEY_PATH = "/run/secrets/munjib_trial_visitor_previous_signing_key";
 export const TRIAL_VISITOR_DIGEST_KEY_PATH = "/run/secrets/munjib_trial_visitor_digest_key";
 export const TRIAL_NETWORK_BUCKET_KEY_PATH = "/run/secrets/munjib_trial_network_bucket_key";
+export const TRIAL_EDGE_PROOF_SECRET_PATH = "/run/secrets/munjib_trial_edge_proof_secret";
 export const TURNSTILE_SECRET_PATH = "/run/secrets/munjib_turnstile_secret";
 
 export type TurnstileRuntime = Readonly<{
@@ -40,9 +47,18 @@ export type TurnstileRuntime = Readonly<{
 
 export type AnonymousTrialCapability = Readonly<{
   capabilityId: typeof CAPABILITY_ID;
+  demoWorkspaceId: string;
   demoWorkspaceSlug: string;
   trustedNetworkHeader: typeof TRUSTED_NETWORK_HEADER;
+  networkEvidence:
+    | Readonly<{
+        kind: "signed-edge-proof";
+        secret: string;
+        maxSkewSeconds: typeof NETWORK_EVIDENCE_MAX_SKEW_SECONDS;
+      }>
+    | Readonly<{ kind: "development-raw" }>;
   visitorSigningKeys: readonly [string, ...string[]];
+  previousSigningKeyCutoff?: string;
   visitorDigestKey: string;
   networkBucketKey: string;
   turnstile: TurnstileRuntime;
@@ -53,6 +69,7 @@ export type AiAuthorizationPrincipal =
   | Readonly<{
       kind: "anonymous-trial-demo";
       capabilityId: typeof CAPABILITY_ID;
+      workspaceId: string;
       workspaceSlug: string;
       access: "viewer-only";
       trialVisitorSubject: string;
@@ -81,10 +98,10 @@ export type AiRouteActor = Readonly<{
  */
 export function resolveAiWorkspaceAuthorization(
   principal: AiAuthorizationPrincipal,
-  requestedWorkspaceSlug: string,
+  resolvedWorkspace: Readonly<{ id: string; slug: string }>,
 ): AiWorkspaceAuthorization | null {
   if (principal.kind === "user") return { kind: "user", userId: principal.userId };
-  if (requestedWorkspaceSlug !== principal.workspaceSlug) return null;
+  if (resolvedWorkspace.id !== principal.workspaceId) return null;
   return {
     kind: "anonymous-trial-demo",
     role: "VIEWER",
@@ -140,6 +157,10 @@ function validWorkspaceSlug(value: string | undefined): value is string {
   return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
 
+function validWorkspaceId(value: string | undefined): value is string {
+  return typeof value === "string" && /^[A-Za-z0-9_-]{8,128}$/.test(value);
+}
+
 function validHostname(value: string | undefined): value is string {
   if (typeof value !== "string" || value !== value.toLowerCase() || value.length > 253) return false;
   if (value === "localhost") return true;
@@ -150,6 +171,13 @@ function validHostname(value: string | undefined): value is string {
 function validSecret(value: string | undefined): value is string {
   return typeof value === "string" && value.length >= 16 && value.length <= 256 && value === value.trim() &&
     !/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(value);
+}
+
+function canonicalTimestamp(value: string | undefined): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime()) || timestamp.toISOString() !== value) return undefined;
+  return value;
 }
 
 function readCapabilitySecret(
@@ -191,6 +219,7 @@ export function resolveAnonymousTrialCapability(
 ): AnonymousTrialCapability | null {
   if (!exactEnabled(env.MUNJIB_ANONYMOUS_TRIAL_ENABLED)) return null;
   if (!/^[1-9]\d{0,8}$/.test(env.MUNJIB_TRIAL_AI_GLOBAL_DAILY_LIMIT ?? "")) return null;
+  if (!validWorkspaceId(env.MUNJIB_TRIAL_DEMO_WORKSPACE_ID)) return null;
   if (!validWorkspaceSlug(env.MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG)) return null;
   if (env.MUNJIB_TRIAL_TRUSTED_NETWORK_HEADER !== TRUSTED_NETWORK_HEADER) return null;
   if (!validHostname(env.MUNJIB_TURNSTILE_HOSTNAME)) return null;
@@ -239,6 +268,9 @@ export function resolveAnonymousTrialCapability(
   const previousSigningKeyConfigured = strict
     ? env.MUNJIB_TRIAL_VISITOR_PREVIOUS_SIGNING_KEY_FILE !== undefined
     : env.MUNJIB_TRIAL_VISITOR_PREVIOUS_SIGNING_KEY !== undefined;
+  const previousSigningKeyCutoff = canonicalTimestamp(
+    env.MUNJIB_TRIAL_VISITOR_PREVIOUS_SIGNING_KEY_CUTOFF,
+  );
   const visitorDigestKey = readCapabilitySecret(env, deps, {
     directName: "MUNJIB_TRIAL_VISITOR_DIGEST_KEY",
     fileName: "MUNJIB_TRIAL_VISITOR_DIGEST_KEY_FILE",
@@ -253,6 +285,15 @@ export function resolveAnonymousTrialCapability(
     logicalName: "MUNJIB_TRIAL_NETWORK_BUCKET_KEY",
     strict,
   });
+  const edgeProofSecret = strict
+    ? readCapabilitySecret(env, deps, {
+        directName: "MUNJIB_TRIAL_EDGE_PROOF_SECRET",
+        fileName: "MUNJIB_TRIAL_EDGE_PROOF_SECRET_FILE",
+        exactPath: TRIAL_EDGE_PROOF_SECRET_PATH,
+        logicalName: "MUNJIB_TRIAL_EDGE_PROOF_SECRET",
+        strict,
+      })
+    : undefined;
   const turnstileSecret = readCapabilitySecret(env, deps, {
     directName: "MUNJIB_TURNSTILE_SECRET",
     fileName: "MUNJIB_TURNSTILE_SECRET_FILE",
@@ -266,13 +307,21 @@ export function resolveAnonymousTrialCapability(
     (previousSigningKeyConfigured && !validSecret(previousSigningKey)) ||
     !validSecret(visitorDigestKey) ||
     !validSecret(networkBucketKey) ||
+    (strict && !validSecret(edgeProofSecret)) ||
     !validSecret(turnstileSecret)
   ) return null;
+  if (previousSigningKeyConfigured !== (previousSigningKeyCutoff !== undefined)) return null;
+  if (!strict && env.MUNJIB_TRIAL_DEV_TRUST_RAW_NETWORK_HEADER !== "true") return null;
+  if (!strict && (
+    env.MUNJIB_TRIAL_EDGE_PROOF_SECRET !== undefined ||
+    env.MUNJIB_TRIAL_EDGE_PROOF_SECRET_FILE !== undefined
+  )) return null;
   const distinctSecrets = [
     currentSigningKey,
     previousSigningKey,
     visitorDigestKey,
     networkBucketKey,
+    edgeProofSecret,
     turnstileSecret,
   ].filter((value): value is string => value !== undefined);
   if (new Set(distinctSecrets).size !== distinctSecrets.length) return null;
@@ -282,9 +331,18 @@ export function resolveAnonymousTrialCapability(
     : [currentSigningKey] as const;
   return {
     capabilityId: CAPABILITY_ID,
+    demoWorkspaceId: env.MUNJIB_TRIAL_DEMO_WORKSPACE_ID,
     demoWorkspaceSlug: env.MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG,
     trustedNetworkHeader: TRUSTED_NETWORK_HEADER,
+    networkEvidence: strict
+      ? {
+          kind: "signed-edge-proof",
+          secret: edgeProofSecret!,
+          maxSkewSeconds: NETWORK_EVIDENCE_MAX_SKEW_SECONDS,
+        }
+      : { kind: "development-raw" },
     visitorSigningKeys,
+    ...(previousSigningKeyCutoff ? { previousSigningKeyCutoff } : {}),
     visitorDigestKey,
     networkBucketKey,
     turnstile: {
@@ -309,10 +367,40 @@ function trustedNetworkDigest(
   request: Request,
   capability: AnonymousTrialCapability,
   kstDate: string,
+  now: Date,
 ): string | null {
   const networkInput = request.headers.get(capability.trustedNetworkHeader);
   if (!networkInput || networkInput !== networkInput.trim()) return null;
   try {
+    if (capability.networkEvidence.kind === "signed-edge-proof") {
+      const rawTimestamp = request.headers.get(NETWORK_TIMESTAMP_HEADER);
+      const receivedProof = request.headers.get(NETWORK_PROOF_HEADER);
+      if (!rawTimestamp || !/^[1-9]\d{9}$/.test(rawTimestamp)) return null;
+      if (!receivedProof || !/^[A-Za-z0-9_-]{43}$/.test(receivedProof)) return null;
+      const timestamp = Number(rawTimestamp);
+      const nowSeconds = Math.floor(now.getTime() / 1_000);
+      if (!Number.isSafeInteger(timestamp) || !Number.isSafeInteger(nowSeconds)) return null;
+      if (Math.abs(nowSeconds - timestamp) > capability.networkEvidence.maxSkewSeconds) return null;
+      const method = request.method;
+      const path = new URL(request.url).pathname;
+      if (!/^[A-Z]{3,10}$/.test(method) || path.length < 1 || path.length > 2_048) return null;
+      const normalizedIp = normalizeTrialNetworkInput(networkInput);
+      const expectedProof = createHmac("sha256", capability.networkEvidence.secret)
+        .update(NETWORK_EVIDENCE_DOMAIN)
+        .update(rawTimestamp)
+        .update("\0")
+        .update(method)
+        .update("\0")
+        .update(path)
+        .update("\0")
+        .update(normalizedIp)
+        .digest();
+      const receivedProofBytes = Buffer.from(receivedProof, "base64url");
+      if (
+        receivedProofBytes.length !== expectedProof.length ||
+        !timingSafeEqual(receivedProofBytes, expectedProof)
+      ) return null;
+    }
     return deriveTrialNetworkBucket(networkInput, kstDate, capability.networkBucketKey);
   } catch {
     return null;
@@ -327,11 +415,15 @@ export function resolveAnonymousTrialActor(
 ): AiRouteActor | null {
   if (!capability) return null;
   const { kstDate } = resolveKstUsageWindow(now);
-  const networkBucketDigest = trustedNetworkDigest(request, capability, kstDate);
+  const networkBucketDigest = trustedNetworkDigest(request, capability, kstDate, now);
   if (!networkBucketDigest) return null;
   const verification = verifyTrialVisitorToken(
     requestCookie(request, TRIAL_VISITOR_COOKIE_NAME),
-    capability.visitorSigningKeys,
+    capability.visitorSigningKeys.length === 2 &&
+      capability.previousSigningKeyCutoff !== undefined &&
+      now.getTime() < new Date(capability.previousSigningKeyCutoff).getTime()
+      ? capability.visitorSigningKeys
+      : [capability.visitorSigningKeys[0]],
     { now, visitorDigestKey: capability.visitorDigestKey },
   );
   if (!verification.ok) return null;
@@ -343,6 +435,7 @@ export function resolveAnonymousTrialActor(
     authorizationPrincipal: {
       kind: "anonymous-trial-demo",
       capabilityId: capability.capabilityId,
+      workspaceId: capability.demoWorkspaceId,
       workspaceSlug: capability.demoWorkspaceSlug,
       access: "viewer-only",
       trialVisitorSubject: verification.trialVisitorSubject,
@@ -379,8 +472,8 @@ export async function verifyTurnstileChallenge(
       signal: abortController.signal,
     });
     if (!response.ok) return false;
-    const text = await response.text();
-    if (Buffer.byteLength(text, "utf8") > MAX_TURNSTILE_RESPONSE_BYTES) return false;
+    const text = await readBoundedResponseText(response, MAX_TURNSTILE_RESPONSE_BYTES);
+    if (text === null) return false;
     const parsed: unknown = JSON.parse(text);
     if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return false;
     const value = parsed as Record<string, unknown>;
@@ -389,6 +482,28 @@ export async function verifyTurnstileChallenge(
     return false;
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+async function readBoundedResponseText(response: Response, maximumBytes: number): Promise<string | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    totalBytes += value.byteLength;
+    if (totalBytes > maximumBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks, totalBytes));
+  } catch {
+    return null;
   }
 }
 
@@ -420,7 +535,7 @@ export async function resolveTrialEntitlement(
   } catch {
     return unavailable();
   }
-  const networkDigest = trustedNetworkDigest(request, capability, usageWindow.kstDate);
+  const networkDigest = trustedNetworkDigest(request, capability, usageWindow.kstDate, now);
   if (!networkDigest) return unavailable();
 
   const existingActor = resolveAnonymousTrialActor(request, capability, now);

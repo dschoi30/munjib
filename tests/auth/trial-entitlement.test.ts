@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   resolveAnonymousTrialActor,
@@ -15,8 +16,10 @@ import { GET as GET_ENTITLEMENT } from "@/app/api/trial/entitlement/route";
 const now = new Date("2026-08-25T02:00:00.000Z");
 const secretFiles = {
   "/run/secrets/munjib_trial_visitor_signing_key": "trial-current-signing-key",
+  "/run/secrets/munjib_trial_visitor_previous_signing_key": "trial-previous-signing-key",
   "/run/secrets/munjib_trial_visitor_digest_key": "trial-visitor-digest-key",
   "/run/secrets/munjib_trial_network_bucket_key": "trial-network-bucket-key",
+  "/run/secrets/munjib_trial_edge_proof_secret": "trial-edge-proof-secret",
   "/run/secrets/munjib_turnstile_secret": "turnstile-secret-value",
 } as const;
 
@@ -63,6 +66,15 @@ describe("anonymous Trial runtime capability", () => {
     }, { readStrictSecretFile })).toBeNull();
   });
 
+  it("keeps production closed when the signed edge-proof secret file is not configured", () => {
+    const readStrictSecretFile = vi.fn(({ path }: { path: string }) =>
+      secretFiles[path as keyof typeof secretFiles],
+    );
+    const { MUNJIB_TRIAL_EDGE_PROOF_SECRET_FILE: _removed, ...missingProofConfig } = productionEnv();
+
+    expect(resolveAnonymousTrialCapability(missingProofConfig, { readStrictSecretFile })).toBeNull();
+  });
+
   it("opens only with the exact demo workspace, trusted header, and fixed file-backed secrets", () => {
     const readStrictSecretFile = vi.fn(({ path }: { path: string }) => {
       const value = secretFiles[path as keyof typeof secretFiles];
@@ -74,8 +86,14 @@ describe("anonymous Trial runtime capability", () => {
 
     expect(capability).toMatchObject({
       capabilityId: "anonymous-trial-v1",
+      demoWorkspaceId: "workspace-demo-1",
       demoWorkspaceSlug: "public-demo",
       trustedNetworkHeader: "x-munjib-trusted-client-ip",
+      networkEvidence: {
+        kind: "signed-edge-proof",
+        secret: "trial-edge-proof-secret",
+        maxSkewSeconds: 30,
+      },
       visitorSigningKeys: ["trial-current-signing-key"],
       visitorDigestKey: "trial-visitor-digest-key",
       networkBucketKey: "trial-network-bucket-key",
@@ -86,7 +104,7 @@ describe("anonymous Trial runtime capability", () => {
         timeoutMs: 1_000,
       },
     });
-    expect(readStrictSecretFile).toHaveBeenCalledTimes(4);
+    expect(readStrictSecretFile).toHaveBeenCalledTimes(5);
   });
 
   it("allows explicit local development activation without weakening production file requirements", () => {
@@ -96,8 +114,10 @@ describe("anonymous Trial runtime capability", () => {
       NEXTAUTH_URL: "http://localhost:3000",
       MUNJIB_ANONYMOUS_TRIAL_ENABLED: "true",
       MUNJIB_TRIAL_AI_GLOBAL_DAILY_LIMIT: "100",
+      MUNJIB_TRIAL_DEMO_WORKSPACE_ID: "workspace-demo-1",
       MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG: "public-demo",
       MUNJIB_TRIAL_TRUSTED_NETWORK_HEADER: "x-munjib-trusted-client-ip",
+      MUNJIB_TRIAL_DEV_TRUST_RAW_NETWORK_HEADER: "true",
       MUNJIB_TRIAL_VISITOR_SIGNING_KEY: "trial-current-signing-key",
       MUNJIB_TRIAL_VISITOR_DIGEST_KEY: "trial-visitor-digest-key",
       MUNJIB_TRIAL_NETWORK_BUCKET_KEY: "trial-network-bucket-key",
@@ -105,6 +125,7 @@ describe("anonymous Trial runtime capability", () => {
       MUNJIB_TURNSTILE_HOSTNAME: "localhost",
       MUNJIB_TURNSTILE_ACTION: "trial_entitlement",
     })).toMatchObject({
+      demoWorkspaceId: "workspace-demo-1",
       demoWorkspaceSlug: "public-demo",
       turnstile: { hostname: "localhost" },
     });
@@ -161,6 +182,27 @@ describe("anonymous Trial runtime capability", () => {
     }, { readStrictSecretFile })).toBeNull();
   });
 
+  it("requires a canonical cutoff for the previous verification key", () => {
+    const readStrictSecretFile = vi.fn(({ path }: { path: string }) => {
+      const value = secretFiles[path as keyof typeof secretFiles];
+      if (!value) throw new Error("unavailable");
+      return value;
+    });
+    const rotationEnv = {
+      ...productionEnv(),
+      MUNJIB_TRIAL_VISITOR_PREVIOUS_SIGNING_KEY_FILE: "/run/secrets/munjib_trial_visitor_previous_signing_key",
+    };
+
+    expect(resolveAnonymousTrialCapability(rotationEnv, { readStrictSecretFile })).toBeNull();
+    expect(resolveAnonymousTrialCapability({
+      ...rotationEnv,
+      MUNJIB_TRIAL_VISITOR_PREVIOUS_SIGNING_KEY_CUTOFF: "2026-08-26T00:00:00.000Z",
+    }, { readStrictSecretFile })).toMatchObject({
+      visitorSigningKeys: ["trial-current-signing-key", "trial-previous-signing-key"],
+      previousSigningKeyCutoff: "2026-08-26T00:00:00.000Z",
+    });
+  });
+
   it("rejects secret reuse across visitor signing, visitor digest, and network buckets", () => {
     const readStrictSecretFile = vi.fn(({ path }: { path: string }) => {
       if (path === "/run/secrets/munjib_trial_visitor_digest_key") return "trial-current-signing-key";
@@ -189,6 +231,7 @@ describe("anonymous Trial actor and entitlement", () => {
       authorizationPrincipal: {
         kind: "anonymous-trial-demo",
         capabilityId: "anonymous-trial-v1",
+        workspaceId: "workspace-demo-1",
         workspaceSlug: "public-demo",
         access: "viewer-only",
         trialVisitorSubject: "1qy0UPa-aQlxk4Ej4w7HqQMmU37K7HcUWVH1w6MYUh8",
@@ -198,6 +241,46 @@ describe("anonymous Trial actor and entitlement", () => {
     });
     expect(resolveAnonymousTrialActor(request({ token: `${token}tampered` }), capability, now)).toBeNull();
     expect(resolveAnonymousTrialActor(request({ token, network: undefined }), capability, now)).toBeNull();
+  });
+
+  it("rejects missing, spoofed, and stale production network evidence", () => {
+    const capability = testCapability();
+    const token = issueTrialVisitorToken({ key: capability.visitorSigningKeys[0], now });
+
+    expect(resolveAnonymousTrialActor(request({ token, proof: "missing" }), capability, now)).toBeNull();
+    expect(resolveAnonymousTrialActor(request({ token, proof: "spoofed" }), capability, now)).toBeNull();
+    expect(resolveAnonymousTrialActor(request({ token, proof: "stale" }), capability, now)).toBeNull();
+    expect(resolveAnonymousTrialActor(request({ token, network: "203.0.113.43" }), capability, now)).toBeNull();
+  });
+
+  it("rejects spoofed entitlement evidence before reading usage", async () => {
+    const readUsage = vi.fn();
+
+    await expect(resolveTrialEntitlement(request({ proof: "spoofed" }), {
+      capability: testCapability(),
+      now: () => now,
+      store: { readUsage },
+    })).resolves.toEqual({
+      status: 503,
+      body: { code: "TRIAL_ENTITLEMENT_UNAVAILABLE" },
+    });
+    expect(readUsage).not.toHaveBeenCalled();
+  });
+
+  it("accepts the previous signing key only before its strict cutoff", () => {
+    const capability: AnonymousTrialCapability = {
+      ...testCapability(),
+      visitorSigningKeys: ["trial-current-signing-key", "trial-previous-signing-key"],
+      previousSigningKeyCutoff: "2026-08-26T00:00:00.000Z",
+    };
+    const token = issueTrialVisitorToken({
+      key: "trial-previous-signing-key",
+      now,
+    });
+
+    expect(resolveAnonymousTrialActor(request({ token }), capability, now)).not.toBeNull();
+    const afterCutoff = new Date("2026-08-26T00:00:00.000Z");
+    expect(resolveAnonymousTrialActor(request({ token, proofNow: afterCutoff }), capability, afterCutoff)).toBeNull();
   });
 
   it("returns only public entitlement fields for an existing visitor", async () => {
@@ -366,6 +449,34 @@ describe("Turnstile verification", () => {
     expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
     expect(consoleError).not.toHaveBeenCalled();
   });
+
+  it("cancels the Turnstile response stream as soon as it exceeds 8 KiB", async () => {
+    let pulls = 0;
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls += 1;
+        if (pulls === 1) {
+          controller.enqueue(new Uint8Array(8_193).fill(0x20));
+          return;
+        }
+        controller.error(new Error("verifier read beyond bound"));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    }, { highWaterMark: 0 });
+    const fetchImpl = vi.fn(async () => new Response(body, { status: 200 }));
+
+    await expect(verifyTurnstileChallenge(
+      "challenge-token",
+      testCapability().turnstile,
+      { fetchImpl },
+    )).resolves.toBe(false);
+
+    expect(pulls).toBe(1);
+    expect(cancelled).toBe(true);
+  });
 });
 
 function productionEnv() {
@@ -375,11 +486,13 @@ function productionEnv() {
     MUNJIB_ANONYMOUS_TRIAL_ENABLED: "true",
     MUNJIB_TRIAL_AI_GLOBAL_DAILY_LIMIT: "100",
     NEXTAUTH_URL: "https://munjib.example",
+    MUNJIB_TRIAL_DEMO_WORKSPACE_ID: "workspace-demo-1",
     MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG: "public-demo",
     MUNJIB_TRIAL_TRUSTED_NETWORK_HEADER: "x-munjib-trusted-client-ip",
     MUNJIB_TRIAL_VISITOR_SIGNING_KEY_FILE: "/run/secrets/munjib_trial_visitor_signing_key",
     MUNJIB_TRIAL_VISITOR_DIGEST_KEY_FILE: "/run/secrets/munjib_trial_visitor_digest_key",
     MUNJIB_TRIAL_NETWORK_BUCKET_KEY_FILE: "/run/secrets/munjib_trial_network_bucket_key",
+    MUNJIB_TRIAL_EDGE_PROOF_SECRET_FILE: "/run/secrets/munjib_trial_edge_proof_secret",
     MUNJIB_TURNSTILE_SECRET_FILE: "/run/secrets/munjib_turnstile_secret",
     MUNJIB_TURNSTILE_HOSTNAME: "munjib.example",
     MUNJIB_TURNSTILE_ACTION: "trial_entitlement",
@@ -389,8 +502,14 @@ function productionEnv() {
 function testCapability(): AnonymousTrialCapability {
   return {
     capabilityId: "anonymous-trial-v1",
+    demoWorkspaceId: "workspace-demo-1",
     demoWorkspaceSlug: "public-demo",
     trustedNetworkHeader: "x-munjib-trusted-client-ip",
+    networkEvidence: {
+      kind: "signed-edge-proof",
+      secret: "trial-edge-proof-secret",
+      maxSkewSeconds: 30,
+    },
     visitorSigningKeys: ["trial-current-signing-key"],
     visitorDigestKey: "trial-visitor-digest-key",
     networkBucketKey: "trial-network-bucket-key",
@@ -408,6 +527,8 @@ function request(options: {
   token?: string;
   network?: string;
   challengeToken?: string;
+  proof?: "valid" | "missing" | "spoofed" | "stale";
+  proofNow?: Date;
 } = {}) {
   const headers = new Headers();
   if (options.token) headers.set("cookie", `${TRIAL_VISITOR_COOKIE_NAME}=${options.token}`);
@@ -416,10 +537,40 @@ function request(options: {
   } else if (!("network" in options)) {
     headers.set("x-munjib-trusted-client-ip", "203.0.113.42");
   }
+  if (options.proof !== "missing" && headers.has("x-munjib-trusted-client-ip")) {
+    const proofNow = options.proofNow ?? now;
+    const timestamp = options.proof === "stale"
+      ? Math.floor(proofNow.getTime() / 1_000) - 31
+      : Math.floor(proofNow.getTime() / 1_000);
+    const method = options.method ?? "GET";
+    const proof = options.proof === "spoofed"
+      ? "A".repeat(43)
+      : edgeProof({
+          timestamp,
+          method,
+          path: "/api/trial/entitlement",
+          normalizedIp: "v4:203.0.113.42",
+        });
+    headers.set("x-munjib-trusted-network-timestamp", timestamp.toString(10));
+    headers.set("x-munjib-trusted-network-proof", proof);
+  }
   if (options.challengeToken) headers.set("content-type", "application/json");
   return new Request("https://munjib.example/api/trial/entitlement", {
     method: options.method ?? "GET",
     headers,
     body: options.challengeToken ? JSON.stringify({ challengeToken: options.challengeToken }) : undefined,
   });
+}
+
+function edgeProof(input: { timestamp: number; method: string; path: string; normalizedIp: string }) {
+  return createHmac("sha256", "trial-edge-proof-secret")
+    .update("munjib/trial-network-evidence/v1\0")
+    .update(input.timestamp.toString(10))
+    .update("\0")
+    .update(input.method)
+    .update("\0")
+    .update(input.path)
+    .update("\0")
+    .update(input.normalizedIp)
+    .digest("base64url");
 }
