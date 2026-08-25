@@ -3771,3 +3771,10 @@ links:
 
 - Result: PR #211 review removed current wrapper and environment prose from the inactive direct-SSH details block, leaving that block consistently historical and pointing operators to the authoritative self-hosted runner section and runbook.
 - Source evidence: PR #211 review thread and [[CI CD And Monitoring Workflow]].
+
+## 2026-08-25T14:00:00+09:00 - anonymous trial AI admission ledger
+
+- Result: Issue #212 Task 2 adds an isolated PostgreSQL-schema-backed admission boundary for anonymous Trial AI. It uses KST-day visitor/network/global counters, a partial-unique active lease, fixed Global → Network → Visitor row locking, and one transaction for ceiling checks, counter increments, and lease creation.
+- Failure boundary: authenticated users are not subject to this ledger; malformed Trial admission evidence, absent/invalid positive global cap, or persistence failure returns `TRIAL_AI_ADMISSION_UNAVAILABLE`. Lease release does not decrement daily usage. Ask AI and Workspace AI route integration is deliberately deferred to Tasks 4 and 5.
+- Source evidence: approved Issue #212 design, `prisma/schema.prisma`, `prisma/migrations/20260825010000_anonymous_trial_ai_admission/migration.sql`, `lib/rag/trial-ai-admission.ts`, and `tests/rag/trial-ai-admission.test.ts`.
+- Verification: RED for the missing module and invalid calendar-date acceptance; GREEN `pnpm run db:generate`, focused seven-test Vitest suite, TypeScript compile, and wiki checks. Live PostgreSQL migration/locking validation is pending because Docker/PostgreSQL was unavailable.
