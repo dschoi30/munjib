@@ -3766,3 +3766,8 @@ links:
 - Result: PR #211 review added a monotonic wrapper gate requiring the recorded `current-sha` to be an ancestor of the requested deploy SHA, preventing historical `main` workflow reruns from silently rolling production back.
 - Documentation: [[Local Development Workflow]] now describes the self-hosted per-SHA path and removes retired SSH deploy secrets and `munjib-web:latest` instructions.
 - Source evidence: PR #211 review threads, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, [[CI CD And Monitoring Workflow]], and [[Local Development Workflow]].
+
+## 2026-08-25T11:47:00+09:00 - historical SSH section isolation
+
+- Result: PR #211 review removed current wrapper and environment prose from the inactive direct-SSH details block, leaving that block consistently historical and pointing operators to the authoritative self-hosted runner section and runbook.
+- Source evidence: PR #211 review thread and [[CI CD And Monitoring Workflow]].
