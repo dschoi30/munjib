@@ -219,7 +219,11 @@ Ask or Workspace preparation/provider failures.
 The same privacy-safe flag reaches Trial retrieval query embedding and targeted
 document-index backfill. Embedding provider exceptions are normalized to stable
 code and coarse `embedding` surface without logging the raw SDK error; normal
-authenticated retrieval retains its existing diagnostic error logging.
+authenticated retrieval retains its existing diagnostic error logging. The
+composed request/lease signal also reaches every backfill chunk embedding and
+the query embedding provider invocation, with abort checks before and after
+each await; lease loss stops the pending request and prevents later chunks from
+starting.
 
 Task 6 keeps the browser UI subordinate to those server decisions. Ask AI
 accepts allowance state only from a successful response's `trialAi` projection,

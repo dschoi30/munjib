@@ -132,4 +132,31 @@ describe("provider-neutral embedding client", () => {
     expect(JSON.stringify(consoleError.mock.calls)).not.toContain("raw trial embedding secret");
     expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private trial question");
   });
+
+  it("passes the abort signal to the provider and stops a pending embedding", async () => {
+    const controller = new AbortController();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    let providerSignal: AbortSignal | undefined;
+    const embeddingPromise = embedText("pending trial question", {
+      config: currentConfig,
+      signal: controller.signal,
+      embeddingModel: {
+        embedQuery: vi.fn((_text, options) => {
+          providerSignal = options?.signal;
+          return new Promise((_resolve, reject) => {
+            options?.signal?.addEventListener(
+              "abort",
+              () => reject(new DOMException("Aborted", "AbortError")),
+              { once: true },
+            );
+          });
+        }),
+      },
+    });
+
+    await vi.waitFor(() => expect(providerSignal).toBe(controller.signal));
+    controller.abort();
+
+    await expect(embeddingPromise).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
+  });
 });

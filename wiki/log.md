@@ -3961,3 +3961,10 @@ links:
 - Completion boundary: Ask success JSON and Workspace stream `done` are emitted only after the stop barrier succeeds. A pending renewal failure becomes the existing sanitized Trial `AI_UNAVAILABLE` path, then cleanup releases the lease.
 - Source evidence: PR #213 review, heartbeat helper, Ask/Workspace routes, deferred-renewal unit and route regression tests.
 - Verification: heartbeat unit and both AI route suites passed 101 tests before integration; combined privacy/heartbeat merge is covered by the final focused and full-suite verification.
+
+## 2026-08-25T19:45:00+09:00 - Trial embedding abort propagation
+
+- Result: the composed request/lease AbortSignal now reaches targeted index backfill, every chunk embedding, query embedding, and the embedding provider invocation.
+- Concurrency boundary: abort checks before and after each provider await prevent later chunks or retrieval from starting after lease loss, rather than merely noticing the abort after the full backfill completes.
+- Source evidence: PR #213 review, embedding client, document indexer, Workspace preparation, and signal/pending-provider/multi-chunk regression tests.
+- Verification: focused embedding/index/Workspace suites passed 63 tests with TypeScript and diff checks; final full-suite verification follows integration.

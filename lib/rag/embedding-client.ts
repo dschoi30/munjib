@@ -5,7 +5,10 @@ export { RAG_ERROR_CODES };
 const CURRENT_EMBEDDING_DIMENSIONS = 1024;
 
 export type LangChainEmbeddingModel = {
-  embedQuery: (text: string) => Promise<unknown>;
+  embedQuery: (
+    text: string,
+    options?: Readonly<{ signal?: AbortSignal }>,
+  ) => Promise<unknown>;
 };
 
 type EmbeddingIndexIdentity =
@@ -29,6 +32,7 @@ export type RagEmbeddingClientConfig = {
 export type EmbedTextOptions = {
   config?: RagEmbeddingClientConfig;
   privacySafeLogging?: boolean;
+  signal?: AbortSignal;
   embeddingModel?: LangChainEmbeddingModel;
   expectedDimensions?: number;
   getRagModelConfig?: () => RagEmbeddingClientConfig | Promise<RagEmbeddingClientConfig>;
@@ -69,6 +73,7 @@ export function assertCurrentEmbeddingIndex(config: RagEmbeddingClientConfig) {
 }
 
 export async function embedText(text: string, options: EmbedTextOptions = {}): Promise<number[]> {
+  throwIfAborted(options.signal);
   const config =
     options.config ?? (options.embeddingModel ? undefined : await loadRagModelConfig(options));
   if (config) {
@@ -77,10 +82,13 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
 
   const embeddingModel =
     options.embeddingModel ?? (await loadEmbeddingModel(options, requireConfig(config)));
+  throwIfAborted(options.signal);
 
   let embedding: unknown;
   try {
-    embedding = await embeddingModel.embedQuery(text);
+    embedding = options.signal
+      ? await embeddingModel.embedQuery(text, { signal: options.signal })
+      : await embeddingModel.embedQuery(text);
   } catch (error) {
     if (options.privacySafeLogging) {
       console.error("Embedding request failed", {
@@ -97,6 +105,13 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
     embedding,
     options.expectedDimensions ?? config?.embedding.dimensions ?? CURRENT_EMBEDDING_DIMENSIONS,
   );
+}
+
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("Aborted", "AbortError");
 }
 
 async function loadRagModelConfig(options: EmbedTextOptions) {
