@@ -15,6 +15,7 @@ export type TrialAiAllowance = {
 const TRIAL_AI_ALLOWANCE_EVENT = "munjib:trial-ai-allowance";
 let currentTrialAiAllowance: TrialAiAllowance | null = null;
 let trialAiAllowanceSubscriberCount = 0;
+let trialAiAllowanceExpiryTimer: ReturnType<typeof setTimeout> | null = null;
 
 export type WorkspaceChatStreamEvent =
   | { type: "start"; trialAi?: TrialAiAllowance }
@@ -146,28 +147,88 @@ export function trialAiAllowanceFromQuotaError(value: unknown): TrialAiAllowance
 }
 
 export function publishTrialAiAllowance(allowance: TrialAiAllowance) {
-  currentTrialAiAllowance = allowance;
+  const merged = mergeTrialAiAllowance(currentTrialAiAllowance, allowance, Date.now());
+  if (!merged) return;
+  currentTrialAiAllowance = merged;
+  scheduleTrialAiAllowanceExpiry();
   window.dispatchEvent(
-    new CustomEvent<TrialAiAllowance>(TRIAL_AI_ALLOWANCE_EVENT, { detail: allowance }),
+    new CustomEvent<TrialAiAllowance>(TRIAL_AI_ALLOWANCE_EVENT, { detail: merged }),
   );
 }
 
-export function subscribeToTrialAiAllowance(listener: (allowance: TrialAiAllowance) => void) {
+export function subscribeToTrialAiAllowance(
+  listener: (allowance: TrialAiAllowance | null) => void,
+) {
   const handleAllowance = (event: Event) => {
+    if ((event as CustomEvent<unknown>).detail === null) {
+      listener(null);
+      return;
+    }
     const allowance = parseTrialAiAllowance((event as CustomEvent<unknown>).detail);
     if (allowance) {
-      currentTrialAiAllowance = allowance;
-      listener(allowance);
+      const merged = mergeTrialAiAllowance(currentTrialAiAllowance, allowance, Date.now());
+      if (!merged) return;
+      currentTrialAiAllowance = merged;
+      scheduleTrialAiAllowanceExpiry();
+      listener(merged);
     }
   };
   trialAiAllowanceSubscriberCount += 1;
   window.addEventListener(TRIAL_AI_ALLOWANCE_EVENT, handleAllowance);
-  if (currentTrialAiAllowance) listener(currentTrialAiAllowance);
+  clearExpiredTrialAiAllowance();
+  if (currentTrialAiAllowance) {
+    listener(currentTrialAiAllowance);
+    scheduleTrialAiAllowanceExpiry();
+  }
   return () => {
     window.removeEventListener(TRIAL_AI_ALLOWANCE_EVENT, handleAllowance);
     trialAiAllowanceSubscriberCount = Math.max(0, trialAiAllowanceSubscriberCount - 1);
-    if (trialAiAllowanceSubscriberCount === 0) currentTrialAiAllowance = null;
+    if (trialAiAllowanceSubscriberCount === 0) {
+      currentTrialAiAllowance = null;
+      if (trialAiAllowanceExpiryTimer) clearTimeout(trialAiAllowanceExpiryTimer);
+      trialAiAllowanceExpiryTimer = null;
+    }
   };
+}
+
+function mergeTrialAiAllowance(
+  current: TrialAiAllowance | null,
+  candidate: TrialAiAllowance,
+  now: number,
+): TrialAiAllowance | null {
+  const candidateReset = Date.parse(candidate.resetsAt);
+  if (candidateReset <= now) return null;
+  if (!current) return candidate;
+  const currentReset = Date.parse(current.resetsAt);
+  if (candidateReset < currentReset) return current;
+  if (candidateReset > currentReset) return candidate;
+  return candidate.remaining < current.remaining ? candidate : current;
+}
+
+function scheduleTrialAiAllowanceExpiry() {
+  if (trialAiAllowanceExpiryTimer) clearTimeout(trialAiAllowanceExpiryTimer);
+  trialAiAllowanceExpiryTimer = null;
+  if (!currentTrialAiAllowance || trialAiAllowanceSubscriberCount === 0) return;
+  const delay = Date.parse(currentTrialAiAllowance.resetsAt) - Date.now();
+  if (delay <= 0) {
+    clearExpiredTrialAiAllowance();
+    return;
+  }
+  trialAiAllowanceExpiryTimer = setTimeout(
+    () => {
+      trialAiAllowanceExpiryTimer = null;
+      if (!clearExpiredTrialAiAllowance()) scheduleTrialAiAllowanceExpiry();
+    },
+    Math.min(delay, 2_147_483_647),
+  );
+}
+
+function clearExpiredTrialAiAllowance() {
+  if (!currentTrialAiAllowance) return false;
+  if (Date.parse(currentTrialAiAllowance.resetsAt) > Date.now()) return false;
+  currentTrialAiAllowance = null;
+  window.dispatchEvent(new CustomEvent<null>(TRIAL_AI_ALLOWANCE_EVENT, { detail: null }));
+  return true;
 }
 
 function isWorkspaceChatStreamMessage(value: unknown): value is WorkspaceChatStreamMessage {
