@@ -437,7 +437,7 @@ model TrialAiAdmissionLease {
   releasedAt    DateTime?
   createdAt     DateTime  @default(now())
 
-  @@index([visitorDigest, kstDate, expiresAt])
+  @@index([visitorDigest, expiresAt])
 }
 
 model Permission {

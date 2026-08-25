@@ -3778,3 +3778,9 @@ links:
 - Failure boundary: authenticated users are not subject to this ledger; malformed Trial admission evidence, absent/invalid positive global cap, or persistence failure returns `TRIAL_AI_ADMISSION_UNAVAILABLE`. Lease release does not decrement daily usage. Ask AI and Workspace AI route integration is deliberately deferred to Tasks 4 and 5.
 - Source evidence: approved Issue #212 design, `prisma/schema.prisma`, `prisma/migrations/20260825010000_anonymous_trial_ai_admission/migration.sql`, `lib/rag/trial-ai-admission.ts`, and `tests/rag/trial-ai-admission.test.ts`.
 - Verification: RED for the missing module and invalid calendar-date acceptance; GREEN `pnpm run db:generate`, focused seven-test Vitest suite, TypeScript compile, and wiki checks. Live PostgreSQL migration/locking validation is pending because Docker/PostgreSQL was unavailable.
+
+## 2026-08-25T14:10:00+09:00 - anonymous trial AI lease concurrency review follow-up
+
+- Result: The Task 2 lease is now visitor-wide rather than visitor/day scoped. Admission first takes a domain-separated, two-lane advisory transaction lock on the opaque visitor digest, then retains the deterministic Global → Network → Visitor day-row lock order. An unreleased request therefore blocks a second request by the same visitor even when the requests straddle KST midnight.
+- Coverage: Added mock-backed cross-midnight and entropy-source-failure tests plus an opt-in PostgreSQL integration suite for concurrent global admission, cross-midnight denial, and transaction rollback when a lease-insert trigger fails. The integration suite requires `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and an already migrated disposable PostgreSQL database.
+- Verification: focused unit suite and TypeScript compile passed; the opt-in PostgreSQL suite was collected but skipped because Docker/PostgreSQL remains unavailable.
