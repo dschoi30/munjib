@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
+import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
 import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import { WORKSPACE_CHAT_ERROR_CODES } from "@/lib/rag/workspace-chat";
@@ -70,5 +73,21 @@ export function workspaceChatTrialAdmissionDeniedResponse(
       ...(admission.resetsAt ? { resetsAt: admission.resetsAt } : {}),
     },
     { status, headers },
+  );
+}
+
+export function normalizeWorkspaceChatTrialFailure(remaining: 0 | 1 | 2) {
+  captureTrialAiFailure({
+    surface: "workspace_chat",
+    resultCode: "AI_UNAVAILABLE",
+    remaining,
+  });
+  return "AI_UNAVAILABLE" as const;
+}
+
+export function workspaceChatTrialFailureResponse(remaining: 0 | 1 | 2) {
+  return NextResponse.json(
+    { error: normalizeWorkspaceChatTrialFailure(remaining) },
+    { status: 503, headers: { "cache-control": "private, no-store" } },
   );
 }
