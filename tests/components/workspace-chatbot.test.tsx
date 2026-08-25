@@ -3,6 +3,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render as testingRender, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "@/components/i18n-provider";
+import { AiAssistantPanel } from "@/components/document-editor/ai-assistant-panel";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { readWorkspaceChatStream } from "@/components/workspace-chatbot-stream";
 import { writeStoredChatModel } from "@/lib/rag/client-model-settings";
@@ -1007,6 +1008,140 @@ describe("WorkspaceChatbot", () => {
 
     expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
     expect(screen.queryByText("What changed?")).toBeNull();
+  });
+
+  it("shows the authoritative trial allowance from the workspace start event", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/assistant/messages")) {
+        return ndjsonResponse([
+          {
+            type: "start",
+            trialAi: { remaining: 3, resetsAt: "2026-08-25T15:00:00.000Z" },
+          },
+          {
+            type: "done",
+            assistantMessage: { id: "answer-1", role: "ASSISTANT", content: "Answer" },
+          },
+        ]);
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), { target: { value: "Question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText("3 of 3 trial AI uses remaining today")).toBeTruthy();
+    expect(screen.getByText("Resets at midnight Korea time (KST).")).toBeTruthy();
+  });
+
+  it("synchronizes an Ask AI allowance update into Workspace AI without localStorage", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/ask")) {
+        return jsonResponse({
+          answer: "Document answer",
+          citations: [],
+          trialAi: { remaining: 1, resetsAt: "2026-08-25T15:00:00.000Z" },
+        });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(
+      <>
+        <AiAssistantPanel workspaceSlug="company-handbook" documentId="doc-1" hasUnsavedChanges={false} defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} />
+        <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("AI question"), { target: { value: "Question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    expect(await screen.findAllByText("1 of 3 trial AI uses remaining today")).toHaveLength(2);
+    expect(window.localStorage.length).toBe(1);
+    expect(window.localStorage.getItem(workspaceUiStateStorageKey("company-handbook"))).toContain('"workspaceChatOpen":true');
+  });
+
+  it("disables the Trial composer after a quota 429 while leaving ordinary errors recoverable", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/assistant/messages")) {
+        return jsonResponse(
+          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { status: 429 },
+        );
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    const composer = screen.getByLabelText("Workspace chat message") as HTMLInputElement;
+    fireEvent.change(composer, { target: { value: "Fourth question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    await waitFor(() => expect(composer.disabled).toBe(true));
+    expect(screen.getByText("0 of 3 trial AI uses remaining today")).toBeTruthy();
+  });
+
+  it("does not turn a transient concurrent-request 429 into a daily lockout", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/assistant/messages")) {
+        return jsonResponse(
+          { code: "TRIAL_AI_REQUEST_IN_PROGRESS", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { status: 429 },
+        );
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    const composer = screen.getByLabelText("Workspace chat message") as HTMLInputElement;
+    fireEvent.change(composer, { target: { value: "Concurrent question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(composer.disabled).toBe(false);
+    expect(screen.queryByText(/trial AI uses remaining/)).toBeNull();
+  });
+
+  it("replays the same-tab authoritative lockout to an Ask panel opened later", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/assistant/messages")) {
+        return jsonResponse(
+          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { status: 429 },
+        );
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    function AllowanceReplayHarness() {
+      const [showAsk, setShowAsk] = React.useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setShowAsk(true)}>Show Ask panel</button>
+          {showAsk ? <AiAssistantPanel workspaceSlug="company-handbook" documentId="doc-1" hasUnsavedChanges={false} defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} /> : null}
+          <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />
+        </>
+      );
+    }
+    render(<AllowanceReplayHarness />);
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), { target: { value: "Fourth question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await screen.findByText("0 of 3 trial AI uses remaining today");
+
+    fireEvent.click(screen.getByRole("button", { name: "Show Ask panel" }));
+
+    await waitFor(() => expect((screen.getByLabelText("AI question") as HTMLTextAreaElement).disabled).toBe(true));
   });
 });
 
