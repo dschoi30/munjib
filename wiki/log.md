@@ -25,6 +25,13 @@ links:
 - Failure boundary: missing/invalid public site key, script/widget error, expiry, timeout, malformed token, repeated challenge, or invalid entry stays fail closed; the challenge token is not logged, stored, or placed in a URL.
 - Source evidence: `app/login/login-form.tsx`, `app/login/page.tsx`, `lib/auth/turnstile-client.ts`, localized messages, and focused login tests. Cloudflare documents explicit rendering for conditional SPA challenges and requires `https://challenges.cloudflare.com` in `script-src` when CSP is enforced.
 
+## 2026-08-25T19:00:00+09:00 - 익명 Trial AI ledger 보존기간 정리
+
+- 결과: PR #213 review follow-up으로 PostgreSQL DB 시간 기반의 Trial AI purge service와 dry-run 기본 CLI를 추가했다. 방문자 35 KST 일, 네트워크·전체 8 KST 일, 만료 lease 24시간 경계를 한 transaction에서 멱등하게 정리한다.
+- 안전 경계: `--execute` 없이는 삭제하지 않으며 lease → visitor → network → global 순서 중 실패하면 전체 rollback한다. 활성 lease와 현재 quota counter는 변경하지 않는다.
+- 운영: `docs/runbooks/anonymous-trial-ai-retention.md`에 dry-run, 명시적 execute, 정상 결과, 완료·중단 기준, 최소 권한, 하루 1회 scheduler 계약을 기록했다.
+- Source evidence: `lib/rag/trial-ai-retention.ts`, `lib/rag/trial-ai-retention-cli.ts`, `scripts/rag/purge-trial-ai-retention.ts`, `tests/rag/trial-ai-retention*.test.ts`, [[RAG Process Workflow]].
+
 ## 2026-08-25T18:20:00+09:00 - Trial admission PostgreSQL runtime validation
 
 - Result: live migrated PostgreSQL verification exposed Prisma's inability to deserialize the `void` result of `pg_advisory_xact_lock`. The query now casts only the lock result to text while retaining the same transaction-scoped visitor lock.
