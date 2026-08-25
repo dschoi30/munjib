@@ -46,6 +46,25 @@ describe("anonymous trial visitor tokens", () => {
     expect(verifyTrialVisitorToken(token, keyring, { now: new Date("2026-08-25T00:01:00.000Z"), visitorDigestKey })).toEqual({ ok: false });
   });
 
+  test("rejects a correctly signed token whose issued-at time is in the future", () => {
+    const token = issueTrialVisitorToken({
+      key: keyring[0],
+      now: new Date("2026-08-25T00:00:01.000Z"),
+    });
+
+    expect(verifyTrialVisitorToken(token, keyring, { now: issuedAt, visitorDigestKey })).toEqual({ ok: false });
+  });
+
+  test("rejects a correctly signed token whose lifetime exceeds 180 days", () => {
+    const token = issueTrialVisitorToken({
+      key: keyring[0],
+      now: issuedAt,
+      ttlSeconds: 180 * 24 * 60 * 60 + 1,
+    });
+
+    expect(verifyTrialVisitorToken(token, keyring, { now: issuedAt, visitorDigestKey })).toEqual({ ok: false });
+  });
+
   test("accepts the previous verification key during key rotation", () => {
     const token = issueTrialVisitorToken({ key: keyring[1], now: issuedAt });
 

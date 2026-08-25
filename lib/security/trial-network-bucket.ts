@@ -69,6 +69,18 @@ function networkPrefix(networkInput: string): string {
   invalid("network input is invalid");
 }
 
+/** Canonical full-address form used only to bind trusted edge evidence. */
+export function normalizeTrialNetworkInput(networkInput: string): string {
+  const family = isIP(networkInput);
+  if (family === 4) {
+    return `v4:${networkInput.split(".").map(Number).join(".")}`;
+  }
+  if (family === 6) {
+    return `v6:${expandIpv6(networkInput.toLowerCase()).join(":")}`;
+  }
+  invalid("network input is invalid");
+}
+
 function kstDateParts(now: Date): { year: number; month: number; day: number; kstDate: string } {
   if (Number.isNaN(now.getTime())) invalid("time is invalid");
   const parts = KST_DATE_FORMATTER.formatToParts(now);

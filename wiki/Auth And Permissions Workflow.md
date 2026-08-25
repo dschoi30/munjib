@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-08-25
-source_count: 110
+source_count: 114
 tags:
   - munjib
   - auth
@@ -98,8 +98,13 @@ gate, and the component default is also fail closed.
 Issue #212 Task 3 keeps the anonymous Trial outside NextAuth and ordinary
 `User.id` identity. `resolveAnonymousTrialCapability()` defaults closed and
 opens only with an explicit positive global ceiling, one canonical demo
-workspace slug, the fixed trusted-network header contract, an exact canonical
+workspace ID (with a slug used only as display metadata), an exact canonical
 Turnstile hostname/action, and fixed-path secret files in staging/production.
+Production and staging also require a file-backed edge-proof secret: a bounded
+timestamp and HMAC bind the normalized client IP to the exact request method
+and pathname, so a raw `x-munjib-trusted-client-ip` header is never sufficient.
+Only development may opt into the explicit raw-header resolver, and that mode
+remains closed unless separately enabled.
 The signing, visitor-digest, network-bucket, and Turnstile secret bytes are
 never returned to the browser. The legacy development-only
 `mjtrial@munjib.com` Credentials provider is not queried, reactivated, or used
@@ -108,10 +113,16 @@ as the anonymous authorization principal.
 `requireAiActor(request)` preserves the existing authenticated-user shape, but
 returns anonymous callers as a separate admission actor plus an
 `anonymous-trial-demo` authorization principal. That principal is valid only
-for the exact server-owned demo workspace, projects only `VIEWER`, and has no
-`userId` or USER-grant subject. `resolveAiWorkspaceAuthorization()` exposes
-this denial boundary to the Ask AI and Workspace AI integrations instead of
-letting callers substitute the visitor subject into `WorkspaceMember.userId`.
+when the resolved workspace row's immutable ID equals the server-owned demo
+workspace ID, projects only `VIEWER`, and has no `userId` or USER-grant subject.
+Path slugs never authorize the principal, including a same-slug workspace in a
+different organization. `resolveAiWorkspaceAuthorization()` exposes this denial
+boundary to the Ask AI and Workspace AI integrations instead of letting callers
+substitute the visitor subject into `WorkspaceMember.userId`.
+
+Visitor signing-key rotation is bounded by an exact previous-key cutoff. The
+previous key is accepted only strictly before that instant, and visitor tokens
+with a future issued-at value or a signed lifetime over 180 days are rejected.
 
 Workspace AI must not persist anonymous conversations under a static or legacy
 `AiChatThread.userId`, because that would share history across visitors. Its
