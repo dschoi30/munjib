@@ -3917,3 +3917,10 @@ links:
 - Privacy boundary: anonymous Trial Ask now propagates privacy-safe logging into the non-streaming answer chain, which records only the stable RAG failure code and `invoke` surface. Authenticated Ask retains the raw provider-error diagnostic path.
 - Quota projection: Ask quota-denial JSON now includes the admission ledger's authoritative `resetsAt`, allowing the shared client allowance parser to publish zero remaining uses and lock both composers through the KST reset boundary.
 - Verification: RED reproduced secret-bearing provider-error logging, the missing privacy flag, and the missing quota reset projection; focused answer-chain, Ask privacy/route, and editor component tests passed GREEN.
+
+## 2026-08-25T18:35:00+09:00 - Trial Ask admission and telemetry review follow-up
+
+- Charging boundary: after asynchronous document authorization/preparation, Ask rechecks the request abort signal immediately before admission. A disconnected request returns private no-store 499 and consumes no daily use or active lease.
+- Privacy boundary: admitted anonymous Ask provider failures use only the Trial metric seam with surface, public `AI_UNAVAILABLE`, coarse remaining bucket, and anonymous flag. They do not enter the authenticated handled-error path carrying raw error, workspace slug, RAG code, provider, or model.
+- Source evidence: PR #213 review, Ask route, focused abort and anonymous telemetry regression tests.
+- Verification: both regressions failed before the route change, then the 14-test Ask route suite and TypeScript compilation passed.
