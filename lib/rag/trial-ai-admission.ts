@@ -128,7 +128,7 @@ export async function releaseTrialAiLease(
 
 export type TrialAiLeaseHeartbeat = Readonly<{
   signal: AbortSignal;
-  stop(): Promise<void>;
+  stop(): Promise<Readonly<{ ok: boolean }>>;
 }>;
 
 export function startTrialAiLeaseHeartbeat(
@@ -138,6 +138,7 @@ export function startTrialAiLeaseHeartbeat(
   const controller = new AbortController();
   const intervalMs = deps.heartbeatIntervalMs ?? 30_000;
   let stopped = false;
+  let renewalFailed = false;
   let inFlight: Promise<void> | undefined;
 
   const renew = () => {
@@ -149,7 +150,8 @@ export function startTrialAiLeaseHeartbeat(
         }
       })
       .catch(() => {
-        if (!stopped) controller.abort();
+        renewalFailed = true;
+        controller.abort();
       })
       .finally(() => {
         inFlight = undefined;
@@ -165,6 +167,7 @@ export function startTrialAiLeaseHeartbeat(
       stopped = true;
       clearInterval(timer);
       await inFlight;
+      return { ok: !renewalFailed };
     },
   };
 }

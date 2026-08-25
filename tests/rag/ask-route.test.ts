@@ -45,7 +45,7 @@ describe("RAG ask route", () => {
     vi.mocked(releaseTrialAiLease).mockResolvedValue();
     vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValue({
       signal: new AbortController().signal,
-      stop: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue({ ok: true }),
     });
   });
 
@@ -269,6 +269,26 @@ describe("RAG ask route", () => {
       resultCode: "AI_UNAVAILABLE",
     });
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+  });
+
+  it("does not return a successful answer when the final in-flight renewal fails during stop", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce(admitted());
+    const stop = vi.fn().mockResolvedValue({ ok: false });
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValueOnce({
+      signal: new AbortController().signal,
+      stop,
+    });
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({
+      error: "AI_UNAVAILABLE",
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
+    });
+    expect(response.status).toBe(503);
+    expect(stop).toHaveBeenCalled();
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
   });
 
   it("releases an admitted lease when provider work aborts without refunding admission", async () => {

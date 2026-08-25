@@ -233,7 +233,10 @@ function workspaceChatStreamResponse(
           },
           signal: providerSignal,
         });
-        if (leaseHeartbeat?.signal.aborted) {
+        const heartbeatStop = await leaseHeartbeat?.stop();
+        const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
+        leaseHeartbeat = undefined;
+        if (heartbeatStop?.ok === false || heartbeatAborted) {
           throw new Error("TRIAL_AI_LEASE_RENEWAL_FAILED");
         }
         if (!requestSignal.aborted) {

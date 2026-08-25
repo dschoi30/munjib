@@ -173,6 +173,25 @@ describe("trial AI admission ledger", () => {
 
     expect(heartbeat.signal.aborted).toBe(true);
   });
+
+  it("reports an in-flight renewal failure even when stop was called first", async () => {
+    const first = await admitTrialAiRequest(input(), dependencies(database));
+    if (first.kind !== "admitted") throw new Error("expected admission");
+    const renewal = createDeferred<void>();
+    database.renewalGate = renewal.promise;
+    const heartbeat = startTrialAiLeaseHeartbeat(first.leaseId, {
+      ...dependencies(database),
+      heartbeatIntervalMs: 1,
+    });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const stopPromise = heartbeat.stop();
+    database.failRenewals = true;
+    renewal.resolve();
+
+    await expect(stopPromise).resolves.toEqual({ ok: false });
+    expect(heartbeat.signal.aborted).toBe(true);
+  });
 });
 
 function input(overrides: Partial<TrialAiAdmissionInput> = {}): TrialAiAdmissionInput {
@@ -211,6 +230,7 @@ function createAdmissionDatabase() {
   const database = {
     failTransactions: false,
     failRenewals: false,
+    renewalGate: undefined as Promise<void> | undefined,
     async transaction<T>(callback: (tx: AdmissionTransaction) => Promise<T>) {
       if (database.failTransactions) throw new Error("database unavailable");
       const previous = transactionTail;
@@ -275,6 +295,7 @@ function createAdmissionDatabase() {
       if (lease) lease.releasedAt = new Date();
     },
     async renewLease(leaseId) {
+      await database.renewalGate;
       if (database.failRenewals) throw new Error("renewal unavailable");
       const lease = leases.get(leaseId);
       if (!lease || lease.releasedAt) return false;
@@ -284,6 +305,14 @@ function createAdmissionDatabase() {
   };
 
   return database;
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
 }
 
 type AdmissionTransaction = {
