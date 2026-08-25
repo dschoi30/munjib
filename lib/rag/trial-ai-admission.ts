@@ -31,11 +31,12 @@ export type TrialAiAdmission =
     }>;
 
 export type TrialAiAdmissionTransaction = {
+  lockVisitorAdmission(visitorDigest: string): Promise<void>;
   ensureDailyRows(input: TrialAiAdmissionLedgerKey): Promise<void>;
   lockDailyRows(input: TrialAiAdmissionLedgerKey): Promise<void>;
-  releaseExpiredLeases(input: Pick<TrialAiAdmissionLedgerKey, "visitorDigest" | "kstDate">): Promise<void>;
+  releaseExpiredLeases(visitorDigest: string): Promise<void>;
   getDailyCounts(input: TrialAiAdmissionLedgerKey): Promise<TrialAiAdmissionCounts>;
-  hasActiveLease(input: Pick<TrialAiAdmissionLedgerKey, "visitorDigest" | "kstDate">): Promise<boolean>;
+  hasActiveLease(visitorDigest: string): Promise<boolean>;
   recordAdmission(
     input: TrialAiAdmissionLedgerKey & Readonly<{ leaseId: string }>,
   ): Promise<void>;
@@ -81,12 +82,13 @@ export async function admitTrialAiRequest(
   }
 
   const key = { visitorDigest, networkDigest, kstDate: input.kstDate };
-  const leaseId = (deps.createLeaseId ?? randomUUID)();
   try {
+    const leaseId = (deps.createLeaseId ?? randomUUID)();
     return await (deps.database ?? prismaAdmissionDatabase).transaction(async (tx) => {
+      await tx.lockVisitorAdmission(visitorDigest);
       await tx.ensureDailyRows(key);
       await tx.lockDailyRows(key);
-      await tx.releaseExpiredLeases(key);
+      await tx.releaseExpiredLeases(visitorDigest);
 
       const counts = await tx.getDailyCounts(key);
       if (counts.global >= globalDailyLimit) {
@@ -98,7 +100,7 @@ export async function admitTrialAiRequest(
       if (counts.visitor >= VISITOR_DAILY_LIMIT) {
         return denied("TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt);
       }
-      if (await tx.hasActiveLease(key)) {
+      if (await tx.hasActiveLease(visitorDigest)) {
         return denied("TRIAL_AI_REQUEST_IN_PROGRESS", resetsAt);
       }
 
@@ -167,6 +169,9 @@ type PrismaRawTransaction = Pick<typeof prisma, "$executeRawUnsafe" | "$queryRaw
 
 function prismaAdmissionTransaction(tx: PrismaRawTransaction): TrialAiAdmissionTransaction {
   return {
+    async lockVisitorAdmission(visitorDigest) {
+      await tx.$queryRawUnsafe(LOCK_VISITOR_ADMISSION_SQL, visitorDigest);
+    },
     async ensureDailyRows({ visitorDigest, networkDigest, kstDate }) {
       await tx.$executeRawUnsafe(UPSERT_GLOBAL_DAILY_USAGE_SQL, kstDate);
       await tx.$executeRawUnsafe(
@@ -187,8 +192,8 @@ function prismaAdmissionTransaction(tx: PrismaRawTransaction): TrialAiAdmissionT
       await tx.$queryRawUnsafe(LOCK_NETWORK_DAILY_USAGE_SQL, networkDigest, kstDate);
       await tx.$queryRawUnsafe(LOCK_VISITOR_DAILY_USAGE_SQL, visitorDigest, kstDate);
     },
-    async releaseExpiredLeases({ visitorDigest, kstDate }) {
-      await tx.$executeRawUnsafe(RELEASE_EXPIRED_LEASES_SQL, visitorDigest, kstDate);
+    async releaseExpiredLeases(visitorDigest) {
+      await tx.$executeRawUnsafe(RELEASE_EXPIRED_LEASES_SQL, visitorDigest);
     },
     async getDailyCounts({ visitorDigest, networkDigest, kstDate }) {
       const [globalRows, networkRows, visitorRows] = await Promise.all([
@@ -210,11 +215,10 @@ function prismaAdmissionTransaction(tx: PrismaRawTransaction): TrialAiAdmissionT
         visitor: visitorRows[0]?.admittedCount ?? 0,
       };
     },
-    async hasActiveLease({ visitorDigest, kstDate }) {
+    async hasActiveLease(visitorDigest) {
       const rows = await tx.$queryRawUnsafe<Array<{ id: string }>>(
         LOCK_ACTIVE_LEASE_SQL,
         visitorDigest,
-        kstDate,
       );
       return rows.length > 0;
     },
@@ -240,6 +244,13 @@ const UPSERT_VISITOR_DAILY_USAGE_SQL = `
 INSERT INTO "TrialAiVisitorDailyUsage" ("id", "visitorDigest", "kstDate", "admittedCount", "updatedAt")
 VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)
 ON CONFLICT ("visitorDigest", "kstDate") DO NOTHING
+`;
+
+const LOCK_VISITOR_ADMISSION_SQL = `
+SELECT pg_catalog.pg_advisory_xact_lock(
+  pg_catalog.hashtext(pg_catalog.concat('munjib-trial-ai-admission-v1:a:', $1)),
+  pg_catalog.hashtext(pg_catalog.concat('munjib-trial-ai-admission-v1:b:', $1))
+)
 `;
 
 const UPSERT_NETWORK_DAILY_USAGE_SQL = `
@@ -279,7 +290,6 @@ const RELEASE_EXPIRED_LEASES_SQL = `
 UPDATE "TrialAiAdmissionLease"
 SET "releasedAt" = CURRENT_TIMESTAMP
 WHERE "visitorDigest" = $1
-  AND "kstDate" = $2
   AND "releasedAt" IS NULL
   AND "expiresAt" <= CURRENT_TIMESTAMP
 `;
@@ -306,7 +316,6 @@ const LOCK_ACTIVE_LEASE_SQL = `
 SELECT "id"
 FROM "TrialAiAdmissionLease"
 WHERE "visitorDigest" = $1
-  AND "kstDate" = $2
   AND "releasedAt" IS NULL
   AND "expiresAt" > CURRENT_TIMESTAMP
 FOR UPDATE

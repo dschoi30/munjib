@@ -46,9 +46,9 @@ ON "TrialAiVisitorDailyUsage"("visitorDigest", "kstDate");
 CREATE UNIQUE INDEX "TrialAiNetworkDailyUsage_networkDigest_kstDate_key"
 ON "TrialAiNetworkDailyUsage"("networkDigest", "kstDate");
 
-CREATE INDEX "TrialAiAdmissionLease_visitorDigest_kstDate_expiresAt_idx"
-ON "TrialAiAdmissionLease"("visitorDigest", "kstDate", "expiresAt");
+CREATE INDEX "TrialAiAdmissionLease_visitorDigest_expiresAt_idx"
+ON "TrialAiAdmissionLease"("visitorDigest", "expiresAt");
 
 CREATE UNIQUE INDEX "TrialAiAdmissionLease_active_visitor_key"
-ON "TrialAiAdmissionLease"("visitorDigest", "kstDate")
+ON "TrialAiAdmissionLease"("visitorDigest")
 WHERE "releasedAt" IS NULL;

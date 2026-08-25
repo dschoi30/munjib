@@ -51,6 +51,19 @@ describe("trial AI admission ledger", () => {
     expect(database.visitorCount("visitor-1", "2026-08-25")).toBe(1);
   });
 
+  it("denies a second concurrent request from the same visitor across the KST date boundary", async () => {
+    const results = await Promise.all([
+      admitTrialAiRequest(input(), dependencies(database)),
+      admitTrialAiRequest(input({ kstDate: "2026-08-26" }), dependencies(database)),
+    ]);
+
+    expect(results.filter((result) => result.kind === "admitted")).toHaveLength(1);
+    expect(results.filter((result) => result.kind === "denied")).toHaveLength(1);
+    expect(results.find((result) => result.kind === "denied")).toMatchObject({
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+  });
+
   it("atomically admits exactly three concurrent visitors before the global ceiling", async () => {
     const deps = dependencies(database, { globalDailyLimit: 3 });
     const results = await Promise.all(
@@ -103,6 +116,20 @@ describe("trial AI admission ledger", () => {
     database.failTransactions = true;
 
     await expect(admitTrialAiRequest(input(), dependencies(database))).resolves.toEqual({
+      kind: "denied",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+  });
+
+  it("fails closed when the lease-id entropy source fails", async () => {
+    await expect(
+      admitTrialAiRequest(input(), {
+        ...dependencies(database),
+        createLeaseId: () => {
+          throw new Error("entropy unavailable");
+        },
+      }),
+    ).resolves.toEqual({
       kind: "denied",
       code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
     });
@@ -178,6 +205,7 @@ function createAdmissionDatabase() {
   };
 
   const transaction: AdmissionTransaction = {
+    async lockVisitorAdmission() {},
     async ensureDailyRows({ visitorDigest, networkDigest, kstDate }) {
       visitors.set(`${visitorDigest}:${kstDate}`, database.visitorCount(visitorDigest, kstDate));
       networks.set(`${networkDigest}:${kstDate}`, networks.get(`${networkDigest}:${kstDate}`) ?? 0);
@@ -192,10 +220,10 @@ function createAdmissionDatabase() {
         global: database.globalCount(kstDate),
       };
     },
-    async hasActiveLease({ visitorDigest, kstDate }) {
+    async hasActiveLease(visitorDigest) {
       return [...leases.values()].some(
         (lease) =>
-          lease.visitorDigest === visitorDigest && lease.kstDate === kstDate && lease.releasedAt === null,
+          lease.visitorDigest === visitorDigest && lease.releasedAt === null,
       );
     },
     async recordAdmission({ visitorDigest, networkDigest, kstDate, leaseId }) {
@@ -217,6 +245,7 @@ function createAdmissionDatabase() {
 }
 
 type AdmissionTransaction = {
+  lockVisitorAdmission(visitorDigest: string): Promise<void>;
   ensureDailyRows(input: { visitorDigest: string; networkDigest: string; kstDate: string }): Promise<void>;
   lockDailyRows(): Promise<void>;
   releaseExpiredLeases(): Promise<void>;
@@ -225,7 +254,7 @@ type AdmissionTransaction = {
     network: number;
     global: number;
   }>;
-  hasActiveLease(input: { visitorDigest: string; kstDate: string }): Promise<boolean>;
+  hasActiveLease(visitorDigest: string): Promise<boolean>;
   recordAdmission(input: {
     visitorDigest: string;
     networkDigest: string;

@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-08-25
-source_count: 125
+source_count: 126
 tags:
   - munjib
   - workflow
@@ -56,21 +56,28 @@ model call.
 `TrialAiGlobalDailyUsage` keep independent KST-day counters. Their unique keys
 are respectively visitor digest/date, network digest/date, and date.
 `TrialAiAdmissionLease` records a short-lived active request and has a partial
-unique index that permits only one unreleased lease for a visitor/day. The
+unique index that permits only one unreleased lease for a visitor across every
+KST day. The
 ledger does not create or record raw visitor tokens, raw network identifiers,
 questions, prompts, context, or answers.
 
-Admission uses one PostgreSQL transaction: upsert the three day rows, lock
-Global → Network → Visitor in that fixed order, clear same-visitor expired
-leases using database time, evaluate the global/network/visitor ceilings and
-active lease, then increment every counter and insert the lease together.
+Admission uses one PostgreSQL transaction: first acquire a domain-separated,
+visitor-digest advisory transaction lock, then upsert the three day rows and
+lock Global → Network → Visitor in that fixed order. Two advisory hash lanes
+make accidental cross-visitor collisions only add harmless serialization, not
+an admission bypass. The transaction clears same-visitor expired leases using
+database time, evaluates the global/network/visitor ceilings and active lease,
+then increments every counter and inserts the lease together.
 Visitor and network ceilings are 3 and 15; the global ceiling is an operational
 positive integer and defaults closed. Lease release only marks `releasedAt` and
 never returns an admitted count. Unit coverage uses a serializable in-memory
-database double for these contracts; live PostgreSQL migration/locking evidence
-is still pending because Docker/PostgreSQL was unavailable. Tasks 4 and 5 must
-place this admission after their existing validation/authorization checks and
-before any provider call or Workspace stream response starts.
+database double for these contracts. An opt-in PostgreSQL suite
+(`MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1`) exercises the applied migration,
+raw locks, concurrent global admission, cross-midnight lease denial, and
+lease-insertion rollback; it remains unexecuted while Docker/PostgreSQL is
+unavailable. Tasks 4 and 5 must place this admission after their existing
+validation/authorization checks and before any provider call or Workspace
+stream response starts.
 
 ## Process Map
 
