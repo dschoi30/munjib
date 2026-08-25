@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-08-25T00:00:00+09:00 - 익명 Trial AI 일일 제한 설계
+
+- 결과: 가입 없는 익명 Trial에 기기별 KST 하루 Ask AI/Workspace AI 합산 3회를 제공하고, 일일 HMAC network ceiling, CAPTCHA 승격, 동시 요청 1회, 운영 설정 전체 한도를 결합하는 설계를 승인했다.
+- 안전 경계: 본인 확인 없는 traffic은 유일한 사람을 증명할 수 없음을 명시하고, admission state에 raw network 주소나 AI 내용을 저장하지 않으며, 모델 호출 전 fail closed하고 기존 `legacy-account-2@example.invalid`을 재활성화하지 않는다.
+- 페이지: [[index|Wiki Index]]. 설계: `docs/superpowers/specs/2026-08-25-anonymous-trial-ai-daily-limit-design.md`.
+- 근거: 현재 Ask AI와 Workspace AI route, auth session 경계, Issue #156 Trial 격리 기록, 사용자 승인 제품 제약.
+- 검증: 설계 검토만 완료했다. schema, route, auth provider, runtime 설정, production data, 배포 동작은 변경하지 않았다.
+
 ## 2026-07-20T07:42:00+09:00 - public security status signer prerequisite
 
 - Result: Added merged PR #209 / Issue #208 Phase A signer-lab preparation to the authoritative status map, explicitly retaining the #185 production bootstrap and independent attestation gates; refreshed #192/#193 heads.
