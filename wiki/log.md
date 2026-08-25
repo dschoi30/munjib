@@ -3784,3 +3784,9 @@ links:
 - Result: The Task 2 lease is now visitor-wide rather than visitor/day scoped. Admission first takes a domain-separated, two-lane advisory transaction lock on the opaque visitor digest, then retains the deterministic Global → Network → Visitor day-row lock order. An unreleased request therefore blocks a second request by the same visitor even when the requests straddle KST midnight.
 - Coverage: Added mock-backed cross-midnight and entropy-source-failure tests plus an opt-in PostgreSQL integration suite for concurrent global admission, cross-midnight denial, and transaction rollback when a lease-insert trigger fails. The integration suite requires `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and an already migrated disposable PostgreSQL database.
 - Verification: focused unit suite and TypeScript compile passed; the opt-in PostgreSQL suite was collected but skipped because Docker/PostgreSQL remains unavailable.
+
+## 2026-08-25T14:20:00+09:00 - anonymous trial AI PostgreSQL test hardening
+
+- Result: The opt-in PostgreSQL admission test now pre-seeds visitor/network/global daily rows before its concurrent requests, so unique-index insert serialization cannot conceal missing `FOR UPDATE` locks.
+- Concurrency oracle: The cross-midnight test starts its second request only after a test-only lease-insert trigger has reached a visible transaction-local `pg_sleep` barrier. Removing the visitor advisory lock then produces a lease uniqueness/database failure instead of the required `TRIAL_AI_REQUEST_IN_PROGRESS`; removing the daily row locks permits a fourth global admission after the pre-seeded ceiling check.
+- Verification: focused unit suite and TypeScript compile passed; PostgreSQL tests remain explicitly skipped without `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and a migrated disposable database.

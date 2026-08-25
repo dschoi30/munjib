@@ -74,10 +74,13 @@ never returns an admitted count. Unit coverage uses a serializable in-memory
 database double for these contracts. An opt-in PostgreSQL suite
 (`MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1`) exercises the applied migration,
 raw locks, concurrent global admission, cross-midnight lease denial, and
-lease-insertion rollback; it remains unexecuted while Docker/PostgreSQL is
-unavailable. Tasks 4 and 5 must place this admission after their existing
-validation/authorization checks and before any provider call or Workspace
-stream response starts.
+lease-insertion rollback. It pre-seeds the daily rows before concurrent calls
+so `INSERT ... ON CONFLICT` cannot hide a missing `FOR UPDATE`, and its
+cross-midnight case waits for a test-only lease-insert PostgreSQL sleep barrier
+before starting the second request. It remains unexecuted while
+Docker/PostgreSQL is unavailable. Tasks 4 and 5 must place this admission
+after their existing validation/authorization checks and before any provider
+call or Workspace stream response starts.
 
 ## Process Map
 
