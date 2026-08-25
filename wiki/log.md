@@ -3932,3 +3932,10 @@ links:
 - Navigation boundary: Ask and Workspace Trial citations stay inside `/trial/workspaces/<slug>?document=...`; authenticated citations retain the ordinary workspace route.
 - Source evidence: PR #213 review threads, shared Turnstile key resolver and login callers, embedding/index/workspace-chat privacy propagation, shared citation renderer and workspace route builder.
 - Verification: focused authentication, component, RAG, and privacy-contract suites passed 186 tests together with TypeScript compilation.
+
+## 2026-08-25T19:00:00+09:00 - charged Trial failure allowance projection
+
+- Result: admitted Ask provider failures and Workspace pre-stream preparation failures now return authoritative `trialAi.remaining` and `trialAi.resetsAt` with private no-store 503 responses.
+- Client boundary: both composers validate and publish this projection from non-success JSON before showing the generic error, while authenticated errors without Trial data remain unchanged and quota-denial fallback stays intact.
+- Source evidence: PR #213 review threads, Ask and Workspace message routes/error response helpers, both AI clients, and focused route/component regression tests.
+- Verification: combined Ask/Workspace route and component suites passed 148 tests with TypeScript compilation.

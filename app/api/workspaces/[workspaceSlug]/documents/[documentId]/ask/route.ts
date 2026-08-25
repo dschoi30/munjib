@@ -129,7 +129,12 @@ export async function POST(
             ? { trialAi: admittedTrialAi }
             : {}),
         },
-        { status: 503 },
+        {
+          status: 503,
+          ...(actor.authorizationPrincipal.kind === "anonymous-trial-demo" && admittedTrialAi
+            ? { headers: { "cache-control": "private, no-store" } }
+            : {}),
+        },
       );
     }
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });

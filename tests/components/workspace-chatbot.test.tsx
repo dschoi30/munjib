@@ -1100,6 +1100,39 @@ describe("WorkspaceChatbot", () => {
     expect(screen.queryByText("What changed?")).toBeNull();
   });
 
+  it("publishes the authoritative Trial allowance from a pre-stream 503", async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/messages")) {
+        return jsonResponse({
+          error: "AI_UNAVAILABLE",
+          trialAi: { remaining: 1, resetsAt: "2099-08-25T15:00:00.000Z" },
+        }, { status: 503 });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(
+      <WorkspaceChatbot
+        mode="anonymous-trial-readonly"
+        initialTrialAiAllowance={{ remaining: 2, resetsAt: "2099-08-25T15:00:00.000Z" }}
+        defaultChatModel="server/owned-model"
+        defaultChatProvider="openai-compatible"
+        availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }}
+        workspaceSlug="company-handbook"
+        selectedDocumentId={null}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "What changed?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText("Workspace AI is unavailable.")).toBeTruthy();
+    expect(screen.getByText("1 of 3 trial AI uses remaining today")).toBeTruthy();
+    expect(screen.queryByText("2 of 3 trial AI uses remaining today")).toBeNull();
+  });
+
   it("shows the authoritative trial allowance from the workspace start event", async () => {
     fetchMock.mockImplementation(async (url: string) => {
       if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });

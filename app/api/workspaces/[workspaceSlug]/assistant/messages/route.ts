@@ -161,7 +161,7 @@ export async function POST(
           { status: 499, headers: { "cache-control": "private, no-store" } },
         );
       }
-      return workspaceChatTrialFailureResponse(admission.remaining);
+      return workspaceChatTrialFailureResponse(admission);
     }
     return workspaceChatErrorResponse(error, {
       surface: "workspace_chat_prepare",

@@ -85,9 +85,17 @@ export function normalizeWorkspaceChatTrialFailure(remaining: 0 | 1 | 2) {
   return "AI_UNAVAILABLE" as const;
 }
 
-export function workspaceChatTrialFailureResponse(remaining: 0 | 1 | 2) {
+export function workspaceChatTrialFailureResponse(
+  admission: Pick<Extract<TrialAiAdmission, { kind: "admitted" }>, "remaining" | "resetsAt">,
+) {
   return NextResponse.json(
-    { error: normalizeWorkspaceChatTrialFailure(remaining) },
+    {
+      error: normalizeWorkspaceChatTrialFailure(admission.remaining),
+      trialAi: {
+        remaining: admission.remaining,
+        resetsAt: admission.resetsAt,
+      },
+    },
     { status: 503, headers: { "cache-control": "private, no-store" } },
   );
 }

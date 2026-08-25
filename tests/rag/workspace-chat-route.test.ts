@@ -445,6 +445,13 @@ describe("workspace chat routes", () => {
     const response = await responsePromise;
 
     expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "AI_UNAVAILABLE",
+      trialAi: {
+        remaining: 0,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+      },
+    });
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-prepare");
     expect(captureTrialAiFailure).toHaveBeenCalledWith({
       surface: "workspace_chat",

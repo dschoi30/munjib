@@ -280,8 +280,9 @@ export function WorkspaceChatbot({
         }),
       });
       if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        updateTrialAiAllowance(body?.trialAi);
         if (response.status === 429) {
-          const body = await response.json().catch(() => null);
           updateTrialAiAllowance(trialAiAllowanceFromQuotaError(body));
         }
         throw new Error("WORKSPACE_CHAT_FAILED");

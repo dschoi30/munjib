@@ -216,6 +216,7 @@ describe("RAG ask route", () => {
       trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
     });
     expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
     expect(captureTrialAiFailure).toHaveBeenCalledWith({
       surface: "ask_document",
@@ -266,6 +267,7 @@ describe("RAG ask route", () => {
       trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
     });
     expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(captureTrialAiFailure).toHaveBeenCalledWith({
       surface: "ask_document",
       resultCode: "AI_UNAVAILABLE",
