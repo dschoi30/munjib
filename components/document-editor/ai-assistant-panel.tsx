@@ -144,6 +144,7 @@ export function AiAssistantPanel({
       const body = (await response.json()) as AskResponse;
 
       if (!response.ok) {
+        updateTrialAiAllowance(body.trialAi);
         if (response.status === 429) updateTrialAiAllowance(trialAiAllowanceFromQuotaError(body));
         throw new Error(body.error || "AI_REQUEST_FAILED");
       }

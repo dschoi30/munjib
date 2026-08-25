@@ -432,6 +432,29 @@ describe("DocumentEditor heading preview folding", () => {
     expect(screen.getByText("한국 시간(KST) 자정에 다시 사용할 수 있습니다.")).toBeTruthy();
   });
 
+  it("publishes authoritative Trial allowance from an admitted Ask failure", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          error: "AI_UNAVAILABLE",
+          trialAi: { remaining: 0, resetsAt: "2099-08-25T15:00:00.000Z" },
+        }),
+        { status: 503, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderEditor("# A\nBody");
+    fireEvent.click(screen.getByRole("button", { name: "AI 어시스턴트 열기" }));
+    const question = screen.getByLabelText("AI 질문") as HTMLTextAreaElement;
+    fireEvent.change(question, { target: { value: "세 번째 질문" } });
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+
+    await waitFor(() => expect(question.disabled).toBe(true));
+    expect(screen.getByText("오늘 Trial AI 3회 중 0회 남음")).toBeTruthy();
+    expect(screen.getByText("AI 답변을 가져오지 못했습니다.")).toBeTruthy();
+  });
+
   it("uses the selected Korean display language for Ask AI chrome, errors, and request payloads", async () => {
     window.localStorage.setItem("munjib:language", "ko");
     const fetchMock = vi.fn(async () => ({
