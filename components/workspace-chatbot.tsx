@@ -34,6 +34,8 @@ type ChatCitation = AiCitation;
 type ChatMessage = WorkspaceChatStreamMessage;
 
 type WorkspaceChatbotProps = {
+  mode?: "authenticated" | "anonymous-trial-readonly";
+  initialTrialAiAllowance?: TrialAiAllowance | null;
   workspaceSlug: string;
   selectedDocumentId: string | null;
   defaultChatProvider: ClientRagChatProvider;
@@ -46,6 +48,8 @@ type ThreadResponse = {
 };
 
 export function WorkspaceChatbot({
+  mode = "authenticated",
+  initialTrialAiAllowance = null,
   workspaceSlug,
   selectedDocumentId,
   defaultChatProvider,
@@ -73,7 +77,7 @@ export function WorkspaceChatbot({
   const defaultChatProviderRef = useRef(defaultChatProvider);
   defaultChatProviderRef.current = defaultChatProvider;
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    effectiveChatModelSetting(
+    mode === "anonymous-trial-readonly" ? null : effectiveChatModelSetting(
       readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
       defaultChatProvider,
       availableChatProviders,
@@ -98,13 +102,11 @@ export function WorkspaceChatbot({
     messageVersionRef.current += 1;
     abortActiveSend();
     hasLoadedThreadRef.current = false;
-    setChatModelOverride(
-      effectiveChatModelSetting(
-        readStoredChatModelSetting(workspaceSlug, fallbackChatProviderRef.current),
-        defaultChatProviderRef.current,
-        availableChatProvidersRef.current,
-      ),
-    );
+    setChatModelOverride(mode === "anonymous-trial-readonly" ? null : effectiveChatModelSetting(
+      readStoredChatModelSetting(workspaceSlug, fallbackChatProviderRef.current),
+      defaultChatProviderRef.current,
+      availableChatProvidersRef.current,
+    ));
     setMessages([]);
     setMessageInput("");
     setIsLoading(false);
@@ -117,9 +119,15 @@ export function WorkspaceChatbot({
       messageVersionRef.current += 1;
       abortActiveSend();
     };
-  }, [workspaceSlug]);
+  }, [mode, workspaceSlug]);
 
   useEffect(() => subscribeToTrialAiAllowance(setTrialAiAllowance), []);
+
+  useEffect(() => {
+    if (mode !== "anonymous-trial-readonly") return;
+    const allowance = parseTrialAiAllowance(initialTrialAiAllowance);
+    if (allowance) publishTrialAiAllowance(allowance);
+  }, [initialTrialAiAllowance, mode]);
 
   function updateTrialAiAllowance(value: unknown) {
     const allowance = parseTrialAiAllowance(value);
@@ -140,6 +148,7 @@ export function WorkspaceChatbot({
   }, [workspaceSlug]);
 
   useEffect(() => {
+    if (mode === "anonymous-trial-readonly") return;
     return subscribeToStoredChatModelChanges((change) => {
       if (change.workspaceSlug !== workspaceSlug) return;
       setChatModelOverride(
@@ -152,7 +161,7 @@ export function WorkspaceChatbot({
         ),
       );
     }, { chatProvider: fallbackChatProviderRef.current });
-  }, [workspaceSlug]);
+  }, [mode, workspaceSlug]);
 
   function abortActiveSend() {
     activeSendAbortRef.current?.abort();
@@ -182,6 +191,10 @@ export function WorkspaceChatbot({
 
   useEffect(() => {
     if (!isCurrentWorkspaceHydrated || !isOpen || hasLoadedThreadRef.current) return;
+    if (mode === "anonymous-trial-readonly") {
+      hasLoadedThreadRef.current = true;
+      return;
+    }
 
     let cancelled = false;
     const loadGeneration = requestGenerationRef.current;
@@ -214,7 +227,7 @@ export function WorkspaceChatbot({
     return () => {
       cancelled = true;
     };
-  }, [isCurrentWorkspaceHydrated, isOpen, workspaceSlug]);
+  }, [isCurrentWorkspaceHydrated, isOpen, mode, workspaceSlug]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -258,7 +271,7 @@ export function WorkspaceChatbot({
           message: trimmedMessage,
           ...(selectedDocumentId ? { selectedDocumentId } : {}),
           uiLanguage: language,
-          ...(chatModelOverride
+          ...(mode !== "anonymous-trial-readonly" && chatModelOverride
             ? {
                 chatProvider: chatModelOverride.chatProvider,
                 chatModel: chatModelOverride.chatModel,
@@ -407,15 +420,17 @@ export function WorkspaceChatbot({
           <span>{t("ai.workspace.title")}</span>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            type="button"
-            aria-label={t("ai.workspace.reset")}
-            disabled={isResetting}
-            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-            onClick={handleReset}
-          >
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          </button>
+          {mode !== "anonymous-trial-readonly" ? (
+            <button
+              type="button"
+              aria-label={t("ai.workspace.reset")}
+              disabled={isResetting}
+              className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              onClick={handleReset}
+            >
+              <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            </button>
+          ) : null}
           <button
             type="button"
             aria-label={t("ai.workspace.close")}

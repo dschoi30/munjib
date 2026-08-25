@@ -3876,3 +3876,11 @@ links:
 - Result: Issue #212 Task 7 adds one DB-independent cross-file contract for digest-only quota persistence, opaque entitlement JSON, hardened bounded visitor cookies, Ask metadata-only capture, stateless Workspace AI, sanitized Trial telemetry, server-owned model selection, legacy-provider removal, and production-default-closed capability activation.
 - Mutation coverage: representative raw-IP/prompt columns, entitlement digest exposure, full-content Ask capture, Trial chat persistence, question telemetry, and a removed override guard are injected as negative fixtures and must be rejected by the same validators used for current source.
 - Source evidence: `tests/security/trial-ai-privacy-source-contract.test.ts`, the anonymous Trial admission migration/schema, entitlement/cookie/auth configuration, Ask and Workspace AI route/service implementations, and Trial observability helper.
+
+## 2026-08-25T18:05:00+09:00 - Trial viewer AI surface review hardening
+
+- Result: The selected allowed Trial document now renders Ask AI, and Workspace AI has an explicit anonymous read-only mode that uses only the stateless messages POST. It never calls authenticated thread GET/reset APIs and omits the reset control.
+- Model boundary: Anonymous Ask and Workspace clients do not read or subscribe to workspace model overrides and never serialize provider/model fields. The server-owned model is displayed and remains enforced by the existing cookie, exact workspace/document, and edge-proof authorization in each API route; the UI mode is not an authority signal.
+- Allowance bootstrap: The viewer re-resolves entitlement server-side and passes only validated `{ remaining, resetsAt }` to both surfaces. The projection excludes workspace IDs and visitor/network subjects or digests and enters the existing monotonic same-tab channel, retaining KST expiry and accessible composer guidance.
+- Source evidence: `app/trial/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/auth/trial-entitlement.ts`, and focused component/viewer/auth tests.
+- Verification: strict RED reproduced missing Ask, authenticated thread calls, reset UI, browser model override use, and missing server allowance bootstrap; focused 118-test GREEN suite and TypeScript compilation passed.

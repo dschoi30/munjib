@@ -187,6 +187,22 @@ must still come from entitlement or an AI route. Both allowance blocks are
 polite live status regions, and each composer references its status text with
 `aria-describedby` so a disabled zero-use state includes the KST reset reason.
 
+Task 7 review hardening connects both AI surfaces to the dedicated Trial viewer
+without weakening their route authority. The selected active document that has
+no explicit permission row renders an Ask AI panel, while Workspace AI receives
+an explicit `anonymous-trial-readonly` UX mode. In that mode the client never
+loads or resets an authenticated conversation thread and sends only the
+stateless messages POST; the reset control is absent. Both Trial surfaces also
+skip browser model-setting reads, subscriptions, and request fields, so the
+displayed and requested model remains server-owned. These props are presentation
+controls only: the Ask and Workspace routes still re-resolve the cookie-backed
+actor, exact demo workspace/document, and edge evidence before authorization.
+The viewer independently resolves the entitlement on the server and projects
+only `{ remaining, resetsAt }` into the two clients; workspace IDs and visitor or
+network subjects/digests are not serialized. That initial projection enters the
+same monotonic in-memory allowance channel, preserving expiry timers,
+cross-surface synchronization, and accessibility behavior.
+
 ## Process Map
 
 이 지도는 현재 Ask AI direct path와 workspace chatbot RAG service path를 분리해서 보여준다.

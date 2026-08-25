@@ -34,6 +34,8 @@ type AskResponse = {
 };
 
 type AiAssistantPanelProps = {
+  mode?: "authenticated" | "anonymous-trial-readonly";
+  initialTrialAiAllowance?: TrialAiAllowance | null;
   workspaceSlug: string;
   documentId: string;
   hasUnsavedChanges: boolean;
@@ -43,6 +45,8 @@ type AiAssistantPanelProps = {
 };
 
 export function AiAssistantPanel({
+  mode = "authenticated",
+  initialTrialAiAllowance = null,
   workspaceSlug,
   documentId,
   hasUnsavedChanges,
@@ -62,7 +66,7 @@ export function AiAssistantPanel({
     defaultChatProvider,
   );
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    effectiveChatModelSetting(
+    mode === "anonymous-trial-readonly" ? null : effectiveChatModelSetting(
       readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
       defaultChatProvider,
       availableChatProviders,
@@ -72,6 +76,10 @@ export function AiAssistantPanel({
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
+    if (mode === "anonymous-trial-readonly") {
+      setChatModelOverride(null);
+      return;
+    }
     setChatModelOverride(
       effectiveChatModelSetting(
         readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
@@ -91,9 +99,15 @@ export function AiAssistantPanel({
         ),
       );
     }, { chatProvider: fallbackChatProvider });
-  }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, workspaceSlug]);
+  }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, mode, workspaceSlug]);
 
   useEffect(() => subscribeToTrialAiAllowance(setTrialAiAllowance), []);
+
+  useEffect(() => {
+    if (mode !== "anonymous-trial-readonly") return;
+    const allowance = parseTrialAiAllowance(initialTrialAiAllowance);
+    if (allowance) publishTrialAiAllowance(allowance);
+  }, [initialTrialAiAllowance, mode]);
 
   function updateTrialAiAllowance(value: unknown) {
     const allowance = parseTrialAiAllowance(value);
@@ -111,7 +125,7 @@ export function AiAssistantPanel({
     setCitations([]);
 
     try {
-      const requestBody = chatModelOverride
+      const requestBody = mode !== "anonymous-trial-readonly" && chatModelOverride
         ? {
             question: trimmedQuestion,
             uiLanguage: language,
