@@ -28,11 +28,14 @@ export type RagEmbeddingClientConfig = {
 
 export type EmbedTextOptions = {
   config?: RagEmbeddingClientConfig;
+  privacySafeLogging?: boolean;
+  signal?: AbortSignal;
   embeddingModel?: LangChainEmbeddingModel;
   expectedDimensions?: number;
   getRagModelConfig?: () => RagEmbeddingClientConfig | Promise<RagEmbeddingClientConfig>;
   createEmbeddingModel?: (
     config: RagEmbeddingClientConfig,
+    options?: Readonly<{ signal?: AbortSignal }>,
   ) => LangChainEmbeddingModel | Promise<LangChainEmbeddingModel>;
 };
 
@@ -43,6 +46,7 @@ type RagModelConfigModule = {
 type RagModelFactoryModule = {
   createEmbeddingModel?: (
     config: RagEmbeddingClientConfig["embedding"],
+    options?: Readonly<{ signal?: AbortSignal }>,
   ) => LangChainEmbeddingModel | Promise<LangChainEmbeddingModel>;
 };
 
@@ -68,6 +72,7 @@ export function assertCurrentEmbeddingIndex(config: RagEmbeddingClientConfig) {
 }
 
 export async function embedText(text: string, options: EmbedTextOptions = {}): Promise<number[]> {
+  throwIfAborted(options.signal);
   const config =
     options.config ?? (options.embeddingModel ? undefined : await loadRagModelConfig(options));
   if (config) {
@@ -76,12 +81,20 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
 
   const embeddingModel =
     options.embeddingModel ?? (await loadEmbeddingModel(options, requireConfig(config)));
+  throwIfAborted(options.signal);
 
   let embedding: unknown;
   try {
     embedding = await embeddingModel.embedQuery(text);
   } catch (error) {
-    console.error("Embedding request failed:", error);
+    if (options.privacySafeLogging) {
+      console.error("Embedding request failed", {
+        code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,
+        surface: "embedding",
+      });
+    } else {
+      console.error("Embedding request failed:", error);
+    }
     throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
   }
 
@@ -89,6 +102,13 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
     embedding,
     options.expectedDimensions ?? config?.embedding.dimensions ?? CURRENT_EMBEDDING_DIMENSIONS,
   );
+}
+
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("Aborted", "AbortError");
 }
 
 async function loadRagModelConfig(options: EmbedTextOptions) {
@@ -105,7 +125,7 @@ async function loadRagModelConfig(options: EmbedTextOptions) {
 
 async function loadEmbeddingModel(options: EmbedTextOptions, config: RagEmbeddingClientConfig) {
   if (options.createEmbeddingModel) {
-    return options.createEmbeddingModel(config);
+    return options.createEmbeddingModel(config, { signal: options.signal });
   }
 
   const factoryModule = (await import(
@@ -114,7 +134,7 @@ async function loadEmbeddingModel(options: EmbedTextOptions, config: RagEmbeddin
   if (!factoryModule.createEmbeddingModel) {
     throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
   }
-  return factoryModule.createEmbeddingModel(config.embedding);
+  return factoryModule.createEmbeddingModel(config.embedding, { signal: options.signal });
 }
 
 function requireConfig(config: RagEmbeddingClientConfig | undefined) {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createChatModel, createEmbeddingModel } from "@/lib/rag/model-factory";
 
 class FakeChatOllama {
@@ -23,6 +23,10 @@ const constructors = {
   ChatOpenAI: FakeChatOpenAI,
   OpenAIEmbeddings: FakeOpenAIEmbeddings,
 };
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe("RAG LangChain model factory", () => {
   it("creates an Ollama chat model with model and base URL", () => {
@@ -50,6 +54,7 @@ describe("RAG LangChain model factory", () => {
         baseUrl: "http://ollama.internal:11434",
         dimensions: 1024,
       },
+      undefined,
       constructors,
     );
 
@@ -58,6 +63,69 @@ describe("RAG LangChain model factory", () => {
       model: "bge-m3",
       baseUrl: "http://ollama.internal:11434",
     });
+  });
+
+  it("binds the lease abort signal to the Ollama HTTP transport", async () => {
+    const controller = new AbortController();
+    const transport = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal("fetch", transport);
+    const model = createEmbeddingModel(
+      {
+        provider: "ollama",
+        model: "bge-m3",
+        baseUrl: "http://ollama.internal:11434",
+        dimensions: 1024,
+      },
+      { signal: controller.signal },
+      constructors,
+    );
+
+    const options = (model as FakeOllamaEmbeddings).options as { fetch: typeof fetch };
+    await options.fetch("http://ollama.internal:11434/api/embed", {});
+
+    expect(transport).toHaveBeenCalledWith(
+      "http://ollama.internal:11434/api/embed",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  it("aborts an actual LangChain Ollama embedding request at the HTTP transport", async () => {
+    const controller = new AbortController();
+    let transportSignal: AbortSignal | null | undefined;
+    const transport = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      transportSignal = init?.signal;
+      return new Promise<Response>((_resolve, reject) => {
+        if (transportSignal?.aborted) {
+          reject(new DOMException("Aborted", "AbortError"));
+          return;
+        }
+        transportSignal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      });
+    });
+    vi.stubGlobal("fetch", transport);
+    const model = createEmbeddingModel(
+      {
+        provider: "ollama",
+        model: "bge-m3",
+        baseUrl: "http://ollama.internal:11434",
+        dimensions: 1024,
+      },
+      { signal: controller.signal },
+    );
+    (model as unknown as { caller: { maxRetries: number } }).caller.maxRetries = 0;
+
+    const request = (model as { embedQuery(text: string): Promise<unknown> }).embedQuery(
+      "pending trial question",
+    );
+    await vi.waitFor(() => expect(transport).toHaveBeenCalled());
+    controller.abort();
+
+    await expect(request).rejects.toThrow();
+    expect(transportSignal?.aborted).toBe(true);
   });
 
   it("creates an official OpenAI chat model with model and API key", () => {
@@ -106,6 +174,7 @@ describe("RAG LangChain model factory", () => {
         apiKey: "sk-test",
         dimensions: 1024,
       },
+      undefined,
       constructors,
     );
 
@@ -117,6 +186,71 @@ describe("RAG LangChain model factory", () => {
     });
   });
 
+  it("binds the lease abort signal to the OpenAI HTTP transport", async () => {
+    const controller = new AbortController();
+    const transport = vi.fn().mockResolvedValue(new Response());
+    vi.stubGlobal("fetch", transport);
+    const model = createEmbeddingModel(
+      {
+        provider: "openai",
+        model: "text-embedding-3-large",
+        apiKey: "sk-test",
+        dimensions: 1024,
+      },
+      { signal: controller.signal },
+      constructors,
+    );
+
+    const options = (model as FakeOpenAIEmbeddings).options as {
+      configuration: { fetch: typeof fetch };
+    };
+    await options.configuration.fetch("https://api.openai.com/v1/embeddings", {});
+
+    expect(transport).toHaveBeenCalledWith(
+      "https://api.openai.com/v1/embeddings",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
+  it("aborts an actual LangChain OpenAI embedding request at the HTTP transport", async () => {
+    const controller = new AbortController();
+    let transportSignal: AbortSignal | null | undefined;
+    const transport = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
+      transportSignal = init?.signal;
+      return new Promise<Response>((_resolve, reject) => {
+        if (transportSignal?.aborted) {
+          reject(new DOMException("Aborted", "AbortError"));
+          return;
+        }
+        transportSignal?.addEventListener(
+          "abort",
+          () => reject(new DOMException("Aborted", "AbortError")),
+          { once: true },
+        );
+      });
+    });
+    vi.stubGlobal("fetch", transport);
+    const model = createEmbeddingModel(
+      {
+        provider: "openai",
+        model: "text-embedding-3-large",
+        apiKey: "sk-test",
+        dimensions: 1024,
+      },
+      { signal: controller.signal },
+    );
+    (model as unknown as { caller: { maxRetries: number } }).caller.maxRetries = 0;
+
+    const request = (model as { embedQuery(text: string): Promise<unknown> }).embedQuery(
+      "pending trial question",
+    );
+    await vi.waitFor(() => expect(transport).toHaveBeenCalled());
+    controller.abort();
+
+    await expect(request).rejects.toThrow();
+    expect(transportSignal?.aborted).toBe(true);
+  });
+
   it("passes an official OpenAI base URL override to embedding models", () => {
     const model = createEmbeddingModel(
       {
@@ -126,6 +260,7 @@ describe("RAG LangChain model factory", () => {
         baseUrl: "https://openai-proxy.example.com/v1",
         dimensions: 1024,
       },
+      undefined,
       constructors,
     );
 
@@ -190,6 +325,7 @@ describe("RAG LangChain model factory", () => {
         baseUrl: "https://models.example.com/v1",
         dimensions: 1024,
       },
+      undefined,
       constructors,
     );
 
@@ -212,6 +348,7 @@ describe("RAG LangChain model factory", () => {
         baseUrl: "http://localhost:1234/v1",
         dimensions: 1024,
       },
+      undefined,
       constructors,
     );
 

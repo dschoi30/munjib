@@ -6,6 +6,13 @@ import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
+  parseTrialAiAllowance,
+  publishTrialAiAllowance,
+  subscribeToTrialAiAllowance,
+  trialAiAllowanceFromQuotaError,
+  type TrialAiAllowance,
+} from "@/components/workspace-chatbot-stream";
+import {
   type ChatModelSetting,
   type ClientRagChatProvider,
   type ClientRagChatProviderAvailability,
@@ -21,9 +28,14 @@ type AskResponse = {
   answer?: string;
   citations?: AssistantCitation[];
   error?: string;
+  code?: string;
+  resetsAt?: string;
+  trialAi?: TrialAiAllowance;
 };
 
 type AiAssistantPanelProps = {
+  mode?: "authenticated" | "anonymous-trial-readonly";
+  initialTrialAiAllowance?: TrialAiAllowance | null;
   workspaceSlug: string;
   documentId: string;
   hasUnsavedChanges: boolean;
@@ -33,6 +45,8 @@ type AiAssistantPanelProps = {
 };
 
 export function AiAssistantPanel({
+  mode = "authenticated",
+  initialTrialAiAllowance = null,
   workspaceSlug,
   documentId,
   hasUnsavedChanges,
@@ -46,12 +60,13 @@ export function AiAssistantPanel({
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
   const [error, setError] = useState<"" | "answerFailed">("");
   const [isLoading, setIsLoading] = useState(false);
+  const [trialAiAllowance, setTrialAiAllowance] = useState<TrialAiAllowance | null>(null);
   const fallbackChatProvider = firstAvailableChatProvider(
     availableChatProviders,
     defaultChatProvider,
   );
   const [chatModelOverride, setChatModelOverride] = useState<ChatModelSetting | null>(() =>
-    effectiveChatModelSetting(
+    mode === "anonymous-trial-readonly" ? null : effectiveChatModelSetting(
       readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
       defaultChatProvider,
       availableChatProviders,
@@ -61,6 +76,10 @@ export function AiAssistantPanel({
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
+    if (mode === "anonymous-trial-readonly") {
+      setChatModelOverride(null);
+      return;
+    }
     setChatModelOverride(
       effectiveChatModelSetting(
         readStoredChatModelSetting(workspaceSlug, fallbackChatProvider),
@@ -80,7 +99,21 @@ export function AiAssistantPanel({
         ),
       );
     }, { chatProvider: fallbackChatProvider });
-  }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, workspaceSlug]);
+  }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, mode, workspaceSlug]);
+
+  useEffect(() => subscribeToTrialAiAllowance(setTrialAiAllowance), []);
+
+  useEffect(() => {
+    if (mode !== "anonymous-trial-readonly") return;
+    const allowance = parseTrialAiAllowance(initialTrialAiAllowance);
+    if (allowance) publishTrialAiAllowance(allowance);
+  }, [initialTrialAiAllowance, mode]);
+
+  function updateTrialAiAllowance(value: unknown) {
+    const allowance = parseTrialAiAllowance(value);
+    if (!allowance) return;
+    publishTrialAiAllowance(allowance);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,7 +125,7 @@ export function AiAssistantPanel({
     setCitations([]);
 
     try {
-      const requestBody = chatModelOverride
+      const requestBody = mode !== "anonymous-trial-readonly" && chatModelOverride
         ? {
             question: trimmedQuestion,
             uiLanguage: language,
@@ -111,9 +144,12 @@ export function AiAssistantPanel({
       const body = (await response.json()) as AskResponse;
 
       if (!response.ok) {
+        updateTrialAiAllowance(body.trialAi);
+        if (response.status === 429) updateTrialAiAllowance(trialAiAllowanceFromQuotaError(body));
         throw new Error(body.error || "AI_REQUEST_FAILED");
       }
 
+      updateTrialAiAllowance(body.trialAi);
       setAnswer(body.answer ?? "");
       setCitations(body.citations ?? []);
     } catch {
@@ -140,16 +176,33 @@ export function AiAssistantPanel({
         </span>
       </div>
       <form className="space-y-2" onSubmit={handleSubmit}>
+        {trialAiAllowance ? (
+          <div
+            id={`trial-ai-allowance-ask-${documentId}`}
+            role="status"
+            aria-live="polite"
+            className="space-y-0.5 text-xs text-slate-600"
+          >
+            <p>{t("ai.trial.remaining", { remaining: trialAiAllowance.remaining, limit: 3 })}</p>
+            <p>{t("ai.trial.resetsAtKst")}</p>
+          </div>
+        ) : null}
         <textarea
           aria-label={t("ai.questionLabel")}
           value={question}
+          disabled={trialAiAllowance?.remaining === 0}
+          aria-describedby={trialAiAllowance ? `trial-ai-allowance-ask-${documentId}` : undefined}
           onChange={(event) => setQuestion(event.target.value)}
           rows={3}
           className="w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
           placeholder={t("ai.askPlaceholder")}
         />
         <div className="flex justify-end">
-          <Button type="submit" disabled={!trimmedQuestion || isLoading} className="h-8 px-2 text-xs">
+          <Button
+            type="submit"
+            disabled={!trimmedQuestion || isLoading || trialAiAllowance?.remaining === 0}
+            className="h-8 px-2 text-xs"
+          >
             {t("ai.askSubmit")}
           </Button>
         </div>
@@ -162,6 +215,7 @@ export function AiAssistantPanel({
           <AiCitations
             citations={citations}
             workspaceSlug={workspaceSlug}
+            mode={mode}
             className="text-xs text-slate-500"
           />
         </div>

@@ -15,7 +15,10 @@ export type SavedDocumentForIndex = {
   updatedAt: Date;
 };
 
-type EmbedText = (text: string) => Promise<number[]>;
+type EmbedText = (
+  text: string,
+  options?: Readonly<{ privacySafeLogging?: boolean; signal?: AbortSignal }>,
+) => Promise<number[]>;
 type ReplaceDocumentChunksInput = Parameters<typeof defaultReplaceDocumentChunks>[1];
 type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<unknown>;
 type IsDocumentCurrent = (document: SavedDocumentForIndex) => Promise<boolean>;
@@ -24,6 +27,8 @@ type ScheduleAfter = (task: () => unknown | Promise<unknown>) => void;
 type IndexSavedDocumentInput = {
   document: SavedDocumentForIndex;
   embeddingModel?: string;
+  privacySafeLogging?: boolean;
+  signal?: AbortSignal;
   embedText?: EmbedText;
   replaceDocumentChunks?: ReplaceDocumentChunks;
   isDocumentCurrent?: IsDocumentCurrent;
@@ -50,6 +55,14 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
   });
   const embeddedChunks = [];
   for (const chunk of chunks) {
+    throwIfAborted(input.signal);
+    const embedding = input.privacySafeLogging || input.signal
+      ? await embedText(chunk.content, {
+          ...(input.privacySafeLogging ? { privacySafeLogging: true } : {}),
+          ...(input.signal ? { signal: input.signal } : {}),
+        })
+      : await embedText(chunk.content);
+    throwIfAborted(input.signal);
     embeddedChunks.push({
       id: randomUUID(),
       workspaceId: document.workspaceId,
@@ -61,7 +74,7 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
       sourceUpdatedAt: document.updatedAt,
       tokenCount: chunk.tokenCount,
       embeddingModel,
-      embedding: await embedText(chunk.content),
+      embedding,
     });
   }
 
@@ -87,6 +100,8 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
     return await indexSavedDocument({
       document,
       embeddingModel: input.embeddingModel,
+      privacySafeLogging: input.privacySafeLogging,
+      signal: input.signal,
       embedText: input.embedText,
       replaceDocumentChunks: input.replaceDocumentChunks,
       isDocumentCurrent: input.isDocumentCurrent ?? isSavedDocumentCurrent,
@@ -95,6 +110,13 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
     input.logger?.(input.documentId, error);
     return false;
   }
+}
+
+function throwIfAborted(signal: AbortSignal | undefined) {
+  if (!signal?.aborted) return;
+  throw signal.reason instanceof Error
+    ? signal.reason
+    : new DOMException("Aborted", "AbortError");
 }
 
 export function scheduleSavedDocumentIndex(input: ScheduleSavedDocumentIndexInput) {

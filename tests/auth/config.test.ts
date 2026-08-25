@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   authOptions,
+  buildAuthOptions,
   resolveAuthCookieSecure,
   resolveGoogleAuthCredentials,
   resolveAuthSecret,
   resolveDevLoginEnabled,
   resolveDefaultRuntime,
   resolveTrialLoginEnabled,
+  resolveTrialTurnstileSiteKey,
 } from "@/lib/auth/config";
 
 type CredentialsAuthorizeForTest = (
@@ -294,27 +296,36 @@ describe("authOptions", () => {
     expect(result).toBeNull();
   });
 
-  it("signs in the seeded trial user without browser-visible secrets", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: "trial-user",
-      email: "mjtrial@munjib.com",
-      name: "Munjib Trial",
-      image: null,
+  it("never registers or queries the legacy shared Trial provider", () => {
+    const options = buildAuthOptions({
+      deploymentEnvironment: "development",
+      secret: "development-secret-placeholder",
+      canonicalOrigin: "http://localhost:3000",
+      secureCookies: false,
+      developmentLoginEnabled: true,
+      passwordSignupEnabled: false,
+      oauthSignupEnabled: false,
     });
 
-    const provider = getCredentialsProvider("trial");
-    const result = await provider.authorize?.({}, {} as never);
+    expect(options.providers.map((provider) => provider.id)).not.toContain("trial");
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: "mjtrial@munjib.com" } }),
+    );
+  });
 
-    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "mjtrial@munjib.com" },
-      select: { id: true, email: true, name: true, image: true },
+  it("does not register or query the legacy Trial provider in production", () => {
+    const options = buildAuthOptions({
+      deploymentEnvironment: "production",
+      secret: "production-secret-placeholder",
+      canonicalOrigin: "https://munjib.example",
+      secureCookies: true,
+      developmentLoginEnabled: false,
+      passwordSignupEnabled: false,
+      oauthSignupEnabled: false,
     });
-    expect(result).toEqual({
-      id: "trial-user",
-      email: "mjtrial@munjib.com",
-      name: "Munjib Trial",
-      image: null,
-    });
+
+    expect(options.providers.map((provider) => provider.id)).not.toContain("trial");
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("resolves Google auth credentials only when both env values are present", () => {
@@ -350,13 +361,22 @@ describe("authOptions", () => {
   });
 
   it.each([
-    [{ MUNJIB_DEPLOYMENT_ENV: "development", NODE_ENV: "production" }, true],
-    [{ MUNJIB_DEPLOYMENT_ENV: "staging", NODE_ENV: "production" }, false],
-    [{ MUNJIB_DEPLOYMENT_ENV: "production", NODE_ENV: "production" }, false],
-    [{ NODE_ENV: "development" }, true],
-    [{ NODE_ENV: "production" }, false],
-  ])("gates the trial login on deployment environment", (env, expected) => {
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "true" }, true],
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "false" }, false],
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "TRUE" }, false],
+    [{ NODE_ENV: "development" }, false],
+  ])("gates the Trial entry on the anonymous capability flag", (env, expected) => {
     expect(resolveTrialLoginEnabled(env)).toBe(expected);
+  });
+
+  it("returns only a trimmed validated public Turnstile site key", () => {
+    expect(resolveTrialTurnstileSiteKey({
+      MUNJIB_TURNSTILE_SITE_KEY: " 0x4AAAAAAAtest-site-key ",
+    })).toBe("0x4AAAAAAAtest-site-key");
+    expect(resolveTrialTurnstileSiteKey({ MUNJIB_TURNSTILE_SITE_KEY: "short" })).toBeUndefined();
+    expect(resolveTrialTurnstileSiteKey({
+      MUNJIB_TURNSTILE_SITE_KEY: "invalid key with spaces",
+    })).toBeUndefined();
   });
 
   it("keeps explicit development deployment ahead of NODE_ENV for trial registration", () => {

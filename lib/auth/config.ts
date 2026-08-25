@@ -140,14 +140,19 @@ export function resolveGoogleAuthCredentials(
   return { clientId, clientSecret };
 }
 
-/** Keep the trial provider and login button on the same deployment gate. */
+/** The login surface exposes Trial only when the anonymous capability is explicitly requested. */
 export function resolveTrialLoginEnabled(
   env: Record<string, string | undefined> = process.env,
 ) {
-  const deployment = env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
-  if (deployment === "production" || deployment === "staging") return false;
-  if (deployment === "development") return true;
-  return env.NODE_ENV !== "production";
+  return env.MUNJIB_ANONYMOUS_TRIAL_ENABLED === "true";
+}
+
+/** Returns only a validated public key suitable for the browser Turnstile widget. */
+export function resolveTrialTurnstileSiteKey(
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
+  const value = env.MUNJIB_TURNSTILE_SITE_KEY?.trim();
+  return value && /^[A-Za-z0-9_-]{10,128}$/.test(value) ? value : undefined;
 }
 
 function credentialsProvider(options: Parameters<typeof CredentialsProvider>[0]) {
@@ -274,20 +279,6 @@ export function buildAuthOptions(
 
   if (runtime.deploymentEnvironment === "development") {
     providers.push(
-      credentialsProvider({
-        id: "trial",
-        name: "Trial Login",
-        credentials: {},
-        async authorize() {
-          const user = await prisma.user.findUnique({
-            where: { email: "mjtrial@munjib.com" },
-            select: { id: true, email: true, name: true, image: true },
-          });
-          if (!user) return null;
-          await downstreamHooks.assertDurableAuthState({ userId: user.id, surface: "PROVISIONING" });
-          return leaf4AuthUserOutput({ id: user.id, email: user.email, name: user.name });
-        },
-      }),
       credentialsProvider({
         id: "development-login",
         name: "Development Login",

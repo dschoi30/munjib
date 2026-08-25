@@ -2,11 +2,17 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as GET_THREAD } from "@/app/api/workspaces/[workspaceSlug]/assistant/thread/route";
 import { POST as POST_MESSAGE } from "@/app/api/workspaces/[workspaceSlug]/assistant/messages/route";
 import { POST as POST_RESET } from "@/app/api/workspaces/[workspaceSlug]/assistant/thread/reset/route";
-import { requireCurrentUser } from "@/lib/auth/session";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
-import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { requireAiActor, requireCurrentUser } from "@/lib/auth/session";
 import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { admitTrialAiRequest, releaseTrialAiLease, startTrialAiLeaseHeartbeat } from "@/lib/rag/trial-ai-admission";
+import {
+  preflightWorkspaceChatMessageStream,
   getOrCreateWorkspaceChatThread,
+  preparePreflightedWorkspaceChatMessageStream,
   prepareWorkspaceChatMessageStream,
   resetWorkspaceChatThread,
   sendPreparedWorkspaceChatMessageStream,
@@ -15,11 +21,19 @@ import {
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 vi.mock("@/lib/auth/session", () => ({
+  requireAiActor: vi.fn(),
   requireCurrentUser: vi.fn(),
+}));
+
+vi.mock("@/lib/rag/trial-ai-admission", () => ({
+  admitTrialAiRequest: vi.fn(),
+  releaseTrialAiLease: vi.fn(),
+  startTrialAiLeaseHeartbeat: vi.fn(),
 }));
 
 vi.mock("@/lib/observability/ai-unavailable", () => ({
   captureHandledAiUnavailable: vi.fn(),
+  captureTrialAiFailure: vi.fn(),
 }));
 
 vi.mock("@/lib/rag/workspace-chat", () => ({
@@ -27,7 +41,9 @@ vi.mock("@/lib/rag/workspace-chat", () => ({
     MESSAGE_REQUIRED: "MESSAGE_REQUIRED",
     THREAD_ARCHIVED: "THREAD_ARCHIVED",
   },
+  preflightWorkspaceChatMessageStream: vi.fn(),
   getOrCreateWorkspaceChatThread: vi.fn(),
+  preparePreflightedWorkspaceChatMessageStream: vi.fn(),
   prepareWorkspaceChatMessageStream: vi.fn(),
   resetWorkspaceChatThread: vi.fn(),
   sendPreparedWorkspaceChatMessageStream: vi.fn(),
@@ -82,25 +98,77 @@ const citations = [
 ];
 
 const preparedWorkspaceChatMessage = {
+  kind: "persistent",
   threadId: "thread-1",
   message: "What changed?",
   chatProviderName: "openai-compatible",
   chatModelName: "google/gemma-4-31b-it:free",
 } as unknown as Awaited<ReturnType<typeof prepareWorkspaceChatMessageStream>>;
 
+const authenticatedActor = {
+  admissionActor: { kind: "authenticated-user" as const, userId: "user-1" },
+  authorizationPrincipal: { kind: "user" as const, userId: "user-1" },
+  kstDate: "2026-08-25",
+};
+
+const anonymousTrialActor = {
+  admissionActor: {
+    kind: "anonymous-trial" as const,
+    trialVisitorSubject: "visitor-digest-1",
+  },
+  authorizationPrincipal: {
+    kind: "anonymous-trial-demo" as const,
+    capabilityId: "anonymous-trial-v1" as const,
+    workspaceId: "workspace-demo-1",
+    workspaceSlug: "company-handbook",
+    access: "viewer-only" as const,
+    trialVisitorSubject: "visitor-digest-1",
+  },
+  networkBucketDigest: "network-digest-1",
+  kstDate: "2026-08-25",
+};
+
+const persistentPreflight = {
+  kind: "persistent" as const,
+  workspaceId: "workspace-1",
+  workspaceSlug: "company-handbook",
+  actorId: "user-1",
+  readableDocuments: [],
+};
+
+const statelessTrialPreflight = {
+  kind: "stateless-trial" as const,
+  workspaceId: "workspace-demo-1",
+  workspaceSlug: "company-handbook",
+  readableDocuments: [],
+};
+
 describe("workspace chat routes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(requireAiActor).mockResolvedValue(authenticatedActor);
     vi.mocked(requireCurrentUser).mockResolvedValue({
       id: "user-1",
       email: "user@example.com",
       name: "User",
+    });
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValue(
+      persistentPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValue({ kind: "not-applicable" });
+    vi.mocked(releaseTrialAiLease).mockResolvedValue(undefined);
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValue({
+      signal: new AbortController().signal,
+      stop: vi.fn().mockResolvedValue({ ok: true }),
     });
     vi.mocked(getOrCreateWorkspaceChatThread).mockResolvedValue({
       thread,
       messages: [userMessage],
     });
     vi.mocked(prepareWorkspaceChatMessageStream).mockResolvedValue(
+      preparedWorkspaceChatMessage,
+    );
+    vi.mocked(preparePreflightedWorkspaceChatMessageStream).mockResolvedValue(
       preparedWorkspaceChatMessage,
     );
     vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementation(
@@ -116,6 +184,406 @@ describe("workspace chat routes", () => {
       },
     );
     vi.mocked(resetWorkspaceChatThread).mockResolvedValue({ thread: null });
+  });
+
+  it("returns a JSON quota denial before preparation or NDJSON streaming", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_DAILY_LIMIT_REACHED",
+      code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    expect(response.status).toBe(429);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    expect(response.headers.get("content-type")).not.toContain("application/x-ndjson");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("retry-after")).not.toBeNull();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(releaseTrialAiLease).not.toHaveBeenCalled();
+  });
+
+  it("returns JSON 503 when Trial admission is unavailable", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+    expect(response.status).toBe(503);
+    expect(response.headers.get("content-type")).not.toContain("application/x-ndjson");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it("omits daily reset and Retry-After for a transient concurrent-request denial", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+
+    const response = await POST_MESSAGE(jsonRequest({ message: "What changed?" }), routeContext());
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_REQUEST_IN_PROGRESS",
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+    expect(response.headers.get("retry-after")).toBeNull();
+  });
+
+  it("fails closed when anonymous Trial admission is unexpectedly not applicable", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({ kind: "not-applicable" });
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+    expect(response.status).toBe(503);
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      name: "valid provider and model",
+      body: {
+        message: "What changed?",
+        chatProvider: "openai-compatible",
+        chatModel: "google/gemma-4-31b-it:free",
+      },
+    },
+    {
+      name: "incompatible model",
+      body: { message: "What changed?", chatModel: "bad model" },
+    },
+  ])("rejects anonymous Trial $name overrides before admission", async ({ body }) => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+
+    const response = await POST_MESSAGE(jsonRequest(body), routeContext());
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED",
+    });
+    expect(response.status).toBe(400);
+    expect(preflightWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it("skips admission when the request aborts while authorization preflight is pending", async () => {
+    const abortController = new AbortController();
+    const deferredPreflight = createDeferred<typeof statelessTrialPreflight>();
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockReturnValueOnce(
+      deferredPreflight.promise as never,
+    );
+
+    const responsePromise = POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
+      routeContext(),
+    );
+    await vi.waitFor(() => expect(preflightWorkspaceChatMessageStream).toHaveBeenCalled());
+    abortController.abort();
+    deferredPreflight.resolve(statelessTrialPreflight);
+    const response = await responsePromise;
+
+    await expect(response.json()).resolves.toEqual({ error: "WORKSPACE_CHAT_REQUEST_ABORTED" });
+    expect(response.status).toBe(499);
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it("authorizes and admits an anonymous Trial before preparing and exposes remaining quota in start", async () => {
+    const release = createDeferred<void>();
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-1",
+      remaining: 2,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(releaseTrialAiLease).mockReturnValueOnce(release.promise);
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    const eventsPromise = readNdjson(response);
+    await vi.waitFor(() => expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1"));
+    let settled = false;
+    void eventsPromise.finally(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release.resolve();
+    const events = await eventsPromise;
+    expect(events[0]).toEqual({
+      type: "start",
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
+    });
+    expect(preflightWorkspaceChatMessageStream).toHaveBeenCalledWith({
+      workspaceSlug: "company-handbook",
+      authorizationPrincipal: anonymousTrialActor.authorizationPrincipal,
+    });
+    expect(admitTrialAiRequest).toHaveBeenCalledWith({
+      actor: anonymousTrialActor.admissionActor,
+      surface: "workspace_chat",
+      workspaceId: "workspace-demo-1",
+      kstDate: "2026-08-25",
+      networkBucketDigest: "network-digest-1",
+    });
+    expect(startTrialAiLeaseHeartbeat).toHaveBeenCalledWith("lease-1");
+    expect(
+      vi.mocked(startTrialAiLeaseHeartbeat).mock.results[0]?.value.stop,
+    ).toHaveBeenCalledOnce();
+    const preparationSignal = vi.mocked(preparePreflightedWorkspaceChatMessageStream).mock.calls[0]?.[0].signal;
+    const streamSignal = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.calls[0]?.[1].signal;
+    expect(preparationSignal).toBe(streamSignal);
+    expect(preparePreflightedWorkspaceChatMessageStream).toHaveBeenCalledWith(
+      expect.objectContaining({
+        preflight: statelessTrialPreflight,
+        message: "What changed?",
+      }),
+    );
+    expect(vi.mocked(admitTrialAiRequest).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(preparePreflightedWorkspaceChatMessageStream).mock.invocationCallOrder[0]!,
+    );
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
+  });
+
+  it("awaits best-effort lease release after a Trial stream error", async () => {
+    const release = createDeferred<void>();
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-error",
+      remaining: 1,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockRejectedValueOnce(
+      new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
+    );
+    vi.mocked(releaseTrialAiLease).mockReturnValueOnce(release.promise);
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    const bodyPromise = readNdjson(response);
+    await vi.waitFor(() => expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-error"));
+    let settled = false;
+    void bodyPromise.finally(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release.resolve();
+
+    await expect(bodyPromise).resolves.toEqual([
+      {
+        type: "start",
+        trialAi: { remaining: 1, resetsAt: "2026-08-25T15:00:00.000Z" },
+      },
+      { type: "error", error: "AI_UNAVAILABLE" },
+    ]);
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "workspace_chat",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 1,
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+  });
+
+  it("releases an admitted lease when post-admission preparation fails", async () => {
+    const release = createDeferred<void>();
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-prepare",
+      remaining: 0,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(preparePreflightedWorkspaceChatMessageStream).mockRejectedValueOnce(
+      new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED),
+    );
+    vi.mocked(releaseTrialAiLease).mockReturnValueOnce(release.promise);
+
+    const responsePromise = POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    await vi.waitFor(() => expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-prepare"));
+    let settled = false;
+    void responsePromise.finally(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release.resolve();
+    const response = await responsePromise;
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "AI_UNAVAILABLE",
+      trialAi: {
+        remaining: 0,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+      },
+    });
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-prepare");
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "workspace_chat",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 0,
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+  });
+
+  it("preserves a successful Trial stream when best-effort lease release rejects", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-release-success",
+      remaining: 2,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(releaseTrialAiLease).mockRejectedValueOnce(
+      new Error("lease storage response included sensitive details"),
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    const events = await readNdjson(response);
+
+    expect(events.at(-1)).toMatchObject({
+      type: "done",
+      assistantMessage: jsonMessage(assistantMessage),
+    });
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-release-success");
+  });
+
+  it("does not emit done when the final in-flight renewal fails during stop", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-stop-race",
+      remaining: 1,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValueOnce({
+      signal: new AbortController().signal,
+      stop: vi.fn().mockResolvedValue({ ok: false }),
+    });
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    const events = await readNdjson(response);
+
+    expect(events.at(-1)).toEqual({ type: "error", error: "AI_UNAVAILABLE" });
+    expect(events.some((event) => event.type === "done")).toBe(false);
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-stop-race");
+  });
+
+  it("preserves the sanitized Trial error when best-effort lease release rejects", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-release-error",
+      remaining: 1,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(sendPreparedWorkspaceChatMessageStream).mockRejectedValueOnce(
+      new Error("raw provider response included prompt and answer"),
+    );
+    vi.mocked(releaseTrialAiLease).mockRejectedValueOnce(
+      new Error("lease storage response included sensitive details"),
+    );
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+
+    await expect(readNdjson(response)).resolves.toEqual([
+      {
+        type: "start",
+        trialAi: { remaining: 1, resetsAt: "2026-08-25T15:00:00.000Z" },
+      },
+      { type: "error", error: "AI_UNAVAILABLE" },
+    ]);
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-release-error");
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "workspace_chat",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 1,
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("returns the current workspace chat thread and messages", async () => {
@@ -158,10 +626,9 @@ describe("workspace chat routes", () => {
     ]);
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toContain("application/x-ndjson");
-    expect(prepareWorkspaceChatMessageStream).toHaveBeenCalledWith(
+    expect(preparePreflightedWorkspaceChatMessageStream).toHaveBeenCalledWith(
       expect.objectContaining({
-        workspaceSlug: "company-handbook",
-        actorId: "user-1",
+        preflight: persistentPreflight,
         message: "What changed?",
         selectedDocumentId: "doc-1",
         chatProviderOverride: "openai-compatible",
@@ -188,11 +655,10 @@ describe("workspace chat routes", () => {
     await readNdjson(response);
 
     expect(response.status).toBe(200);
-    const preparationInput = vi.mocked(prepareWorkspaceChatMessageStream).mock.calls[0]?.[0];
+    const preparationInput = vi.mocked(preparePreflightedWorkspaceChatMessageStream).mock.calls[0]?.[0];
     expect(preparationInput).toEqual(
       expect.objectContaining({
-        workspaceSlug: "company-handbook",
-        actorId: "user-1",
+        preflight: persistentPreflight,
         message: "What changed?",
       }),
     );
@@ -231,7 +697,7 @@ describe("workspace chat routes", () => {
 
     await readNdjson(response);
 
-    const preparationInput = vi.mocked(prepareWorkspaceChatMessageStream).mock.calls[0]?.[0];
+    const preparationInput = vi.mocked(preparePreflightedWorkspaceChatMessageStream).mock.calls[0]?.[0];
     expect(preparationInput).toEqual(
       expect.objectContaining({
         signal: expect.any(AbortSignal),
@@ -276,6 +742,17 @@ describe("workspace chat routes", () => {
 
   it("does not capture an aborted stream failure as an AI provider failure", async () => {
     const abortController = new AbortController();
+    const release = createDeferred<void>();
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-abort",
+      remaining: 0,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
     vi.mocked(sendPreparedWorkspaceChatMessageStream).mockImplementationOnce(
       async (_prepared, { onToken }) => {
         await onToken("Partial answer");
@@ -283,18 +760,33 @@ describe("workspace chat routes", () => {
         throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
       },
     );
+    vi.mocked(releaseTrialAiLease).mockReturnValueOnce(release.promise);
 
     const response = await POST_MESSAGE(
       jsonRequest({ message: "What changed?" }, { signal: abortController.signal }),
       routeContext(),
     );
 
-    await expect(readNdjson(response)).resolves.toEqual([
-      { type: "start" },
+    const bodyPromise = readNdjson(response);
+    await vi.waitFor(() => expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-abort"));
+    let settled = false;
+    void bodyPromise.finally(() => {
+      settled = true;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    release.resolve();
+
+    await expect(bodyPromise).resolves.toEqual([
+      {
+        type: "start",
+        trialAi: { remaining: 0, resetsAt: "2026-08-25T15:00:00.000Z" },
+      },
       { type: "token", content: "Partial answer" },
     ]);
     expect(response.status).toBe(200);
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-abort");
   });
 
   it("streams an archived thread error when sending fails after a token", async () => {
@@ -373,7 +865,7 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
     expect(response.status).toBe(400);
-    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
@@ -389,7 +881,7 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
     expect(response.status).toBe(400);
-    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
@@ -401,7 +893,7 @@ describe("workspace chat routes", () => {
       error: WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED,
     });
     expect(response.status).toBe(400);
-    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
@@ -416,7 +908,7 @@ describe("workspace chat routes", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "INVALID_JSON" });
     expect(response.status).toBe(400);
-    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
@@ -430,7 +922,7 @@ describe("workspace chat routes", () => {
       error: "INVALID_SELECTED_DOCUMENT_ID",
     });
     expect(response.status).toBe(400);
-    expect(prepareWorkspaceChatMessageStream).not.toHaveBeenCalled();
+    expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
   });
 
@@ -476,7 +968,7 @@ describe("workspace chat routes", () => {
 
   it("captures and returns a generic unavailable response when preparation fails before streaming", async () => {
     const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
-    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(error);
+    vi.mocked(preparePreflightedWorkspaceChatMessageStream).mockRejectedValueOnce(error);
 
     const response = await POST_MESSAGE(
       jsonRequest({
@@ -516,7 +1008,7 @@ describe("workspace chat routes", () => {
   });
 
   it("maps archived thread races before streaming to a stable conflict response", async () => {
-    vi.mocked(prepareWorkspaceChatMessageStream).mockRejectedValueOnce(
+    vi.mocked(preparePreflightedWorkspaceChatMessageStream).mockRejectedValueOnce(
       new Error(WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED),
     );
 

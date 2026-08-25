@@ -19,6 +19,33 @@ links:
 
 # Wiki Log
 
+## 2026-08-25T18:40:00+09:00 - Trial Turnstile escalation UI
+
+- Result: the login Trial CTA now handles `challengeRequired` with explicit Cloudflare Turnstile rendering and one bounded token resubmission before following the server-owned local entry path.
+- Failure boundary: missing/invalid public site key, script/widget error, expiry, timeout, malformed token, repeated challenge, or invalid entry stays fail closed; the challenge token is not logged, stored, or placed in a URL.
+- Source evidence: `app/login/login-form.tsx`, `app/login/page.tsx`, `lib/auth/turnstile-client.ts`, localized messages, and focused login tests. Cloudflare documents explicit rendering for conditional SPA challenges and requires `https://challenges.cloudflare.com` in `script-src` when CSP is enforced.
+
+## 2026-08-25T19:00:00+09:00 - 익명 Trial AI ledger 보존기간 정리
+
+- 결과: PR #213 review follow-up으로 PostgreSQL DB 시간 기반의 Trial AI purge service와 dry-run 기본 CLI를 추가했다. 방문자 35 KST 일, 네트워크·전체 8 KST 일, 만료 lease 24시간 경계를 한 transaction에서 멱등하게 정리한다.
+- 안전 경계: `--execute` 없이는 삭제하지 않으며 lease → visitor → network → global 순서 중 실패하면 전체 rollback한다. 활성 lease와 현재 quota counter는 변경하지 않는다.
+- 운영: `docs/runbooks/anonymous-trial-ai-retention.md`에 dry-run, 명시적 execute, 정상 결과, 완료·중단 기준, 최소 권한, 하루 1회 scheduler 계약을 기록했다.
+- Source evidence: `lib/rag/trial-ai-retention.ts`, `lib/rag/trial-ai-retention-cli.ts`, `scripts/rag/purge-trial-ai-retention.ts`, `tests/rag/trial-ai-retention*.test.ts`, [[RAG Process Workflow]].
+
+## 2026-08-25T18:20:00+09:00 - Trial admission PostgreSQL runtime validation
+
+- Result: live migrated PostgreSQL verification exposed Prisma's inability to deserialize the `void` result of `pg_advisory_xact_lock`. The query now casts only the lock result to text while retaining the same transaction-scoped visitor lock.
+- Verification: all three opt-in PostgreSQL tests passed: exactly-three concurrent global admission, cross-KST-midnight visitor serialization, and rollback of every counter after forced lease insertion failure.
+- Source evidence: `lib/rag/trial-ai-admission.ts` and `tests/rag/trial-ai-admission.integration.test.ts`.
+
+## 2026-08-25T00:00:00+09:00 - 익명 Trial AI 일일 제한 설계
+
+- 결과: 가입 없는 익명 Trial에 기기별 KST 하루 Ask AI/Workspace AI 합산 3회를 제공하고, 일일 HMAC network ceiling, CAPTCHA 승격, 동시 요청 1회, 운영 설정 전체 한도를 결합하는 설계를 승인했다.
+- 안전 경계: 본인 확인 없는 traffic은 유일한 사람을 증명할 수 없음을 명시하고, admission state에 raw network 주소나 AI 내용을 저장하지 않으며, 모델 호출 전 fail closed하고 기존 `mjtrial@munjib.com`을 재활성화하지 않는다.
+- 페이지: [[index|Wiki Index]]. 설계: `docs/superpowers/specs/2026-08-25-anonymous-trial-ai-daily-limit-design.md`.
+- 근거: 현재 Ask AI와 Workspace AI route, auth session 경계, Issue #156 Trial 격리 기록, 사용자 승인 제품 제약.
+- 검증: 설계 검토만 완료했다. schema, route, auth provider, runtime 설정, production data, 배포 동작은 변경하지 않았다.
+
 ## 2026-07-20T07:42:00+09:00 - public security status signer prerequisite
 
 - Result: Added merged PR #209 / Issue #208 Phase A signer-lab preparation to the authoritative status map, explicitly retaining the #185 production bootstrap and independent attestation gates; refreshed #192/#193 heads.
@@ -3771,3 +3798,173 @@ links:
 
 - Result: PR #211 review removed current wrapper and environment prose from the inactive direct-SSH details block, leaving that block consistently historical and pointing operators to the authoritative self-hosted runner section and runbook.
 - Source evidence: PR #211 review thread and [[CI CD And Monitoring Workflow]].
+
+## 2026-08-25T14:00:00+09:00 - anonymous trial AI admission ledger
+
+- Result: Issue #212 Task 2 adds an isolated PostgreSQL-schema-backed admission boundary for anonymous Trial AI. It uses KST-day visitor/network/global counters, a partial-unique active lease, fixed Global → Network → Visitor row locking, and one transaction for ceiling checks, counter increments, and lease creation.
+- Failure boundary: authenticated users are not subject to this ledger; malformed Trial admission evidence, absent/invalid positive global cap, or persistence failure returns `TRIAL_AI_ADMISSION_UNAVAILABLE`. Lease release does not decrement daily usage. Ask AI and Workspace AI route integration is deliberately deferred to Tasks 4 and 5.
+- Source evidence: approved Issue #212 design, `prisma/schema.prisma`, `prisma/migrations/20260825010000_anonymous_trial_ai_admission/migration.sql`, `lib/rag/trial-ai-admission.ts`, and `tests/rag/trial-ai-admission.test.ts`.
+- Verification: RED for the missing module and invalid calendar-date acceptance; GREEN `pnpm run db:generate`, focused seven-test Vitest suite, TypeScript compile, and wiki checks. Live PostgreSQL migration/locking validation is pending because Docker/PostgreSQL was unavailable.
+
+## 2026-08-25T14:10:00+09:00 - anonymous trial AI lease concurrency review follow-up
+
+- Result: The Task 2 lease is now visitor-wide rather than visitor/day scoped. Admission first takes a domain-separated, two-lane advisory transaction lock on the opaque visitor digest, then retains the deterministic Global → Network → Visitor day-row lock order. An unreleased request therefore blocks a second request by the same visitor even when the requests straddle KST midnight.
+- Coverage: Added mock-backed cross-midnight and entropy-source-failure tests plus an opt-in PostgreSQL integration suite for concurrent global admission, cross-midnight denial, and transaction rollback when a lease-insert trigger fails. The integration suite requires `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and an already migrated disposable PostgreSQL database.
+- Verification: focused unit suite and TypeScript compile passed; the opt-in PostgreSQL suite was collected but skipped because Docker/PostgreSQL remains unavailable.
+
+## 2026-08-25T14:20:00+09:00 - anonymous trial AI PostgreSQL test hardening
+
+- Result: The opt-in PostgreSQL admission test now pre-seeds visitor/network/global daily rows before its concurrent requests, so unique-index insert serialization cannot conceal missing `FOR UPDATE` locks.
+- Concurrency oracle: The cross-midnight test starts its second request only after a test-only lease-insert trigger has reached a visible transaction-local `pg_sleep` barrier. Removing the visitor advisory lock then produces a lease uniqueness/database failure instead of the required `TRIAL_AI_REQUEST_IN_PROGRESS`; removing the daily row locks permits a fourth global admission after the pre-seeded ceiling check.
+- Verification: focused unit suite and TypeScript compile passed; PostgreSQL tests remain explicitly skipped without `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and a migrated disposable database.
+
+## 2026-08-25T14:30:00+09:00 - anonymous trial AI global-lock isolation follow-up
+
+- Result: The four-request global-ceiling integration oracle now assigns a distinct pre-seeded network digest to every visitor. The global daily row is therefore the only shared locked resource, isolating the test from network-row serialization.
+- Verification: the opt-in PostgreSQL suite remains collection-only while Docker/PostgreSQL is unavailable.
+
+## 2026-08-25T14:45:00+09:00 - isolated anonymous Trial actor and entitlement
+
+- Result: Issue #212 Task 3 adds a production-default-closed anonymous capability, opaque secure visitor cookie, privacy-safe entitlement projection, and a discriminated AI route actor. Authenticated users retain their normal `User.id`; anonymous visitors receive no user id and can project only to `VIEWER` on the exact server-owned demo workspace without explicit USER grants.
+- Challenge boundary: New-token issuance after prior network Trial traffic uses a one-attempt Turnstile verifier with a one-second timeout, exact canonical hostname and `trial_entitlement` action, fixed-path production secret loading, and no challenge-token logging. Valid existing visitor tokens do not depend on Turnstile availability.
+- Integration ruling: The legacy `mjtrial@munjib.com` identity is neither queried nor reactivated. Task 5 must use a visitor-keyed non-shared conversation path or an explicitly stateless path; mapping every anonymous visitor to one `AiChatThread.userId` is forbidden.
+- Source evidence: approved Issue #212 design, Task 3 implementation ruling, `lib/auth/trial-visitor.ts`, `lib/auth/trial-entitlement.ts`, `lib/auth/session.ts`, `app/api/trial/entitlement/route.ts`, and focused auth tests.
+- Verification: strict RED/GREEN cycles for missing actor/entitlement modules, exact workspace authorization, global-cap configuration, canonical Turnstile binding, malformed challenge rejection, and bounded timeout; focused auth suites and TypeScript compilation passed.
+
+## 2026-08-25T15:30:00+09:00 - anonymous Trial actor review hardening
+
+- Result: Task 3 now binds the Trial principal to the immutable demo workspace ID and authorizes only after comparing that ID with the resolved workspace row; a same-slug workspace in another organization is denied.
+- Ingress boundary: Staging/production network evidence now requires a strict file-backed edge-proof secret and a fresh HMAC over the normalized client IP, request method, and pathname. Missing, spoofed, stale, or context-replayed proofs fail closed, while raw-header trust is limited to an explicit development-only mode.
+- Rotation and provider bounds: A previous visitor signing key requires an exact cutoff and is accepted only before it. Future-issued tokens and signed lifetimes over 180 days are rejected. Turnstile response bodies are cancelled as soon as the streamed body exceeds 8 KiB.
+- Source evidence: Issue #212 Task 3 review ruling, `lib/auth/trial-entitlement.ts`, `lib/auth/trial-visitor.ts`, `lib/security/trial-network-bucket.ts`, and focused auth/security tests.
+- Verification: RED/GREEN coverage includes cross-organization same-slug denial, missing/spoofed/stale edge proofs, previous-key cutoff, token-time bounds, and streaming body cancellation; focused tests, TypeScript compilation, and wiki gates passed.
+
+## 2026-08-25T16:00:00+09:00 - Ask AI anonymous Trial admission integration
+
+- Result: Issue #212 Task 4 splits Ask AI authorization/preparation from provider execution, then calls the shared admission ledger only after exact workspace/document authorization. Anonymous Trial callers can read only active documents in their immutable capability workspace ID, never query `WorkspaceMember` or a USER-specific document grant, and exclude documents with any explicit grant; normal authenticated calls retain the existing service wrapper behavior.
+- Failure boundary: quota and active-lease denial returns pre-provider JSON 429 with private no-store caching and Retry-After; admission unavailability returns private no-store 503. An admitted provider failure remains charged and the lease release is best-effort in `finally`, so it cannot replace the original provider response.
+- Source evidence: approved Issue #212 design, Task 4 ruling, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, and `tests/rag/ask-route.test.ts`.
+- Verification: focused Ask route RED/GREEN and TypeScript compilation passed. Database-backed Ask service regression tests remain blocked in this worktree because `DATABASE_URL` is unset and Docker is unavailable.
+
+## 2026-08-25T16:15:00+09:00 - Ask AI Trial ACL and privacy hardening
+
+- Result: Task 4 now queries anonymous Trial Ask by exact capability workspace ID plus slug, while normal-user lookup retains membership scoping for duplicate-slug isolation. Trial checks candidate documents for explicit grants but never reads a USER grant or membership; an explicitly restricted document is therefore unavailable to viewer-only Trial access.
+- Privacy and model boundary: prepared Ask data carries an anonymous privacy mode that forces Langfuse metadata-only capture, even under a full server setting. Anonymous client provider/model overrides fail with `INVALID_CHAT_MODEL` before authorization/admission/provider work.
+- Failure boundary: admitted abort and provider error paths release without decrementing the charge. A lease-release error is suppressed so it cannot mask an original success or provider error.
+- Source evidence: Task 4 review ruling, `lib/rag/ask.ts`, Ask route, and focused route/preparation/privacy tests.
+- Verification: explicit RED for anonymous override and full-capture Langfuse paths, then focused 16-test GREEN suite and TypeScript compilation.
+
+## 2026-08-25T16:00:00+09:00 - anonymous Trial Workspace AI admission
+
+- Result: Issue #212 Task 5 inserts exact-demo-workspace authorization and the shared Trial admission ledger before Workspace AI thread/index/model preparation and before NDJSON starts. Quota denials are JSON 429, admission failures are JSON 503, and the first admitted `start` event includes authoritative `trialAi.remaining` and `resetsAt`.
+- Isolation boundary: anonymous Trial preparation is request-stateless and viewer-only over active documents in the immutable demo workspace. It never queries USER grants, never maps to an existing/shared `User`, never creates or reuses `AiChatThread`/`AiChatMessage`, never shares conversation history, and forces Langfuse metadata-only capture. Ordinary authenticated users retain the existing persistent thread/memory path.
+- Charging boundary: admission precedes all provider work. Success, provider error, abort, and post-admission preparation failure await best-effort lease release, while admitted daily counters remain charged and are never decremented.
+- Source evidence: approved Issue #212 design and Task 5 ruling, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat-route.test.ts`, and `tests/rag/workspace-chat-trial.test.ts`.
+- Verification: strict route RED/GREEN cycles covered pre-stream JSON denial, first-event quota projection, admission-before-preparation ordering, fail-closed actor mismatch, and awaited lease cleanup; focused route/stateless service tests and TypeScript compilation passed. The pgvector-backed full workspace-chat integration file remains unexecuted locally because Docker is stopped and the host PostgreSQL lacks the `vector` extension.
+
+## 2026-08-25T16:20:00+09:00 - anonymous Trial Workspace AI review hardening
+
+- ACL boundary: stateless Trial preflight now queries only explicit permission existence and excludes explicitly restricted active documents. It never performs a USER-subject permission query or treats the Trial visitor as a User grant subject.
+- Admission boundary: any Trial provider/model override, including malformed or provider-incompatible input, returns stable `TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED` 400 before authorization preflight/admission. A request aborted during asynchronous preflight is checked immediately before admission and is not charged.
+- Privacy boundary: post-admission Trial preparation/stream failures use a Trial-only normalization/metric seam with only surface, public `AI_UNAVAILABLE`, coarse remaining bucket, and anonymous flag. Raw errors/provider responses, workspace slug, provider/model, and AI content never enter that telemetry path.
+- Cleanup boundary: success, stream error, abort, and post-admission preparation tests prove response completion waits for lease release; explicit release-rejection coverage proves cleanup failure cannot replace the original success or sanitized error.
+- Source evidence: Task 5 review findings, `lib/rag/workspace-chat.ts`, `lib/observability/ai-unavailable.ts`, Workspace assistant route/error helpers, and focused route/service/observability tests.
+
+## 2026-08-25T17:10:00+09:00 - anonymous Trial answer-chain log hardening
+
+- Privacy boundary: stateless Trial propagates an explicit privacy-safe mode into the streaming answer chain. Provider exceptions are normalized without logging the original error object, response text, prompt, question, retrieved context, or partial answer; the only console metadata is the stable RAG failure code and coarse `stream` surface.
+- Compatibility boundary: authenticated Workspace AI retains its existing diagnostic provider-error logging path.
+- Source evidence: Task 5 round-two review finding, `lib/rag/answer-chain.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/answer-chain.test.ts`, and `tests/rag/workspace-chat-trial.test.ts`.
+- Verification: focused RED reproduced raw secret-bearing provider error output; GREEN proved exact stable metadata and absence of injected prompt/provider-response/question secrets while retaining the authenticated logging assertion.
+
+## 2026-08-25T17:25:00+09:00 - anonymous Trial allowance UI
+
+- Result: Issue #212 Task 6 shows localized remaining Trial AI uses and the KST-midnight reset boundary in Ask AI and Workspace AI only after an authoritative route response identifies Trial allowance state. Successful Ask JSON and the validated first Workspace NDJSON `start` event synchronize both composers through an in-memory same-tab event.
+- Client boundary: browser storage is not an identity, entitlement, or quota source. Daily, network, and global exhaustion 429 responses disable both composers; the transient active-request 429 stays recoverable. Responses without `trialAi` preserve the existing authenticated UI.
+- Entitlement projection: the client validator accepts the initial three-use entitlement and post-admission zero-through-two values, while rejecting malformed counts or reset timestamps.
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `components/workspace-chatbot-stream.ts`, localized messages, and focused component/i18n tests.
+## 2026-08-25T17:30:00+09:00 - 가입 없는 Trial 제품 진입 연결
+
+- Result: Issue #212 Task 7 removes the legacy NextAuth `trial` Credentials provider. The login demo button now requests `/api/trial/entitlement`, receives an opaque HttpOnly visitor cookie, and follows only the server-projected local Trial workspace path; unavailable capability, invalid challenge/evidence, malformed response, and external paths fail closed.
+- Viewer boundary: `/trial/workspaces/[workspaceSlug]` re-verifies the visitor cookie and pathname-bound edge proof, then resolves the immutable capability workspace ID and exact slug. It renders only active documents with no explicit permission row and does not query `WorkspaceMember` or USER grants, bind to a shared User, expose mutations/account UI, or persist Trial conversation history.
+- Public projection: entitlement JSON exposes only quota/reset values plus `{ entry: { path } }`; workspace ID and visitor/network subjects or digests remain private.
+- Source evidence: Issue #212 approved design, `app/login/login-form.tsx`, `app/api/trial/entitlement/route.ts`, `app/trial/workspaces/[workspaceSlug]/page.tsx`, `lib/auth/config.ts`, `lib/auth/trial-entitlement.ts`, `lib/workspaces/trial-viewer.ts`, and focused auth/login/workspace tests.
+- Verification: strict RED reproduced the legacy provider, missing entry projection, old Trial sign-in call, and missing viewer; focused 74-test GREEN suite and TypeScript compilation passed.
+
+## 2026-08-25T17:40:00+09:00 - Trial allowance UI review hardening
+
+- Ordering boundary: same-window allowance merges are monotonic decreasing, later reset windows may replace them, and delayed older-window responses cannot regress the current projection. Cross-surface reverse-resolution coverage keeps an observed zero from becoming one.
+- Reset boundary: a mounted timer removes expired allowance state and unlocks the composers without guessing a new three-use entitlement. A subsequent entitlement or route response remains authoritative.
+- Accessibility: both dynamic allowance summaries use polite status regions, and Ask/Workspace composer controls reference their allowance/reset explanation with `aria-describedby`.
+- Verification: focused fake-timer, reverse-resolution, accessibility, component, i18n, and TypeScript checks.
+
+## 2026-08-25T17:50:00+09:00 - anonymous Trial AI privacy source contract
+
+- Result: Issue #212 Task 7 adds one DB-independent cross-file contract for digest-only quota persistence, opaque entitlement JSON, hardened bounded visitor cookies, Ask metadata-only capture, stateless Workspace AI, sanitized Trial telemetry, server-owned model selection, legacy-provider removal, and production-default-closed capability activation.
+- Mutation coverage: representative raw-IP/prompt columns, entitlement digest exposure, full-content Ask capture, Trial chat persistence, question telemetry, and a removed override guard are injected as negative fixtures and must be rejected by the same validators used for current source.
+- Source evidence: `tests/security/trial-ai-privacy-source-contract.test.ts`, the anonymous Trial admission migration/schema, entitlement/cookie/auth configuration, Ask and Workspace AI route/service implementations, and Trial observability helper.
+
+## 2026-08-25T18:05:00+09:00 - Trial viewer AI surface review hardening
+
+- Result: The selected allowed Trial document now renders Ask AI, and Workspace AI has an explicit anonymous read-only mode that uses only the stateless messages POST. It never calls authenticated thread GET/reset APIs and omits the reset control.
+- Model boundary: Anonymous Ask and Workspace clients do not read or subscribe to workspace model overrides and never serialize provider/model fields. The server-owned model is displayed and remains enforced by the existing cookie, exact workspace/document, and edge-proof authorization in each API route; the UI mode is not an authority signal.
+- Allowance bootstrap: The viewer re-resolves entitlement server-side and passes only validated `{ remaining, resetsAt }` to both surfaces. The projection excludes workspace IDs and visitor/network subjects or digests and enters the existing monotonic same-tab channel, retaining KST expiry and accessible composer guidance.
+- Source evidence: `app/trial/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/auth/trial-entitlement.ts`, and focused component/viewer/auth tests.
+- Verification: strict RED reproduced missing Ask, authenticated thread calls, reset UI, browser model override use, and missing server allowance bootstrap; focused 118-test GREEN suite and TypeScript compilation passed.
+
+## 2026-08-25T18:20:00+09:00 - Trial Ask review hardening
+
+- Privacy boundary: anonymous Trial Ask now propagates privacy-safe logging into the non-streaming answer chain, which records only the stable RAG failure code and `invoke` surface. Authenticated Ask retains the raw provider-error diagnostic path.
+- Quota projection: Ask quota-denial JSON now includes the admission ledger's authoritative `resetsAt`, allowing the shared client allowance parser to publish zero remaining uses and lock both composers through the KST reset boundary.
+- Verification: RED reproduced secret-bearing provider-error logging, the missing privacy flag, and the missing quota reset projection; focused answer-chain, Ask privacy/route, and editor component tests passed GREEN.
+
+## 2026-08-25T18:35:00+09:00 - Trial Ask admission and telemetry review follow-up
+
+- Charging boundary: after asynchronous document authorization/preparation, Ask rechecks the request abort signal immediately before admission. A disconnected request returns private no-store 499 and consumes no daily use or active lease.
+- Privacy boundary: admitted anonymous Ask provider failures use only the Trial metric seam with surface, public `AI_UNAVAILABLE`, coarse remaining bucket, and anonymous flag. They do not enter the authenticated handled-error path carrying raw error, workspace slug, RAG code, provider, or model.
+- Source evidence: PR #213 review, Ask route, focused abort and anonymous telemetry regression tests.
+- Verification: both regressions failed before the route change, then the 14-test Ask route suite and TypeScript compilation passed.
+
+## 2026-08-25T18:50:00+09:00 - Trial entry, embedding, and citation review follow-up
+
+- Entry boundary: `/login`, `/`, and the unauthenticated workspace page all resolve the same validated public Turnstile site key and pass it to `LoginForm`, so a shared-network challenge can complete from every login gate.
+- Privacy boundary: stateless Trial query embedding and targeted index backfill propagate privacy-safe logging. Provider failures expose only a stable RAG code and coarse embedding surface, never the raw SDK error; authenticated diagnostics remain unchanged.
+- Navigation boundary: Ask and Workspace Trial citations stay inside `/trial/workspaces/<slug>?document=...`; authenticated citations retain the ordinary workspace route.
+- Source evidence: PR #213 review threads, shared Turnstile key resolver and login callers, embedding/index/workspace-chat privacy propagation, shared citation renderer and workspace route builder.
+- Verification: focused authentication, component, RAG, and privacy-contract suites passed 186 tests together with TypeScript compilation.
+
+## 2026-08-25T19:00:00+09:00 - charged Trial failure allowance projection
+
+- Result: admitted Ask provider failures and Workspace pre-stream preparation failures now return authoritative `trialAi.remaining` and `trialAi.resetsAt` with private no-store 503 responses.
+- Client boundary: both composers validate and publish this projection from non-success JSON before showing the generic error, while authenticated errors without Trial data remain unchanged and quota-denial fallback stays intact.
+- Source evidence: PR #213 review threads, Ask and Workspace message routes/error response helpers, both AI clients, and focused route/component regression tests.
+- Verification: combined Ask/Workspace route and component suites passed 148 tests with TypeScript compilation.
+
+## 2026-08-25T19:15:00+09:00 - Trial lease lifetime and transient retry hardening
+
+- Concurrency boundary: admitted Ask and Workspace requests renew their active lease every 30 seconds for the entire provider/index/preparation/stream lifetime. Renewal uses DB time, extends only a still-active unexpired lease, and aborts provider work if renewal fails or the lease is lost.
+- Cleanup boundary: both routes await heartbeat shutdown before best-effort lease release, so a long request cannot overlap a later request merely because the original two-minute deadline passed.
+- Retry boundary: `TRIAL_AI_REQUEST_IN_PROGRESS` is a transient active-request denial and no longer carries KST-midnight `resetsAt` or `Retry-After`; daily/network/global ceilings retain their normal reset projection.
+- Source evidence: PR #213 review threads, admission heartbeat/renew SQL, Ask and Workspace signal composition, unit/route/UI/PostgreSQL integration tests.
+- Verification: 109 focused tests and TypeScript passed after integration; the live PostgreSQL admission suite passed 4/4 including a lease kept active beyond its shortened initial deadline.
+
+## 2026-08-25T19:25:00+09:00 - Trial pre-admission telemetry and Turnstile retry hardening
+
+- Privacy boundary: anonymous Trial Ask selects coarse Trial telemetry from the principal even before admission. Server RAG/config failures emit an unknown remaining bucket and private no-store 503 without workspace slug, detailed RAG code, provider/model, or raw error.
+- Challenge recovery: failed, timed-out, or API-missing Turnstile script elements are cleaned up and removed, allowing a later click to load a fresh script while concurrent attempts continue sharing one pending load.
+- Source evidence: PR #213 review threads, Ask route and Trial observability helper/privacy source contract, Turnstile client and focused tests.
+- Verification: privacy suites passed 29 tests; Turnstile/login suites passed 19 tests; both TypeScript checks and diff checks passed.
+
+## 2026-08-25T19:35:00+09:00 - Trial heartbeat completion barrier
+
+- Result: heartbeat stop now awaits any renewal transaction already in flight and returns its success outcome without suppressing a late lease-loss abort.
+- Completion boundary: Ask success JSON and Workspace stream `done` are emitted only after the stop barrier succeeds. A pending renewal failure becomes the existing sanitized Trial `AI_UNAVAILABLE` path, then cleanup releases the lease.
+- Source evidence: PR #213 review, heartbeat helper, Ask/Workspace routes, deferred-renewal unit and route regression tests.
+- Verification: heartbeat unit and both AI route suites passed 101 tests before integration; combined privacy/heartbeat merge is covered by the final focused and full-suite verification.
+
+## 2026-08-25T19:45:00+09:00 - Trial embedding abort propagation
+
+- Result: the composed request/lease AbortSignal now reaches targeted index backfill, every chunk embedding, query embedding, and the embedding provider invocation.
+- Concurrency boundary: abort checks before and after each provider await prevent later chunks or retrieval from starting after lease loss, rather than merely noticing the abort after the full backfill completes.
+- Source evidence: PR #213 review, embedding client, document indexer, Workspace preparation, and signal/pending-provider/multi-chunk regression tests.
+- Verification: focused embedding/index/Workspace suites passed 63 tests with TypeScript and diff checks; final full-suite verification follows integration.

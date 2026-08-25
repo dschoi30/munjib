@@ -21,4 +21,15 @@ describe("development login gate callers", () => {
   it("passes the closed signup gate from the login page", () => {
     expect(read("app/login/page.tsx")).toContain("isSignupEnabled={false}");
   });
+
+  it.each([
+    "app/page.tsx",
+    "app/login/page.tsx",
+    "app/workspaces/[workspaceSlug]/page.tsx",
+  ])("%s passes the validated public Turnstile site key to LoginForm", (path) => {
+    const source = read(path);
+
+    expect(source).toContain("resolveTrialTurnstileSiteKey");
+    expect(source).toContain("trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}");
+  });
 });

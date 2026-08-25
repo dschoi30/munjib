@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
+import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
 import { INVALID_CHAT_MODEL_ERROR } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import { WORKSPACE_CHAT_ERROR_CODES } from "@/lib/rag/workspace-chat";
+import type { TrialAiAdmission } from "@/lib/rag/trial-ai-admission";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 export type WorkspaceChatErrorResponseContext = {
@@ -46,4 +50,52 @@ export function workspaceChatErrorResponse(
   }
 
   return NextResponse.json({ error: "WORKSPACE_CHAT_REQUEST_FAILED" }, { status: 500 });
+}
+
+export function workspaceChatTrialAdmissionDeniedResponse(
+  admission: Extract<TrialAiAdmission, { kind: "denied" }>,
+) {
+  const status = admission.code === "TRIAL_AI_ADMISSION_UNAVAILABLE" ? 503 : 429;
+  const headers = new Headers({ "cache-control": "private, no-store" });
+  if (admission.resetsAt) {
+    const resetTime = Date.parse(admission.resetsAt);
+    if (Number.isFinite(resetTime)) {
+      headers.set(
+        "retry-after",
+        String(Math.max(0, Math.ceil((resetTime - Date.now()) / 1_000))),
+      );
+    }
+  }
+  return NextResponse.json(
+    {
+      error: admission.code,
+      code: admission.code,
+      ...(admission.resetsAt ? { resetsAt: admission.resetsAt } : {}),
+    },
+    { status, headers },
+  );
+}
+
+export function normalizeWorkspaceChatTrialFailure(remaining: 0 | 1 | 2) {
+  captureTrialAiFailure({
+    surface: "workspace_chat",
+    resultCode: "AI_UNAVAILABLE",
+    remaining,
+  });
+  return "AI_UNAVAILABLE" as const;
+}
+
+export function workspaceChatTrialFailureResponse(
+  admission: Pick<Extract<TrialAiAdmission, { kind: "admitted" }>, "remaining" | "resetsAt">,
+) {
+  return NextResponse.json(
+    {
+      error: normalizeWorkspaceChatTrialFailure(admission.remaining),
+      trialAi: {
+        remaining: admission.remaining,
+        resetsAt: admission.resetsAt,
+      },
+    },
+    { status: 503, headers: { "cache-control": "private, no-store" } },
+  );
 }
