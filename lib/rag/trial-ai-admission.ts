@@ -41,6 +41,7 @@ export type TrialAiAdmissionTransaction = {
     input: TrialAiAdmissionLedgerKey & Readonly<{ leaseId: string }>,
   ): Promise<void>;
   releaseLease(leaseId: string): Promise<void>;
+  renewLease(leaseId: string): Promise<boolean>;
 };
 
 export type TrialAiAdmissionDatabase = {
@@ -51,6 +52,7 @@ export type TrialAiAdmissionDependencies = Readonly<{
   database?: TrialAiAdmissionDatabase;
   globalDailyLimit?: number;
   createLeaseId?: () => string;
+  heartbeatIntervalMs?: number;
 }>;
 
 type TrialAiAdmissionLedgerKey = Readonly<{
@@ -101,7 +103,7 @@ export async function admitTrialAiRequest(
         return denied("TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt);
       }
       if (await tx.hasActiveLease(visitorDigest)) {
-        return denied("TRIAL_AI_REQUEST_IN_PROGRESS", resetsAt);
+        return { kind: "denied", code: "TRIAL_AI_REQUEST_IN_PROGRESS" };
       }
 
       await tx.recordAdmission({ ...key, leaseId });
@@ -122,6 +124,49 @@ export async function releaseTrialAiLease(
   deps: TrialAiAdmissionDependencies = {},
 ): Promise<void> {
   await (deps.database ?? prismaAdmissionDatabase).transaction((tx) => tx.releaseLease(leaseId));
+}
+
+export type TrialAiLeaseHeartbeat = Readonly<{
+  signal: AbortSignal;
+  stop(): Promise<void>;
+}>;
+
+export function startTrialAiLeaseHeartbeat(
+  leaseId: string,
+  deps: TrialAiAdmissionDependencies = {},
+): TrialAiLeaseHeartbeat {
+  const controller = new AbortController();
+  const intervalMs = deps.heartbeatIntervalMs ?? 30_000;
+  let stopped = false;
+  let inFlight: Promise<void> | undefined;
+
+  const renew = () => {
+    if (stopped || inFlight) return;
+    inFlight = (deps.database ?? prismaAdmissionDatabase)
+      .transaction(async (tx) => {
+        if (!(await tx.renewLease(leaseId))) {
+          throw new Error("Trial AI lease is no longer active");
+        }
+      })
+      .catch(() => {
+        if (!stopped) controller.abort();
+      })
+      .finally(() => {
+        inFlight = undefined;
+      });
+  };
+
+  const timer = setInterval(renew, intervalMs);
+  timer.unref?.();
+
+  return {
+    signal: controller.signal,
+    async stop() {
+      stopped = true;
+      clearInterval(timer);
+      await inFlight;
+    },
+  };
 }
 
 function denied(
@@ -236,6 +281,9 @@ function prismaAdmissionTransaction(tx: PrismaRawTransaction): TrialAiAdmissionT
     async releaseLease(leaseId) {
       await tx.$executeRawUnsafe(RELEASE_LEASE_SQL, leaseId);
     },
+    async renewLease(leaseId) {
+      return (await tx.$executeRawUnsafe(RENEW_LEASE_SQL, leaseId)) === 1;
+    },
   };
 
 }
@@ -348,4 +396,12 @@ const RELEASE_LEASE_SQL = `
 UPDATE "TrialAiAdmissionLease"
 SET "releasedAt" = CURRENT_TIMESTAMP
 WHERE "id" = $1 AND "releasedAt" IS NULL
+`;
+
+const RENEW_LEASE_SQL = `
+UPDATE "TrialAiAdmissionLease"
+SET "expiresAt" = CURRENT_TIMESTAMP + INTERVAL '2 minutes'
+WHERE "id" = $1
+  AND "releasedAt" IS NULL
+  AND "expiresAt" > CURRENT_TIMESTAMP
 `;

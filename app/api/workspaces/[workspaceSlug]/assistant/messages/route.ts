@@ -18,7 +18,9 @@ import {
 import {
   admitTrialAiRequest,
   releaseTrialAiLease,
+  startTrialAiLeaseHeartbeat,
   type TrialAiAdmission,
+  type TrialAiLeaseHeartbeat,
 } from "@/lib/rag/trial-ai-admission";
 import {
   normalizeWorkspaceChatTrialFailure,
@@ -139,12 +141,19 @@ export async function POST(
     });
   }
 
+  const leaseHeartbeat = admission.kind === "admitted"
+    ? startTrialAiLeaseHeartbeat(admission.leaseId)
+    : undefined;
+  const providerSignal = leaseHeartbeat
+    ? AbortSignal.any([request.signal, leaseHeartbeat.signal])
+    : request.signal;
+
   let prepared: WorkspaceChatPreparedMessage;
   try {
     prepared = await preparePreflightedWorkspaceChatMessageStream({
       preflight,
       message,
-      signal: request.signal,
+      signal: providerSignal,
       ...(uiLanguage ? { uiLanguage } : {}),
       ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
       ...(chatProviderValidation?.ok
@@ -153,6 +162,7 @@ export async function POST(
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
   } catch (error) {
+    await leaseHeartbeat?.stop();
     await releaseAdmissionLeaseBestEffort(admission);
     if (admission.kind === "admitted") {
       if (request.signal.aborted) {
@@ -171,14 +181,29 @@ export async function POST(
     });
   }
 
-  return workspaceChatStreamResponse(prepared, request.signal, workspaceSlug, admission);
+  if (leaseHeartbeat?.signal.aborted) {
+    await leaseHeartbeat.stop();
+    await releaseAdmissionLeaseBestEffort(admission);
+    return workspaceChatTrialFailureResponse(admission.kind === "admitted" ? admission.remaining : 0);
+  }
+
+  return workspaceChatStreamResponse(
+    prepared,
+    request.signal,
+    providerSignal,
+    workspaceSlug,
+    admission,
+    leaseHeartbeat,
+  );
 }
 
 function workspaceChatStreamResponse(
   prepared: WorkspaceChatPreparedMessage,
-  signal: AbortSignal,
+  requestSignal: AbortSignal,
+  providerSignal: AbortSignal,
   workspaceSlug: string,
   admission: Exclude<TrialAiAdmission, { kind: "denied" }>,
+  leaseHeartbeat?: TrialAiLeaseHeartbeat,
 ) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -206,13 +231,16 @@ function workspaceChatStreamResponse(
           onToken(token) {
             writeEvent({ type: "token", content: token });
           },
-          signal,
+          signal: providerSignal,
         });
-        if (!signal.aborted) {
+        if (leaseHeartbeat?.signal.aborted) {
+          throw new Error("TRIAL_AI_LEASE_RENEWAL_FAILED");
+        }
+        if (!requestSignal.aborted) {
           writeEvent({ type: "done", ...result });
         }
       } catch (error) {
-        if (signal.aborted) return;
+        if (requestSignal.aborted) return;
         if (admission.kind === "admitted") {
           writeEvent({
             type: "error",
@@ -238,6 +266,7 @@ function workspaceChatStreamResponse(
         }
         writeEvent({ type: "error", error: streamError });
       } finally {
+        await leaseHeartbeat?.stop();
         await releaseAdmissionLeaseBestEffort(admission);
         if (!streamClosed) {
           try {

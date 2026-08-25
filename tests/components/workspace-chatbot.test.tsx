@@ -1216,7 +1216,7 @@ describe("WorkspaceChatbot", () => {
       if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
       if (url.endsWith("/assistant/messages")) {
         return jsonResponse(
-          { code: "TRIAL_AI_REQUEST_IN_PROGRESS", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { code: "TRIAL_AI_REQUEST_IN_PROGRESS" },
           { status: 429 },
         );
       }

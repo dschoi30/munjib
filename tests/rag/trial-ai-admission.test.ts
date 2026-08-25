@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   admitTrialAiRequest,
   releaseTrialAiLease,
+  startTrialAiLeaseHeartbeat,
   type TrialAiAdmissionInput,
 } from "@/lib/rag/trial-ai-admission";
 
@@ -46,7 +47,6 @@ describe("trial AI admission ledger", () => {
     await expect(admitTrialAiRequest(input(), dependencies(database))).resolves.toEqual({
       kind: "denied",
       code: "TRIAL_AI_REQUEST_IN_PROGRESS",
-      resetsAt: "2026-08-25T15:00:00.000Z",
     });
     expect(database.visitorCount("visitor-1", "2026-08-25")).toBe(1);
   });
@@ -143,6 +143,36 @@ describe("trial AI admission ledger", () => {
       code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
     });
   });
+
+  it("renews an admitted lease while provider work remains active", async () => {
+    const first = await admitTrialAiRequest(input(), dependencies(database));
+    if (first.kind !== "admitted") throw new Error("expected admission");
+    const heartbeat = startTrialAiLeaseHeartbeat(first.leaseId, {
+      ...dependencies(database),
+      heartbeatIntervalMs: 10,
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    await heartbeat.stop();
+
+    expect(database.renewedLeaseCount(first.leaseId)).toBeGreaterThanOrEqual(1);
+    expect(heartbeat.signal.aborted).toBe(false);
+  });
+
+  it("aborts provider work when lease renewal fails closed", async () => {
+    const first = await admitTrialAiRequest(input(), dependencies(database));
+    if (first.kind !== "admitted") throw new Error("expected admission");
+    database.failRenewals = true;
+    const heartbeat = startTrialAiLeaseHeartbeat(first.leaseId, {
+      ...dependencies(database),
+      heartbeatIntervalMs: 1,
+    });
+
+    await new Promise((resolve) => heartbeat.signal.addEventListener("abort", resolve, { once: true }));
+    await heartbeat.stop();
+
+    expect(heartbeat.signal.aborted).toBe(true);
+  });
 });
 
 function input(overrides: Partial<TrialAiAdmissionInput> = {}): TrialAiAdmissionInput {
@@ -175,10 +205,12 @@ function createAdmissionDatabase() {
   const networks = new Map<string, number>();
   const globals = new Map<string, number>();
   const leases = new Map<string, { visitorDigest: string; kstDate: string; releasedAt: Date | null }>();
+  const renewals = new Map<string, number>();
   let transactionTail = Promise.resolve();
 
   const database = {
     failTransactions: false,
+    failRenewals: false,
     async transaction<T>(callback: (tx: AdmissionTransaction) => Promise<T>) {
       if (database.failTransactions) throw new Error("database unavailable");
       const previous = transactionTail;
@@ -201,6 +233,9 @@ function createAdmissionDatabase() {
     },
     networkCount(networkDigest: string, kstDate: string) {
       return networks.get(`${networkDigest}:${kstDate}`) ?? 0;
+    },
+    renewedLeaseCount(leaseId: string) {
+      return renewals.get(leaseId) ?? 0;
     },
   };
 
@@ -239,6 +274,13 @@ function createAdmissionDatabase() {
       const lease = leases.get(leaseId);
       if (lease) lease.releasedAt = new Date();
     },
+    async renewLease(leaseId) {
+      if (database.failRenewals) throw new Error("renewal unavailable");
+      const lease = leases.get(leaseId);
+      if (!lease || lease.releasedAt) return false;
+      renewals.set(leaseId, (renewals.get(leaseId) ?? 0) + 1);
+      return true;
+    },
   };
 
   return database;
@@ -262,4 +304,5 @@ type AdmissionTransaction = {
     leaseId: string;
   }): Promise<void>;
   releaseLease(leaseId: string): Promise<void>;
+  renewLease(leaseId: string): Promise<boolean>;
 };

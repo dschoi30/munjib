@@ -8,7 +8,7 @@ import {
   captureTrialAiFailure,
 } from "@/lib/observability/ai-unavailable";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
-import { admitTrialAiRequest, releaseTrialAiLease } from "@/lib/rag/trial-ai-admission";
+import { admitTrialAiRequest, releaseTrialAiLease, startTrialAiLeaseHeartbeat } from "@/lib/rag/trial-ai-admission";
 import {
   preflightWorkspaceChatMessageStream,
   getOrCreateWorkspaceChatThread,
@@ -28,6 +28,7 @@ vi.mock("@/lib/auth/session", () => ({
 vi.mock("@/lib/rag/trial-ai-admission", () => ({
   admitTrialAiRequest: vi.fn(),
   releaseTrialAiLease: vi.fn(),
+  startTrialAiLeaseHeartbeat: vi.fn(),
 }));
 
 vi.mock("@/lib/observability/ai-unavailable", () => ({
@@ -156,6 +157,10 @@ describe("workspace chat routes", () => {
     );
     vi.mocked(admitTrialAiRequest).mockResolvedValue({ kind: "not-applicable" });
     vi.mocked(releaseTrialAiLease).mockResolvedValue(undefined);
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValue({
+      signal: new AbortController().signal,
+      stop: vi.fn().mockResolvedValue(undefined),
+    });
     vi.mocked(getOrCreateWorkspaceChatThread).mockResolvedValue({
       thread,
       messages: [userMessage],
@@ -236,6 +241,25 @@ describe("workspace chat routes", () => {
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(preparePreflightedWorkspaceChatMessageStream).not.toHaveBeenCalled();
     expect(sendPreparedWorkspaceChatMessageStream).not.toHaveBeenCalled();
+  });
+
+  it("omits daily reset and Retry-After for a transient concurrent-request denial", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+
+    const response = await POST_MESSAGE(jsonRequest({ message: "What changed?" }), routeContext());
+
+    await expect(response.json()).resolves.toEqual({
+      error: "TRIAL_AI_REQUEST_IN_PROGRESS",
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+    expect(response.headers.get("retry-after")).toBeNull();
   });
 
   it("fails closed when anonymous Trial admission is unexpectedly not applicable", async () => {
@@ -355,6 +379,13 @@ describe("workspace chat routes", () => {
       kstDate: "2026-08-25",
       networkBucketDigest: "network-digest-1",
     });
+    expect(startTrialAiLeaseHeartbeat).toHaveBeenCalledWith("lease-1");
+    expect(
+      vi.mocked(startTrialAiLeaseHeartbeat).mock.results[0]?.value.stop,
+    ).toHaveBeenCalledOnce();
+    const preparationSignal = vi.mocked(preparePreflightedWorkspaceChatMessageStream).mock.calls[0]?.[0].signal;
+    const streamSignal = vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.calls[0]?.[1].signal;
+    expect(preparationSignal).toBe(streamSignal);
     expect(preparePreflightedWorkspaceChatMessageStream).toHaveBeenCalledWith(
       expect.objectContaining({
         preflight: statelessTrialPreflight,

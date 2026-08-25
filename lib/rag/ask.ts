@@ -219,6 +219,7 @@ export async function prepareAskDocumentQuestion(
 
 export async function answerPreparedAskDocumentQuestion(
   prepared: PreparedAskDocumentQuestion,
+  options: Readonly<{ signal?: AbortSignal }> = {},
 ): Promise<AskDocumentQuestionResult> {
   const trace = createLangfuseCallbackConfig({
     enabled: prepared.effectiveModelConfig.langfuse.enabled,
@@ -244,6 +245,7 @@ export async function answerPreparedAskDocumentQuestion(
     callbacks: trace.callbacks,
     metadata: trace.metadata,
     privacySafeLogging: prepared.privacyMode === "anonymous-trial",
+    ...(options.signal ? { config: { signal: options.signal } } : {}),
   });
 
   return normalizeAnswerCitations(answer, prepared.citations);
