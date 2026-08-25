@@ -214,6 +214,7 @@ export function AiAssistantPanel({
           <AiCitations
             citations={citations}
             workspaceSlug={workspaceSlug}
+            mode={mode}
             className="text-xs text-slate-500"
           />
         </div>

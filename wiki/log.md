@@ -3924,3 +3924,11 @@ links:
 - Privacy boundary: admitted anonymous Ask provider failures use only the Trial metric seam with surface, public `AI_UNAVAILABLE`, coarse remaining bucket, and anonymous flag. They do not enter the authenticated handled-error path carrying raw error, workspace slug, RAG code, provider, or model.
 - Source evidence: PR #213 review, Ask route, focused abort and anonymous telemetry regression tests.
 - Verification: both regressions failed before the route change, then the 14-test Ask route suite and TypeScript compilation passed.
+
+## 2026-08-25T18:50:00+09:00 - Trial entry, embedding, and citation review follow-up
+
+- Entry boundary: `/login`, `/`, and the unauthenticated workspace page all resolve the same validated public Turnstile site key and pass it to `LoginForm`, so a shared-network challenge can complete from every login gate.
+- Privacy boundary: stateless Trial query embedding and targeted index backfill propagate privacy-safe logging. Provider failures expose only a stable RAG code and coarse embedding surface, never the raw SDK error; authenticated diagnostics remain unchanged.
+- Navigation boundary: Ask and Workspace Trial citations stay inside `/trial/workspaces/<slug>?document=...`; authenticated citations retain the ordinary workspace route.
+- Source evidence: PR #213 review threads, shared Turnstile key resolver and login callers, embedding/index/workspace-chat privacy propagation, shared citation renderer and workspace route builder.
+- Verification: focused authentication, component, RAG, and privacy-contract suites passed 186 tests together with TypeScript compilation.

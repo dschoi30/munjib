@@ -38,6 +38,7 @@ beforeEach(() => {
           citations: [
             {
               index: 1,
+              documentId: "doc-policy",
               documentTitle: "Handbook",
               documentPath: "/handbook",
               headingPath: "Policy",
@@ -88,6 +89,9 @@ describe("WorkspaceChatbot", () => {
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("Workspace answer.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "[1] Handbook > Policy" }).getAttribute("href")).toBe(
+      "/trial/workspaces/company-handbook?document=doc-policy",
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/assistant/messages",
       expect.objectContaining({
@@ -108,7 +112,10 @@ describe("WorkspaceChatbot", () => {
     );
     fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/ask")) {
-        return jsonResponse({ answer: "Document answer", citations: [] });
+        return jsonResponse({
+          answer: "Document answer [1]",
+          citations: [{ index: 1, documentId: "doc-2", documentTitle: "Trial source" }],
+        });
       }
       throw new Error(`Unexpected fetch ${url} ${init?.method ?? "GET"}`);
     });
@@ -131,7 +138,10 @@ describe("WorkspaceChatbot", () => {
     fireEvent.change(screen.getByLabelText("AI question"), { target: { value: "Question" } });
     fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
 
-    expect(await screen.findByText("Document answer")).toBeTruthy();
+    expect(await screen.findByText("Document answer [1]")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "[1] Trial source" }).getAttribute("href")).toBe(
+      "/trial/workspaces/company-handbook?document=doc-2",
+    );
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/documents/doc-1/ask",
       expect.objectContaining({

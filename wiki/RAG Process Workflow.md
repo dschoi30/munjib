@@ -191,6 +191,10 @@ Post-admission Trial preparation/stream failures normalize to public
 surface, public result code, coarse remaining-count bucket, and
 `anonymous_trial: true`; it receives no raw error/provider response, workspace
 slug, provider/model, question, prompt, context, answer, or document content.
+The same privacy-safe flag reaches Trial retrieval query embedding and targeted
+document-index backfill. Embedding provider exceptions are normalized to stable
+code and coarse `embedding` surface without logging the raw SDK error; normal
+authenticated retrieval retains its existing diagnostic error logging.
 
 Task 6 keeps the browser UI subordinate to those server decisions. Ask AI
 accepts allowance state only from a successful response's `trialAi` projection,
@@ -229,6 +233,10 @@ only `{ remaining, resetsAt }` into the two clients; workspace IDs and visitor o
 network subjects/digests are not serialized. That initial projection enters the
 same monotonic in-memory allowance channel, preserving expiry timers,
 cross-surface synchronization, and accessibility behavior.
+Shared citation rendering also receives this mode. Ask and Workspace Trial
+citations remain under `/trial/workspaces/<slug>?document=...`, while ordinary
+authenticated citations keep `/workspaces/<slug>?document=...`, so following a
+Trial source never falls back into an authenticated login gate.
 
 ## Process Map
 

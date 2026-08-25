@@ -15,7 +15,10 @@ export type SavedDocumentForIndex = {
   updatedAt: Date;
 };
 
-type EmbedText = (text: string) => Promise<number[]>;
+type EmbedText = (
+  text: string,
+  options?: Readonly<{ privacySafeLogging?: boolean }>,
+) => Promise<number[]>;
 type ReplaceDocumentChunksInput = Parameters<typeof defaultReplaceDocumentChunks>[1];
 type ReplaceDocumentChunks = (input: ReplaceDocumentChunksInput) => Promise<unknown>;
 type IsDocumentCurrent = (document: SavedDocumentForIndex) => Promise<boolean>;
@@ -24,6 +27,7 @@ type ScheduleAfter = (task: () => unknown | Promise<unknown>) => void;
 type IndexSavedDocumentInput = {
   document: SavedDocumentForIndex;
   embeddingModel?: string;
+  privacySafeLogging?: boolean;
   embedText?: EmbedText;
   replaceDocumentChunks?: ReplaceDocumentChunks;
   isDocumentCurrent?: IsDocumentCurrent;
@@ -61,7 +65,9 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
       sourceUpdatedAt: document.updatedAt,
       tokenCount: chunk.tokenCount,
       embeddingModel,
-      embedding: await embedText(chunk.content),
+      embedding: input.privacySafeLogging
+        ? await embedText(chunk.content, { privacySafeLogging: true })
+        : await embedText(chunk.content),
     });
   }
 
@@ -87,6 +93,7 @@ export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput)
     return await indexSavedDocument({
       document,
       embeddingModel: input.embeddingModel,
+      privacySafeLogging: input.privacySafeLogging,
       embedText: input.embedText,
       replaceDocumentChunks: input.replaceDocumentChunks,
       isDocumentCurrent: input.isDocumentCurrent ?? isSavedDocumentCurrent,

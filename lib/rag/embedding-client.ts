@@ -28,6 +28,7 @@ export type RagEmbeddingClientConfig = {
 
 export type EmbedTextOptions = {
   config?: RagEmbeddingClientConfig;
+  privacySafeLogging?: boolean;
   embeddingModel?: LangChainEmbeddingModel;
   expectedDimensions?: number;
   getRagModelConfig?: () => RagEmbeddingClientConfig | Promise<RagEmbeddingClientConfig>;
@@ -81,7 +82,14 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
   try {
     embedding = await embeddingModel.embedQuery(text);
   } catch (error) {
-    console.error("Embedding request failed:", error);
+    if (options.privacySafeLogging) {
+      console.error("Embedding request failed", {
+        code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,
+        surface: "embedding",
+      });
+    } else {
+      console.error("Embedding request failed:", error);
+    }
     throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
   }
 

@@ -331,9 +331,13 @@ export async function preparePreflightedWorkspaceChatMessageStream(
     query: conversationQuestion,
     embeddingModel: effectiveModelConfig.embedding.indexId,
     selectedDocumentId,
+    privacySafeLogging: workspace.kind === "stateless-trial",
   });
   throwIfWorkspaceChatStreamAborted(input.signal);
-  const embedding = await embedText(conversationQuestion, { config: effectiveModelConfig });
+  const embedding = await embedText(conversationQuestion, {
+    config: effectiveModelConfig,
+    privacySafeLogging: workspace.kind === "stateless-trial",
+  });
   throwIfWorkspaceChatStreamAborted(input.signal);
   const globalChunks = await searchSimilarChunks({
     workspaceId: workspace.workspaceId,
@@ -709,6 +713,7 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   query: string;
   embeddingModel: string;
   selectedDocumentId: string | undefined;
+  privacySafeLogging: boolean;
 }) {
   const candidates = selectIndexBackfillDocuments({
     documents: input.readableDocuments,
@@ -744,6 +749,7 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
     await safeIndexSavedDocument({
       documentId: document.id,
       embeddingModel: input.embeddingModel,
+      privacySafeLogging: input.privacySafeLogging,
     });
   }
 }
