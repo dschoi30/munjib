@@ -71,17 +71,24 @@ function loadTurnstileScript(): Promise<void> {
 function waitForScript(script: HTMLScriptElement): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.turnstile) return resolve();
-    const timeoutId = window.setTimeout(() => reject(new Error("TURNSTILE_SCRIPT_TIMEOUT")), TURNSTILE_TIMEOUT_MS);
+    let timeoutId = 0;
     const finish = (error?: Error) => {
       window.clearTimeout(timeoutId);
       script.removeEventListener("load", onLoad);
       script.removeEventListener("error", onError);
-      if (error) reject(error);
+      if (error) {
+        script.remove();
+        reject(error);
+      }
       else resolve();
     };
     const onLoad = () => finish(window.turnstile ? undefined : new Error("TURNSTILE_API_UNAVAILABLE"));
     const onError = () => finish(new Error("TURNSTILE_SCRIPT_FAILED"));
     script.addEventListener("load", onLoad, { once: true });
     script.addEventListener("error", onError, { once: true });
+    timeoutId = window.setTimeout(
+      () => finish(new Error("TURNSTILE_SCRIPT_TIMEOUT")),
+      TURNSTILE_TIMEOUT_MS,
+    );
   });
 }
