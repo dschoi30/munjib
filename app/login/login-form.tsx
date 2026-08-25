@@ -149,13 +149,20 @@ export function LoginForm({
     setStatusKey(null);
     if (!isTrialLoginEnabled) return;
     setActiveAction("trial");
-    const result = await signIn("trial", {
-      redirect: false,
-      callbackUrl: postAuthCallbackUrl,
-    });
-    if (result?.url) {
-      window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
-      return;
+    try {
+      const response = await fetch("/api/trial/entitlement", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const result: unknown = await response.json();
+      const entryPath = readTrialEntryPath(result);
+      if (response.ok && entryPath) {
+        window.location.assign(entryPath);
+        return;
+      }
+    } catch {
+      // Trial capability and edge evidence are fail-closed by the entitlement route.
     }
     setErrorKey("login.error.generic");
     setActiveAction(null);
@@ -377,6 +384,16 @@ export function LoginForm({
       ) : null}
     </div>
   );
+}
+
+function readTrialEntryPath(value: unknown): string | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const entry = (value as Record<string, unknown>).entry;
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
+  const path = (entry as Record<string, unknown>).path;
+  return typeof path === "string" && /^\/trial\/workspaces\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path)
+    ? path
+    : null;
 }
 
 function resolveSignupErrorKey(code: string | undefined): MessageKey {

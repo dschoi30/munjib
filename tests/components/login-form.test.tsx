@@ -262,21 +262,51 @@ describe("LoginForm", () => {
     });
   });
 
-  it("starts the trial provider without sending a password", async () => {
-    authMock.signIn.mockResolvedValue({
-      url: "http://localhost:3000/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
-    });
+  it("creates an anonymous Trial entitlement and follows only the server entry projection", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        remaining: 3,
+        limit: 3,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+        entry: { path: "/trial/workspaces/company-handbook" },
+      }),
+    } as Response);
 
     renderLoginForm();
 
     fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
 
     await waitFor(() => {
-      expect(authMock.signIn).toHaveBeenCalledWith("trial", {
-        redirect: false,
-        callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+      expect(fetch).toHaveBeenCalledWith("/api/trial/entitlement", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({}),
       });
     });
+    expect(authMock.signIn).not.toHaveBeenCalledWith("trial", expect.anything());
+    expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook");
+  });
+
+  it("fails closed when Trial entitlement returns an external or malformed entry path", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        remaining: 3,
+        limit: 3,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+        entry: { path: "https://evil.example/trial/workspaces/company-handbook" },
+      }),
+    } as Response);
+
+    renderLoginForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+
+    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    expect(window.location.assign).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Sign in failed. Clear the local session and try again."),
+    ).toBeTruthy();
   });
 
   it("keeps development login shortcuts hidden when the server gate is off", async () => {

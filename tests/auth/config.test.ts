@@ -295,27 +295,21 @@ describe("authOptions", () => {
     expect(result).toBeNull();
   });
 
-  it("signs in the seeded trial user without browser-visible secrets", async () => {
-    prismaMock.user.findUnique.mockResolvedValue({
-      id: "trial-user",
-      email: "legacy-account-2@example.invalid",
-      name: "Munjib Trial",
-      image: null,
+  it("never registers or queries the legacy shared Trial provider", () => {
+    const options = buildAuthOptions({
+      deploymentEnvironment: "development",
+      secret: "development-secret-placeholder",
+      canonicalOrigin: "http://localhost:3000",
+      secureCookies: false,
+      developmentLoginEnabled: true,
+      passwordSignupEnabled: false,
+      oauthSignupEnabled: false,
     });
 
-    const provider = getCredentialsProvider("trial");
-    const result = await provider.authorize?.({}, {} as never);
-
-    expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
-      where: { email: "legacy-account-2@example.invalid" },
-      select: { id: true, email: true, name: true, image: true },
-    });
-    expect(result).toEqual({
-      id: "trial-user",
-      email: "legacy-account-2@example.invalid",
-      name: "Munjib Trial",
-      image: null,
-    });
+    expect(options.providers.map((provider) => provider.id)).not.toContain("trial");
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { email: "legacy-account-2@example.invalid" } }),
+    );
   });
 
   it("does not register or query the legacy Trial provider in production", () => {
@@ -366,12 +360,11 @@ describe("authOptions", () => {
   });
 
   it.each([
-    [{ MUNJIB_DEPLOYMENT_ENV: "development", NODE_ENV: "production" }, true],
-    [{ MUNJIB_DEPLOYMENT_ENV: "staging", NODE_ENV: "production" }, false],
-    [{ MUNJIB_DEPLOYMENT_ENV: "production", NODE_ENV: "production" }, false],
-    [{ NODE_ENV: "development" }, true],
-    [{ NODE_ENV: "production" }, false],
-  ])("gates the trial login on deployment environment", (env, expected) => {
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "true" }, true],
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "false" }, false],
+    [{ MUNJIB_ANONYMOUS_TRIAL_ENABLED: "TRUE" }, false],
+    [{ NODE_ENV: "development" }, false],
+  ])("gates the Trial entry on the anonymous capability flag", (env, expected) => {
     expect(resolveTrialLoginEnabled(env)).toBe(expected);
   });
 

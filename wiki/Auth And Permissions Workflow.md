@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-08-25
-source_count: 114
+source_count: 120
 tags:
   - munjib
   - auth
@@ -45,7 +45,7 @@ login path; the strict production runtime validator rejects an attempted
 `true` value. Only `docker-compose.dev.yml` forwards a direct development
 override.
 
-이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
+이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 계정 로그인은 password/Google provider가 처리하고, 가입 없는 Trial은 NextAuth identity가 아니라 별도 anonymous capability가 처리한다.
 
 ### Fail-closed auth runtime
 
@@ -109,6 +109,17 @@ The signing, visitor-digest, network-bucket, and Turnstile secret bytes are
 never returned to the browser. The legacy development-only
 `legacy-account-2@example.invalid` Credentials provider is not queried, reactivated, or used
 as the anonymous authorization principal.
+
+Issue #212 Task 7 removes that legacy provider even from development registration.
+`LoginForm` now POSTs `/api/trial/entitlement`, accepts only the server-owned
+`/trial/workspaces/<exact-slug>` public entry projection, and follows it only
+after the opaque HttpOnly visitor cookie can be issued. Capability, edge-proof,
+challenge, malformed JSON, and non-local path failures stay on the login page.
+The dedicated Trial viewer re-verifies the cookie plus fresh edge proof for its
+own GET pathname, resolves the immutable workspace ID and exact slug together,
+and loads only active documents with no explicit permission rows. It does not
+use `WorkspaceMember`, USER grants, account navigation, server actions, or a
+shared `User`; Workspace AI remains the stateless anonymous route from Task 5.
 
 `requireAiActor(request)` preserves the existing authenticated-user shape, but
 returns anonymous callers as a separate admission actor plus an
