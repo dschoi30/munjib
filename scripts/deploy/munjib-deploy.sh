@@ -44,6 +44,7 @@ sudo -u ubuntu git -C "$repo_dir" \
 git_auth_header=
 
 sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$deploy_sha" origin/main
+sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$previous_sha" "$deploy_sha"
 sudo -u ubuntu git -C "$repo_dir" checkout --detach "$deploy_sha"
 [[ "$(sudo -u ubuntu git -C "$repo_dir" rev-parse HEAD)" == "$deploy_sha" ]]
 

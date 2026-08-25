@@ -341,7 +341,9 @@ rewritten from GitHub secrets on each deploy.
 
 The wrapper performs the native Docker Compose build, auth preflight, migration,
 RAG index, service replacement, local/public health checks, and deployed-SHA state
-update. Production deploy concurrency is `munjib-production` with cancellation
+update. It also requires the recorded `current-sha` to be an ancestor of the
+requested deploy SHA, so rerunning a historical `main` workflow cannot silently
+roll production back. Production deploy concurrency is `munjib-production` with cancellation
 disabled. Workflow-level cancellation remains enabled for superseded PR runs but
 is disabled for every `main` run, so a newer push cannot terminate a deployment
 after migration or indexing. After a successful deploy, image cleanup keeps only

@@ -10,6 +10,7 @@ describe("private OCI self-hosted deployment boundary", () => {
   const sudoers = read("deploy/sudoers/munjib-actions-runner");
   const runbook = read("docs/runbooks/private-oci-self-hosted-runner.md");
   const projectPrd = read("wiki/Project PRD.md");
+  const localWorkflow = read("wiki/Local Development Workflow.md");
 
   test("accepts one exact commit SHA and token only through stdin", () => {
     expect(wrapper).toContain('[[ "$#" -eq 1 ]]');
@@ -38,6 +39,7 @@ describe("private OCI self-hosted deployment boundary", () => {
       'fetch --force "https://github.com/dschoi30/munjib.git" main\n',
     );
     expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$deploy_sha" origin/main');
+    expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$previous_sha" "$deploy_sha"');
     expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" checkout --detach "$deploy_sha"');
     expect(wrapper).toContain('[[ "$(sudo -u ubuntu git -C "$repo_dir" rev-parse HEAD)" == "$deploy_sha" ]]');
   });
@@ -96,5 +98,12 @@ describe("private OCI self-hosted deployment boundary", () => {
     expect(projectPrd).toContain("Issue #210");
     expect(projectPrd).toContain("`munjib-web:<sha>`");
     expect(projectPrd).not.toContain("Production compose `web` service는 `WEB_IMAGE=munjib-web:latest`");
+  });
+
+  test("removes the retired SSH production instructions from local workflow docs", () => {
+    expect(localWorkflow).toContain("Issue #210");
+    expect(localWorkflow).toContain("`WEB_IMAGE=munjib-web:<sha>`");
+    expect(localWorkflow).not.toContain("DEPLOY_SSH_KEY");
+    expect(localWorkflow).not.toContain("DEPLOY_HOST=146.56.170.25");
   });
 });

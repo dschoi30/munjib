@@ -177,6 +177,9 @@ generic `bash`, `sh`, `docker`, `git`, `systemctl`, editor 또는 파일 복사 
 
 운영 `main` workflow와 deploy job은 실행 중 취소되지 않는다. 새 `main` push가
 도착해도 현재 배포가 health check와 SHA 기록을 마친 뒤 다음 배포가 시작된다.
+Wrapper는 기록된 `current-sha`가 배포 대상 SHA의 조상일 때만 진행하므로, 과거
+`main` workflow를 재실행해도 운영 버전을 이전 commit으로 되돌릴 수 없다. 의도한
+rollback은 Actions 재실행이 아니라 아래 Bastion 수동 복구 절차로 판단·수행한다.
 성공한 배포는 현재와 직전 `munjib-web:<sha>` 이미지 태그만 남기고 더 오래된
 Munjib web 태그를 정리한다. 최초 전환에서 직전 SHA 태그가 아직 없다면 기존
 `munjib-web:latest`를 한 세대 보존하고, 다음 성공 배포부터 SHA 태그 2세대
