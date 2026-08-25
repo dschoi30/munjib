@@ -26,7 +26,10 @@ export type TrialVisitorTokenVerification =
       expiresAt: string;
     }>;
 
-export type TrialVisitorTokenVerificationOptions = Readonly<{ now?: Date }>;
+export type TrialVisitorTokenVerificationOptions = Readonly<{
+  now?: Date;
+  visitorDigestKey?: string | Uint8Array;
+}>;
 
 type TokenPayload = Readonly<{ v: 1; s: string; iat: number; exp: number }>;
 
@@ -113,12 +116,14 @@ export function issueTrialVisitorToken(options: TrialVisitorTokenIssueOptions): 
   const subject = encodeBase64Url(Buffer.from(sourceBytes));
   if (!isSubject(subject)) invalid("generation failed");
   const iat = Math.floor(now.getTime() / 1000);
-  const payload: TokenPayload = { v: 1, s: subject, iat, exp: iat + ttlSeconds };
+  const exp = iat + ttlSeconds;
+  if (!Number.isSafeInteger(exp)) invalid("ttl is invalid");
+  const payload: TokenPayload = { v: 1, s: subject, iat, exp };
   const encodedPayload = encodeBase64Url(JSON.stringify(payload));
   return `${encodedPayload}.${encodeBase64Url(sign(encodedPayload, key))}`;
 }
 
-/** Verifies a current or previous signing key without returning a token, key, or visitor-id field. */
+/** Verifies a current or previous signing key and returns only a derived pseudonymous session subject. */
 export function verifyTrialVisitorToken(
   token: unknown,
   keys: readonly (string | Uint8Array)[],
@@ -143,10 +148,18 @@ export function verifyTrialVisitorToken(
   }
   const now = requireValidDate(options.now);
   if (!signatureMatches || payload.exp <= Math.floor(now.getTime() / 1000)) return { ok: false };
+  if (options.visitorDigestKey === undefined) return { ok: false };
+
+  let trialVisitorSubject: string;
+  try {
+    trialVisitorSubject = deriveTrialVisitorDigest(payload.s, options.visitorDigestKey);
+  } catch {
+    return { ok: false };
+  }
 
   return {
     ok: true,
-    trialVisitorSubject: payload.s,
+    trialVisitorSubject,
     issuedAt: new Date(payload.iat * 1000).toISOString(),
     expiresAt: new Date(payload.exp * 1000).toISOString(),
   };
