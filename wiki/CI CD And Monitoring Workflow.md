@@ -468,7 +468,7 @@ be claimed as production-ready.
 <details>
 <summary>Historical direct-SSH checkout/native-build flow (inactive after Issue #210 cutover)</summary>
 
-Current deploy sequence:
+Historical deploy sequence (inactive):
 
 ```bash
 cd "${{ secrets.DEPLOY_PATH }}"
@@ -519,36 +519,10 @@ done
 sudo docker image prune -f
 ```
 
-이 deploy는 Actions-provided ephemeral `github.token`을 stdin으로 root-owned wrapper에 전달한다. Wrapper는 token을 Git HTTP extraheader로만 사용해 repository `main`을 fetch한 뒤 workflow가 검증한 `github.sha`로 detached checkout을 고정하고 token/header 변수를 즉시 비운다. Token을 `.git/config`, credential helper, 임시 파일에 저장하지 않는다. OCI ARM64 host에서 `web`과 `tools` image를 직접 build하고, native `tools` container에서 Prisma migration과 RAG vector index setup을 실행한 뒤 `web` service를 detached mode로 올린다. Hairpin NAT 영향을 피하는 local health check와 public HTTPS health check가 모두 성공한 뒤에만 `current-sha`를 atomically 갱신하고 dangling image를 정리한다.
-
-Production secret은 root 관리 `/etc/munjib/secrets/nextauth-current`와 조건부 `google-client-current`에 이미 존재해야 한다. Runner와 workflow는 값을 읽거나 다시 설치하지 않는다. `auth-preflight`가 같은 runtime image에서 strict auth environment를 검사하고 성공한 뒤에만 service를 제거하고 Prisma migration, RAG index, Web replacement를 시작한다. Preflight 실패는 `set -euo pipefail`로 migration이나 current-container replacement를 중단한다. `docker-compose.dev.yml`만 direct `NEXTAUTH_SECRET`/`GOOGLE_CLIENT_SECRET`와 development flags를 허용하며 production workflow에서는 사용하지 않는다.
-
-현재 deploy job에는 synthetic browser check와 Sentry event smoke test가 없다. 배포 후 상태 확인은 GitHub Actions log, public health check, server Docker logs, 필요 시 Sentry issue/trace 확인으로 수행한다.
-
-OCI server production env는 repository checkout 안의 `.env`나 `.env.docker`가 아니라 host-local secret file `/etc/munjib/env`가 기준이다. Deploy workflow는 모든 remote Compose 명령에 `docker compose --env-file "$DEPLOY_ENV_FILE"`를 명시하고, 실제 compose interpolation은 이 파일과 workflow가 넘기는 release env를 함께 사용한다. `docker-compose.yml`의 `environment:` 항목은 `${VAR:-}` 형태라서 service-level `env_file`만 추가하면 빈 문자열이 우선되어 provider credentials가 계속 비는 문제가 생길 수 있다. 초기 production 관측 기간에는 Sentry trace sample rate를 `1.0`으로 둔다.
-
-Issue #143의 email-only development login은 production에서 항상 disabled다. Production `docker-compose.yml`은 `MUNJIB_ENABLE_DEV_LOGIN=false`를 literal로 고정하고, strict auth runtime validator도 production의 `true` 값을 거부한다. 따라서 `/etc/munjib/env`에서 이 값을 바꿔도 production의 temporary login path는 열리지 않는다. 개발용 direct env와 기본 `true` 값은 `docker-compose.dev.yml`에만 남긴다.
-
-```text
-NEXTAUTH_URL="https://munjib.andrewchoi.link"
-NEXTAUTH_COOKIE_SECURE=true
-WEB_IMAGE=munjib-web:latest
-SENTRY_ENVIRONMENT=production
-SENTRY_TRACES_SAMPLE_RATE=1.0
-NEXT_PUBLIC_SENTRY_ENVIRONMENT=production
-NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=1.0
-MUNJIB_OPENAI_COMPATIBLE_BASE_URL=https://openrouter.ai/api/v1
-MUNJIB_OPENAI_COMPATIBLE_API_KEY=<secret>
-```
-
-Issue #135 low-cost observability additions for the same host-local env file:
-
-```text
-SENTRY_RUNTIME_METRICS_ENABLED=true
-SENTRY_RUNTIME_METRICS_INTERVAL_MS=60000
-NEXT_PUBLIC_SENTRY_REPLAYS_SESSION_SAMPLE_RATE=0
-NEXT_PUBLIC_SENTRY_REPLAYS_ON_ERROR_SAMPLE_RATE=1
-```
+이 과거 경로는 GitHub-hosted runner가 SSH secret으로 OCI에 접속해 checkout,
+secret 설치, `munjib-web:latest` build와 health check를 직접 수행했다. Issue #210
+cutover 이후에는 실행되지 않으며, 현재 동작과 운영 설정은 위의
+`Main deploy: private OCI self-hosted runner path`와 운영 runbook만 기준으로 삼는다.
 
 </details>
 
