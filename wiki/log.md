@@ -3826,3 +3826,11 @@ links:
 - Failure boundary: admitted abort and provider error paths release without decrementing the charge. A lease-release error is suppressed so it cannot mask an original success or provider error.
 - Source evidence: Task 4 review ruling, `lib/rag/ask.ts`, Ask route, and focused route/preparation/privacy tests.
 - Verification: explicit RED for anonymous override and full-capture Langfuse paths, then focused 16-test GREEN suite and TypeScript compilation.
+
+## 2026-08-25T16:00:00+09:00 - anonymous Trial Workspace AI admission
+
+- Result: Issue #212 Task 5 inserts exact-demo-workspace authorization and the shared Trial admission ledger before Workspace AI thread/index/model preparation and before NDJSON starts. Quota denials are JSON 429, admission failures are JSON 503, and the first admitted `start` event includes authoritative `trialAi.remaining` and `resetsAt`.
+- Isolation boundary: anonymous Trial preparation is request-stateless and viewer-only over active documents in the immutable demo workspace. It never queries USER grants, never maps to an existing/shared `User`, never creates or reuses `AiChatThread`/`AiChatMessage`, never shares conversation history, and forces Langfuse metadata-only capture. Ordinary authenticated users retain the existing persistent thread/memory path.
+- Charging boundary: admission precedes all provider work. Success, provider error, abort, and post-admission preparation failure await best-effort lease release, while admitted daily counters remain charged and are never decremented.
+- Source evidence: approved Issue #212 design and Task 5 ruling, `app/api/workspaces/[workspaceSlug]/assistant/messages/route.ts`, `app/api/workspaces/[workspaceSlug]/assistant/error-response.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/workspace-chat-route.test.ts`, and `tests/rag/workspace-chat-trial.test.ts`.
+- Verification: strict route RED/GREEN cycles covered pre-stream JSON denial, first-event quota projection, admission-before-preparation ordering, fail-closed actor mismatch, and awaited lease cleanup; focused route/stateless service tests and TypeScript compilation passed. The pgvector-backed full workspace-chat integration file remains unexecuted locally because Docker is stopped and the host PostgreSQL lacks the `vector` extension.

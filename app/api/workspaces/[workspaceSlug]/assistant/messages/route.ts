@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import {
@@ -9,18 +9,27 @@ import {
 } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import {
-  prepareWorkspaceChatMessageStream,
+  preflightWorkspaceChatMessageStream,
+  preparePreflightedWorkspaceChatMessageStream,
   sendPreparedWorkspaceChatMessageStream,
   type WorkspaceChatPreparedMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
-import { workspaceChatErrorResponse } from "../error-response";
+import {
+  admitTrialAiRequest,
+  releaseTrialAiLease,
+  type TrialAiAdmission,
+} from "@/lib/rag/trial-ai-admission";
+import {
+  workspaceChatErrorResponse,
+  workspaceChatTrialAdmissionDeniedResponse,
+} from "../error-response";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ workspaceSlug: string }> },
 ) {
-  const user = await requireCurrentUser();
+  const actor = await requireAiActor(request);
   const { workspaceSlug } = await params;
   const body = await parseJsonBody(request);
 
@@ -72,19 +81,11 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
 
-  let prepared: WorkspaceChatPreparedMessage;
+  let preflight;
   try {
-    prepared = await prepareWorkspaceChatMessageStream({
+    preflight = await preflightWorkspaceChatMessageStream({
       workspaceSlug,
-      actorId: user.id,
-      message,
-      signal: request.signal,
-      ...(uiLanguage ? { uiLanguage } : {}),
-      ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
-      ...(chatProviderValidation?.ok
-        ? { chatProviderOverride: chatProviderValidation.value }
-        : {}),
-      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
+      authorizationPrincipal: actor.authorizationPrincipal,
     });
   } catch (error) {
     return workspaceChatErrorResponse(error, {
@@ -95,13 +96,61 @@ export async function POST(
     });
   }
 
-  return workspaceChatStreamResponse(prepared, request.signal, workspaceSlug);
+  let admission: TrialAiAdmission;
+  try {
+    admission = await admitTrialAiRequest({
+      actor: actor.admissionActor,
+      surface: "workspace_chat",
+      workspaceId: preflight.workspaceId,
+      kstDate: actor.kstDate,
+      ...(actor.networkBucketDigest
+        ? { networkBucketDigest: actor.networkBucketDigest }
+        : {}),
+    });
+  } catch {
+    admission = { kind: "denied", code: "TRIAL_AI_ADMISSION_UNAVAILABLE" };
+  }
+  if (admission.kind === "denied") {
+    return workspaceChatTrialAdmissionDeniedResponse(admission);
+  }
+  if (actor.admissionActor.kind === "anonymous-trial" && admission.kind !== "admitted") {
+    return workspaceChatTrialAdmissionDeniedResponse({
+      kind: "denied",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+  }
+
+  let prepared: WorkspaceChatPreparedMessage;
+  try {
+    prepared = await preparePreflightedWorkspaceChatMessageStream({
+      preflight,
+      message,
+      signal: request.signal,
+      ...(uiLanguage ? { uiLanguage } : {}),
+      ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
+      ...(chatProviderValidation?.ok
+        ? { chatProviderOverride: chatProviderValidation.value }
+        : {}),
+      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
+    });
+  } catch (error) {
+    await releaseAdmissionLeaseBestEffort(admission);
+    return workspaceChatErrorResponse(error, {
+      surface: "workspace_chat_prepare",
+      workspaceSlug,
+      ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
+      ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
+    });
+  }
+
+  return workspaceChatStreamResponse(prepared, request.signal, workspaceSlug, admission);
 }
 
 function workspaceChatStreamResponse(
   prepared: WorkspaceChatPreparedMessage,
   signal: AbortSignal,
   workspaceSlug: string,
+  admission: Exclude<TrialAiAdmission, { kind: "denied" }>,
 ) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -118,7 +167,12 @@ function workspaceChatStreamResponse(
         }
       };
 
-      writeEvent({ type: "start" });
+      writeEvent({
+        type: "start",
+        ...(admission.kind === "admitted"
+          ? { trialAi: { remaining: admission.remaining, resetsAt: admission.resetsAt } }
+          : {}),
+      });
       try {
         const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
           onToken(token) {
@@ -149,6 +203,7 @@ function workspaceChatStreamResponse(
         }
         writeEvent({ type: "error", error: streamError });
       } finally {
+        await releaseAdmissionLeaseBestEffort(admission);
         if (!streamClosed) {
           try {
             controller.close();
@@ -166,6 +221,17 @@ function workspaceChatStreamResponse(
       "cache-control": "no-cache, no-transform",
     },
   });
+}
+
+async function releaseAdmissionLeaseBestEffort(
+  admission: Exclude<TrialAiAdmission, { kind: "denied" }>,
+) {
+  if (admission.kind !== "admitted") return;
+  try {
+    await releaseTrialAiLease(admission.leaseId);
+  } catch {
+    // Lease expiry remains the recovery path; cleanup must not replace the request result.
+  }
 }
 
 async function parseJsonBody(request: Request) {
