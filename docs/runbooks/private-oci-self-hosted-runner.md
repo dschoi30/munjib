@@ -183,9 +183,16 @@ curl --fail --silent --show-error --location --max-time 20 \
 printf 'verified_sha=%s\n' "$expected_sha"
 ```
 
-그다음 GitHub Actions에서 `Production runner smoke`를 수동 실행한다. 이 workflow는 운영 변경 없이 identity, architecture, Docker group 부재, outbound/public HTTPS만 확인한다.
-실행 화면의 branch는 반드시 `main`을 선택한다. 다른 branch를 선택하면 job-level
-guard가 production runner job을 건너뛴다.
+그다음 운영자 Mac에서 기본 브랜치 전용 repository dispatch를 보낸다.
+
+```bash
+gh api --method POST repos/dschoi30/munjib/dispatches \
+  -f event_type=production-runner-smoke
+```
+
+이 이벤트는 기본 브랜치의 `Production runner smoke` workflow만 실행한다. branch를
+선택하는 `workflow_dispatch`는 사용하지 않는다. workflow는 운영 변경 없이 identity,
+architecture, Docker group 부재, outbound/public HTTPS만 확인한다.
 
 첫 deploy와 smoke가 모두 성공한 뒤에만 GitHub repository의 오래된 `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PORT`, `DEPLOY_PATH`, `DEPLOY_SSH_KEY` secrets를 삭제한다. 앱에서 사용 중일 수 있는 다른 secret은 삭제하지 않는다.
 

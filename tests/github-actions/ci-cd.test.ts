@@ -148,13 +148,17 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(workflowText).not.toMatch(/DEPLOY_(NEXTAUTH_SECRET|GOOGLE_CLIENT_SECRET)/);
   });
 
-  test("keeps the production runner smoke manual and read only", () => {
+  test("keeps the production runner smoke default-branch only and read only", () => {
     const smokeText = read(".github/workflows/runner-smoke.yml");
     const smoke = parse(smokeText);
 
-    expect(smoke.on).toEqual({ workflow_dispatch: null });
+    expect(smoke.on).toEqual({
+      repository_dispatch: {
+        types: ["production-runner-smoke"],
+      },
+    });
+    expect(smokeText).not.toContain("workflow_dispatch");
     expect(smoke.permissions).toEqual({ contents: "read" });
-    expect(smoke.jobs.smoke.if).toBe("github.ref == 'refs/heads/main'");
     expect(smoke.jobs.smoke["runs-on"]).toEqual([
       "self-hosted",
       "linux",
