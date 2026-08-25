@@ -36,6 +36,10 @@ NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
 실행한다. Next.js와 matching ESLint config는 15.5.21 exact pin이며 별도 advisory gate는
 유지한다.
 
+2026-08-25 CI follow-up은 Prisma config 경로의 재귀 객체 병합 advisory를 막기 위해
+`deepmerge-ts` 8.0.0을 exact override한다. 회귀 테스트는 취약한 7.1.5가 lock graph에
+남지 않고 Prisma Client 생성과 production audit이 계속 성공하는지 확인한다.
+
 Issue #174는 production `tsx` auth-preflight 경로에만
 `tsx>esbuild: 0.28.1` exact override를 적용한다. 따라서 production
 audit은 patched esbuild를 사용하고, dev-only Vite는 기존 0.21.5
