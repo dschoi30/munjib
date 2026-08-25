@@ -3,6 +3,8 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "@/lib/db/client";
 import {
   admitTrialAiRequest,
+  releaseTrialAiLease,
+  startTrialAiLeaseHeartbeat,
   type TrialAiAdmissionInput,
 } from "@/lib/rag/trial-ai-admission";
 
@@ -111,6 +113,26 @@ describeDatabase("trial AI admission PostgreSQL integration", () => {
       DATE,
     );
     expect(Number(rows[0]?.total)).toBe(0);
+  });
+
+  it("keeps one visitor blocked after the original lease deadline while heartbeat is active", async () => {
+    const visitor = `${prefix}heartbeat-visitor`;
+    await preseedDailyRows(DATE, [visitor]);
+    const first = await admitTrialAiRequest(input(visitor, DATE), { globalDailyLimit: 100 });
+    if (first.kind !== "admitted") throw new Error("expected admission");
+    await prisma.$executeRawUnsafe(
+      `UPDATE "TrialAiAdmissionLease" SET "expiresAt" = CURRENT_TIMESTAMP + INTERVAL '80 milliseconds' WHERE "id" = $1`,
+      first.leaseId,
+    );
+    const heartbeat = startTrialAiLeaseHeartbeat(first.leaseId, { heartbeatIntervalMs: 20 });
+
+    await new Promise((resolve) => setTimeout(resolve, 160));
+    const second = await admitTrialAiRequest(input(visitor, DATE), { globalDailyLimit: 100 });
+    await heartbeat.stop();
+    await releaseTrialAiLease(first.leaseId);
+
+    expect(heartbeat.signal.aborted).toBe(false);
+    expect(second).toEqual({ kind: "denied", code: "TRIAL_AI_REQUEST_IN_PROGRESS" });
   });
 });
 

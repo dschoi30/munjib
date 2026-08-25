@@ -15,8 +15,13 @@ import {
   validateChatProvider,
   validateChatModelId,
 } from "@/lib/rag/client-model-settings";
-import { isRagRuntimeError } from "@/lib/rag/errors";
-import { admitTrialAiRequest, releaseTrialAiLease } from "@/lib/rag/trial-ai-admission";
+import { isRagRuntimeError, RAG_ERROR_CODES } from "@/lib/rag/errors";
+import {
+  admitTrialAiRequest,
+  releaseTrialAiLease,
+  startTrialAiLeaseHeartbeat,
+  type TrialAiLeaseHeartbeat,
+} from "@/lib/rag/trial-ai-admission";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 export async function POST(
@@ -52,6 +57,7 @@ export async function POST(
   }
   let admittedLeaseId: string | undefined;
   let admittedTrialAi: { remaining: 0 | 1 | 2; resetsAt: string } | undefined;
+  let leaseHeartbeat: TrialAiLeaseHeartbeat | undefined;
   try {
     const prepared = await prepareAskDocumentQuestion({
       workspaceSlug,
@@ -81,9 +87,16 @@ export async function POST(
     if (admission.kind === "admitted") {
       admittedLeaseId = admission.leaseId;
       admittedTrialAi = { remaining: admission.remaining, resetsAt: admission.resetsAt };
+      leaseHeartbeat = startTrialAiLeaseHeartbeat(admission.leaseId);
     }
 
-    const result = await answerPreparedAskDocumentQuestion(prepared);
+    const providerSignal = leaseHeartbeat
+      ? AbortSignal.any([request.signal, leaseHeartbeat.signal])
+      : request.signal;
+    const result = leaseHeartbeat
+      ? await answerPreparedAskDocumentQuestion(prepared, { signal: providerSignal })
+      : await answerPreparedAskDocumentQuestion(prepared);
+    if (leaseHeartbeat?.signal.aborted) throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
     return NextResponse.json({
       ...result,
       ...(admission.kind === "admitted"
@@ -139,6 +152,7 @@ export async function POST(
     }
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   } finally {
+    await leaseHeartbeat?.stop();
     if (admittedLeaseId) {
       await releaseTrialAiLease(admittedLeaseId).catch(() => undefined);
     }

@@ -11,7 +11,7 @@ import {
   prepareAskDocumentQuestion,
 } from "@/lib/rag/ask";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
-import { admitTrialAiRequest, releaseTrialAiLease } from "@/lib/rag/trial-ai-admission";
+import { admitTrialAiRequest, releaseTrialAiLease, startTrialAiLeaseHeartbeat } from "@/lib/rag/trial-ai-admission";
 
 vi.mock("@/lib/auth/session", () => ({ requireAiActor: vi.fn() }));
 vi.mock("@/lib/rag/ask", () => ({
@@ -22,6 +22,7 @@ vi.mock("@/lib/rag/ask", () => ({
 vi.mock("@/lib/rag/trial-ai-admission", () => ({
   admitTrialAiRequest: vi.fn(),
   releaseTrialAiLease: vi.fn(),
+  startTrialAiLeaseHeartbeat: vi.fn(),
 }));
 vi.mock("@/lib/observability/ai-unavailable", () => ({
   captureHandledAiUnavailable: vi.fn(),
@@ -42,6 +43,10 @@ describe("RAG ask route", () => {
     vi.mocked(answerPreparedAskDocumentQuestion).mockResolvedValue({ answer: "Saved answer", citations: [] });
     vi.mocked(admitTrialAiRequest).mockResolvedValue({ kind: "not-applicable" });
     vi.mocked(releaseTrialAiLease).mockResolvedValue();
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValue({
+      signal: new AbortController().signal,
+      stop: vi.fn().mockResolvedValue(undefined),
+    });
   });
 
   it("does not swallow auth redirects", async () => {
@@ -166,6 +171,19 @@ describe("RAG ask route", () => {
     expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
   });
 
+  it("omits daily reset and Retry-After for a transient concurrent-request denial", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_REQUEST_IN_PROGRESS",
+    });
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ code: "TRIAL_AI_REQUEST_IN_PROGRESS" });
+    expect(response.headers.get("retry-after")).toBeNull();
+  });
+
   it("runs exact authorization before admission and returns remaining Trial entitlement on success", async () => {
     vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
     vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
@@ -196,6 +214,14 @@ describe("RAG ask route", () => {
       networkBucketDigest: "network-digest-1",
     });
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
+    expect(startTrialAiLeaseHeartbeat).toHaveBeenCalledWith("lease-1");
+    expect(answerPreparedAskDocumentQuestion).toHaveBeenCalledWith(
+      preparedAsk,
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(
+      vi.mocked(startTrialAiLeaseHeartbeat).mock.results[0]?.value.stop,
+    ).toHaveBeenCalledOnce();
   });
 
   it("uses coarse Trial telemetry and releases the lease when the anonymous provider fails", async () => {
