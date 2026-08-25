@@ -8,6 +8,18 @@ const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
 const TOKEN_DOMAIN = "munjib/trial-visitor-token/v1\0";
 const DIGEST_DOMAIN = "munjib/trial-visitor-digest/v1\0";
 
+export const TRIAL_VISITOR_COOKIE_NAME = "munjib.trial-visitor";
+export const TRIAL_VISITOR_COOKIE_MAX_AGE_SECONDS = DEFAULT_TTL_SECONDS;
+
+/** The anonymous visitor cookie contract is defined only at the token boundary. */
+export const TRIAL_VISITOR_COOKIE_OPTIONS = Object.freeze({
+  httpOnly: true,
+  secure: true,
+  sameSite: "lax" as const,
+  path: "/",
+  maxAge: TRIAL_VISITOR_COOKIE_MAX_AGE_SECONDS,
+});
+
 export type RandomBytesSource = (size: number) => Uint8Array;
 
 export type TrialVisitorTokenIssueOptions = Readonly<{
@@ -169,4 +181,16 @@ export function verifyTrialVisitorToken(
 export function deriveTrialVisitorDigest(subject: string, key: string | Uint8Array): string {
   if (!isSubject(subject)) invalid("subject is invalid");
   return createHmac("sha256", requireKey(key)).update(DIGEST_DOMAIN).update(subject, "utf8").digest("base64url");
+}
+
+export function serializeTrialVisitorCookie(token: string): string {
+  if (!/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/.test(token)) invalid("cookie value is invalid");
+  return [
+    `${TRIAL_VISITOR_COOKIE_NAME}=${token}`,
+    `Max-Age=${TRIAL_VISITOR_COOKIE_OPTIONS.maxAge}`,
+    `Path=${TRIAL_VISITOR_COOKIE_OPTIONS.path}`,
+    "HttpOnly",
+    "Secure",
+    "SameSite=Lax",
+  ].join("; ");
 }

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-20
-source_count: 104
+updated: 2026-08-25
+source_count: 110
 tags:
   - munjib
   - auth
@@ -92,6 +92,32 @@ avatar resolution uses `getReadableAttachment()` with the current user's
 workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
+
+## Isolated anonymous Trial principal
+
+Issue #212 Task 3 keeps the anonymous Trial outside NextAuth and ordinary
+`User.id` identity. `resolveAnonymousTrialCapability()` defaults closed and
+opens only with an explicit positive global ceiling, one canonical demo
+workspace slug, the fixed trusted-network header contract, an exact canonical
+Turnstile hostname/action, and fixed-path secret files in staging/production.
+The signing, visitor-digest, network-bucket, and Turnstile secret bytes are
+never returned to the browser. The legacy development-only
+`legacy-account-2@example.invalid` Credentials provider is not queried, reactivated, or used
+as the anonymous authorization principal.
+
+`requireAiActor(request)` preserves the existing authenticated-user shape, but
+returns anonymous callers as a separate admission actor plus an
+`anonymous-trial-demo` authorization principal. That principal is valid only
+for the exact server-owned demo workspace, projects only `VIEWER`, and has no
+`userId` or USER-grant subject. `resolveAiWorkspaceAuthorization()` exposes
+this denial boundary to the Ask AI and Workspace AI integrations instead of
+letting callers substitute the visitor subject into `WorkspaceMember.userId`.
+
+Workspace AI must not persist anonymous conversations under a static or legacy
+`AiChatThread.userId`, because that would share history across visitors. Its
+Task 5 integration must use a visitor-keyed non-shared conversation path or an
+explicitly stateless Trial path. Until such a path is installed, the anonymous
+conversation branch stays fail closed.
 
 ## Active-resource authorization boundary
 

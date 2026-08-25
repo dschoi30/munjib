@@ -3795,3 +3795,11 @@ links:
 
 - Result: The four-request global-ceiling integration oracle now assigns a distinct pre-seeded network digest to every visitor. The global daily row is therefore the only shared locked resource, isolating the test from network-row serialization.
 - Verification: the opt-in PostgreSQL suite remains collection-only while Docker/PostgreSQL is unavailable.
+
+## 2026-08-25T14:45:00+09:00 - isolated anonymous Trial actor and entitlement
+
+- Result: Issue #212 Task 3 adds a production-default-closed anonymous capability, opaque secure visitor cookie, privacy-safe entitlement projection, and a discriminated AI route actor. Authenticated users retain their normal `User.id`; anonymous visitors receive no user id and can project only to `VIEWER` on the exact server-owned demo workspace without explicit USER grants.
+- Challenge boundary: New-token issuance after prior network Trial traffic uses a one-attempt Turnstile verifier with a one-second timeout, exact canonical hostname and `trial_entitlement` action, fixed-path production secret loading, and no challenge-token logging. Valid existing visitor tokens do not depend on Turnstile availability.
+- Integration ruling: The legacy `legacy-account-2@example.invalid` identity is neither queried nor reactivated. Task 5 must use a visitor-keyed non-shared conversation path or an explicitly stateless path; mapping every anonymous visitor to one `AiChatThread.userId` is forbidden.
+- Source evidence: approved Issue #212 design, Task 3 implementation ruling, `lib/auth/trial-visitor.ts`, `lib/auth/trial-entitlement.ts`, `lib/auth/session.ts`, `app/api/trial/entitlement/route.ts`, and focused auth tests.
+- Verification: strict RED/GREEN cycles for missing actor/entitlement modules, exact workspace authorization, global-cap configuration, canonical Turnstile binding, malformed challenge rejection, and bounded timeout; focused auth suites and TypeScript compilation passed.
