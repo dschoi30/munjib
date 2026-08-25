@@ -117,7 +117,16 @@ sudo install -o root -g root -m 0440 \
 
 sudo visudo -cf /etc/sudoers.d/munjib-actions-runner
 sudo install -d -o root -g root -m 0755 /var/lib/munjib/deploy
-git -C /home/deployer/munjib rev-parse HEAD | \
+
+web_container="$(sudo docker compose \
+  --env-file /etc/munjib/env ps -q web)"
+test -n "$web_container"
+running_sha="$(sudo docker inspect "$web_container" \
+  --format '{{range .Config.Env}}{{println .}}{{end}}' | \
+  sed -n 's/^SENTRY_RELEASE=//p' | head -n 1)"
+printf '%s\n' "$running_sha" | grep -Eq '^[a-f0-9]{40}$'
+git -C /home/deployer/munjib merge-base --is-ancestor "$running_sha" origin/main
+printf '%s\n' "$running_sha" | \
   sudo tee /var/lib/munjib/deploy/current-sha >/dev/null
 sudo chown root:root /var/lib/munjib/deploy/current-sha
 sudo chmod 0444 /var/lib/munjib/deploy/current-sha
@@ -128,10 +137,13 @@ sudo chmod 0444 /var/lib/munjib/deploy/current-sha
 ```bash
 sha256sum scripts/deploy/munjib-deploy.sh /usr/local/sbin/munjib-deploy
 sudo cat /var/lib/munjib/deploy/current-sha
-git -C /home/deployer/munjib rev-parse HEAD
+printf '%s\n' "$running_sha"
 ```
 
-두 wrapper hash가 다르거나 두 SHA가 다르면 중지한다. `current-sha`는 반드시 현재 정상 운영 중이라고 확인한 SHA여야 한다.
+두 wrapper hash가 다르거나 두 SHA가 다르면 중지한다. `SENTRY_RELEASE`가 비어
+있거나 40자리 SHA가 아니어도 중지하고, 마지막 정상 배포 기록에서 실행 중인
+release SHA를 먼저 확인한다. 설치를 위해 checkout한 PR의 `HEAD`를 대신 기록하면
+안 된다. `current-sha`는 반드시 현재 정상 운영 중이라고 독립 확인한 SHA여야 한다.
 
 ## 5. 최소 권한과 네트워크 확인
 

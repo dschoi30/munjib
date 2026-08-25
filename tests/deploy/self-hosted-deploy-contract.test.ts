@@ -8,6 +8,7 @@ const read = (path: string) => readFileSync(join(root, path), "utf8");
 describe("private OCI self-hosted deployment boundary", () => {
   const wrapper = read("scripts/deploy/munjib-deploy.sh");
   const sudoers = read("deploy/sudoers/munjib-actions-runner");
+  const runbook = read("docs/runbooks/private-oci-self-hosted-runner.md");
 
   test("accepts one exact commit SHA and token only through stdin", () => {
     expect(wrapper).toContain('[[ "$#" -eq 1 ]]');
@@ -81,5 +82,12 @@ describe("private OCI self-hosted deployment boundary", () => {
       "munjib-runner ALL=(root) NOPASSWD: /usr/local/sbin/munjib-deploy *",
     );
     expect(sudoers).not.toMatch(/\b(docker|git|systemctl|bash|sh|cp|mv|tee|vi|nano)\b/);
+  });
+
+  test("bootstraps deployment state from the running release", () => {
+    expect(runbook).toContain("SENTRY_RELEASE=");
+    expect(runbook).toContain('git -C /home/deployer/munjib merge-base --is-ancestor "$running_sha" origin/main');
+    expect(runbook).toContain('printf \'%s\\n\' "$running_sha"');
+    expect(runbook).not.toContain("git -C /home/deployer/munjib rev-parse HEAD | \\\n  sudo tee /var/lib/munjib/deploy/current-sha");
   });
 });

@@ -352,6 +352,11 @@ the bootstrapped SHA does not yet have a matching image tag, legacy
 `Production runner smoke` uses only a `production-runner-smoke`
 `repository_dispatch`, which GitHub resolves to the default branch SHA and workflow;
 the branch-selectable `workflow_dispatch` path is absent. The smoke remains read-only.
+Before the first automated deploy, `current-sha` is bootstrapped from the active
+web container's 40-character `SENTRY_RELEASE`, after confirming that commit is an
+ancestor of `origin/main`. The installer checkout's PR `HEAD` is never used as the
+running release state; missing or unverifiable runtime release metadata stops the
+cutover instead of guessing a rollback SHA.
 Exact bootstrap, readiness, disablement, and recovery steps are in
 `docs/runbooks/private-oci-self-hosted-runner.md`.
 
