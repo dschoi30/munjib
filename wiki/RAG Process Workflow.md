@@ -112,6 +112,12 @@ never carries conversation history across requests or visitors. Trial
 preparation also forces Langfuse to metadata-only capture even when the normal
 workspace runtime explicitly enables full prompt tracing.
 
+The visitor-wide PostgreSQL advisory lock projects its `void` result to text
+before Prisma deserialization. This preserves the transaction-scoped lock while
+avoiding a runtime admission failure at the database adapter boundary; the live
+concurrency suite covers global ceiling, cross-midnight serialization, and full
+counter rollback on lease insertion failure.
+
 Issue #212 Task 4 connects the Ask AI route through the shared ledger without
 changing normal-user results. The route validates its body and resolves
 `requireAiActor()`, then `prepareAskDocumentQuestion()` resolves the exact

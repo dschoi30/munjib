@@ -250,7 +250,7 @@ const LOCK_VISITOR_ADMISSION_SQL = `
 SELECT pg_catalog.pg_advisory_xact_lock(
   pg_catalog.hashtext(pg_catalog.concat('munjib-trial-ai-admission-v1:a:', $1)),
   pg_catalog.hashtext(pg_catalog.concat('munjib-trial-ai-admission-v1:b:', $1))
-)
+)::text AS "lockResult"
 `;
 
 const UPSERT_NETWORK_DAILY_USAGE_SQL = `
