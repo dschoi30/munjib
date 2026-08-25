@@ -33,6 +33,7 @@
     "db:seed": "tsx scripts/db/seed.ts",
     "security:bootstrap-owner": "tsx scripts/security/bootstrap-owner.ts",
     "documents:purge-archived": "tsx scripts/documents/purge-archived.ts",
+    "trial-ai:purge-retention": "tsx scripts/rag/purge-trial-ai-retention.ts",
     "security:auth-preflight": "tsx scripts/security/auth-preflight.ts"
   },
   "dependencies": {

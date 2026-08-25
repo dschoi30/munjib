@@ -85,6 +85,21 @@ after request validation and a read-only workspace/document authorization
 preflight, but before thread/index/model preparation, provider work, or the
 NDJSON response. Ask AI route integration remains a separate Task 4 change.
 
+PR #213 review follow-up adds `lib/rag/trial-ai-retention.ts` and the
+`trial-ai:purge-retention` maintenance command. The purge reads PostgreSQL
+`CURRENT_TIMESTAMP` and its `Asia/Seoul` calendar date inside one transaction,
+retains exactly the current 35 KST visitor buckets and current 8 KST
+network/global buckets, and removes a lease only when its `expiresAt` boundary
+has been past for at least 24 hours. Deletion order is lease → visitor → network
+→ global; any failure rolls the whole transaction back and no counter is
+updated. The command defaults to a non-mutating dry-run and requires explicit
+`--execute`; repeated execution is idempotent. The retention indexes make the
+date-only maintenance predicates independent of digest lookup indexes. Operator
+commands, expected output, least-privilege `SELECT`/`DELETE` role, completion
+criteria, and stop criteria are in
+`docs/runbooks/anonymous-trial-ai-retention.md`. The opt-in migrated PostgreSQL
+test requires `MUNJIB_RUN_TRIAL_AI_RETENTION_DB_TESTS=1`.
+
 Issue #212 Task 3 adds the route-facing actor and entitlement boundary. An ordinary session becomes a user authorization
 principal and receives `not-applicable` admission behavior. A verified Trial
 cookie becomes a separate anonymous admission actor and an exact-demo-workspace

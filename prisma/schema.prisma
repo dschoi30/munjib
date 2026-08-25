@@ -409,6 +409,7 @@ model TrialAiVisitorDailyUsage {
   updatedAt     DateTime @updatedAt
 
   @@unique([visitorDigest, kstDate])
+  @@index([kstDate])
 }
 
 model TrialAiNetworkDailyUsage {
@@ -420,6 +421,7 @@ model TrialAiNetworkDailyUsage {
   updatedAt     DateTime @updatedAt
 
   @@unique([networkDigest, kstDate])
+  @@index([kstDate])
 }
 
 model TrialAiGlobalDailyUsage {
@@ -438,6 +440,7 @@ model TrialAiAdmissionLease {
   createdAt     DateTime  @default(now())
 
   @@index([visitorDigest, expiresAt])
+  @@index([expiresAt])
 }
 
 model Permission {

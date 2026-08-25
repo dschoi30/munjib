@@ -43,11 +43,20 @@ CREATE TABLE "TrialAiAdmissionLease" (
 CREATE UNIQUE INDEX "TrialAiVisitorDailyUsage_visitorDigest_kstDate_key"
 ON "TrialAiVisitorDailyUsage"("visitorDigest", "kstDate");
 
+CREATE INDEX "TrialAiVisitorDailyUsage_kstDate_idx"
+ON "TrialAiVisitorDailyUsage"("kstDate");
+
 CREATE UNIQUE INDEX "TrialAiNetworkDailyUsage_networkDigest_kstDate_key"
 ON "TrialAiNetworkDailyUsage"("networkDigest", "kstDate");
 
+CREATE INDEX "TrialAiNetworkDailyUsage_kstDate_idx"
+ON "TrialAiNetworkDailyUsage"("kstDate");
+
 CREATE INDEX "TrialAiAdmissionLease_visitorDigest_expiresAt_idx"
 ON "TrialAiAdmissionLease"("visitorDigest", "expiresAt");
+
+CREATE INDEX "TrialAiAdmissionLease_expiresAt_idx"
+ON "TrialAiAdmissionLease"("expiresAt");
 
 CREATE UNIQUE INDEX "TrialAiAdmissionLease_active_visitor_key"
 ON "TrialAiAdmissionLease"("visitorDigest")
