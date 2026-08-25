@@ -3790,3 +3790,8 @@ links:
 - Result: The opt-in PostgreSQL admission test now pre-seeds visitor/network/global daily rows before its concurrent requests, so unique-index insert serialization cannot conceal missing `FOR UPDATE` locks.
 - Concurrency oracle: The cross-midnight test starts its second request only after a test-only lease-insert trigger has reached a visible transaction-local `pg_sleep` barrier. Removing the visitor advisory lock then produces a lease uniqueness/database failure instead of the required `TRIAL_AI_REQUEST_IN_PROGRESS`; removing the daily row locks permits a fourth global admission after the pre-seeded ceiling check.
 - Verification: focused unit suite and TypeScript compile passed; PostgreSQL tests remain explicitly skipped without `MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1` and a migrated disposable database.
+
+## 2026-08-25T14:30:00+09:00 - anonymous trial AI global-lock isolation follow-up
+
+- Result: The four-request global-ceiling integration oracle now assigns a distinct pre-seeded network digest to every visitor. The global daily row is therefore the only shared locked resource, isolating the test from network-row serialization.
+- Verification: the opt-in PostgreSQL suite remains collection-only while Docker/PostgreSQL is unavailable.

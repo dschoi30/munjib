@@ -75,7 +75,9 @@ database double for these contracts. An opt-in PostgreSQL suite
 (`MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1`) exercises the applied migration,
 raw locks, concurrent global admission, cross-midnight lease denial, and
 lease-insertion rollback. It pre-seeds the daily rows before concurrent calls
-so `INSERT ... ON CONFLICT` cannot hide a missing `FOR UPDATE`, and its
+and gives each global-ceiling visitor a distinct network digest, so only the
+global row is shared and `INSERT ... ON CONFLICT` cannot hide a missing
+`FOR UPDATE`. Its
 cross-midnight case waits for a test-only lease-insert PostgreSQL sleep barrier
 before starting the second request. It remains unexecuted while
 Docker/PostgreSQL is unavailable. Tasks 4 and 5 must place this admission
