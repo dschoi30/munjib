@@ -44,11 +44,12 @@ describeDatabase("trial AI admission PostgreSQL integration", () => {
 
   it("admits exactly three concurrent visitors at the global ceiling", async () => {
     const visitors = Array.from({ length: 4 }, (_, index) => `${prefix}global-visitor-${index}`);
-    await preseedDailyRows(DATE, visitors);
+    const networks = visitors.map((_, index) => `${prefix}global-network-${index}`);
+    await preseedDailyRows(DATE, visitors, networks);
 
     const results = await Promise.all(
-      visitors.map((visitor) =>
-        admitTrialAiRequest(input(visitor, DATE), {
+      visitors.map((visitor, index) =>
+        admitTrialAiRequest(input(visitor, DATE, networks[index]!), {
           globalDailyLimit: 3,
         }),
       ),
@@ -113,7 +114,11 @@ describeDatabase("trial AI admission PostgreSQL integration", () => {
   });
 });
 
-async function preseedDailyRows(kstDate: string, visitorDigests: string[]) {
+async function preseedDailyRows(
+  kstDate: string,
+  visitorDigests: string[],
+  networkDigests: string[] = [`${prefix}network`],
+) {
   await prisma.$executeRawUnsafe(
     `
       INSERT INTO "TrialAiGlobalDailyUsage" ("kstDate", "admittedCount", "updatedAt")
@@ -121,15 +126,17 @@ async function preseedDailyRows(kstDate: string, visitorDigests: string[]) {
     `,
     kstDate,
   );
-  await prisma.$executeRawUnsafe(
-    `
-      INSERT INTO "TrialAiNetworkDailyUsage" ("id", "networkDigest", "kstDate", "admittedCount", "updatedAt")
-      VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)
-    `,
-    randomUUID(),
-    `${prefix}network`,
-    kstDate,
-  );
+  for (const networkDigest of networkDigests) {
+    await prisma.$executeRawUnsafe(
+      `
+        INSERT INTO "TrialAiNetworkDailyUsage" ("id", "networkDigest", "kstDate", "admittedCount", "updatedAt")
+        VALUES ($1, $2, $3, 0, CURRENT_TIMESTAMP)
+      `,
+      randomUUID(),
+      networkDigest,
+      kstDate,
+    );
+  }
   for (const visitorDigest of visitorDigests) {
     await prisma.$executeRawUnsafe(
       `
@@ -181,12 +188,16 @@ async function waitForLeaseInsertionOverlapBarrier() {
   throw new Error("lease insertion overlap barrier was not reached");
 }
 
-function input(trialVisitorSubject: string, kstDate: string): TrialAiAdmissionInput {
+function input(
+  trialVisitorSubject: string,
+  kstDate: string,
+  networkBucketDigest = `${prefix}network`,
+): TrialAiAdmissionInput {
   return {
     actor: { kind: "anonymous-trial", trialVisitorSubject },
     surface: "ask_document",
     workspaceId: "workspace-1",
     kstDate,
-    networkBucketDigest: `${prefix}network`,
+    networkBucketDigest,
   };
 }
