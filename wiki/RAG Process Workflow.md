@@ -80,9 +80,10 @@ global row is shared and `INSERT ... ON CONFLICT` cannot hide a missing
 `FOR UPDATE`. Its
 cross-midnight case waits for a test-only lease-insert PostgreSQL sleep barrier
 before starting the second request. It remains unexecuted while
-Docker/PostgreSQL is unavailable. Tasks 4 and 5 must place this admission
-after their existing validation/authorization checks and before any provider
-call or Workspace stream response starts.
+Docker/PostgreSQL is unavailable. Task 5 now places Workspace AI admission
+after request validation and a read-only workspace/document authorization
+preflight, but before thread/index/model preparation, provider work, or the
+NDJSON response. Ask AI route integration remains a separate Task 4 change.
 
 Issue #212 Task 3 adds the route-facing actor and entitlement boundary. An ordinary session becomes a user authorization
 principal and receives `not-applicable` admission behavior. A verified Trial
@@ -104,10 +105,12 @@ requires a fresh HMAC proof bound to the client IP, request method, and pathname
 a caller-supplied IP header alone is untrusted. Previous visitor signing keys
 also require an exact cutoff and are invalid at or after it, while future-issued
 or over-180-day tokens are rejected. Anonymous Trial activation remains off
-unless every capability input is valid. Task 5 must not reuse the current
-`AiChatThread.userId` for all Trial visitors; it needs a visitor-keyed
-non-shared conversation path or a stateless path before anonymous Workspace AI
-can open.
+unless every capability input is valid. Issue #212 Task 5 uses the approved
+stateless option: anonymous Workspace AI never loads, creates, or updates
+`AiChatThread`/`AiChatMessage`, never maps the visitor to a shared `User`, and
+never carries conversation history across requests or visitors. Trial
+preparation also forces Langfuse to metadata-only capture even when the normal
+workspace runtime explicitly enables full prompt tracing.
 
 Issue #212 Task 4 connects the Ask AI route through the shared ledger without
 changing normal-user results. The route validates its body and resolves
@@ -212,7 +215,7 @@ Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]
 
 Ask AI core service는 `lib/rag/ask.ts`의 `prepareAskDocumentQuestion()`와 `answerPreparedAskDocumentQuestion()`이다. Preparation resolves active workspace/document authorization, chat/Langfuse generation config, current-document context, and the direct prompt without constructing a model; answer execution performs the provider work only after admission. The legacy `askDocumentQuestion()` wrapper preserves the authenticated service contract. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다. Issue #147 review follow-up 이후 archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 Ask AI context를 읽지 않는다.
 
-Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
+Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 일반 로그인 사용자+active workspace의 active thread를 만들거나 재사용한다. `preflightWorkspaceChatMessageStream()`은 thread, indexing, embedding, model side effect 없이 workspace/document authority를 먼저 확정한다. 일반 사용자는 기존 membership/USER grant 기반 readable-document path와 persistent history를 유지하고, 익명 Trial은 capability에 고정된 immutable demo workspace ID와 slug를 함께 조회해 active demo documents만 viewer로 읽으며 USER grant를 조회하지 않는다. Admission 이후 `preparePreflightedWorkspaceChatMessageStream()`이 persistent user이면 기존 thread/memory path를, Trial이면 현재 message만 쓰는 stateless retrieval/prompt path를 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, 일반 사용자의 성공 answer만 persistence helper에 넘긴다. Trial final event는 transient assistant message/citations이며 `AiChatThread`/`AiChatMessage` row를 만들지 않는다. `/assistant/messages`는 quota denial을 NDJSON 시작 전 JSON 429로, admission 장애를 JSON 503으로 반환하고, admitted Trial의 첫 `start` event에 `trialAi.remaining`/`resetsAt`을 넣는다. Lease는 success, error, abort, post-admission preparation failure에서 awaited best-effort로 release하지만 admitted counters는 감소하지 않는다. Existing `sendWorkspaceChatMessage()`는 일반 사용자 preparation/persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 기존 authenticated JSON route로 thread state를 다루고, `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
 ### Derived AI history authorization readiness (Issue #163)
 
