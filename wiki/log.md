@@ -3849,3 +3849,10 @@ links:
 - Compatibility boundary: authenticated Workspace AI retains its existing diagnostic provider-error logging path.
 - Source evidence: Task 5 round-two review finding, `lib/rag/answer-chain.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/answer-chain.test.ts`, and `tests/rag/workspace-chat-trial.test.ts`.
 - Verification: focused RED reproduced raw secret-bearing provider error output; GREEN proved exact stable metadata and absence of injected prompt/provider-response/question secrets while retaining the authenticated logging assertion.
+
+## 2026-08-25T17:25:00+09:00 - anonymous Trial allowance UI
+
+- Result: Issue #212 Task 6 shows localized remaining Trial AI uses and the KST-midnight reset boundary in Ask AI and Workspace AI only after an authoritative route response identifies Trial allowance state. Successful Ask JSON and the validated first Workspace NDJSON `start` event synchronize both composers through an in-memory same-tab event.
+- Client boundary: browser storage is not an identity, entitlement, or quota source. Daily, network, and global exhaustion 429 responses disable both composers; the transient active-request 429 stays recoverable. Responses without `trialAi` preserve the existing authenticated UI.
+- Entitlement projection: the client validator accepts the initial three-use entitlement and post-admission zero-through-two values, while rejecting malformed counts or reset timestamps.
+- Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `components/workspace-chatbot-stream.ts`, localized messages, and focused component/i18n tests.

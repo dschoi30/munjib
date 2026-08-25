@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { act, cleanup, fireEvent, render as testingRender, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render as testingRender, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
@@ -407,6 +407,29 @@ describe("DocumentEditor heading preview folding", () => {
         }),
       }),
     );
+  });
+
+  it("shows Korean Trial allowance and disables Ask AI after an authoritative quota 429", async () => {
+    window.localStorage.setItem("munjib:language", "ko");
+    const fetchMock = vi.fn(async () =>
+      new Response(
+        JSON.stringify({
+          code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+          resetsAt: "2026-08-25T15:00:00.000Z",
+        }),
+        { status: 429, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    renderEditor("# A\nBody");
+    fireEvent.click(screen.getByRole("button", { name: "AI 어시스턴트 열기" }));
+    const question = screen.getByLabelText("AI 질문") as HTMLTextAreaElement;
+    fireEvent.change(question, { target: { value: "네 번째 질문" } });
+    fireEvent.click(screen.getByRole("button", { name: "AI에게 묻기" }));
+
+    await waitFor(() => expect(question.disabled).toBe(true));
+    expect(screen.getByText("오늘 Trial AI 3회 중 0회 남음")).toBeTruthy();
+    expect(screen.getByText("한국 시간(KST) 자정에 다시 사용할 수 있습니다.")).toBeTruthy();
   });
 
   it("uses the selected Korean display language for Ask AI chrome, errors, and request payloads", async () => {

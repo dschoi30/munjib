@@ -8,6 +8,11 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
   readWorkspaceChatStream,
+  parseTrialAiAllowance,
+  publishTrialAiAllowance,
+  subscribeToTrialAiAllowance,
+  trialAiAllowanceFromQuotaError,
+  type TrialAiAllowance,
   type WorkspaceChatStreamMessage,
 } from "@/components/workspace-chatbot-stream";
 import {
@@ -55,6 +60,7 @@ export function WorkspaceChatbot({
   const [isThinking, setIsThinking] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [error, setError] = useState<"" | "unavailable">("");
+  const [trialAiAllowance, setTrialAiAllowance] = useState<TrialAiAllowance | null>(null);
   const [hydratedWorkspaceSlug, setHydratedWorkspaceSlug] = useState<string | null>(null);
   const fallbackChatProvider = firstAvailableChatProvider(
     availableChatProviders,
@@ -112,6 +118,15 @@ export function WorkspaceChatbot({
       abortActiveSend();
     };
   }, [workspaceSlug]);
+
+  useEffect(() => subscribeToTrialAiAllowance(setTrialAiAllowance), []);
+
+  function updateTrialAiAllowance(value: unknown) {
+    const allowance = parseTrialAiAllowance(value);
+    if (!allowance) return;
+    setTrialAiAllowance(allowance);
+    publishTrialAiAllowance(allowance);
+  }
 
   useEffect(() => {
     hydratedWorkspaceSlugRef.current = null;
@@ -253,11 +268,20 @@ export function WorkspaceChatbot({
         }),
       });
       if (!response.ok) {
+        if (response.status === 429) {
+          const body = await response.json().catch(() => null);
+          updateTrialAiAllowance(trialAiAllowanceFromQuotaError(body));
+        }
         throw new Error("WORKSPACE_CHAT_FAILED");
       }
 
       await readWorkspaceChatStream(response, (streamEvent) => {
         if (!isCurrentSend()) return;
+
+        if (streamEvent.type === "start") {
+          updateTrialAiAllowance(streamEvent.trialAi);
+          return;
+        }
 
         if (streamEvent.type === "token") {
           setIsThinking(false);
@@ -429,11 +453,17 @@ export function WorkspaceChatbot({
         {error ? <p className="text-sm text-red-600">{t("ai.workspace.unavailable")}</p> : null}
       </div>
 
+      {trialAiAllowance ? (
+        <div className="shrink-0 space-y-0.5 border-t border-border px-3 py-2 text-xs text-slate-600">
+          <p>{t("ai.trial.remaining", { remaining: trialAiAllowance.remaining, limit: 3 })}</p>
+          <p>{t("ai.trial.resetsAtKst")}</p>
+        </div>
+      ) : null}
       <form className="flex shrink-0 gap-2 border-t border-border p-3" onSubmit={handleSubmit}>
         <input
           aria-label={t("ai.workspace.messageLabel")}
           value={messageInput}
-          disabled={isResetting}
+          disabled={isResetting || trialAiAllowance?.remaining === 0}
           onChange={(event) => setMessageInput(event.target.value)}
           className="min-w-0 flex-1 rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
           placeholder={t("ai.workspace.placeholder")}
@@ -441,7 +471,7 @@ export function WorkspaceChatbot({
         <Button
           type="submit"
           aria-label={t("ai.workspace.send")}
-          disabled={!trimmedMessage || isLoading || isResetting}
+          disabled={!trimmedMessage || isLoading || isResetting || trialAiAllowance?.remaining === 0}
           className="h-9 w-9 px-0"
         >
           <Send className="h-4 w-4" aria-hidden="true" />

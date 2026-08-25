@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-08-25
-source_count: 135
+source_count: 136
 tags:
   - munjib
   - workflow
@@ -155,6 +155,19 @@ Post-admission Trial preparation/stream failures normalize to public
 surface, public result code, coarse remaining-count bucket, and
 `anonymous_trial: true`; it receives no raw error/provider response, workspace
 slug, provider/model, question, prompt, context, answer, or document content.
+
+Task 6 keeps the browser UI subordinate to those server decisions. Ask AI
+accepts allowance state only from a successful response's `trialAi` projection,
+and Workspace AI accepts it only from the validated first NDJSON `start` event.
+Both surfaces publish the validated `{ remaining, resetsAt }` value through an
+in-memory same-tab event, so the latest server response updates both composers
+without treating `localStorage` as identity, quota, or authorization evidence.
+The validated range includes the initial entitlement value of three as well as
+the post-admission values zero through two.
+Daily/network/global limit 429 responses disable both composers until the KST
+reset guidance shown in the UI; the transient concurrent-request 429 does not
+become a daily lockout. Responses without Trial allowance data leave the normal
+authenticated UI unchanged.
 
 ## Process Map
 

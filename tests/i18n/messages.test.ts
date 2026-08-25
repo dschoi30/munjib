@@ -20,6 +20,21 @@ describe("i18n message catalog", () => {
     );
   });
 
+  it("localizes the anonymous Trial allowance and KST reset guidance", () => {
+    expect(getMessage("en", "ai.trial.remaining", { remaining: 2, limit: 3 })).toBe(
+      "2 of 3 trial AI uses remaining today",
+    );
+    expect(getMessage("ko", "ai.trial.remaining", { remaining: 2, limit: 3 })).toBe(
+      "오늘 Trial AI 3회 중 2회 남음",
+    );
+    expect(getMessage("en", "ai.trial.resetsAtKst")).toBe(
+      "Resets at midnight Korea time (KST).",
+    );
+    expect(getMessage("ko", "ai.trial.resetsAtKst")).toBe(
+      "한국 시간(KST) 자정에 다시 사용할 수 있습니다.",
+    );
+  });
+
   it("localizes account drawer and workspace management messages", () => {
     expect(getMessage("en", "account.menu")).toBe("Account menu");
     expect(getMessage("ko", "account.menu")).toBe("계정 메뉴");

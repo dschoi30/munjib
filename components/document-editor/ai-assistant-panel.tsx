@@ -6,6 +6,13 @@ import { ThinkingIndicator } from "@/components/ai/thinking-indicator";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import {
+  parseTrialAiAllowance,
+  publishTrialAiAllowance,
+  subscribeToTrialAiAllowance,
+  trialAiAllowanceFromQuotaError,
+  type TrialAiAllowance,
+} from "@/components/workspace-chatbot-stream";
+import {
   type ChatModelSetting,
   type ClientRagChatProvider,
   type ClientRagChatProviderAvailability,
@@ -21,6 +28,9 @@ type AskResponse = {
   answer?: string;
   citations?: AssistantCitation[];
   error?: string;
+  code?: string;
+  resetsAt?: string;
+  trialAi?: TrialAiAllowance;
 };
 
 type AiAssistantPanelProps = {
@@ -46,6 +56,7 @@ export function AiAssistantPanel({
   const [citations, setCitations] = useState<AssistantCitation[]>([]);
   const [error, setError] = useState<"" | "answerFailed">("");
   const [isLoading, setIsLoading] = useState(false);
+  const [trialAiAllowance, setTrialAiAllowance] = useState<TrialAiAllowance | null>(null);
   const fallbackChatProvider = firstAvailableChatProvider(
     availableChatProviders,
     defaultChatProvider,
@@ -82,6 +93,15 @@ export function AiAssistantPanel({
     }, { chatProvider: fallbackChatProvider });
   }, [availableChatProviders, defaultChatProvider, fallbackChatProvider, workspaceSlug]);
 
+  useEffect(() => subscribeToTrialAiAllowance(setTrialAiAllowance), []);
+
+  function updateTrialAiAllowance(value: unknown) {
+    const allowance = parseTrialAiAllowance(value);
+    if (!allowance) return;
+    setTrialAiAllowance(allowance);
+    publishTrialAiAllowance(allowance);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!trimmedQuestion || isLoading) return;
@@ -111,9 +131,11 @@ export function AiAssistantPanel({
       const body = (await response.json()) as AskResponse;
 
       if (!response.ok) {
+        if (response.status === 429) updateTrialAiAllowance(trialAiAllowanceFromQuotaError(body));
         throw new Error(body.error || "AI_REQUEST_FAILED");
       }
 
+      updateTrialAiAllowance(body.trialAi);
       setAnswer(body.answer ?? "");
       setCitations(body.citations ?? []);
     } catch {
@@ -140,16 +162,27 @@ export function AiAssistantPanel({
         </span>
       </div>
       <form className="space-y-2" onSubmit={handleSubmit}>
+        {trialAiAllowance ? (
+          <div className="space-y-0.5 text-xs text-slate-600">
+            <p>{t("ai.trial.remaining", { remaining: trialAiAllowance.remaining, limit: 3 })}</p>
+            <p>{t("ai.trial.resetsAtKst")}</p>
+          </div>
+        ) : null}
         <textarea
           aria-label={t("ai.questionLabel")}
           value={question}
+          disabled={trialAiAllowance?.remaining === 0}
           onChange={(event) => setQuestion(event.target.value)}
           rows={3}
           className="w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
           placeholder={t("ai.askPlaceholder")}
         />
         <div className="flex justify-end">
-          <Button type="submit" disabled={!trimmedQuestion || isLoading} className="h-8 px-2 text-xs">
+          <Button
+            type="submit"
+            disabled={!trimmedQuestion || isLoading || trialAiAllowance?.remaining === 0}
+            className="h-8 px-2 text-xs"
+          >
             {t("ai.askSubmit")}
           </Button>
         </div>
