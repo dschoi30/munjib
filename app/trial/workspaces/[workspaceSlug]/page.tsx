@@ -2,10 +2,13 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AiAnswer } from "@/components/ai/answer";
+import { AiAssistantPanel } from "@/components/document-editor/ai-assistant-panel";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import {
   resolveAnonymousTrialActor,
   resolveAnonymousTrialCapability,
+  projectTrialAiAllowance,
+  resolveTrialEntitlement,
 } from "@/lib/auth/trial-entitlement";
 import {
   getDefaultRagChatModel,
@@ -25,12 +28,10 @@ export default async function TrialWorkspacePage({
 }) {
   const { workspaceSlug } = await params;
   const requestHeaders = await headers();
-  const actor = resolveAnonymousTrialActor(
-    new Request(`https://trial.invalid/trial/workspaces/${workspaceSlug}`, {
-      headers: requestHeaders,
-    }),
-    resolveAnonymousTrialCapability(),
-  );
+  const trialRequest = new Request(`https://trial.invalid/trial/workspaces/${workspaceSlug}`, {
+    headers: requestHeaders,
+  });
+  const actor = resolveAnonymousTrialActor(trialRequest, resolveAnonymousTrialCapability());
   if (!actor || actor.authorizationPrincipal.kind !== "anonymous-trial-demo") notFound();
 
   const workspace = await loadTrialWorkspaceViewer(actor.authorizationPrincipal, workspaceSlug);
@@ -40,6 +41,12 @@ export default async function TrialWorkspacePage({
     workspace.documents.find((document) => document.id === requestedDocumentId) ??
     workspace.documents[0] ??
     null;
+  const initialTrialAiAllowance = projectTrialAiAllowance(
+    await resolveTrialEntitlement(trialRequest),
+  );
+  const defaultChatProvider = getDefaultRagChatProvider();
+  const defaultChatModel = getDefaultRagChatModel();
+  const availableChatProviders = getRagChatProviderAvailability();
 
   return (
     <main className="min-h-screen bg-surface-page text-ink">
@@ -75,6 +82,18 @@ export default async function TrialWorkspacePage({
             <>
               <h2 className="mb-5 text-2xl font-semibold">{selectedDocument.title}</h2>
               <AiAnswer content={selectedDocument.contentMarkdown} />
+              <div className="mt-6 border-t border-border pt-6">
+                <AiAssistantPanel
+                  mode="anonymous-trial-readonly"
+                  initialTrialAiAllowance={initialTrialAiAllowance}
+                  workspaceSlug={workspace.slug}
+                  documentId={selectedDocument.id}
+                  hasUnsavedChanges={false}
+                  defaultChatProvider={defaultChatProvider}
+                  defaultChatModel={defaultChatModel}
+                  availableChatProviders={availableChatProviders}
+                />
+              </div>
             </>
           ) : (
             <p className="text-sm text-ink-muted">표시할 수 있는 데모 문서가 없습니다.</p>
@@ -82,11 +101,13 @@ export default async function TrialWorkspacePage({
         </article>
       </div>
       <WorkspaceChatbot
+        mode="anonymous-trial-readonly"
+        initialTrialAiAllowance={initialTrialAiAllowance}
         workspaceSlug={workspace.slug}
         selectedDocumentId={selectedDocument?.id ?? null}
-        defaultChatProvider={getDefaultRagChatProvider()}
-        defaultChatModel={getDefaultRagChatModel()}
-        availableChatProviders={getRagChatProviderAvailability()}
+        defaultChatProvider={defaultChatProvider}
+        defaultChatModel={defaultChatModel}
+        availableChatProviders={availableChatProviders}
       />
     </main>
   );

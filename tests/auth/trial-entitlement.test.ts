@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   resolveAnonymousTrialActor,
   resolveAnonymousTrialCapability,
+  projectTrialAiAllowance,
   resolveTrialEntitlement,
   verifyTurnstileChallenge,
   type AnonymousTrialCapability,
@@ -214,6 +215,34 @@ describe("anonymous Trial runtime capability", () => {
 });
 
 describe("anonymous Trial actor and entitlement", () => {
+  it("projects only the public allowance needed to bootstrap Trial AI surfaces", () => {
+    const projection = projectTrialAiAllowance({
+      status: 200,
+      body: {
+        remaining: 2,
+        limit: 3,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+        entry: { path: "/trial/workspaces/public-demo" },
+      },
+    });
+
+    expect(projection).toEqual({
+      remaining: 2,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    expect(JSON.stringify(projection)).not.toContain("workspace");
+    expect(JSON.stringify(projection)).not.toContain("digest");
+    expect(projectTrialAiAllowance({
+      status: 200,
+      body: {
+        remaining: 3,
+        limit: 3,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+        challengeRequired: true,
+      },
+    })).toBeNull();
+  });
+
   it("verifies capability, cookie token, and trusted network evidence together", () => {
     const capability = testCapability();
     const token = issueTrialVisitorToken({

@@ -142,6 +142,24 @@ export type TrialEntitlementResult = Readonly<{
   setCookie?: string;
 }>;
 
+export type TrialAiAllowanceProjection = Readonly<{
+  remaining: 0 | 1 | 2 | 3;
+  resetsAt: string;
+}>;
+
+/** Returns the minimal public projection used to bootstrap anonymous Trial AI UI. */
+export function projectTrialAiAllowance(
+  result: TrialEntitlementResult,
+): TrialAiAllowanceProjection | null {
+  if (result.status !== 200 || !("entry" in result.body)) return null;
+  const { remaining, resetsAt } = result.body;
+  if (
+    (remaining !== 0 && remaining !== 1 && remaining !== 2 && remaining !== 3) ||
+    !Number.isFinite(Date.parse(resetsAt))
+  ) return null;
+  return { remaining, resetsAt };
+}
+
 type TrialEntitlementDependencies = Readonly<{
   capability?: AnonymousTrialCapability | null;
   now?: () => Date;

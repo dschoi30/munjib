@@ -60,6 +60,86 @@ afterEach(() => {
 });
 
 describe("WorkspaceChatbot", () => {
+  it("keeps anonymous Trial workspace chat stateless and server-model-owned", async () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "attacker/override-model",
+    );
+    render(
+      <WorkspaceChatbot
+        mode="anonymous-trial-readonly"
+        initialTrialAiAllowance={{ remaining: 2, resetsAt: "2099-08-25T15:00:00.000Z" }}
+        defaultChatModel="server/owned-model"
+        defaultChatProvider="openai-compatible"
+        availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }}
+        workspaceSlug="company-handbook"
+        selectedDocumentId="doc-1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    expect(await screen.findByText("server/owned-model")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Reset conversation" })).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/assistant/thread"))).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), {
+      target: { value: "What is the policy?" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(await screen.findByText("Workspace answer.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/assistant/messages",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          message: "What is the policy?",
+          selectedDocumentId: "doc-1",
+          uiLanguage: "en",
+        }),
+      }),
+    );
+  });
+
+  it("keeps anonymous Trial Ask server-model-owned and bootstraps its allowance", async () => {
+    window.localStorage.setItem(
+      "munjib:rag-chat-model:company-handbook",
+      "attacker/override-model",
+    );
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/ask")) {
+        return jsonResponse({ answer: "Document answer", citations: [] });
+      }
+      throw new Error(`Unexpected fetch ${url} ${init?.method ?? "GET"}`);
+    });
+
+    render(
+      <AiAssistantPanel
+        mode="anonymous-trial-readonly"
+        initialTrialAiAllowance={{ remaining: 2, resetsAt: "2099-08-25T15:00:00.000Z" }}
+        workspaceSlug="company-handbook"
+        documentId="doc-1"
+        hasUnsavedChanges={false}
+        defaultChatModel="server/owned-model"
+        defaultChatProvider="openai-compatible"
+        availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }}
+      />,
+    );
+
+    expect(screen.getByText("server/owned-model")).toBeTruthy();
+    expect(screen.getByText("2 of 3 trial AI uses remaining today")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("AI question"), { target: { value: "Question" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+
+    expect(await screen.findByText("Document answer")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/workspaces/company-handbook/documents/doc-1/ask",
+      expect.objectContaining({
+        body: JSON.stringify({ question: "Question", uiLanguage: "en" }),
+      }),
+    );
+  });
+
   it("hydrates stored open state and loads the thread automatically", async () => {
     window.localStorage.setItem(
       workspaceUiStateStorageKey("company-handbook"),
