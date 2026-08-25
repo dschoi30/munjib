@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-08-25
-source_count: 120
+source_count: 121
 tags:
   - munjib
   - auth
@@ -120,6 +120,12 @@ own GET pathname, resolves the immutable workspace ID and exact slug together,
 and loads only active documents with no explicit permission rows. It does not
 use `WorkspaceMember`, USER grants, account navigation, server actions, or a
 shared `User`; Workspace AI remains the stateless anonymous route from Task 5.
+
+The DB-independent Task 7 privacy source contract additionally locks the public
+entitlement projection against visitor/network identifiers or digests, keeps
+the visitor cookie HttpOnly/Secure/SameSite=Lax with a maximum 180-day lifetime,
+proves the legacy `trial` provider stays absent, and requires production Trial
+activation to remain exact-`true` opt-in and absent from the default Compose env.
 
 `requireAiActor(request)` preserves the existing authenticated-user shape, but
 returns anonymous callers as a separate admission actor plus an
