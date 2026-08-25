@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-07-20",
+  "updated": "2026-08-25",
   "pages": [
     {
       "id": "workflow-attachment-lifecycle-readiness",
@@ -72,7 +72,7 @@
         "[[Release Signer And Vault Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 62,
+      "source_count": 67,
       "searchPriority": 50
     },
     {
@@ -259,7 +259,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 164,
+      "source_count": 166,
       "searchPriority": 5
     },
     {
@@ -282,7 +282,7 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 70,
+      "source_count": 71,
       "searchPriority": 50
     },
     {
@@ -421,7 +421,7 @@
         "[[CI CD And Monitoring Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 113,
+      "source_count": 114,
       "searchPriority": 30
     },
     {
@@ -502,7 +502,7 @@
         "[[Production Observability Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 18,
+      "source_count": 19,
       "searchPriority": 50
     },
     {

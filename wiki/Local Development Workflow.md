@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-07-19
-source_count: 70
+updated: 2026-08-17
+source_count: 71
 tags:
   - munjib
   - workflow
@@ -24,16 +24,21 @@ links:
 
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.
 
-Issue #171 production dependency audit remediation은 `postcss` 8.5.10,
-`uuid` 11.1.1, `@opentelemetry/core` 2.8.0을 exact `pnpm.overrides`로
-고정하고, Sentry의 `minimatch@10.2.5` 경로에만 `brace-expansion` 5.0.6을
+Issue #171 production dependency audit remediation의 2026-08-17 follow-up은 `postcss` 8.5.23,
+`uuid` 11.1.1, `@opentelemetry/core` 2.8.0, `@opentelemetry/propagator-jaeger` 2.9.0,
+`fast-uri` 3.1.5, `nanoid` 3.3.18, `protobufjs` 7.6.5, `sharp` 0.35.0을 exact
+`pnpm.overrides`로 고정하고, Sentry의 `minimatch@10.2.5` 경로에만 `brace-expansion` 5.0.9을
 scoped override한다. 이 설정은 `minimatch@3`의 기존 callable API를
 보존한다. `tests/security/dependency-audit.test.ts`가 lock-graph와
 NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
 보호한다. 검증 명령은 advisory allowlist나 severity filter 없이
 `pnpm audit --prod`를 그대로 사용하며, CI는 frozen install 직후 이 명령을
-실행한다. Issue #157의 Next.js 15.5.18 exact pin과 별도 advisory gate는
+실행한다. Next.js와 matching ESLint config는 15.5.21 exact pin이며 별도 advisory gate는
 유지한다.
+
+2026-08-25 CI follow-up은 Prisma config 경로의 재귀 객체 병합 advisory를 막기 위해
+`deepmerge-ts` 8.0.0을 exact override한다. 회귀 테스트는 취약한 7.1.5가 lock graph에
+남지 않고 Prisma Client 생성과 production audit이 계속 성공하는지 확인한다.
 
 Issue #174는 production `tsx` auth-preflight 경로에만
 `tsx>esbuild: 0.28.1` exact override를 적용한다. 따라서 production
@@ -199,17 +204,7 @@ docker compose up --build
 
 Issue #100 이후 production-style `web` service는 RAG provider와 optional Langfuse env도 받는다. Docker 안에서 Ollama를 host에서 실행할 때 기본 `MUNJIB_OLLAMA_BASE_URL`은 `http://host.docker.internal:11434`다. Compose는 provider selection, OpenAI/OpenAI-compatible credential/base URL, Langfuse key/host/capture env를 `web` service로 전달한다.
 
-Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #98 이후 `main` push deploy는 GHCR publish/pull 없이 SSH로 production server의 `/home/deployer/munjib` checkout에서 Actions-provided ephemeral Git token으로 repository `main`을 fetch하고 workflow가 검증한 `DEPLOY_SHA=${{ github.sha }}`로 detached checkout을 고정한 뒤, OCI host에서 `WEB_IMAGE=munjib-web:latest`와 host-local `DEPLOY_ENV_FILE=/etc/munjib/env`로 `sudo env ... docker compose --env-file "$DEPLOY_ENV_FILE" build web tools`를 실행한다. Native build는 browser Sentry bundle이 유지되도록 `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy job의 `SENTRY_RELEASE` / `NEXT_PUBLIC_SENTRY_RELEASE` env를 Docker build args로 전달한다. 이후 built `tools` container에서 Prisma migration deploy와 RAG vector index setup을 실행하고, 같은 `--env-file`과 release env를 전달한 `docker compose up -d web`, remote local `http://127.0.0.1:3000` health check, dangling image prune, GitHub-hosted runner의 `https://munjib.example.invalid` public health check 순서로 배포한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.example.invalid`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`, OpenRouter/OpenAI-compatible base URL/API key를 `/etc/munjib/env`에서 제공한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]를 본다.
-
-Required GitHub secrets:
-
-```text
-DEPLOY_HOST=146.56.170.25
-DEPLOY_USER=ubuntu
-DEPLOY_SSH_KEY
-DEPLOY_PATH=/home/deployer/munjib
-DEPLOY_PORT=22
-```
+Issue #88부터 GitHub Actions CI/CD는 PR과 `main` push에서 pgvector PostgreSQL service를 띄우고 pnpm install, Prisma Client generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 실행한다. Issue #210 이후 CI가 성공한 `main` 배포만 private OCI의 repository-scoped self-hosted runner에서 실행한다. Runner는 outbound HTTPS로 GitHub에 연결하며 SSH deploy secret이나 공개 SSH를 사용하지 않는다. Root-owned fixed wrapper는 exact `github.sha`가 최신 `origin/main`에 속하고 기록된 `current-sha`보다 뒤에 있는지 확인한 뒤 `WEB_IMAGE=munjib-web:<sha>`로 native ARM64 `web`/`tools` image를 build한다. 이어 auth preflight, Prisma migration, RAG vector index setup, Compose service replacement, local/public health check를 수행하고 모두 성공한 뒤에만 배포 SHA를 기록한다. Native build는 browser Sentry bundle이 유지되도록 `/etc/munjib/env`의 `NEXT_PUBLIC_SENTRY_*`와 deploy release env를 Docker build args로 전달한다. 현재 OCI server env는 `NEXTAUTH_URL=https://munjib.example.invalid`, `NEXTAUTH_COOKIE_SECURE=true`, 초기 Sentry trace sample rate `1.0`, OpenRouter/OpenAI-compatible base URL/API key를 `/etc/munjib/env`에서 제공한다. 세부 운영 contract는 [[CI CD And Monitoring Workflow]]와 `docs/runbooks/private-oci-self-hosted-runner.md`를 본다.
 
 Docker web container에서 schema와 seed를 준비하는 명령:
 

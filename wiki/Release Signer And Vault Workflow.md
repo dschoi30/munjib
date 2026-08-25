@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: 1인 사이드 프로젝트의 release signer를 Vault Community로 운영한다. 초기 production은 Munjib production과 같은 OCI VM의 Docker Compose 단일 노드로 시작하되, 독립 attestation을 위한 별도 signer VM 승격 게이트를 명시한다.
 created: 2026-07-17
-updated: 2026-07-19
-source_count: 18
+updated: 2026-08-17
+source_count: 19
 tags:
   - munjib
   - security
@@ -39,6 +39,8 @@ links:
 여기서 “단일 OCI”는 **현재 Munjib production이 실행 중인 OCI VM 한 대**를 의미한다. 이 구성은 초기 production 운영과 adapter 통합을 빠르게 검증하기 위한 단계이며, Munjib 컨테이너가 호스트를 장악하면 Vault signer와 private key도 같은 호스트에서 위험해질 수 있다. 따라서 이 구성만으로는 #185의 독립 attestation 완료 조건을 충족했다고 보고하지 않는다.
 
 Vault는 signer backend일 뿐이며 bundle builder, immutable artifact store, OCI root-bootstrap, host verifier, rollback/recovery 절차를 대체하지 않는다.
+
+Issue #210의 private OCI self-hosted runner는 초기 MVP의 운영 자동화일 뿐이다. Exact SHA와 제한된 wrapper를 사용하더라도 signed bundle, immutable artifact, independent host verifier 또는 `VERIFY_ONLY_OK` evidence를 만들지 않는다. 따라서 이 runner 경로는 Issue #185의 독립 attestation이나 PR #188의 immutable-delivery gate를 충족하거나 대체하지 않으며, Vault와 bundle signer 도입은 명시적인 post-MVP 작업으로 남는다.
 
 ## Trust boundaries
 

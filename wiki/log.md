@@ -145,6 +145,89 @@ links:
 - Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review thread.
 - Verification: focused attachment lifecycle inventory tests.
 
+## 2026-08-16T23:57:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 defines the RED source contract for a repository-scoped self-hosted deployment runner on the existing private OCI host.
+- Boundary: The test requires an exact main SHA, stdin-only ephemeral GitHub token, fixed host paths, serialized deployment, ordered preflight/migration/index/health checks, and one narrow sudo wrapper. No production runner, host file, firewall rule, or deployment workflow has changed yet.
+- Source evidence: `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md`, and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
+- Verification: The focused Vitest suite fails with `ENOENT` because the reviewed wrapper and sudoers source do not exist yet, establishing the intended RED state.
+
+## 2026-08-16T23:59:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 adds the reviewed source for a fixed production deployment wrapper and the single-command `munjib-runner` sudo boundary. These files are repository artifacts only and have not been installed on OCI.
+- Security boundary: The wrapper validates one exact lowercase commit SHA, reads the ephemeral GitHub token only from stdin, admits only `origin/main`, uses fixed host paths and a deployment lock, preserves host-local secrets, and records the deployed SHA only after local and public health checks.
+- Source evidence: `scripts/deploy/munjib-deploy.sh`, `deploy/sudoers/munjib-actions-runner`, and `tests/deploy/self-hosted-deploy-contract.test.ts`.
+- Verification: `bash -n`, 10 focused deploy contract tests, and forbidden privilege/secret-pattern searches pass.
+
+## 2026-08-17T00:02:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 changes the reviewed CI/CD source so PR and main validation stay on GitHub-hosted runners while only successful `main` deployment targets the repository-scoped OCI runner labels `self-hosted`, `linux`, `ARM64`, and `munjib-production`.
+- Boundary: The deploy job is serialized, passes the exact SHA and ephemeral job token to the fixed sudo wrapper, removes direct SSH deployment and deploy-secret references, and adds a permanent manual-only read-only runner smoke workflow. This source has not been merged or installed in production.
+- Source evidence: `.github/workflows/ci-cd.yml`, `.github/workflows/runner-smoke.yml`, and `tests/github-actions/ci-cd.test.ts`.
+- Verification: TypeScript compilation, 12 focused workflow/wrapper tests, 165 full test files with 1,497 tests, and whitespace checks pass.
+
+## 2026-08-17T00:08:00+09:00 - private-oci-cd-runner
+
+- Result: Issue #210 adds a beginner-oriented Bastion bootstrap, readiness, cutover, disablement, and recovery runbook and updates the durable CI/CD and signer boundaries.
+- Boundary: The documented MVP uses the existing single OCI, outbound-only repository runner, no public SSH, no Docker group, and one fixed sudo wrapper. Vault, bundle signer, Issue #185 independent attestation, and PR #188 immutable delivery remain post-MVP and are not implied by this automation.
+- Pages: [[CI CD And Monitoring Workflow]], [[Release Signer And Vault Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
+- Source evidence: `docs/runbooks/private-oci-self-hosted-runner.md`, Issue #210, and the reviewed workflow/wrapper source.
+
+## 2026-08-17T00:10:00+09:00 - private-oci-cd-runner
+
+- Result: Added the approved Issue #210 architecture specification and task-by-task implementation plan to the branch as review evidence.
+- Source evidence: `docs/superpowers/specs/2026-08-16-private-oci-self-hosted-deploy-runner-design.md` and `docs/superpowers/plans/2026-08-16-private-oci-self-hosted-deploy-runner.md`.
+- Verification: Final TypeScript compilation, 165 test files with 1,497 tests, wiki manifest/lint, shell syntax, and whitespace checks pass before publication.
+
+## 2026-08-17T00:42:00+09:00 - dependency-security
+
+- Result: PR #211 CI feedback updates the reviewed 15.x runtime to Next.js and matching ESLint config 15.5.21, NextAuth 4.24.15, and Prisma adapter 2.11.3 with Auth core 0.41.3.
+- Coverage: Exact patched overrides now cover PostCSS 8.5.23, scoped brace-expansion 5.0.9, OpenTelemetry Jaeger 2.9.0, fast-uri 3.1.5, nanoid 3.3.18, protobufjs 7.6.5, and sharp 0.35.0 while preserving the existing UUID, OpenTelemetry core, and scoped esbuild floors.
+- Source evidence: `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and `tests/security/next-runtime-version.test.ts`.
+- Verification: Worktree-only `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities and 67 focused runtime/auth/audit/workflow tests pass.
+
+## 2026-08-17T16:57:00+09:00 - private-oci-cd-runner review follow-up
+
+- Result: PR #211 review found that URL-based `git fetch ... main` updated only `FETCH_HEAD`, leaving the `origin/main` ancestry gate stale. The wrapper now fetches `main:refs/remotes/origin/main` explicitly before validating the requested SHA.
+- Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
+- Verification: The focused contract test failed against the old bare fetch refspec and passes with the explicit remote-tracking destination; shell syntax passes.
+
+## 2026-08-17T17:09:00+09:00 - private-oci-cd-runner cancellation and image retention review
+
+- Result: PR #211 review found that workflow-level cancellation could still interrupt an active main deployment and that per-SHA web images had no bounded retention. Main workflows now disable cancellation, while superseded PR workflows remain cancelable; successful deploy cleanup keeps the current and immediately previous `munjib-web:<sha>` tags and removes older Munjib web tags only.
+- Source evidence: PR #211 review threads, `.github/workflows/ci-cd.yml`, `scripts/deploy/munjib-deploy.sh`, `tests/github-actions/ci-cd.test.ts`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and `docs/runbooks/private-oci-self-hosted-runner.md`.
+- Verification: Both new contract assertions failed against the reviewed implementation and pass after the scoped fixes; shell syntax passes.
+
+## 2026-08-17T17:29:00+09:00 - private-oci-cd-runner bootstrap rollback retention
+
+- Result: PR #211 follow-up review identified that the first cutover has a bootstrapped SHA but may still use the legacy `munjib-web:latest` image tag. Cleanup now preserves `latest` only while the previous SHA tag is absent, then automatically transitions to current-plus-previous SHA retention on later deploys.
+- Source evidence: PR #211 review thread, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The new bootstrap-retention assertion failed against the prior cleanup loop and passes after the legacy fallback; shell syntax passes.
+
+## 2026-08-17T17:41:00+09:00 - production runner smoke ref guard
+
+- Result: PR #211 review identified that manual workflow dispatch can select a non-default ref. The production runner smoke job now requires `github.ref == 'refs/heads/main'`, so an accidental feature-branch dispatch is skipped.
+- Source evidence: PR #211 review thread, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The new smoke-ref contract failed before the job guard and passes after it.
+
+## 2026-08-25T10:24:00+09:00 - production runner trusted smoke dispatch
+
+- Result: Re-review confirmed that an in-file `github.ref` guard cannot secure a branch-selectable `workflow_dispatch`, because the selected branch supplies the workflow file itself. Production smoke now uses only `repository_dispatch` type `production-runner-smoke`, which runs the default-branch workflow and SHA; the branch-selectable dispatch path is removed.
+- Source evidence: PR #211 review threads, GitHub repository-dispatch documentation, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The replacement event contract failed against `workflow_dispatch` and passes with the default-branch repository dispatch.
+
+## 2026-08-25T10:29:00+09:00 - DeepmergeTS production audit remediation
+
+- Result: PR #211 CI detected GHSA-ggr8-5vv4-36mx through `@prisma/client > prisma > @prisma/config > deepmerge-ts`. The production lock graph now pins patched `deepmerge-ts` 8.0.0 and rejects vulnerable 7.1.5.
+- Source evidence: GitHub Actions run 32797539798, `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and [[Local Development Workflow]].
+- Verification: `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities; Prisma Client generation, dependency compatibility tests, and workflow contracts pass.
+
+## 2026-08-25T10:40:00+09:00 - CI CD entry-point reconciliation
+
+- Result: PR #211 wiki review reconciles the primary CI/CD entry-point summary with the implemented private OCI path: non-main superseded runs remain cancelable, main and production deploys are non-cancelable, and production builds exact `munjib-web:<deploy_sha>` tags instead of the legacy `latest` tag.
+- Source evidence: PR #211 review thread, `.github/workflows/ci-cd.yml`, `scripts/deploy/munjib-deploy.sh`, and [[CI CD And Monitoring Workflow]].
+- Verification: Wiki manifest, lint, and staged sync checks pass after removing the contradictory legacy summary.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
@@ -3664,3 +3747,27 @@ links:
 - Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
 - Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
 - Verification: focused attachment lifecycle inventory tests.
+
+## 2026-08-25T11:03:00+09:00 - running release state bootstrap
+
+- Result: PR #211 review corrected the first-cutover procedure so `current-sha` comes from the active web container's verified `SENTRY_RELEASE`, not the installer checkout's undeployed PR `HEAD`.
+- Failure boundary: A missing, malformed, or non-main running SHA stops bootstrap; operators must identify the last healthy deployed release rather than guess rollback state.
+- Source evidence: PR #211 review thread, `docs/runbooks/private-oci-self-hosted-runner.md`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
+- Verification: focused self-hosted deploy contract tests passed (7 tests).
+
+## 2026-08-25T11:15:00+09:00 - project deployment summary reconciliation
+
+- Result: PR #211 review updated [[Project PRD]] to describe the current private OCI self-hosted wrapper, exact per-SHA image, health-gated state update, and outbound-only runner path instead of the superseded SSH and `munjib-web:latest` flow.
+- Source evidence: PR #211 review thread, [[Project PRD]], [[CI CD And Monitoring Workflow]], and `tests/deploy/self-hosted-deploy-contract.test.ts`.
+- Verification: focused deployment contract regression test covers the Project PRD entry point.
+
+## 2026-08-25T11:30:00+09:00 - monotonic production deployment admission
+
+- Result: PR #211 review added a monotonic wrapper gate requiring the recorded `current-sha` to be an ancestor of the requested deploy SHA, preventing historical `main` workflow reruns from silently rolling production back.
+- Documentation: [[Local Development Workflow]] now describes the self-hosted per-SHA path and removes retired SSH deploy secrets and `munjib-web:latest` instructions.
+- Source evidence: PR #211 review threads, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, [[CI CD And Monitoring Workflow]], and [[Local Development Workflow]].
+
+## 2026-08-25T11:47:00+09:00 - historical SSH section isolation
+
+- Result: PR #211 review removed current wrapper and environment prose from the inactive direct-SSH details block, leaving that block consistently historical and pointing operators to the authoritative self-hosted runner section and runbook.
+- Source evidence: PR #211 review thread and [[CI CD And Monitoring Workflow]].

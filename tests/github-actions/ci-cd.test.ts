@@ -1,4 +1,3 @@
-import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
@@ -17,6 +16,10 @@ describe("GitHub Actions CI/CD workflow", () => {
       push: {
         branches: ["main"],
       },
+    });
+    expect(workflow.concurrency).toEqual({
+      group: "munjib-${{ github.ref }}",
+      "cancel-in-progress": "${{ github.ref != 'refs/heads/main' }}",
     });
   });
 
@@ -118,130 +121,52 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(workflowText).not.toContain("docker/login-action");
   });
 
-  test("deploy job builds natively on the OCI host", () => {
+  test("deploys successful main pushes through the private OCI runner", () => {
     const deploy = workflow.jobs.deploy;
-    const deployStep = deploy.steps.find((step: { uses?: string }) =>
-      step.uses?.startsWith("appleboy/ssh-action@"),
-    );
-    const publicHealthStep = deploy.steps.find((step: { name?: string }) =>
-      step.name === "Verify public deployment",
+    const deployStep = deploy.steps.find(
+      (step: { name?: string }) => step.name === "Deploy exact main SHA",
     );
 
+    expect(workflowText).not.toContain("appleboy/ssh-action");
     expect(deploy.needs).toBe("ci");
     expect(deploy.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
-    expect(deployStep).toBeDefined();
-    expect(deployStep?.env).toMatchObject({
-      WEB_IMAGE: "munjib-web:latest",
-      DEPLOY_SHA: "${{ github.sha }}",
-      SENTRY_RELEASE: "${{ github.sha }}",
-      NEXT_PUBLIC_SENTRY_RELEASE: "${{ github.sha }}",
-      DEPLOY_ENV_FILE: "/etc/munjib/env",
-      DEPLOY_HEALTHCHECK_URL: "http://127.0.0.1:3000",
-      DEPLOY_HEALTHCHECK_HOST: "munjib.example.invalid",
-      DEPLOY_REPOSITORY: "${{ github.repository }}",
-      DEPLOY_GIT_TOKEN: "${{ github.token }}",
+    expect(deploy["runs-on"]).toEqual([
+      "self-hosted",
+      "linux",
+      "ARM64",
+      "munjib-production",
+    ]);
+    expect(deploy.permissions).toEqual({ contents: "read" });
+    expect(deploy.concurrency).toEqual({
+      group: "munjib-production",
+      "cancel-in-progress": false,
     });
-    expect(deployStep?.with.host).toBe("${{ secrets.DEPLOY_HOST }}");
-    expect(deployStep?.with.username).toBe("${{ secrets.DEPLOY_USER }}");
-    expect(deployStep?.with.key).toBe("${{ secrets.DEPLOY_SSH_KEY }}");
-    expect(deployStep?.with.port).toBe("${{ secrets.DEPLOY_PORT || 22 }}");
-    expect(deployStep?.with.envs).toBe(
-      "WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN,DEPLOY_NEXTAUTH_SECRET,DEPLOY_GOOGLE_CLIENT_SECRET",
+    expect(deployStep?.run).toBe(
+      'printf \'%s\\n\' "${{ github.token }}" | sudo /usr/local/sbin/munjib-deploy "${{ github.sha }}"',
     );
-    expect(deployStep?.with.script).toContain('cd "${{ secrets.DEPLOY_PATH }}"');
-    expect(deployStep?.with.script).toContain(
-      'git_auth_header="$(printf \'x-access-token:%s\' "$DEPLOY_GIT_TOKEN" | base64 | tr -d \'\\n\')"',
-    );
-    expect(deployStep?.with.script).toContain(
-      'git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_header" fetch --force "https://github.com/$DEPLOY_REPOSITORY.git" main',
-    );
-    expect(deployStep?.with.script).not.toContain("git fetch --force origin main");
-    expect(deployStep?.with.script).toContain('git checkout --detach "$DEPLOY_SHA"');
-    expect(deployStep?.with.script).toContain('test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"');
-    expect(deployStep?.with.script).not.toContain("git pull --ff-only");
-    expect(deployStep?.with.script).not.toContain("docker login ghcr.io");
-    expect(deployStep?.with.script).not.toContain("docker compose pull web");
-    expect(deployStep?.with.script).toContain('sudo test -r "$DEPLOY_ENV_FILE"');
-    expect(deployStep?.with.script).toContain("install_secret nextauth-current");
-    expect(deployStep?.with.script).toContain("sudo chown 10001:10001");
-    expect(deployStep?.with.script).toContain("sudo chmod 0400");
-    expect(deployStep?.with.script).toContain("docker-compose.google.yml");
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index',
-    );
-    expect(deployStep?.with.script).toContain(
-      'sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web',
-    );
-    const runCommands = deployStep?.with.script as string;
-    expect(runCommands.indexOf("pnpm security:auth-preflight")).toBeGreaterThanOrEqual(0);
-    expect(runCommands.indexOf("pnpm security:auth-preflight")).toBeLessThan(
-      runCommands.indexOf("pnpm exec prisma migrate deploy"),
-    );
-    expect(runCommands.indexOf("install_secret nextauth-current")).toBeLessThan(
-      runCommands.indexOf("pnpm security:auth-preflight"),
-    );
-    expect(runCommands).toContain(
-      "--profile auth-preflight rm --force --stop auth-preflight",
-    );
-    expect(deployStep?.with.script).toContain(
-      "for attempt in 1 2 3 4 5 6 7 8 9 10; do",
-    );
-    expect(deployStep?.with.script).toContain(
-      'if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then',
-    );
-    expect(deployStep?.with.script).toContain(
-      'if [ "$attempt" = "10" ]; then',
-    );
-    expect(deployStep?.with.script).toContain(
-      "sleep 3",
-    );
-    expect(deployStep?.with.script).toContain("sudo docker image prune -f");
-    expect(publicHealthStep).toBeDefined();
-    expect(publicHealthStep?.run).toBe(
-      "curl --fail --silent --show-error --location --max-time 20 https://munjib.example.invalid >/dev/null",
-    );
+    expect(workflowText).not.toMatch(/DEPLOY_(HOST|USER|PORT|PATH|SSH_KEY)/);
+    expect(workflowText).not.toMatch(/DEPLOY_(NEXTAUTH_SECRET|GOOGLE_CLIENT_SECRET)/);
   });
 
-  test("enables Google only for non-empty dotenv client id and secret", () => {
-    const deploy = workflow.jobs.deploy;
-    const deployStep = deploy.steps.find((step: { uses?: string }) =>
-      step.uses?.startsWith("appleboy/ssh-action@"),
-    );
-    const script = deployStep?.with.script as string;
+  test("keeps the production runner smoke default-branch only and read only", () => {
+    const smokeText = read(".github/workflows/runner-smoke.yml");
+    const smoke = parse(smokeText);
 
-    expect(script).not.toContain(
-      "sudo grep -Eq '^GOOGLE_CLIENT_ID=[^[:space:]]'",
-    );
-    expect(script).toContain('google_client_id="$(');
-    expect(script).toContain('single=sprintf("%c", 39)');
-    expect(script).toContain(
-      'if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then',
-    );
-
-    const parser = script.match(
-      /sudo awk -v key=GOOGLE_CLIENT_ID '([\s\S]*?)' "\$DEPLOY_ENV_FILE"/,
-    )?.[1];
-    expect(parser).toBeDefined();
-    const readClientId = (line: string) =>
-      execFileSync("awk", ["-v", "key=GOOGLE_CLIENT_ID", parser as string], {
-        input: line + "\n",
-        encoding: "utf8",
-      }).trim();
-
-    expect(readClientId('GOOGLE_CLIENT_ID=""')).toBe("");
-    expect(readClientId("GOOGLE_CLIENT_ID=''")).toBe("");
-    expect(readClientId("GOOGLE_CLIENT_ID=client-id")).toBe("client-id");
-    expect(readClientId(" GOOGLE_CLIENT_ID =  client-id  # comment")).toBe(
-      "client-id",
-    );
+    expect(smoke.on).toEqual({
+      repository_dispatch: {
+        types: ["production-runner-smoke"],
+      },
+    });
+    expect(smokeText).not.toContain("workflow_dispatch");
+    expect(smoke.permissions).toEqual({ contents: "read" });
+    expect(smoke.jobs.smoke["runs-on"]).toEqual([
+      "self-hosted",
+      "linux",
+      "ARM64",
+      "munjib-production",
+    ]);
+    expect(smokeText).not.toContain("sudo");
+    expect(smokeText).not.toContain("secrets.");
+    expect(smokeText).not.toContain("actions/checkout");
   });
 });
