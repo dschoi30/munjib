@@ -3856,3 +3856,10 @@ links:
 - Client boundary: browser storage is not an identity, entitlement, or quota source. Daily, network, and global exhaustion 429 responses disable both composers; the transient active-request 429 stays recoverable. Responses without `trialAi` preserve the existing authenticated UI.
 - Entitlement projection: the client validator accepts the initial three-use entitlement and post-admission zero-through-two values, while rejecting malformed counts or reset timestamps.
 - Source evidence: `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `components/workspace-chatbot-stream.ts`, localized messages, and focused component/i18n tests.
+## 2026-08-25T17:30:00+09:00 - 가입 없는 Trial 제품 진입 연결
+
+- Result: Issue #212 Task 7 removes the legacy NextAuth `trial` Credentials provider. The login demo button now requests `/api/trial/entitlement`, receives an opaque HttpOnly visitor cookie, and follows only the server-projected local Trial workspace path; unavailable capability, invalid challenge/evidence, malformed response, and external paths fail closed.
+- Viewer boundary: `/trial/workspaces/[workspaceSlug]` re-verifies the visitor cookie and pathname-bound edge proof, then resolves the immutable capability workspace ID and exact slug. It renders only active documents with no explicit permission row and does not query `WorkspaceMember` or USER grants, bind to a shared User, expose mutations/account UI, or persist Trial conversation history.
+- Public projection: entitlement JSON exposes only quota/reset values plus `{ entry: { path } }`; workspace ID and visitor/network subjects or digests remain private.
+- Source evidence: Issue #212 approved design, `app/login/login-form.tsx`, `app/api/trial/entitlement/route.ts`, `app/trial/workspaces/[workspaceSlug]/page.tsx`, `lib/auth/config.ts`, `lib/auth/trial-entitlement.ts`, `lib/workspaces/trial-viewer.ts`, and focused auth/login/workspace tests.
+- Verification: strict RED reproduced the legacy provider, missing entry projection, old Trial sign-in call, and missing viewer; focused 74-test GREEN suite and TypeScript compilation passed.

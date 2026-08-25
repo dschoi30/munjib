@@ -303,9 +303,14 @@ describe("anonymous Trial actor and entitlement", () => {
 
     expect(result).toEqual({
       status: 200,
-      body: { remaining: 2, limit: 3, resetsAt: "2026-08-25T15:00:00.000Z" },
+      body: {
+        remaining: 2,
+        limit: 3,
+        resetsAt: "2026-08-25T15:00:00.000Z",
+        entry: { path: "/trial/workspaces/public-demo" },
+      },
     });
-    expect(JSON.stringify(result)).not.toMatch(/visitor|network|subject|digest|token/i);
+    expect(JSON.stringify(result)).not.toMatch(/visitor|network|subject|digest|token|workspaceId/i);
     expect(verifyChallenge).not.toHaveBeenCalled();
   });
 
@@ -320,7 +325,12 @@ describe("anonymous Trial actor and entitlement", () => {
     });
 
     expect(result.status).toBe(200);
-    expect(result.body).toEqual({ remaining: 3, limit: 3, resetsAt: "2026-08-25T15:00:00.000Z" });
+    expect(result.body).toEqual({
+      remaining: 3,
+      limit: 3,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+      entry: { path: "/trial/workspaces/public-demo" },
+    });
     expect(result.setCookie).toMatch(new RegExp(`^${TRIAL_VISITOR_COOKIE_NAME}=[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]{43};`));
     expect(result.setCookie).toContain("Max-Age=15552000");
     expect(result.setCookie).toContain("Path=/");

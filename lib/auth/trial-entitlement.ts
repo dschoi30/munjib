@@ -126,7 +126,18 @@ export type TrialEntitlementStore = Readonly<{
 export type TrialEntitlementResult = Readonly<{
   status: number;
   body:
-    | Readonly<{ remaining: number; limit: 3; resetsAt: string; challengeRequired?: true }>
+    | Readonly<{
+        remaining: number;
+        limit: 3;
+        resetsAt: string;
+        entry: Readonly<{ path: string }>;
+      }>
+    | Readonly<{
+        remaining: number;
+        limit: 3;
+        resetsAt: string;
+        challengeRequired: true;
+      }>
     | Readonly<{ code: "TRIAL_ENTITLEMENT_UNAVAILABLE" | "TRIAL_CHALLENGE_INVALID" }>;
   setCookie?: string;
 }>;
@@ -558,7 +569,7 @@ export async function resolveTrialEntitlement(
   if (visitorDigest) {
     return {
       status: 200,
-      body: publicEntitlement(visitorCount, usageWindow.resetsAt),
+      body: publicEntitlement(visitorCount, usageWindow.resetsAt, capability.demoWorkspaceSlug),
     };
   }
 
@@ -567,7 +578,12 @@ export async function resolveTrialEntitlement(
     if (challengeToken === undefined) {
       return {
         status: 200,
-        body: { ...publicEntitlement(0, usageWindow.resetsAt), challengeRequired: true },
+        body: {
+          remaining: VISITOR_DAILY_LIMIT,
+          limit: VISITOR_DAILY_LIMIT,
+          resetsAt: usageWindow.resetsAt,
+          challengeRequired: true,
+        },
       };
     }
     if (!validChallengeToken(challengeToken)) {
@@ -595,7 +611,7 @@ export async function resolveTrialEntitlement(
     if (!verification.ok) return unavailable();
     return {
       status: 200,
-      body: publicEntitlement(0, usageWindow.resetsAt),
+      body: publicEntitlement(0, usageWindow.resetsAt, capability.demoWorkspaceSlug),
       setCookie: serializeTrialVisitorCookie(token),
     };
   } catch {
@@ -603,11 +619,12 @@ export async function resolveTrialEntitlement(
   }
 }
 
-function publicEntitlement(admittedCount: number, resetsAt: string) {
+function publicEntitlement(admittedCount: number, resetsAt: string, workspaceSlug: string) {
   return {
     remaining: Math.max(0, VISITOR_DAILY_LIMIT - admittedCount),
     limit: VISITOR_DAILY_LIMIT,
     resetsAt,
+    entry: { path: `/trial/workspaces/${workspaceSlug}` },
   } as const;
 }
 
