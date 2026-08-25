@@ -177,6 +177,12 @@ an already disconnected request. An admitted anonymous Ask provider failure
 uses the Trial-only observability seam with only surface, public
 `AI_UNAVAILABLE`, coarse remaining-count bucket, and anonymous flag; the raw
 error, workspace slug, RAG code, provider, and model stay out of that path.
+The privacy branch is selected from the anonymous Trial principal rather than
+successful admission. A server-owned RAG/configuration failure during
+authorization/preparation therefore uses the same coarse metric with an
+`unknown` remaining bucket and a private no-store 503, without emitting normal
+workspace or provider diagnostics. Authenticated callers keep the existing
+handled-error telemetry.
 
 Task 7 adds a DB-independent cross-file privacy source contract. It rejects
 schema/migration drift that introduces raw IP, visitor token, challenge token,

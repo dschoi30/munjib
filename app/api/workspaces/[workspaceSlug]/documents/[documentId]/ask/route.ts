@@ -115,14 +115,11 @@ export async function POST(
       return NextResponse.json({ error: message }, { status: 404 });
     }
     if (isRagRuntimeError(message)) {
-      if (
-        actor.authorizationPrincipal.kind === "anonymous-trial-demo" &&
-        admittedTrialAi
-      ) {
+      if (actor.authorizationPrincipal.kind === "anonymous-trial-demo") {
         captureTrialAiFailure({
           surface: "ask_document",
           resultCode: "AI_UNAVAILABLE",
-          remaining: admittedTrialAi.remaining,
+          ...(admittedTrialAi ? { remaining: admittedTrialAi.remaining } : {}),
         });
       } else {
         captureHandledAiUnavailable({
@@ -144,7 +141,7 @@ export async function POST(
         },
         {
           status: 503,
-          ...(actor.authorizationPrincipal.kind === "anonymous-trial-demo" && admittedTrialAi
+          ...(actor.authorizationPrincipal.kind === "anonymous-trial-demo"
             ? { headers: { "cache-control": "private, no-store" } }
             : {}),
         },

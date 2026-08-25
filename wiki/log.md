@@ -3947,3 +3947,10 @@ links:
 - Retry boundary: `TRIAL_AI_REQUEST_IN_PROGRESS` is a transient active-request denial and no longer carries KST-midnight `resetsAt` or `Retry-After`; daily/network/global ceilings retain their normal reset projection.
 - Source evidence: PR #213 review threads, admission heartbeat/renew SQL, Ask and Workspace signal composition, unit/route/UI/PostgreSQL integration tests.
 - Verification: 109 focused tests and TypeScript passed after integration; the live PostgreSQL admission suite passed 4/4 including a lease kept active beyond its shortened initial deadline.
+
+## 2026-08-25T19:25:00+09:00 - Trial pre-admission telemetry and Turnstile retry hardening
+
+- Privacy boundary: anonymous Trial Ask selects coarse Trial telemetry from the principal even before admission. Server RAG/config failures emit an unknown remaining bucket and private no-store 503 without workspace slug, detailed RAG code, provider/model, or raw error.
+- Challenge recovery: failed, timed-out, or API-missing Turnstile script elements are cleaned up and removed, allowing a later click to load a fresh script while concurrent attempts continue sharing one pending load.
+- Source evidence: PR #213 review threads, Ask route and Trial observability helper/privacy source contract, Turnstile client and focused tests.
+- Verification: privacy suites passed 29 tests; Turnstile/login suites passed 19 tests; both TypeScript checks and diff checks passed.
