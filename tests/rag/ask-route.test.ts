@@ -1,212 +1,207 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requireAiActor } from "@/lib/auth/session";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
-import { ASK_ERROR_CODES, askDocumentQuestion } from "@/lib/rag/ask";
+import {
+  ASK_ERROR_CODES,
+  answerPreparedAskDocumentQuestion,
+  prepareAskDocumentQuestion,
+} from "@/lib/rag/ask";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { admitTrialAiRequest, releaseTrialAiLease } from "@/lib/rag/trial-ai-admission";
 
-vi.mock("@/lib/auth/session", () => ({
-  requireCurrentUser: vi.fn(),
-}));
-
+vi.mock("@/lib/auth/session", () => ({ requireAiActor: vi.fn() }));
 vi.mock("@/lib/rag/ask", () => ({
   ASK_ERROR_CODES: { QUESTION_REQUIRED: "QUESTION_REQUIRED" },
-  askDocumentQuestion: vi.fn(),
+  prepareAskDocumentQuestion: vi.fn(),
+  answerPreparedAskDocumentQuestion: vi.fn(),
 }));
+vi.mock("@/lib/rag/trial-ai-admission", () => ({
+  admitTrialAiRequest: vi.fn(),
+  releaseTrialAiLease: vi.fn(),
+}));
+vi.mock("@/lib/observability/ai-unavailable", () => ({ captureHandledAiUnavailable: vi.fn() }));
 
-vi.mock("@/lib/observability/ai-unavailable", () => ({
-  captureHandledAiUnavailable: vi.fn(),
-}));
+const preparedAsk = { workspaceId: "workspace-1" };
 
 describe("RAG ask route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(requireCurrentUser).mockResolvedValue({
-      id: "user-1",
-      email: "user@example.com",
-      name: "User",
+    vi.mocked(requireAiActor).mockResolvedValue({
+      admissionActor: { kind: "authenticated-user", userId: "user-1" },
+      authorizationPrincipal: { kind: "user", userId: "user-1" },
+      kstDate: "2026-08-25",
     });
-    vi.mocked(askDocumentQuestion).mockResolvedValue({
-      answer: "Saved answer",
-      citations: [],
-    });
+    vi.mocked(prepareAskDocumentQuestion).mockResolvedValue(preparedAsk as never);
+    vi.mocked(answerPreparedAskDocumentQuestion).mockResolvedValue({ answer: "Saved answer", citations: [] });
+    vi.mocked(admitTrialAiRequest).mockResolvedValue({ kind: "not-applicable" });
+    vi.mocked(releaseTrialAiLease).mockResolvedValue();
   });
 
   it("does not swallow auth redirects", async () => {
     const redirectError = new Error("NEXT_REDIRECT");
-    vi.mocked(requireCurrentUser).mockRejectedValueOnce(redirectError);
+    vi.mocked(requireAiActor).mockRejectedValueOnce(redirectError);
 
-    await expect(
-      POST(jsonRequest({ question: "What is saved?" }), {
-        params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-      }),
-    ).rejects.toBe(redirectError);
+    await expect(post({ question: "What is saved?" })).rejects.toBe(redirectError);
 
-    expect(askDocumentQuestion).not.toHaveBeenCalled();
+    expect(prepareAskDocumentQuestion).not.toHaveBeenCalled();
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
   });
 
-  it("treats malformed JSON as a missing question", async () => {
-    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(new Error(ASK_ERROR_CODES.QUESTION_REQUIRED));
+  it("rejects malformed JSON before admission", async () => {
+    vi.mocked(prepareAskDocumentQuestion).mockRejectedValueOnce(new Error(ASK_ERROR_CODES.QUESTION_REQUIRED));
 
-    const response = await POST(new Request("http://test.local", {
-      method: "POST",
-      body: "{",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
+    const response = await POST(new Request("http://test.local", { method: "POST", body: "{" }), context());
 
     await expect(response.json()).resolves.toEqual({ error: "QUESTION_REQUIRED" });
     expect(response.status).toBe(400);
-    expect(askDocumentQuestion).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      documentId: "doc-1",
-      actorId: "user-1",
-      question: "",
-    });
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
   });
 
-  it("treats a null JSON body as a missing question", async () => {
-    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(new Error(ASK_ERROR_CODES.QUESTION_REQUIRED));
+  it("rejects invalid chat model input before actor resolution and admission", async () => {
+    const response = await post({ question: "What is saved?", chatModel: "bad model" });
 
-    const response = await POST(jsonRequest(null), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
-
-    await expect(response.json()).resolves.toEqual({ error: "QUESTION_REQUIRED" });
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
     expect(response.status).toBe(400);
-    expect(askDocumentQuestion).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      documentId: "doc-1",
-      actorId: "user-1",
-      question: "",
-    });
+    expect(requireAiActor).not.toHaveBeenCalled();
+    expect(prepareAskDocumentQuestion).not.toHaveBeenCalled();
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
   });
 
-  it("passes the question and valid chat model override to the ask service", async () => {
-    await POST(jsonRequest({
-      question: "What is saved?",
-      chatProvider: "openai-compatible",
-      chatModel: "moonshotai/kimi-k2.7-code",
-      uiLanguage: "ko",
-      draftTitle: "Unsaved",
-      draftContentMarkdown: "Do not send me",
-      contentMarkdown: "Draft body",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
+  it("does not admit a request when document authorization fails", async () => {
+    vi.mocked(prepareAskDocumentQuestion).mockRejectedValueOnce(new Error("DOCUMENT_NOT_FOUND"));
 
-    expect(askDocumentQuestion).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      documentId: "doc-1",
-      actorId: "user-1",
-      question: "What is saved?",
-      chatProviderOverride: "openai-compatible",
-      chatModelOverride: "moonshotai/kimi-k2.7-code",
-      uiLanguage: "ko",
-    });
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ error: "DOCUMENT_NOT_FOUND" });
+    expect(response.status).toBe(404);
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
   });
 
-  it("ignores invalid UI language input without rejecting the ask request", async () => {
-    const response = await POST(jsonRequest({
-      question: "What is saved?",
-      uiLanguage: "jp",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+  it("returns private no-store 429 without calling the provider when Trial admission is denied", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+      resetsAt: "2099-08-25T15:00:00.000Z",
     });
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ code: "TRIAL_AI_DAILY_LIMIT_REACHED" });
+    expect(response.status).toBe(429);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
+    expect(releaseTrialAiLease).not.toHaveBeenCalled();
+  });
+
+  it("returns private no-store 503 without calling the provider when Trial admission is unavailable", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "denied",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ code: "TRIAL_AI_ADMISSION_UNAVAILABLE" });
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("retry-after")).toBeNull();
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
+  });
+
+  it("runs exact authorization before admission and returns remaining Trial entitlement on success", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-1",
+      remaining: 2,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+
+    const response = await post({ question: "What is saved?" });
 
     await expect(response.json()).resolves.toEqual({
       answer: "Saved answer",
       citations: [],
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
     });
-    expect(response.status).toBe(200);
-    expect(askDocumentQuestion).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      documentId: "doc-1",
-      actorId: "user-1",
-      question: "What is saved?",
+    expect(vi.mocked(prepareAskDocumentQuestion).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(admitTrialAiRequest).mock.invocationCallOrder[0]!,
+    );
+    expect(vi.mocked(admitTrialAiRequest).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(answerPreparedAskDocumentQuestion).mock.invocationCallOrder[0]!,
+    );
+    expect(admitTrialAiRequest).toHaveBeenCalledWith({
+      actor: anonymousActor().admissionActor,
+      surface: "ask_document",
+      workspaceId: "workspace-1",
+      kstDate: "2026-08-25",
+      networkBucketDigest: "network-digest-1",
     });
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
   });
 
-  it("rejects provider-only chat overrides before calling the ask service", async () => {
-    const response = await POST(jsonRequest({
-      question: "What is saved?",
-      chatProvider: "openai-compatible",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
-
-    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
-    expect(response.status).toBe(400);
-    expect(askDocumentQuestion).not.toHaveBeenCalled();
-  });
-
-  it("rejects invalid chat model override input", async () => {
-    const response = await POST(jsonRequest({
-      question: "What is saved?",
-      chatModel: "bad model",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
-
-    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
-    expect(response.status).toBe(400);
-    expect(askDocumentQuestion).not.toHaveBeenCalled();
-  });
-
-  it("does not capture invalid chat model input as an AI provider failure", async () => {
-    const response = await POST(jsonRequest({
-      question: "What is saved?",
-      chatModel: "bad model",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
-
-    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
-    expect(response.status).toBe(400);
-    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
-  });
-
-  it("treats null chat model override as absent", async () => {
-    await POST(jsonRequest({
-      question: "What is saved?",
-      chatModel: null,
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
-    });
-
-    expect(askDocumentQuestion).toHaveBeenCalledWith({
-      workspaceSlug: "company-handbook",
-      documentId: "doc-1",
-      actorId: "user-1",
-      question: "What is saved?",
-    });
-  });
-
-  it("captures and returns a generic unavailable response for RAG runtime failures", async () => {
+  it("keeps an admitted request charged and releases its lease when the provider fails", async () => {
     const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
-    vi.mocked(askDocumentQuestion).mockRejectedValueOnce(error);
-
-    const response = await POST(jsonRequest({
-      question: "What is saved?",
-      chatProvider: "openai-compatible",
-      chatModel: "google/gemma-4-31b-it:free",
-    }), {
-      params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }),
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-1",
+      remaining: 2,
+      resetsAt: "2026-08-25T15:00:00.000Z",
     });
+    vi.mocked(answerPreparedAskDocumentQuestion).mockRejectedValueOnce(error);
+
+    const response = await post({ question: "What is saved?" });
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
-    expect(captureHandledAiUnavailable).toHaveBeenCalledWith({
-      error,
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
+    expect(captureHandledAiUnavailable).toHaveBeenCalledWith(expect.objectContaining({ error }));
+  });
+
+  it("keeps normal authenticated behavior outside the Trial ledger", async () => {
+    const response = await post({ question: "What is saved?", uiLanguage: "jp" });
+
+    await expect(response.json()).resolves.toEqual({ answer: "Saved answer", citations: [] });
+    expect(admitTrialAiRequest).toHaveBeenCalledWith({
+      actor: { kind: "authenticated-user", userId: "user-1" },
       surface: "ask_document",
-      workspaceSlug: "company-handbook",
-      status: 503,
-      ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
-      chatProvider: "openai-compatible",
-      chatModel: "google/gemma-4-31b-it:free",
+      workspaceId: "workspace-1",
+      kstDate: "2026-08-25",
     });
+    expect(releaseTrialAiLease).not.toHaveBeenCalled();
   });
 });
+
+function anonymousActor() {
+  return {
+    admissionActor: { kind: "anonymous-trial" as const, trialVisitorSubject: "visitor-1" },
+    authorizationPrincipal: {
+      kind: "anonymous-trial-demo" as const,
+      capabilityId: "anonymous-trial-v1" as const,
+      workspaceId: "workspace-1",
+      workspaceSlug: "company-handbook",
+      access: "viewer-only" as const,
+      trialVisitorSubject: "visitor-1",
+    },
+    networkBucketDigest: "network-digest-1",
+    kstDate: "2026-08-25",
+  };
+}
+
+function context() {
+  return { params: Promise.resolve({ workspaceSlug: "company-handbook", documentId: "doc-1" }) };
+}
+
+function post(body: unknown) {
+  return POST(jsonRequest(body), context());
+}
 
 function jsonRequest(body: unknown) {
   return new Request("http://test.local", {

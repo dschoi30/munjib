@@ -1,4 +1,8 @@
 import { prisma } from "@/lib/db/client";
+import {
+  resolveAiWorkspaceAuthorization,
+  type AiAuthorizationPrincipal,
+} from "@/lib/auth/trial-entitlement";
 import type { Language } from "@/lib/i18n/language";
 import { highestPermissionLevel } from "@/lib/permissions/document";
 import { invokeAnswerChain, type ChatModelLike } from "@/lib/rag/answer-chain";
@@ -41,9 +45,36 @@ export type AskDocumentQuestionResult = {
   citations: RagCitation[];
 };
 
+export type PrepareAskDocumentQuestionInput = Omit<AskDocumentQuestionInput, "actorId"> & {
+  authorizationPrincipal: AiAuthorizationPrincipal;
+};
+
+export type PreparedAskDocumentQuestion = Readonly<{
+  workspaceId: string;
+  workspaceSlug: string;
+  selectedDocumentId: string;
+  question: string;
+  prompt: ReturnType<typeof buildDirectDocumentPrompt>;
+  citations: RagCitation[];
+  effectiveModelConfig: RagGenerationConfig;
+  contextPartial: boolean;
+  actorId?: string;
+}>;
+
 export async function askDocumentQuestion(
   input: AskDocumentQuestionInput,
 ): Promise<AskDocumentQuestionResult> {
+  const prepared = await prepareAskDocumentQuestion({
+    ...input,
+    authorizationPrincipal: { kind: "user", userId: input.actorId },
+  });
+  return answerPreparedAskDocumentQuestion(prepared);
+}
+
+/** Resolves authorization and provider-ready prompt data without calling a model. */
+export async function prepareAskDocumentQuestion(
+  input: PrepareAskDocumentQuestionInput,
+): Promise<PreparedAskDocumentQuestion> {
   const question = input.question.trim();
   if (!question) throw new Error(ASK_ERROR_CODES.QUESTION_REQUIRED);
 
@@ -51,12 +82,8 @@ export async function askDocumentQuestion(
     where: {
       slug: input.workspaceSlug,
       archivedAt: null,
-      members: {
-        some: { userId: input.actorId },
-      },
     },
     include: {
-      members: { where: { userId: input.actorId }, take: 1 },
       documents: {
         where: { id: input.documentId, status: "ACTIVE" },
         take: 1,
@@ -64,14 +91,25 @@ export async function askDocumentQuestion(
     },
   });
 
-  if (!workspace || !workspace.members[0]) {
+  if (!workspace) {
+    throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  }
+  const authorization = resolveAiWorkspaceAuthorization(input.authorizationPrincipal, workspace);
+  if (!authorization) throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
+  const membership = authorization.kind === "user"
+    ? await prisma.workspaceMember.findFirst({
+      where: { workspaceId: workspace.id, userId: authorization.userId },
+      select: { role: true },
+    })
+    : null;
+  if (authorization.kind === "user" && !membership) {
     throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   }
 
-  const role = workspace.members[0].role;
+  const role = authorization.kind === "user" ? membership!.role : authorization.role;
   const documentIds = workspace.documents.map((document) => document.id);
   const [documentsWithExplicitPermissions, userDocumentPermissions] =
-    documentIds.length > 0
+    documentIds.length > 0 && authorization.kind === "user"
       ? await Promise.all([
           prisma.permission.findMany({
             where: { resourceType: "DOCUMENT", resourceId: { in: documentIds } },
@@ -83,7 +121,7 @@ export async function askDocumentQuestion(
               resourceType: "DOCUMENT",
               resourceId: { in: documentIds },
               subjectType: "USER",
-              subjectId: input.actorId,
+              subjectId: authorization.userId,
             },
             select: { resourceId: true, permission: true },
           }),
@@ -160,28 +198,44 @@ export async function askDocumentQuestion(
     ...citation,
     documentId: selectedDocument.id,
   }));
+  return {
+    workspaceId: workspace.id,
+    workspaceSlug: input.workspaceSlug,
+    selectedDocumentId: selectedDocument.id,
+    question,
+    prompt,
+    citations,
+    effectiveModelConfig,
+    contextPartial: currentDocumentContext.partial,
+    ...(authorization.kind === "user" ? { actorId: authorization.userId } : {}),
+  };
+}
+
+export async function answerPreparedAskDocumentQuestion(
+  prepared: PreparedAskDocumentQuestion,
+): Promise<AskDocumentQuestionResult> {
   const trace = createLangfuseCallbackConfig({
-    enabled: effectiveModelConfig.langfuse.enabled,
-    captureMode: effectiveModelConfig.langfuse.captureMode,
+    enabled: prepared.effectiveModelConfig.langfuse.enabled,
+    captureMode: prepared.effectiveModelConfig.langfuse.captureMode,
     operation: "rag.ask_document",
-    chatProvider: effectiveModelConfig.chat.provider,
-    chatModel: effectiveModelConfig.chat.model,
-    citationDocumentIds: citations.map((citation) => citation.documentId),
+    chatProvider: prepared.effectiveModelConfig.chat.provider,
+    chatModel: prepared.effectiveModelConfig.chat.model,
+    citationDocumentIds: prepared.citations.map((citation) => citation.documentId),
     metadata: {
-      workspaceSlug: input.workspaceSlug,
-      workspaceId: workspace.id,
-      selectedDocumentId: selectedDocument.id,
-      actorId: input.actorId,
-      contextPartial: currentDocumentContext.partial,
+      workspaceSlug: prepared.workspaceSlug,
+      workspaceId: prepared.workspaceId,
+      selectedDocumentId: prepared.selectedDocumentId,
+      ...(prepared.actorId ? { actorId: prepared.actorId } : {}),
+      contextPartial: prepared.contextPartial,
     },
   });
   const answer = await invokeAnswerChain({
-    systemPrompt: prompt.system,
-    userPrompt: prompt.user,
-    chatModel: createChatModel(effectiveModelConfig.chat) as ChatModelLike,
+    systemPrompt: prepared.prompt.system,
+    userPrompt: prepared.prompt.user,
+    chatModel: createChatModel(prepared.effectiveModelConfig.chat) as ChatModelLike,
     callbacks: trace.callbacks,
     metadata: trace.metadata,
   });
 
-  return normalizeAnswerCitations(answer, citations);
+  return normalizeAnswerCitations(answer, prepared.citations);
 }
