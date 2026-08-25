@@ -35,6 +35,7 @@ export type InvokeAnswerChainInput = {
   config?: AnswerChainInvocationConfig;
   callbacks?: unknown[];
   metadata?: Record<string, unknown>;
+  privacySafeLogging?: boolean;
 };
 
 export type StreamAnswerChainInput = InvokeAnswerChainInput & {
@@ -56,7 +57,14 @@ export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<
     }
     return answer;
   } catch (error) {
-    console.error("RAG answer chain invocation failed:", error);
+    if (input.privacySafeLogging) {
+      console.error("RAG answer chain failed", {
+        code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+        surface: "invoke",
+      });
+    } else {
+      console.error("RAG answer chain invocation failed:", error);
+    }
     throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
   }
 }

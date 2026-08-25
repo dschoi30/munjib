@@ -3904,3 +3904,9 @@ links:
 - Allowance bootstrap: The viewer re-resolves entitlement server-side and passes only validated `{ remaining, resetsAt }` to both surfaces. The projection excludes workspace IDs and visitor/network subjects or digests and enters the existing monotonic same-tab channel, retaining KST expiry and accessible composer guidance.
 - Source evidence: `app/trial/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor/ai-assistant-panel.tsx`, `components/workspace-chatbot.tsx`, `lib/auth/trial-entitlement.ts`, and focused component/viewer/auth tests.
 - Verification: strict RED reproduced missing Ask, authenticated thread calls, reset UI, browser model override use, and missing server allowance bootstrap; focused 118-test GREEN suite and TypeScript compilation passed.
+
+## 2026-08-25T18:20:00+09:00 - Trial Ask review hardening
+
+- Privacy boundary: anonymous Trial Ask now propagates privacy-safe logging into the non-streaming answer chain, which records only the stable RAG failure code and `invoke` surface. Authenticated Ask retains the raw provider-error diagnostic path.
+- Quota projection: Ask quota-denial JSON now includes the admission ledger's authoritative `resetsAt`, allowing the shared client allowance parser to publish zero remaining uses and lock both composers through the KST reset boundary.
+- Verification: RED reproduced secret-bearing provider-error logging, the missing privacy flag, and the missing quota reset projection; focused answer-chain, Ask privacy/route, and editor component tests passed GREEN.

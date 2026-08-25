@@ -83,6 +83,32 @@ describe("RAG answer chain", () => {
     );
   });
 
+  it("logs only stable metadata for privacy-safe invocation failures", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const secretPrompt = "SECRET_PROMPT acquisition target";
+    const secretResponse = "SECRET_PROVIDER_RESPONSE upstream payload";
+    const chatModel = fakeChatModel(new Error(`${secretPrompt}; ${secretResponse}`));
+
+    await expect(
+      invokeAnswerChain({
+        systemPrompt: secretPrompt,
+        userPrompt: "SECRET_QUESTION",
+        chatModel,
+        privacySafeLogging: true,
+      }),
+    ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith("RAG answer chain failed", {
+      code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      surface: "invoke",
+    });
+    const logged = JSON.stringify(consoleError.mock.calls);
+    expect(logged).not.toContain(secretPrompt);
+    expect(logged).not.toContain(secretResponse);
+    expect(logged).not.toContain("SECRET_QUESTION");
+  });
+
   it("maps empty model output to a recoverable RAG error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const chatModel = fakeChatModel(new AIMessage(" \n\t "));

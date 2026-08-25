@@ -40,7 +40,10 @@ describe("prepared Ask AI privacy", () => {
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(expect.objectContaining({
       captureMode: "metadata",
     }));
-    expect(invokeAnswerChain).toHaveBeenCalledWith(expect.objectContaining({ callbacks: [] }));
+    expect(invokeAnswerChain).toHaveBeenCalledWith(expect.objectContaining({
+      callbacks: [],
+      privacySafeLogging: true,
+    }));
     expect(JSON.stringify(vi.mocked(createLangfuseCallbackConfig).mock.calls[0])).not.toContain(
       "private question",
     );
