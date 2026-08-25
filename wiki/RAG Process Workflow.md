@@ -124,6 +124,19 @@ authorization reads only active documents in the capability's exact workspace
 ID, uses no `WorkspaceMember` or `USER` document grant, and does not emit the
 visitor subject into Ask observability metadata.
 
+Task 4 review hardening keeps those boundaries explicit: anonymous preparation
+queries the exact capability workspace ID **and** requested slug, while a
+normal user query remains membership-scoped so another organization with the
+same slug cannot shadow it. An anonymous `VIEWER` still queries whether the
+candidate active document has any explicit grant; if so it is excluded, but no
+`USER` grant or membership lookup is issued for the Trial principal. Trial
+client provider/model overrides are rejected with `INVALID_CHAT_MODEL` before
+admission, leaving model choice server-owned. Prepared Ask inputs carry a
+privacy mode, forcing anonymous Trial Langfuse to metadata-only even when the
+server configuration requests full capture; no content-capturing callback is
+attached. Release failures remain best-effort and cannot replace a successful,
+provider-failed, or aborted admitted request outcome.
+
 ## Process Map
 
 이 지도는 현재 Ask AI direct path와 workspace chatbot RAG service path를 분리해서 보여준다.

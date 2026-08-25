@@ -3814,7 +3814,15 @@ links:
 
 ## 2026-08-25T16:00:00+09:00 - Ask AI anonymous Trial admission integration
 
-- Result: Issue #212 Task 4 splits Ask AI authorization/preparation from provider execution, then calls the shared admission ledger only after exact workspace/document authorization. Anonymous Trial callers can read only active documents in their immutable capability workspace ID and never query `WorkspaceMember` or `USER` document grants; normal authenticated calls retain the existing service wrapper behavior.
+- Result: Issue #212 Task 4 splits Ask AI authorization/preparation from provider execution, then calls the shared admission ledger only after exact workspace/document authorization. Anonymous Trial callers can read only active documents in their immutable capability workspace ID, never query `WorkspaceMember` or a USER-specific document grant, and exclude documents with any explicit grant; normal authenticated calls retain the existing service wrapper behavior.
 - Failure boundary: quota and active-lease denial returns pre-provider JSON 429 with private no-store caching and Retry-After; admission unavailability returns private no-store 503. An admitted provider failure remains charged and the lease release is best-effort in `finally`, so it cannot replace the original provider response.
 - Source evidence: approved Issue #212 design, Task 4 ruling, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, and `tests/rag/ask-route.test.ts`.
 - Verification: focused Ask route RED/GREEN and TypeScript compilation passed. Database-backed Ask service regression tests remain blocked in this worktree because `DATABASE_URL` is unset and Docker is unavailable.
+
+## 2026-08-25T16:15:00+09:00 - Ask AI Trial ACL and privacy hardening
+
+- Result: Task 4 now queries anonymous Trial Ask by exact capability workspace ID plus slug, while normal-user lookup retains membership scoping for duplicate-slug isolation. Trial checks candidate documents for explicit grants but never reads a USER grant or membership; an explicitly restricted document is therefore unavailable to viewer-only Trial access.
+- Privacy and model boundary: prepared Ask data carries an anonymous privacy mode that forces Langfuse metadata-only capture, even under a full server setting. Anonymous client provider/model overrides fail with `INVALID_CHAT_MODEL` before authorization/admission/provider work.
+- Failure boundary: admitted abort and provider error paths release without decrementing the charge. A lease-release error is suppressed so it cannot mask an original success or provider error.
+- Source evidence: Task 4 review ruling, `lib/rag/ask.ts`, Ask route, and focused route/preparation/privacy tests.
+- Verification: explicit RED for anonymous override and full-capture Langfuse paths, then focused 16-test GREEN suite and TypeScript compilation.
