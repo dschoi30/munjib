@@ -243,6 +243,7 @@ export async function answerPreparedAskDocumentQuestion(
     chatModel: createChatModel(prepared.effectiveModelConfig.chat) as ChatModelLike,
     callbacks: trace.callbacks,
     metadata: trace.metadata,
+    privacySafeLogging: prepared.privacyMode === "anonymous-trial",
   });
 
   return normalizeAnswerCitations(answer, prepared.citations);

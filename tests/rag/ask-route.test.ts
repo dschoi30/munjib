@@ -106,7 +106,10 @@ describe("RAG ask route", () => {
 
     const response = await post({ question: "What is saved?" });
 
-    await expect(response.json()).resolves.toEqual({ code: "TRIAL_AI_DAILY_LIMIT_REACHED" });
+    await expect(response.json()).resolves.toEqual({
+      code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+      resetsAt: "2099-08-25T15:00:00.000Z",
+    });
     expect(response.status).toBe(429);
     expect(response.headers.get("cache-control")).toBe("private, no-store");
     expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);

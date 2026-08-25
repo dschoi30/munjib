@@ -120,7 +120,10 @@ function trialAdmissionDeniedResponse(
     }
   }
   return NextResponse.json(
-    { code: admission.code },
+    {
+      code: admission.code,
+      ...(admission.resetsAt ? { resetsAt: admission.resetsAt } : {}),
+    },
     { status: unavailable ? 503 : 429, headers },
   );
 }
