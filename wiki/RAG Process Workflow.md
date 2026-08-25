@@ -508,7 +508,7 @@ Full capture가 켜진 Node runtime에서는 `instrumentation.ts`가 `initialize
 
 Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. 선택된 effective chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Complete provider+model override가 있으면 default chat provider env가 불완전해도 해당 default provider를 먼저 읽지 않는다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
 
-Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다.
+Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다. Trial lease가 embedding 도중 상실되면 request별 `AbortSignal`을 Ollama/OpenAI SDK의 custom `fetch`에 결합해 실제 provider HTTP transport를 중단하며, OpenAI SDK가 만든 timeout signal도 `AbortSignal.any()`로 함께 보존한다.
 
 Issue #116의 handled AI unavailable capture는 이 response contract를 바꾸지 않는다. Ask AI와 Workspace AI pre-stream preparation failure는 기존 JSON body/status를 유지하고, Workspace AI post-start stream failure는 기존 NDJSON `AI_UNAVAILABLE` event와 HTTP 200 stream contract를 유지한다. Capture 대상은 `isRagRuntimeError()`로 확인된 stable RAG runtime code뿐이며, validation errors, auth redirects, archived-thread races, client aborts는 provider unavailable Sentry event로 기록하지 않는다.
 

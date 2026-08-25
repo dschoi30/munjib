@@ -5,10 +5,7 @@ export { RAG_ERROR_CODES };
 const CURRENT_EMBEDDING_DIMENSIONS = 1024;
 
 export type LangChainEmbeddingModel = {
-  embedQuery: (
-    text: string,
-    options?: Readonly<{ signal?: AbortSignal }>,
-  ) => Promise<unknown>;
+  embedQuery: (text: string) => Promise<unknown>;
 };
 
 type EmbeddingIndexIdentity =
@@ -38,6 +35,7 @@ export type EmbedTextOptions = {
   getRagModelConfig?: () => RagEmbeddingClientConfig | Promise<RagEmbeddingClientConfig>;
   createEmbeddingModel?: (
     config: RagEmbeddingClientConfig,
+    options?: Readonly<{ signal?: AbortSignal }>,
   ) => LangChainEmbeddingModel | Promise<LangChainEmbeddingModel>;
 };
 
@@ -48,6 +46,7 @@ type RagModelConfigModule = {
 type RagModelFactoryModule = {
   createEmbeddingModel?: (
     config: RagEmbeddingClientConfig["embedding"],
+    options?: Readonly<{ signal?: AbortSignal }>,
   ) => LangChainEmbeddingModel | Promise<LangChainEmbeddingModel>;
 };
 
@@ -86,9 +85,7 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
 
   let embedding: unknown;
   try {
-    embedding = options.signal
-      ? await embeddingModel.embedQuery(text, { signal: options.signal })
-      : await embeddingModel.embedQuery(text);
+    embedding = await embeddingModel.embedQuery(text);
   } catch (error) {
     if (options.privacySafeLogging) {
       console.error("Embedding request failed", {
@@ -128,7 +125,7 @@ async function loadRagModelConfig(options: EmbedTextOptions) {
 
 async function loadEmbeddingModel(options: EmbedTextOptions, config: RagEmbeddingClientConfig) {
   if (options.createEmbeddingModel) {
-    return options.createEmbeddingModel(config);
+    return options.createEmbeddingModel(config, { signal: options.signal });
   }
 
   const factoryModule = (await import(
@@ -137,7 +134,7 @@ async function loadEmbeddingModel(options: EmbedTextOptions, config: RagEmbeddin
   if (!factoryModule.createEmbeddingModel) {
     throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
   }
-  return factoryModule.createEmbeddingModel(config.embedding);
+  return factoryModule.createEmbeddingModel(config.embedding, { signal: options.signal });
 }
 
 function requireConfig(config: RagEmbeddingClientConfig | undefined) {
