@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { embedText } from "@/lib/rag/embedding-client";
 import { streamAnswerChain } from "@/lib/rag/answer-chain";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
+import { safeIndexSavedDocument } from "@/lib/rag/index-document";
 import {
   preflightWorkspaceChatMessageStream,
   preparePreflightedWorkspaceChatMessageStream,
@@ -199,7 +200,14 @@ describe("anonymous Trial workspace chat service", () => {
     });
 
     expect(prepared.kind).toBe("stateless-trial");
-    expect(embedText).toHaveBeenCalledWith("What is in this demo?", expect.any(Object));
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({
+      documentId: demoDocument.id,
+      privacySafeLogging: true,
+    }));
+    expect(embedText).toHaveBeenCalledWith(
+      "What is in this demo?",
+      expect.objectContaining({ privacySafeLogging: true }),
+    );
     expect(result).toMatchObject({
       assistantMessage: {
         role: "ASSISTANT",

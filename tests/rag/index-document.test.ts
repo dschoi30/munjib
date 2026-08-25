@@ -195,6 +195,27 @@ describe("document RAG indexing", () => {
     );
   });
 
+  it("propagates privacy-safe logging through the safe indexing wrapper", async () => {
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      safeIndexSavedDocument({
+        documentId: savedDocument.id,
+        privacySafeLogging: true,
+        loadDocument: async () => savedDocument,
+        embedText,
+        replaceDocumentChunks,
+        isDocumentCurrent: async () => true,
+      }),
+    ).resolves.toBe(true);
+
+    expect(embedText).toHaveBeenCalledWith(
+      savedDocument.contentMarkdown,
+      { privacySafeLogging: true },
+    );
+  });
+
   it("skips replacing chunks when the saved document changed during indexing", async () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));

@@ -134,4 +134,24 @@ describe("AiAnswer", () => {
     expect(citationLink.className).toContain("text-primary");
     expect(citationLink.className).not.toContain("violet");
   });
+
+  it("keeps anonymous Trial citation links inside the read-only Trial route", () => {
+    render(
+      <AiCitations
+        mode="anonymous-trial-readonly"
+        workspaceSlug="company-handbook"
+        citations={[
+          {
+            index: 1,
+            documentId: "doc-1",
+            documentTitle: "Runbook",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "[1] Runbook" }).getAttribute("href")).toBe(
+      "/trial/workspaces/company-handbook?document=doc-1",
+    );
+  });
 });

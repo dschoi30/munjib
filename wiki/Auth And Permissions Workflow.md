@@ -121,6 +121,10 @@ from `https://challenges.cloudflare.com`, using the public
 once. Missing site-key configuration, widget load/error/expiry/timeout, a
 second challenge response, or malformed entry output fails closed without
 storing or logging the token. The secret remains server-only.
+Every server-rendered login gate (`/login`, `/`, and the unauthenticated
+workspace page) resolves the same validated public site key and passes it to
+`LoginForm`; therefore Turnstile escalation works consistently regardless of
+which login surface a fresh visitor enters through.
 The dedicated Trial viewer re-verifies the cookie plus fresh edge proof for its
 own GET pathname, resolves the immutable workspace ID and exact slug together,
 and loads only active documents with no explicit permission rows. It does not

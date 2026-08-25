@@ -110,4 +110,26 @@ describe("provider-neutral embedding client", () => {
 
     expect(consoleError).toHaveBeenCalledWith("Embedding request failed:", providerError);
   });
+
+  it("redacts provider failures when privacy-safe logging is requested", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const providerError = new Error("raw trial embedding secret");
+
+    await expect(
+      embedText("private trial question", {
+        config: currentConfig,
+        privacySafeLogging: true,
+        embeddingModel: {
+          embedQuery: vi.fn().mockRejectedValue(providerError),
+        },
+      }),
+    ).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledWith("Embedding request failed", {
+      code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,
+      surface: "embedding",
+    });
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("raw trial embedding secret");
+    expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private trial question");
+  });
 });

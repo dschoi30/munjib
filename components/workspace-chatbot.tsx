@@ -461,6 +461,7 @@ export function WorkspaceChatbot({
             key={message.id ?? `${message.role}-${index}`}
             message={message}
             workspaceSlug={workspaceSlug}
+            mode={mode}
           />
         ))}
         <ThinkingIndicator active={isThinking} className="text-sm text-slate-500" />
@@ -501,7 +502,15 @@ export function WorkspaceChatbot({
   );
 }
 
-function ChatBubble({ message, workspaceSlug }: { message: ChatMessage; workspaceSlug: string }) {
+function ChatBubble({
+  message,
+  workspaceSlug,
+  mode,
+}: {
+  message: ChatMessage;
+  workspaceSlug: string;
+  mode: "authenticated" | "anonymous-trial-readonly";
+}) {
   const isUser = message.role === "USER";
 
   return (
@@ -523,6 +532,7 @@ function ChatBubble({ message, workspaceSlug }: { message: ChatMessage; workspac
         <AiCitations
           citations={message.citations}
           workspaceSlug={workspaceSlug}
+          mode={mode}
           className="mt-1 text-xs text-slate-500"
         />
       ) : null}
