@@ -134,6 +134,23 @@ describe("captureHandledAiUnavailable", () => {
     expect(JSON.stringify(sentryMock)).not.toContain("secret-model");
   });
 
+  test("uses an unknown remaining bucket before Trial admission", () => {
+    captureTrialAiFailure({
+      surface: "ask_document",
+      resultCode: "AI_UNAVAILABLE",
+    });
+
+    expect(Sentry.metrics.count).toHaveBeenCalledWith("munjib.trial_ai.result", 1, {
+      attributes: {
+        anonymous_trial: true,
+        remaining_bucket: "unknown",
+        result_code: "AI_UNAVAILABLE",
+        surface: "ask_document",
+      },
+    });
+    expect(Sentry.withScope).not.toHaveBeenCalled();
+  });
+
   test("names provider configuration failures distinctly", () => {
     captureHandledAiUnavailable({
       error: new Error("missing base url"),

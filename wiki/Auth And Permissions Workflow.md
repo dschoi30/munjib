@@ -121,6 +121,10 @@ from `https://challenges.cloudflare.com`, using the public
 once. Missing site-key configuration, widget load/error/expiry/timeout, a
 second challenge response, or malformed entry output fails closed without
 storing or logging the token. The secret remains server-only.
+If script loading errors, times out, or completes without the Turnstile API,
+the client removes that failed script element after cleaning listeners and its
+timer. A later Trial click can load a fresh script after a transient CDN
+failure, while concurrent clicks still share one pending load.
 Every server-rendered login gate (`/login`, `/`, and the unauthenticated
 workspace page) resolves the same validated public site key and passes it to
 `LoginForm`; therefore Turnstile escalation works consistently regardless of

@@ -252,6 +252,25 @@ describe("RAG ask route", () => {
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
+  it("uses coarse Trial telemetry when anonymous preparation fails before admission", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(prepareAskDocumentQuestion).mockRejectedValueOnce(
+      new Error(RAG_ERROR_CODES.INVALID_CONFIG),
+    );
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    expect(response.status).toBe(503);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "ask_document",
+      resultCode: "AI_UNAVAILABLE",
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
+  });
+
   it("releases an admitted lease when provider work aborts without refunding admission", async () => {
     vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
     vi.mocked(admitTrialAiRequest).mockResolvedValueOnce(admitted());

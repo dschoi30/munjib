@@ -51,9 +51,10 @@ function trialTelemetryIsSanitized(source: string) {
   return (
     /surface:\s*"ask_document"\s*\|\s*"workspace_chat"/.test(contract) &&
     /resultCode:\s*"AI_UNAVAILABLE"/.test(contract) &&
-    /remaining:\s*0\s*\|\s*1\s*\|\s*2/.test(contract) &&
+    /remaining\?:\s*0\s*\|\s*1\s*\|\s*2/.test(contract) &&
     /anonymous_trial:\s*true/.test(implementation) &&
     /remaining_bucket:/.test(implementation) &&
+    /"unknown"/.test(implementation) &&
     !/(question|prompt|context|answer|challenge|visitor|network|workspaceSlug)\s*:/i.test(contract)
   );
 }
@@ -149,7 +150,28 @@ describe("anonymous Trial AI privacy source contract", () => {
 
   it("limits Trial failure telemetry to coarse allowlisted dimensions", () => {
     const telemetry = read("lib/observability/ai-unavailable.ts");
+    const askRoute = read(
+      "app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts",
+    );
+    const telemetryBranch = askRoute.slice(
+      askRoute.indexOf("if (isRagRuntimeError(message))"),
+      askRoute.indexOf("return NextResponse.json(\n        {", askRoute.indexOf("if (isRagRuntimeError(message))")),
+    );
     expect(trialTelemetryIsSanitized(telemetry)).toBe(true);
+    expect(telemetryBranch).toMatch(
+      /if\s*\(actor\.authorizationPrincipal\.kind\s*===\s*"anonymous-trial-demo"\)\s*\{\s*captureTrialAiFailure/,
+    );
+    expect(telemetryBranch).not.toMatch(
+      /authorizationPrincipal\.kind\s*===\s*"anonymous-trial-demo"\s*&&\s*admittedTrialAi/,
+    );
+    expect(
+      telemetryBranch.replace(
+        'authorizationPrincipal.kind === "anonymous-trial-demo"',
+        'authorizationPrincipal.kind === "anonymous-trial-demo" && admittedTrialAi',
+      ),
+    ).toMatch(
+      /authorizationPrincipal\.kind\s*===\s*"anonymous-trial-demo"\s*&&\s*admittedTrialAi/,
+    );
     expect(
       trialTelemetryIsSanitized(
         telemetry.replace(

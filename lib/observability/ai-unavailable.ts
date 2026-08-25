@@ -21,7 +21,7 @@ export type CaptureHandledAiUnavailableInput = {
 export type CaptureTrialAiFailureInput = Readonly<{
   surface: "ask_document" | "workspace_chat";
   resultCode: "AI_UNAVAILABLE";
-  remaining: 0 | 1 | 2;
+  remaining?: 0 | 1 | 2;
 }>;
 
 type AiUnavailableContext = {
@@ -98,7 +98,12 @@ export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableIn
 export function captureTrialAiFailure(input: CaptureTrialAiFailureInput) {
   captureMetricCount("munjib.trial_ai.result", 1, {
     anonymous_trial: true,
-    remaining_bucket: input.remaining === 0 ? "none" : "available",
+    remaining_bucket:
+      input.remaining === undefined
+        ? "unknown"
+        : input.remaining === 0
+          ? "none"
+          : "available",
     result_code: input.resultCode,
     surface: input.surface,
   });
