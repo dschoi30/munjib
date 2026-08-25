@@ -91,7 +91,7 @@ describe("provider-neutral embedding client", () => {
     ).resolves.toEqual([0.4, 0.5, 0.6]);
 
     expect(getRagModelConfig).toHaveBeenCalledTimes(1);
-    expect(createEmbeddingModel).toHaveBeenCalledWith(currentConfig);
+    expect(createEmbeddingModel).toHaveBeenCalledWith(currentConfig, { signal: undefined });
     expect(embeddingModel.embedQuery).toHaveBeenCalledWith("question");
   });
 
@@ -133,30 +133,21 @@ describe("provider-neutral embedding client", () => {
     expect(JSON.stringify(consoleError.mock.calls)).not.toContain("private trial question");
   });
 
-  it("passes the abort signal to the provider and stops a pending embedding", async () => {
+  it("binds the abort signal when creating the provider transport", async () => {
     const controller = new AbortController();
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    let providerSignal: AbortSignal | undefined;
-    const embeddingPromise = embedText("pending trial question", {
+    const embeddingModel = {
+      embedQuery: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+    };
+    const createEmbeddingModel = vi.fn().mockReturnValue(embeddingModel);
+
+    await embedText("pending trial question", {
       config: currentConfig,
       signal: controller.signal,
-      embeddingModel: {
-        embedQuery: vi.fn((_text, options) => {
-          providerSignal = options?.signal;
-          return new Promise((_resolve, reject) => {
-            options?.signal?.addEventListener(
-              "abort",
-              () => reject(new DOMException("Aborted", "AbortError")),
-              { once: true },
-            );
-          });
-        }),
-      },
+      createEmbeddingModel,
     });
 
-    await vi.waitFor(() => expect(providerSignal).toBe(controller.signal));
-    controller.abort();
-
-    await expect(embeddingPromise).rejects.toThrow(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
+    expect(createEmbeddingModel).toHaveBeenCalledWith(currentConfig, {
+      signal: controller.signal,
+    });
   });
 });

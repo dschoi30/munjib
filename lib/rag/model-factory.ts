@@ -11,6 +11,8 @@ export type RagEmbeddingFactoryConfig = Pick<
   "provider" | "model" | "baseUrl" | "apiKey" | "dimensions"
 >;
 
+export type EmbeddingTransportOptions = Readonly<{ signal?: AbortSignal }>;
+
 type ModelConstructor = new (options: unknown) => unknown;
 
 export type LangChainModelConstructors = {
@@ -68,14 +70,17 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
 
 export function createEmbeddingModel<C extends EmbeddingConstructors = EmbeddingConstructors>(
   config: RagEmbeddingFactoryConfig,
+  transportOptions?: EmbeddingTransportOptions,
   constructors?: C,
 ): ConstructorInstance<C["OllamaEmbeddings"]> | ConstructorInstance<C["OpenAIEmbeddings"]> {
   const resolved = constructors ?? getDefaultConstructors();
+  const abortableFetch = createAbortableFetch(transportOptions?.signal);
 
   if (config.provider === "ollama") {
     return new resolved.OllamaEmbeddings({
       model: config.model,
       baseUrl: config.baseUrl,
+      ...(abortableFetch ? { fetch: abortableFetch } : {}),
     }) as ConstructorInstance<C["OllamaEmbeddings"]>;
   }
 
@@ -84,7 +89,7 @@ export function createEmbeddingModel<C extends EmbeddingConstructors = Embedding
       model: config.model,
       ...apiKeyOption(config.apiKey),
       dimensions: config.dimensions,
-      ...baseUrlConfiguration(config.baseUrl),
+      ...baseUrlConfiguration(config.baseUrl, abortableFetch),
     }) as ConstructorInstance<C["OpenAIEmbeddings"]>;
   }
 
@@ -94,6 +99,7 @@ export function createEmbeddingModel<C extends EmbeddingConstructors = Embedding
     dimensions: config.dimensions,
     configuration: {
       baseURL: requireBaseUrl(config.baseUrl),
+      ...(abortableFetch ? { fetch: abortableFetch } : {}),
     },
   }) as ConstructorInstance<C["OpenAIEmbeddings"]>;
 }
@@ -108,8 +114,26 @@ function openAiCompatibleApiKeyOption(apiKey: string | undefined): { apiKey: str
 
 function baseUrlConfiguration(
   baseUrl: string | undefined,
-): { configuration?: { baseURL: string } } {
-  return baseUrl ? { configuration: { baseURL: baseUrl } } : {};
+  abortableFetch?: typeof fetch,
+): { configuration?: { baseURL?: string; fetch?: typeof fetch } } {
+  if (!baseUrl && !abortableFetch) return {};
+  return {
+    configuration: {
+      ...(baseUrl ? { baseURL: baseUrl } : {}),
+      ...(abortableFetch ? { fetch: abortableFetch } : {}),
+    },
+  };
+}
+
+function createAbortableFetch(signal: AbortSignal | undefined): typeof fetch | undefined {
+  if (!signal) return undefined;
+  return (input, init) => {
+    const requestSignal = init?.signal;
+    const combinedSignal = requestSignal
+      ? AbortSignal.any([signal, requestSignal])
+      : signal;
+    return fetch(input, { ...init, signal: combinedSignal });
+  };
 }
 
 function requireBaseUrl(baseUrl: string | undefined): string {
