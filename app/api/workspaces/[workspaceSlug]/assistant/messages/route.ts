@@ -181,10 +181,10 @@ export async function POST(
     });
   }
 
-  if (leaseHeartbeat?.signal.aborted) {
+  if (leaseHeartbeat?.signal.aborted && admission.kind === "admitted") {
     await leaseHeartbeat.stop();
     await releaseAdmissionLeaseBestEffort(admission);
-    return workspaceChatTrialFailureResponse(admission.kind === "admitted" ? admission.remaining : 0);
+    return workspaceChatTrialFailureResponse(admission);
   }
 
   return workspaceChatStreamResponse(

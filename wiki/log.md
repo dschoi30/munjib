@@ -3939,3 +3939,11 @@ links:
 - Client boundary: both composers validate and publish this projection from non-success JSON before showing the generic error, while authenticated errors without Trial data remain unchanged and quota-denial fallback stays intact.
 - Source evidence: PR #213 review threads, Ask and Workspace message routes/error response helpers, both AI clients, and focused route/component regression tests.
 - Verification: combined Ask/Workspace route and component suites passed 148 tests with TypeScript compilation.
+
+## 2026-08-25T19:15:00+09:00 - Trial lease lifetime and transient retry hardening
+
+- Concurrency boundary: admitted Ask and Workspace requests renew their active lease every 30 seconds for the entire provider/index/preparation/stream lifetime. Renewal uses DB time, extends only a still-active unexpired lease, and aborts provider work if renewal fails or the lease is lost.
+- Cleanup boundary: both routes await heartbeat shutdown before best-effort lease release, so a long request cannot overlap a later request merely because the original two-minute deadline passed.
+- Retry boundary: `TRIAL_AI_REQUEST_IN_PROGRESS` is a transient active-request denial and no longer carries KST-midnight `resetsAt` or `Retry-After`; daily/network/global ceilings retain their normal reset projection.
+- Source evidence: PR #213 review threads, admission heartbeat/renew SQL, Ask and Workspace signal composition, unit/route/UI/PostgreSQL integration tests.
+- Verification: 109 focused tests and TypeScript passed after integration; the live PostgreSQL admission suite passed 4/4 including a lease kept active beyond its shortened initial deadline.
