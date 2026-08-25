@@ -58,6 +58,7 @@ export type PreparedAskDocumentQuestion = Readonly<{
   citations: RagCitation[];
   effectiveModelConfig: RagGenerationConfig;
   contextPartial: boolean;
+  privacyMode: "authenticated-user" | "anonymous-trial";
   actorId?: string;
 }>;
 
@@ -82,6 +83,9 @@ export async function prepareAskDocumentQuestion(
     where: {
       slug: input.workspaceSlug,
       archivedAt: null,
+      ...(input.authorizationPrincipal.kind === "user"
+        ? { members: { some: { userId: input.authorizationPrincipal.userId } } }
+        : { id: input.authorizationPrincipal.workspaceId }),
     },
     include: {
       documents: {
@@ -108,25 +112,26 @@ export async function prepareAskDocumentQuestion(
 
   const role = authorization.kind === "user" ? membership!.role : authorization.role;
   const documentIds = workspace.documents.map((document) => document.id);
-  const [documentsWithExplicitPermissions, userDocumentPermissions] =
+  const [documentsWithExplicitPermissions, userDocumentPermissions] = await Promise.all([
+    documentIds.length > 0
+      ? prisma.permission.findMany({
+        where: { resourceType: "DOCUMENT", resourceId: { in: documentIds } },
+        distinct: ["resourceId"],
+        select: { resourceId: true },
+      })
+      : Promise.resolve([]),
     documentIds.length > 0 && authorization.kind === "user"
-      ? await Promise.all([
-          prisma.permission.findMany({
-            where: { resourceType: "DOCUMENT", resourceId: { in: documentIds } },
-            distinct: ["resourceId"],
-            select: { resourceId: true },
-          }),
-          prisma.permission.findMany({
-            where: {
-              resourceType: "DOCUMENT",
-              resourceId: { in: documentIds },
-              subjectType: "USER",
-              subjectId: authorization.userId,
-            },
-            select: { resourceId: true, permission: true },
-          }),
-        ])
-      : [[], []];
+      ? prisma.permission.findMany({
+        where: {
+          resourceType: "DOCUMENT",
+          resourceId: { in: documentIds },
+          subjectType: "USER",
+          subjectId: authorization.userId,
+        },
+        select: { resourceId: true, permission: true },
+      })
+      : Promise.resolve([]),
+  ]);
 
   const explicitDocumentIds = new Set(
     documentsWithExplicitPermissions.map((permission) => permission.resourceId),
@@ -207,6 +212,7 @@ export async function prepareAskDocumentQuestion(
     citations,
     effectiveModelConfig,
     contextPartial: currentDocumentContext.partial,
+    privacyMode: authorization.kind === "user" ? "authenticated-user" : "anonymous-trial",
     ...(authorization.kind === "user" ? { actorId: authorization.userId } : {}),
   };
 }
@@ -216,7 +222,9 @@ export async function answerPreparedAskDocumentQuestion(
 ): Promise<AskDocumentQuestionResult> {
   const trace = createLangfuseCallbackConfig({
     enabled: prepared.effectiveModelConfig.langfuse.enabled,
-    captureMode: prepared.effectiveModelConfig.langfuse.captureMode,
+    captureMode: prepared.privacyMode === "anonymous-trial"
+      ? "metadata"
+      : prepared.effectiveModelConfig.langfuse.captureMode,
     operation: "rag.ask_document",
     chatProvider: prepared.effectiveModelConfig.chat.provider,
     chatModel: prepared.effectiveModelConfig.chat.model,

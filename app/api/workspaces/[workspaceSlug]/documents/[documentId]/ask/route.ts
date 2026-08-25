@@ -44,6 +44,9 @@ export async function POST(
   }
 
   const actor = await requireAiActor(request);
+  if (actor.admissionActor.kind === "anonymous-trial" && (hasChatProvider || hasChatModel)) {
+    return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
+  }
   let admittedLeaseId: string | undefined;
   try {
     const prepared = await prepareAskDocumentQuestion({

@@ -69,6 +69,22 @@ describe("RAG ask route", () => {
     expect(admitTrialAiRequest).not.toHaveBeenCalled();
   });
 
+  it("rejects anonymous client provider overrides before authorization, admission, or provider work", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+
+    const response = await post({
+      question: "What is saved?",
+      chatProvider: "openai-compatible",
+      chatModel: "google/gemma-4-31b-it:free",
+    });
+
+    await expect(response.json()).resolves.toEqual({ error: "INVALID_CHAT_MODEL" });
+    expect(response.status).toBe(400);
+    expect(prepareAskDocumentQuestion).not.toHaveBeenCalled();
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
+  });
+
   it("does not admit a request when document authorization fails", async () => {
     vi.mocked(prepareAskDocumentQuestion).mockRejectedValueOnce(new Error("DOCUMENT_NOT_FOUND"));
 
@@ -165,6 +181,47 @@ describe("RAG ask route", () => {
     expect(captureHandledAiUnavailable).toHaveBeenCalledWith(expect.objectContaining({ error }));
   });
 
+  it("releases an admitted lease when provider work aborts without refunding admission", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce(admitted());
+    vi.mocked(answerPreparedAskDocumentQuestion).mockRejectedValueOnce(new Error("AbortError"));
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ error: "RAG_REQUEST_FAILED" });
+    expect(response.status).toBe(500);
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
+  });
+
+  it("does not mask a successful answer when lease release fails", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce(admitted());
+    vi.mocked(releaseTrialAiLease).mockRejectedValueOnce(new Error("lease store unavailable"));
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({
+      answer: "Saved answer",
+      citations: [],
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
+    });
+    expect(response.status).toBe(200);
+  });
+
+  it("does not mask the original provider failure when lease release fails", async () => {
+    const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce(admitted());
+    vi.mocked(answerPreparedAskDocumentQuestion).mockRejectedValueOnce(error);
+    vi.mocked(releaseTrialAiLease).mockRejectedValueOnce(new Error("lease store unavailable"));
+
+    const response = await post({ question: "What is saved?" });
+
+    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    expect(response.status).toBe(503);
+    expect(captureHandledAiUnavailable).toHaveBeenCalledWith(expect.objectContaining({ error }));
+  });
+
   it("keeps normal authenticated behavior outside the Trial ledger", async () => {
     const response = await post({ question: "What is saved?", uiLanguage: "jp" });
 
@@ -192,6 +249,15 @@ function anonymousActor() {
     },
     networkBucketDigest: "network-digest-1",
     kstDate: "2026-08-25",
+  };
+}
+
+function admitted() {
+  return {
+    kind: "admitted" as const,
+    leaseId: "lease-1",
+    remaining: 2 as const,
+    resetsAt: "2026-08-25T15:00:00.000Z",
   };
 }
 
