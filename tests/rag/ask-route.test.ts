@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route";
 import { requireAiActor } from "@/lib/auth/session";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
+import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
 import {
   ASK_ERROR_CODES,
   answerPreparedAskDocumentQuestion,
@@ -20,7 +23,10 @@ vi.mock("@/lib/rag/trial-ai-admission", () => ({
   admitTrialAiRequest: vi.fn(),
   releaseTrialAiLease: vi.fn(),
 }));
-vi.mock("@/lib/observability/ai-unavailable", () => ({ captureHandledAiUnavailable: vi.fn() }));
+vi.mock("@/lib/observability/ai-unavailable", () => ({
+  captureHandledAiUnavailable: vi.fn(),
+  captureTrialAiFailure: vi.fn(),
+}));
 
 const preparedAsk = { workspaceId: "workspace-1" };
 
@@ -96,6 +102,33 @@ describe("RAG ask route", () => {
     expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
   });
 
+  it("does not admit an anonymous request disconnected during document preparation", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
+    let finishPreparation!: (value: typeof preparedAsk) => void;
+    vi.mocked(prepareAskDocumentQuestion).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishPreparation = resolve;
+        }) as never,
+    );
+    const controller = new AbortController();
+    const responsePromise = POST(
+      jsonRequest({ question: "What is saved?" }, controller.signal),
+      context(),
+    );
+
+    await vi.waitFor(() => expect(prepareAskDocumentQuestion).toHaveBeenCalledOnce());
+    controller.abort();
+    finishPreparation(preparedAsk);
+    const response = await responsePromise;
+
+    await expect(response.json()).resolves.toEqual({ error: "ASK_REQUEST_ABORTED" });
+    expect(response.status).toBe(499);
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(admitTrialAiRequest).not.toHaveBeenCalled();
+    expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
+  });
+
   it("returns private no-store 429 without calling the provider when Trial admission is denied", async () => {
     vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
     vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
@@ -165,7 +198,7 @@ describe("RAG ask route", () => {
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
   });
 
-  it("keeps an admitted request charged and releases its lease when the provider fails", async () => {
+  it("uses coarse Trial telemetry and releases the lease when the anonymous provider fails", async () => {
     const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
     vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousActor());
     vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
@@ -181,7 +214,12 @@ describe("RAG ask route", () => {
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
-    expect(captureHandledAiUnavailable).toHaveBeenCalledWith(expect.objectContaining({ error }));
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "ask_document",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 2,
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("releases an admitted lease when provider work aborts without refunding admission", async () => {
@@ -222,7 +260,12 @@ describe("RAG ask route", () => {
 
     await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
     expect(response.status).toBe(503);
-    expect(captureHandledAiUnavailable).toHaveBeenCalledWith(expect.objectContaining({ error }));
+    expect(captureTrialAiFailure).toHaveBeenCalledWith({
+      surface: "ask_document",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 2,
+    });
+    expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
   it("keeps normal authenticated behavior outside the Trial ledger", async () => {
@@ -272,10 +315,11 @@ function post(body: unknown) {
   return POST(jsonRequest(body), context());
 }
 
-function jsonRequest(body: unknown) {
+function jsonRequest(body: unknown, signal?: AbortSignal) {
   return new Request("http://test.local", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
 }

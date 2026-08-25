@@ -159,7 +159,13 @@ admission, leaving model choice server-owned. Prepared Ask inputs carry a
 privacy mode, forcing anonymous Trial Langfuse to metadata-only even when the
 server configuration requests full capture; no content-capturing callback is
 attached. Release failures remain best-effort and cannot replace a successful,
-provider-failed, or aborted admitted request outcome.
+provider-failed, or aborted admitted request outcome. After asynchronous Ask
+authorization/preparation, the route checks `request.signal.aborted`
+immediately before admission and returns private no-store 499 without charging
+an already disconnected request. An admitted anonymous Ask provider failure
+uses the Trial-only observability seam with only surface, public
+`AI_UNAVAILABLE`, coarse remaining-count bucket, and anonymous flag; the raw
+error, workspace slug, RAG code, provider, and model stay out of that path.
 
 Task 7 adds a DB-independent cross-file privacy source contract. It rejects
 schema/migration drift that introduces raw IP, visitor token, challenge token,

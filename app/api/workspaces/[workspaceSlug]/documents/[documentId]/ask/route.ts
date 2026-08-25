@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
+import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
 import {
   ASK_ERROR_CODES,
   answerPreparedAskDocumentQuestion,
@@ -48,6 +51,7 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
   let admittedLeaseId: string | undefined;
+  let admittedRemaining: 0 | 1 | 2 | undefined;
   try {
     const prepared = await prepareAskDocumentQuestion({
       workspaceSlug,
@@ -60,6 +64,12 @@ export async function POST(
         : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
+    if (request.signal.aborted) {
+      return NextResponse.json(
+        { error: "ASK_REQUEST_ABORTED" },
+        { status: 499, headers: { "cache-control": "private, no-store" } },
+      );
+    }
     const admission = await admitTrialAiRequest({
       actor: actor.admissionActor,
       surface: "ask_document",
@@ -68,7 +78,10 @@ export async function POST(
       ...(actor.networkBucketDigest ? { networkBucketDigest: actor.networkBucketDigest } : {}),
     });
     if (admission.kind === "denied") return trialAdmissionDeniedResponse(admission);
-    if (admission.kind === "admitted") admittedLeaseId = admission.leaseId;
+    if (admission.kind === "admitted") {
+      admittedLeaseId = admission.leaseId;
+      admittedRemaining = admission.remaining;
+    }
 
     const result = await answerPreparedAskDocumentQuestion(prepared);
     return NextResponse.json({
@@ -89,15 +102,26 @@ export async function POST(
       return NextResponse.json({ error: message }, { status: 404 });
     }
     if (isRagRuntimeError(message)) {
-      captureHandledAiUnavailable({
-        error,
-        surface: "ask_document",
-        workspaceSlug,
-        status: 503,
-        ragErrorCode: message,
-        ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
-        ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
-      });
+      if (
+        actor.authorizationPrincipal.kind === "anonymous-trial-demo" &&
+        admittedRemaining !== undefined
+      ) {
+        captureTrialAiFailure({
+          surface: "ask_document",
+          resultCode: "AI_UNAVAILABLE",
+          remaining: admittedRemaining,
+        });
+      } else {
+        captureHandledAiUnavailable({
+          error,
+          surface: "ask_document",
+          workspaceSlug,
+          status: 503,
+          ragErrorCode: message,
+          ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
+          ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
+        });
+      }
       return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
     }
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
