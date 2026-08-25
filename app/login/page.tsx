@@ -15,8 +15,14 @@ export default function LoginPage() {
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
         isTrialLoginEnabled={resolveTrialLoginEnabled()}
+        trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
         isSignupEnabled={false}
       />
     </main>
   );
+}
+
+function resolveTrialTurnstileSiteKey(): string | undefined {
+  const value = process.env.MUNJIB_TURNSTILE_SITE_KEY?.trim();
+  return value && /^[A-Za-z0-9_-]{10,128}$/.test(value) ? value : undefined;
 }

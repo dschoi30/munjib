@@ -12,6 +12,7 @@ import {
   resolveAuthClientRedirectPath,
 } from "@/lib/auth/client-redirects";
 import type { MessageKey } from "@/lib/i18n/messages";
+import { requestTurnstileToken } from "@/lib/auth/turnstile-client";
 
 const developmentUsers = ["owner@example.com", "editor@example.com", "viewer@example.com"];
 const defaultPostLoginCallbackUrl = "/workspaces/company-handbook";
@@ -22,6 +23,8 @@ type LoginFormProps = {
   isGoogleLoginEnabled?: boolean;
   isTrialLoginEnabled?: boolean;
   isSignupEnabled?: boolean;
+  trialTurnstileSiteKey?: string;
+  requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
 };
 
 type AuthMode = "signin" | "signup";
@@ -50,6 +53,8 @@ export function LoginForm({
   isGoogleLoginEnabled = true,
   isTrialLoginEnabled = true,
   isSignupEnabled = false,
+  trialTurnstileSiteKey,
+  requestTrialChallengeToken = requestTurnstileToken,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -156,8 +161,22 @@ export function LoginForm({
         body: JSON.stringify({}),
       });
       const result: unknown = await response.json();
-      const entryPath = readTrialEntryPath(result);
-      if (response.ok && entryPath) {
+      let entryPath = readTrialEntryPath(result);
+      let entitlementAccepted = response.ok;
+      if (!entryPath && readChallengeRequired(result)) {
+        if (!trialTurnstileSiteKey) throw new Error("TURNSTILE_SITE_KEY_UNAVAILABLE");
+        setStatusKey("login.trialChallenge");
+        const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey);
+        const challengeResponse = await fetch("/api/trial/entitlement", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ challengeToken }),
+        });
+        const challengeResult: unknown = await challengeResponse.json();
+        entitlementAccepted = challengeResponse.ok;
+        entryPath = entitlementAccepted ? readTrialEntryPath(challengeResult) : null;
+      }
+      if (entitlementAccepted && entryPath) {
         window.location.assign(entryPath);
         return;
       }
@@ -394,6 +413,10 @@ function readTrialEntryPath(value: unknown): string | null {
   return typeof path === "string" && /^\/trial\/workspaces\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path)
     ? path
     : null;
+}
+
+function readChallengeRequired(value: unknown): boolean {
+  return Boolean(value && typeof value === "object" && (value as { challengeRequired?: unknown }).challengeRequired === true);
 }
 
 function resolveSignupErrorKey(code: string | undefined): MessageKey {
