@@ -211,7 +211,10 @@ describe("RAG ask route", () => {
 
     const response = await post({ question: "What is saved?" });
 
-    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    await expect(response.json()).resolves.toEqual({
+      error: "AI_UNAVAILABLE",
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
+    });
     expect(response.status).toBe(503);
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
     expect(captureTrialAiFailure).toHaveBeenCalledWith({
@@ -258,7 +261,10 @@ describe("RAG ask route", () => {
 
     const response = await post({ question: "What is saved?" });
 
-    await expect(response.json()).resolves.toEqual({ error: "AI_UNAVAILABLE" });
+    await expect(response.json()).resolves.toEqual({
+      error: "AI_UNAVAILABLE",
+      trialAi: { remaining: 2, resetsAt: "2026-08-25T15:00:00.000Z" },
+    });
     expect(response.status).toBe(503);
     expect(captureTrialAiFailure).toHaveBeenCalledWith({
       surface: "ask_document",

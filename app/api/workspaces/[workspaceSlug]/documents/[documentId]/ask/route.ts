@@ -51,7 +51,7 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
   let admittedLeaseId: string | undefined;
-  let admittedRemaining: 0 | 1 | 2 | undefined;
+  let admittedTrialAi: { remaining: 0 | 1 | 2; resetsAt: string } | undefined;
   try {
     const prepared = await prepareAskDocumentQuestion({
       workspaceSlug,
@@ -80,7 +80,7 @@ export async function POST(
     if (admission.kind === "denied") return trialAdmissionDeniedResponse(admission);
     if (admission.kind === "admitted") {
       admittedLeaseId = admission.leaseId;
-      admittedRemaining = admission.remaining;
+      admittedTrialAi = { remaining: admission.remaining, resetsAt: admission.resetsAt };
     }
 
     const result = await answerPreparedAskDocumentQuestion(prepared);
@@ -104,12 +104,12 @@ export async function POST(
     if (isRagRuntimeError(message)) {
       if (
         actor.authorizationPrincipal.kind === "anonymous-trial-demo" &&
-        admittedRemaining !== undefined
+        admittedTrialAi
       ) {
         captureTrialAiFailure({
           surface: "ask_document",
           resultCode: "AI_UNAVAILABLE",
-          remaining: admittedRemaining,
+          remaining: admittedTrialAi.remaining,
         });
       } else {
         captureHandledAiUnavailable({
@@ -122,7 +122,15 @@ export async function POST(
           ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
         });
       }
-      return NextResponse.json({ error: "AI_UNAVAILABLE" }, { status: 503 });
+      return NextResponse.json(
+        {
+          error: "AI_UNAVAILABLE",
+          ...(actor.authorizationPrincipal.kind === "anonymous-trial-demo" && admittedTrialAi
+            ? { trialAi: admittedTrialAi }
+            : {}),
+        },
+        { status: 503 },
+      );
     }
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   } finally {
