@@ -21,9 +21,13 @@ import {
   type TrialAiAdmission,
 } from "@/lib/rag/trial-ai-admission";
 import {
+  normalizeWorkspaceChatTrialFailure,
   workspaceChatErrorResponse,
   workspaceChatTrialAdmissionDeniedResponse,
+  workspaceChatTrialFailureResponse,
 } from "../error-response";
+
+const TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED = "TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED";
 
 export async function POST(
   request: Request,
@@ -58,6 +62,15 @@ export async function POST(
   const hasChatProvider =
     body.value.chatProvider !== undefined && body.value.chatProvider !== null;
   const hasChatModel = body.value.chatModel !== undefined && body.value.chatModel !== null;
+  if (
+    actor.admissionActor.kind === "anonymous-trial" &&
+    (hasChatProvider || hasChatModel)
+  ) {
+    return NextResponse.json(
+      { error: TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED },
+      { status: 400 },
+    );
+  }
   if (hasChatProvider && !hasChatModel) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
@@ -94,6 +107,12 @@ export async function POST(
       ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
       ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
     });
+  }
+  if (request.signal.aborted) {
+    return NextResponse.json(
+      { error: "WORKSPACE_CHAT_REQUEST_ABORTED" },
+      { status: 499, headers: { "cache-control": "private, no-store" } },
+    );
   }
 
   let admission: TrialAiAdmission;
@@ -135,6 +154,15 @@ export async function POST(
     });
   } catch (error) {
     await releaseAdmissionLeaseBestEffort(admission);
+    if (admission.kind === "admitted") {
+      if (request.signal.aborted) {
+        return NextResponse.json(
+          { error: "WORKSPACE_CHAT_REQUEST_ABORTED" },
+          { status: 499, headers: { "cache-control": "private, no-store" } },
+        );
+      }
+      return workspaceChatTrialFailureResponse(admission.remaining);
+    }
     return workspaceChatErrorResponse(error, {
       surface: "workspace_chat_prepare",
       workspaceSlug,
@@ -185,6 +213,13 @@ function workspaceChatStreamResponse(
         }
       } catch (error) {
         if (signal.aborted) return;
+        if (admission.kind === "admitted") {
+          writeEvent({
+            type: "error",
+            error: normalizeWorkspaceChatTrialFailure(admission.remaining),
+          });
+          return;
+        }
         const message = error instanceof Error ? error.message : "";
         const isArchivedThread = message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED;
         const streamError = isArchivedThread

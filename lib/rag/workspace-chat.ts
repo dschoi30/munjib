@@ -236,12 +236,26 @@ export async function preflightWorkspaceChatMessageStream(input: {
   if (!workspace) {
     throw new Error(SERVICE_ERROR_CODES.WORKSPACE_NOT_FOUND);
   }
+  const documentIds = workspace.documents.map((document) => document.id);
+  const documentsWithExplicitPermissions =
+    documentIds.length > 0
+      ? await prisma.permission.findMany({
+          where: { resourceType: "DOCUMENT", resourceId: { in: documentIds } },
+          distinct: ["resourceId"],
+          select: { resourceId: true },
+        })
+      : [];
+  const explicitlyRestrictedDocumentIds = new Set(
+    documentsWithExplicitPermissions.map((permission) => permission.resourceId),
+  );
 
   return {
     kind: "stateless-trial",
     workspaceId: workspace.id,
     workspaceSlug: workspace.slug,
-    readableDocuments: workspace.documents,
+    readableDocuments: workspace.documents.filter(
+      (document) => !explicitlyRestrictedDocumentIds.has(document.id),
+    ),
   };
 }
 

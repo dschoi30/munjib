@@ -116,6 +116,7 @@ describe("anonymous Trial workspace chat service", () => {
         : null,
     );
     db.documentChunkFindMany.mockResolvedValue([]);
+    db.permissionFindMany.mockResolvedValue([]);
     vi.mocked(searchSimilarChunks).mockResolvedValue([
       {
         id: "chunk-1",
@@ -133,7 +134,9 @@ describe("anonymous Trial workspace chat service", () => {
     vi.unstubAllEnvs();
   });
 
-  it("authorizes only the exact active demo workspace and never reads USER grants", async () => {
+  it("excludes explicitly restricted demo documents without reading USER grants", async () => {
+    db.permissionFindMany.mockResolvedValueOnce([{ resourceId: demoDocument.id }]);
+
     const preflight = await preflightWorkspaceChatMessageStream({
       workspaceSlug: principal.workspaceSlug,
       authorizationPrincipal: principal,
@@ -143,7 +146,7 @@ describe("anonymous Trial workspace chat service", () => {
       kind: "stateless-trial",
       workspaceId: principal.workspaceId,
       workspaceSlug: principal.workspaceSlug,
-      readableDocuments: [expect.objectContaining({ id: demoDocument.id })],
+      readableDocuments: [],
     });
     expect(db.workspaceFindFirst).toHaveBeenCalledWith({
       where: {
@@ -158,7 +161,20 @@ describe("anonymous Trial workspace chat service", () => {
         },
       },
     });
-    expect(db.permissionFindMany).not.toHaveBeenCalled();
+    expect(db.permissionFindMany).toHaveBeenCalledWith({
+      where: {
+        resourceType: "DOCUMENT",
+        resourceId: { in: [demoDocument.id] },
+      },
+      distinct: ["resourceId"],
+      select: { resourceId: true },
+    });
+    expect(db.permissionFindMany.mock.calls[0]?.[0]).not.toHaveProperty(
+      "where.subjectType",
+    );
+    expect(db.permissionFindMany.mock.calls[0]?.[0]).not.toHaveProperty(
+      "where.subjectId",
+    );
 
     await expect(
       preflightWorkspaceChatMessageStream({

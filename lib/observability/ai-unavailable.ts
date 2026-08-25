@@ -18,6 +18,12 @@ export type CaptureHandledAiUnavailableInput = {
   chatModel?: string;
 };
 
+export type CaptureTrialAiFailureInput = Readonly<{
+  surface: "ask_document" | "workspace_chat";
+  resultCode: "AI_UNAVAILABLE";
+  remaining: 0 | 1 | 2;
+}>;
+
 type AiUnavailableContext = {
   surface: AiUnavailableSurface;
   workspace_slug: string;
@@ -86,4 +92,14 @@ export function captureHandledAiUnavailable(input: CaptureHandledAiUnavailableIn
   } catch {
     // Do not let observability failures affect the handled AI fallback path.
   }
+}
+
+/** Emits only the coarse dimensions approved for anonymous Trial telemetry. */
+export function captureTrialAiFailure(input: CaptureTrialAiFailureInput) {
+  captureMetricCount("munjib.trial_ai.result", 1, {
+    anonymous_trial: true,
+    remaining_bucket: input.remaining === 0 ? "none" : "available",
+    result_code: input.resultCode,
+    surface: input.surface,
+  });
 }
