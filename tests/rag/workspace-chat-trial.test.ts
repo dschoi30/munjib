@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { embedText } from "@/lib/rag/embedding-client";
+import { streamAnswerChain } from "@/lib/rag/answer-chain";
 import { createLangfuseCallbackConfig } from "@/lib/rag/langfuse";
 import {
   preflightWorkspaceChatMessageStream,
@@ -209,6 +210,9 @@ describe("anonymous Trial workspace chat service", () => {
     expect(db.aiChatThreadCreate).not.toHaveBeenCalled();
     expect(db.aiChatMessageCreate).not.toHaveBeenCalled();
     expect(db.transaction).not.toHaveBeenCalled();
+    expect(streamAnswerChain).toHaveBeenCalledWith(
+      expect.objectContaining({ privacySafeLogging: true }),
+    );
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(
       expect.objectContaining({
         captureMode: "metadata",

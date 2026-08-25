@@ -39,6 +39,7 @@ export type InvokeAnswerChainInput = {
 
 export type StreamAnswerChainInput = InvokeAnswerChainInput & {
   onToken: (token: string) => Promise<void> | void;
+  privacySafeLogging?: boolean;
 };
 
 export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<string> {
@@ -83,7 +84,14 @@ export async function streamAnswerChain(input: StreamAnswerChainInput): Promise<
     }
     return answer;
   } catch (error) {
-    console.error("RAG answer chain streaming failed:", error);
+    if (input.privacySafeLogging) {
+      console.error("RAG answer chain failed", {
+        code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+        surface: "stream",
+      });
+    } else {
+      console.error("RAG answer chain streaming failed:", error);
+    }
     throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
   }
 }

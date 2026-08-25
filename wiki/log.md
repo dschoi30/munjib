@@ -3842,3 +3842,10 @@ links:
 - Privacy boundary: post-admission Trial preparation/stream failures use a Trial-only normalization/metric seam with only surface, public `AI_UNAVAILABLE`, coarse remaining bucket, and anonymous flag. Raw errors/provider responses, workspace slug, provider/model, and AI content never enter that telemetry path.
 - Cleanup boundary: success, stream error, abort, and post-admission preparation tests prove response completion waits for lease release; explicit release-rejection coverage proves cleanup failure cannot replace the original success or sanitized error.
 - Source evidence: Task 5 review findings, `lib/rag/workspace-chat.ts`, `lib/observability/ai-unavailable.ts`, Workspace assistant route/error helpers, and focused route/service/observability tests.
+
+## 2026-08-25T17:10:00+09:00 - anonymous Trial answer-chain log hardening
+
+- Privacy boundary: stateless Trial propagates an explicit privacy-safe mode into the streaming answer chain. Provider exceptions are normalized without logging the original error object, response text, prompt, question, retrieved context, or partial answer; the only console metadata is the stable RAG failure code and coarse `stream` surface.
+- Compatibility boundary: authenticated Workspace AI retains its existing diagnostic provider-error logging path.
+- Source evidence: Task 5 round-two review finding, `lib/rag/answer-chain.ts`, `lib/rag/workspace-chat.ts`, `tests/rag/answer-chain.test.ts`, and `tests/rag/workspace-chat-trial.test.ts`.
+- Verification: focused RED reproduced raw secret-bearing provider error output; GREEN proved exact stable metadata and absence of injected prompt/provider-response/question secrets while retaining the authenticated logging assertion.

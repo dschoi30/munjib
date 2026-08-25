@@ -429,6 +429,7 @@ export async function sendPreparedWorkspaceChatMessageStream(
     config: callbacks.signal ? { signal: callbacks.signal } : undefined,
     callbacks: prepared.trace.callbacks,
     metadata: prepared.trace.metadata,
+    privacySafeLogging: prepared.kind === "stateless-trial",
     onToken: callbacks.onToken,
   });
   throwIfWorkspaceChatStreamAborted(callbacks.signal);
