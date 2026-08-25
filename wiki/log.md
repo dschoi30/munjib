@@ -222,6 +222,12 @@ links:
 - Source evidence: GitHub Actions run 32797539798, `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and [[Local Development Workflow]].
 - Verification: `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities; Prisma Client generation, dependency compatibility tests, and workflow contracts pass.
 
+## 2026-08-25T10:40:00+09:00 - CI CD entry-point reconciliation
+
+- Result: PR #211 wiki review reconciles the primary CI/CD entry-point summary with the implemented private OCI path: non-main superseded runs remain cancelable, main and production deploys are non-cancelable, and production builds exact `munjib-web:<deploy_sha>` tags instead of the legacy `latest` tag.
+- Source evidence: PR #211 review thread, `.github/workflows/ci-cd.yml`, `scripts/deploy/munjib-deploy.sh`, and [[CI CD And Monitoring Workflow]].
+- Verification: Wiki manifest, lint, and staged sync checks pass after removing the contradictory legacy summary.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.

@@ -31,7 +31,11 @@ links:
 
 CI/CD entry point는 `.github/workflows/ci-cd.yml` 하나다. Workflow 이름은 `CI/CD`이고, `pull_request`와 `main` branch push에서 실행된다.
 
-Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용해 같은 ref의 이전 run을 취소한다. 기본 permission은 repository read인 `contents: read`만 사용한다.
+Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용한다. PR처럼
+`main`이 아닌 같은 ref의 이전 run은 취소하지만, production migration이나 health
+검사를 중간에 끊지 않도록 `main` run은 취소하지 않는다. deploy job도
+`munjib-production` group에서 직렬화되고 취소되지 않는다. 기본 permission은
+repository read인 `contents: read`만 사용한다.
 
 공통 workflow env:
 
@@ -40,7 +44,13 @@ IMAGE_TAG=${{ github.sha }}
 PNPM_VERSION=10.28.1
 ```
 
-Production runtime entry point는 `docker-compose.yml`이다. `web` service는 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy job은 OCI host에서 `WEB_IMAGE=munjib-web:latest`로 `web`과 `tools`를 native build한다. `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy path에는 직접 쓰이지 않는다.
+Production runtime entry point는 `docker-compose.yml`이다. `web` service는
+`WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면
+`ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy는
+private OCI self-hosted runner의 root-owned wrapper가 exact `github.sha`를 받아
+`WEB_IMAGE=munjib-web:<deploy_sha>`로 `web`과 `tools`를 native build한다.
+`docker-compose.dev.yml`은 local development override이며 production CI/CD deploy
+path에는 직접 쓰이지 않는다.
 
 ### Leaf 13B database authority gate
 
