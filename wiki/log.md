@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-08-25T18:20:00+09:00 - Trial admission PostgreSQL runtime validation
+
+- Result: live migrated PostgreSQL verification exposed Prisma's inability to deserialize the `void` result of `pg_advisory_xact_lock`. The query now casts only the lock result to text while retaining the same transaction-scoped visitor lock.
+- Verification: all three opt-in PostgreSQL tests passed: exactly-three concurrent global admission, cross-KST-midnight visitor serialization, and rollback of every counter after forced lease insertion failure.
+- Source evidence: `lib/rag/trial-ai-admission.ts` and `tests/rag/trial-ai-admission.integration.test.ts`.
+
 ## 2026-08-25T00:00:00+09:00 - 익명 Trial AI 일일 제한 설계
 
 - 결과: 가입 없는 익명 Trial에 기기별 KST 하루 Ask AI/Workspace AI 합산 3회를 제공하고, 일일 HMAC network ceiling, CAPTCHA 승격, 동시 요청 1회, 운영 설정 전체 한도를 결합하는 설계를 승인했다.
