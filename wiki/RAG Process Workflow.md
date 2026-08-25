@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-08-25
-source_count: 137
+source_count: 138
 tags:
   - munjib
   - workflow
@@ -139,6 +139,15 @@ privacy mode, forcing anonymous Trial Langfuse to metadata-only even when the
 server configuration requests full capture; no content-capturing callback is
 attached. Release failures remain best-effort and cannot replace a successful,
 provider-failed, or aborted admitted request outcome.
+
+Task 7 adds a DB-independent cross-file privacy source contract. It rejects
+schema/migration drift that introduces raw IP, visitor token, challenge token,
+question, prompt, context, or answer columns; requires digest-only Trial ledger
+identity; pins Ask Trial to metadata-only capture and Workspace Trial to the
+stateless branch before chat persistence; rejects client model overrides on
+both surfaces; and constrains Trial failure metrics to surface, public result,
+coarse remaining bucket, and anonymous flag. Each source validator includes a
+forbidden mutation fixture so a weakened assertion cannot silently pass.
 
 Task 5 review hardening keeps Trial at the demo workspace's `VIEWER` ceiling:
 the preflight queries only whether each active document has any explicit

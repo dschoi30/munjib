@@ -3870,3 +3870,9 @@ links:
 - Reset boundary: a mounted timer removes expired allowance state and unlocks the composers without guessing a new three-use entitlement. A subsequent entitlement or route response remains authoritative.
 - Accessibility: both dynamic allowance summaries use polite status regions, and Ask/Workspace composer controls reference their allowance/reset explanation with `aria-describedby`.
 - Verification: focused fake-timer, reverse-resolution, accessibility, component, i18n, and TypeScript checks.
+
+## 2026-08-25T17:50:00+09:00 - anonymous Trial AI privacy source contract
+
+- Result: Issue #212 Task 7 adds one DB-independent cross-file contract for digest-only quota persistence, opaque entitlement JSON, hardened bounded visitor cookies, Ask metadata-only capture, stateless Workspace AI, sanitized Trial telemetry, server-owned model selection, legacy-provider removal, and production-default-closed capability activation.
+- Mutation coverage: representative raw-IP/prompt columns, entitlement digest exposure, full-content Ask capture, Trial chat persistence, question telemetry, and a removed override guard are injected as negative fixtures and must be rejected by the same validators used for current source.
+- Source evidence: `tests/security/trial-ai-privacy-source-contract.test.ts`, the anonymous Trial admission migration/schema, entitlement/cookie/auth configuration, Ask and Workspace AI route/service implementations, and Trial observability helper.
