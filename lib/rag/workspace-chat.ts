@@ -332,11 +332,13 @@ export async function preparePreflightedWorkspaceChatMessageStream(
     embeddingModel: effectiveModelConfig.embedding.indexId,
     selectedDocumentId,
     privacySafeLogging: workspace.kind === "stateless-trial",
+    signal: input.signal,
   });
   throwIfWorkspaceChatStreamAborted(input.signal);
   const embedding = await embedText(conversationQuestion, {
     config: effectiveModelConfig,
     privacySafeLogging: workspace.kind === "stateless-trial",
+    signal: input.signal,
   });
   throwIfWorkspaceChatStreamAborted(input.signal);
   const globalChunks = await searchSimilarChunks({
@@ -714,6 +716,7 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   embeddingModel: string;
   selectedDocumentId: string | undefined;
   privacySafeLogging: boolean;
+  signal?: AbortSignal;
 }) {
   const candidates = selectIndexBackfillDocuments({
     documents: input.readableDocuments,
@@ -750,7 +753,9 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
       documentId: document.id,
       embeddingModel: input.embeddingModel,
       privacySafeLogging: input.privacySafeLogging,
+      signal: input.signal,
     });
+    throwIfWorkspaceChatStreamAborted(input.signal);
   }
 }
 

@@ -191,9 +191,11 @@ describe("anonymous Trial workspace chat service", () => {
       workspaceSlug: principal.workspaceSlug,
       authorizationPrincipal: principal,
     });
+    const controller = new AbortController();
     const prepared = await preparePreflightedWorkspaceChatMessageStream({
       preflight,
       message: "  What is in this demo?  ",
+      signal: controller.signal,
     });
     const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
       onToken: vi.fn(),
@@ -203,10 +205,14 @@ describe("anonymous Trial workspace chat service", () => {
     expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({
       documentId: demoDocument.id,
       privacySafeLogging: true,
+      signal: controller.signal,
     }));
     expect(embedText).toHaveBeenCalledWith(
       "What is in this demo?",
-      expect.objectContaining({ privacySafeLogging: true }),
+      expect.objectContaining({
+        privacySafeLogging: true,
+        signal: controller.signal,
+      }),
     );
     expect(result).toMatchObject({
       assistantMessage: {
