@@ -32,6 +32,7 @@ describe("production dependency audit remediation", () => {
       "nanoid": "3.3.18",
       "protobufjs": "7.6.5",
       "sharp": "0.35.0",
+      "deepmerge-ts": "8.0.0",
     });
   });
 
@@ -49,6 +50,11 @@ describe("production dependency audit remediation", () => {
 
   test("does not retain an outdated OpenTelemetry core package in the lock graph", () => {
     expect(packageKeys).not.toContain("@opentelemetry/core@2.7.1");
+  });
+
+  test("does not retain the vulnerable DeepmergeTS package in the lock graph", () => {
+    expect(packageKeys).not.toContain("deepmerge-ts@7.1.5");
+    expect(packageKeys).toContain("deepmerge-ts@8.0.0");
   });
 
   test("scopes brace-expansion v5 to minimatch v10 without a global override", () => {

@@ -216,6 +216,12 @@ links:
 - Source evidence: PR #211 review threads, GitHub repository-dispatch documentation, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
 - Verification: The replacement event contract failed against `workflow_dispatch` and passes with the default-branch repository dispatch.
 
+## 2026-08-25T10:29:00+09:00 - DeepmergeTS production audit remediation
+
+- Result: PR #211 CI detected GHSA-ggr8-5vv4-36mx through `@prisma/client > prisma > @prisma/config > deepmerge-ts`. The production lock graph now pins patched `deepmerge-ts` 8.0.0 and rejects vulnerable 7.1.5.
+- Source evidence: GitHub Actions run 32797539798, `package.json`, `pnpm-lock.yaml`, `tests/security/dependency-audit.test.ts`, and [[Local Development Workflow]].
+- Verification: `pnpm audit --prod --ignore-workspace` reports no known vulnerabilities; Prisma Client generation, dependency compatibility tests, and workflow contracts pass.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
