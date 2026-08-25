@@ -136,7 +136,10 @@ An admitted route starts a DB-time lease heartbeat for the full Ask provider or
 Workspace preparation/stream lifetime. Every 30 seconds it conditionally
 extends the still-active lease by two minutes; renewal failure or lease loss
 aborts the composed provider signal, and route cleanup awaits heartbeat stop
-before releasing the lease. This keeps one visitor at one concurrent request
+before releasing the lease. `stop()` also awaits any renewal already in flight
+and reports its outcome; Ask success JSON and Workspace `done` are emitted only
+after that barrier succeeds, so a late renewal failure cannot be hidden by
+timer shutdown. This keeps one visitor at one concurrent request
 even when indexing or model work exceeds the original lease window. A concurrent
 `TRIAL_AI_REQUEST_IN_PROGRESS` denial is transient and therefore omits KST
 midnight `resetsAt` and `Retry-After`; daily/network/global denials retain their

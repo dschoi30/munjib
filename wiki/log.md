@@ -3954,3 +3954,10 @@ links:
 - Challenge recovery: failed, timed-out, or API-missing Turnstile script elements are cleaned up and removed, allowing a later click to load a fresh script while concurrent attempts continue sharing one pending load.
 - Source evidence: PR #213 review threads, Ask route and Trial observability helper/privacy source contract, Turnstile client and focused tests.
 - Verification: privacy suites passed 29 tests; Turnstile/login suites passed 19 tests; both TypeScript checks and diff checks passed.
+
+## 2026-08-25T19:35:00+09:00 - Trial heartbeat completion barrier
+
+- Result: heartbeat stop now awaits any renewal transaction already in flight and returns its success outcome without suppressing a late lease-loss abort.
+- Completion boundary: Ask success JSON and Workspace stream `done` are emitted only after the stop barrier succeeds. A pending renewal failure becomes the existing sanitized Trial `AI_UNAVAILABLE` path, then cleanup releases the lease.
+- Source evidence: PR #213 review, heartbeat helper, Ask/Workspace routes, deferred-renewal unit and route regression tests.
+- Verification: heartbeat unit and both AI route suites passed 101 tests before integration; combined privacy/heartbeat merge is covered by the final focused and full-suite verification.
