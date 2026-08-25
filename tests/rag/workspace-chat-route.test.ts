@@ -159,7 +159,7 @@ describe("workspace chat routes", () => {
     vi.mocked(releaseTrialAiLease).mockResolvedValue(undefined);
     vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValue({
       signal: new AbortController().signal,
-      stop: vi.fn().mockResolvedValue(undefined),
+      stop: vi.fn().mockResolvedValue({ ok: true }),
     });
     vi.mocked(getOrCreateWorkspaceChatThread).mockResolvedValue({
       thread,
@@ -518,6 +518,33 @@ describe("workspace chat routes", () => {
       assistantMessage: jsonMessage(assistantMessage),
     });
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-release-success");
+  });
+
+  it("does not emit done when the final in-flight renewal fails during stop", async () => {
+    vi.mocked(requireAiActor).mockResolvedValueOnce(anonymousTrialActor);
+    vi.mocked(preflightWorkspaceChatMessageStream).mockResolvedValueOnce(
+      statelessTrialPreflight as never,
+    );
+    vi.mocked(admitTrialAiRequest).mockResolvedValueOnce({
+      kind: "admitted",
+      leaseId: "lease-stop-race",
+      remaining: 1,
+      resetsAt: "2026-08-25T15:00:00.000Z",
+    });
+    vi.mocked(startTrialAiLeaseHeartbeat).mockReturnValueOnce({
+      signal: new AbortController().signal,
+      stop: vi.fn().mockResolvedValue({ ok: false }),
+    });
+
+    const response = await POST_MESSAGE(
+      jsonRequest({ message: "What changed?" }),
+      routeContext(),
+    );
+    const events = await readNdjson(response);
+
+    expect(events.at(-1)).toEqual({ type: "error", error: "AI_UNAVAILABLE" });
+    expect(events.some((event) => event.type === "done")).toBe(false);
+    expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-stop-race");
   });
 
   it("preserves the sanitized Trial error when best-effort lease release rejects", async () => {

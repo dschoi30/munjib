@@ -96,7 +96,12 @@ export async function POST(
     const result = leaseHeartbeat
       ? await answerPreparedAskDocumentQuestion(prepared, { signal: providerSignal })
       : await answerPreparedAskDocumentQuestion(prepared);
-    if (leaseHeartbeat?.signal.aborted) throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    const heartbeatStop = await leaseHeartbeat?.stop();
+    const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
+    leaseHeartbeat = undefined;
+    if (heartbeatStop?.ok === false || heartbeatAborted) {
+      throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+    }
     return NextResponse.json({
       ...result,
       ...(admission.kind === "admitted"
