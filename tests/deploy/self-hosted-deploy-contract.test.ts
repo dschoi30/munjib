@@ -9,6 +9,7 @@ describe("private OCI self-hosted deployment boundary", () => {
   const wrapper = read("scripts/deploy/munjib-deploy.sh");
   const sudoers = read("deploy/sudoers/munjib-actions-runner");
   const runbook = read("docs/runbooks/private-oci-self-hosted-runner.md");
+  const projectPrd = read("wiki/Project PRD.md");
 
   test("accepts one exact commit SHA and token only through stdin", () => {
     expect(wrapper).toContain('[[ "$#" -eq 1 ]]');
@@ -89,5 +90,11 @@ describe("private OCI self-hosted deployment boundary", () => {
     expect(runbook).toContain('git -C /home/ubuntu/munjib merge-base --is-ancestor "$running_sha" origin/main');
     expect(runbook).toContain('printf \'%s\\n\' "$running_sha"');
     expect(runbook).not.toContain("git -C /home/ubuntu/munjib rev-parse HEAD | \\\n  sudo tee /var/lib/munjib/deploy/current-sha");
+  });
+
+  test("keeps the project deployment summary on the per-SHA runner path", () => {
+    expect(projectPrd).toContain("Issue #210");
+    expect(projectPrd).toContain("`munjib-web:<sha>`");
+    expect(projectPrd).not.toContain("Production compose `web` service는 `WEB_IMAGE=munjib-web:latest`");
   });
 });
