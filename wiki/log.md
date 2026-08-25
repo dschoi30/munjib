@@ -3811,3 +3811,10 @@ links:
 - Rotation and provider bounds: A previous visitor signing key requires an exact cutoff and is accepted only before it. Future-issued tokens and signed lifetimes over 180 days are rejected. Turnstile response bodies are cancelled as soon as the streamed body exceeds 8 KiB.
 - Source evidence: Issue #212 Task 3 review ruling, `lib/auth/trial-entitlement.ts`, `lib/auth/trial-visitor.ts`, `lib/security/trial-network-bucket.ts`, and focused auth/security tests.
 - Verification: RED/GREEN coverage includes cross-organization same-slug denial, missing/spoofed/stale edge proofs, previous-key cutoff, token-time bounds, and streaming body cancellation; focused tests, TypeScript compilation, and wiki gates passed.
+
+## 2026-08-25T16:00:00+09:00 - Ask AI anonymous Trial admission integration
+
+- Result: Issue #212 Task 4 splits Ask AI authorization/preparation from provider execution, then calls the shared admission ledger only after exact workspace/document authorization. Anonymous Trial callers can read only active documents in their immutable capability workspace ID and never query `WorkspaceMember` or `USER` document grants; normal authenticated calls retain the existing service wrapper behavior.
+- Failure boundary: quota and active-lease denial returns pre-provider JSON 429 with private no-store caching and Retry-After; admission unavailability returns private no-store 503. An admitted provider failure remains charged and the lease release is best-effort in `finally`, so it cannot replace the original provider response.
+- Source evidence: approved Issue #212 design, Task 4 ruling, `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`, `lib/rag/ask.ts`, and `tests/rag/ask-route.test.ts`.
+- Verification: focused Ask route RED/GREEN and TypeScript compilation passed. Database-backed Ask service regression tests remain blocked in this worktree because `DATABASE_URL` is unset and Docker is unavailable.
