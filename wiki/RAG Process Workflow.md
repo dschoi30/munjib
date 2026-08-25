@@ -141,7 +141,9 @@ before it calls `admitTrialAiRequest()`. The preparation split is provider-free:
 only `answerPreparedAskDocumentQuestion()` constructs or invokes the model.
 An admitted Trial response includes the authoritative `trialAi.remaining` and
 `trialAi.resetsAt`, and its lease is released in `finally` without decrementing
-the charged counter. Daily/active-lease denials are pre-provider JSON 429
+the charged counter. If Ask provider execution fails after admission, its
+private no-store 503 also carries that authoritative `trialAi` projection so
+the browser reflects the already charged use. Daily/active-lease denials are pre-provider JSON 429
 responses with `Cache-Control: private, no-store` and `Retry-After`; an
 admission infrastructure denial is a private no-store 503. Anonymous Trial
 authorization reads only active documents in the capability's exact workspace
@@ -191,6 +193,11 @@ Post-admission Trial preparation/stream failures normalize to public
 surface, public result code, coarse remaining-count bucket, and
 `anonymous_trial: true`; it receives no raw error/provider response, workspace
 slug, provider/model, question, prompt, context, answer, or document content.
+Pre-stream Workspace preparation failures also return the admitted
+`remaining`/`resetsAt` projection in their private no-store 503 response; the
+client publishes validated allowance data from non-success JSON before showing
+the generic error. A stale UI therefore cannot hide uses already consumed by
+Ask or Workspace preparation/provider failures.
 The same privacy-safe flag reaches Trial retrieval query embedding and targeted
 document-index backfill. Embedding provider exceptions are normalized to stable
 code and coarse `embedding` surface without logging the raw SDK error; normal
