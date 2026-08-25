@@ -3754,3 +3754,9 @@ links:
 - Failure boundary: A missing, malformed, or non-main running SHA stops bootstrap; operators must identify the last healthy deployed release rather than guess rollback state.
 - Source evidence: PR #211 review thread, `docs/runbooks/private-oci-self-hosted-runner.md`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
 - Verification: focused self-hosted deploy contract tests passed (7 tests).
+
+## 2026-08-25T11:15:00+09:00 - project deployment summary reconciliation
+
+- Result: PR #211 review updated [[Project PRD]] to describe the current private OCI self-hosted wrapper, exact per-SHA image, health-gated state update, and outbound-only runner path instead of the superseded SSH and `munjib-web:latest` flow.
+- Source evidence: PR #211 review thread, [[Project PRD]], [[CI CD And Monitoring Workflow]], and `tests/deploy/self-hosted-deploy-contract.test.ts`.
+- Verification: focused deployment contract regression test covers the Project PRD entry point.
