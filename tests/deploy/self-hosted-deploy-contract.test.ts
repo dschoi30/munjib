@@ -1,0 +1,109 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, test } from "vitest";
+
+const root = process.cwd();
+const read = (path: string) => readFileSync(join(root, path), "utf8");
+
+describe("private OCI self-hosted deployment boundary", () => {
+  const wrapper = read("scripts/deploy/munjib-deploy.sh");
+  const sudoers = read("deploy/sudoers/munjib-actions-runner");
+  const runbook = read("docs/runbooks/private-oci-self-hosted-runner.md");
+  const projectPrd = read("wiki/Project PRD.md");
+  const localWorkflow = read("wiki/Local Development Workflow.md");
+
+  test("accepts one exact commit SHA and token only through stdin", () => {
+    expect(wrapper).toContain('[[ "$#" -eq 1 ]]');
+    expect(wrapper).toContain('[[ "$deploy_sha" =~ ^[a-f0-9]{40}$ ]]');
+    expect(wrapper).toContain('IFS= read -r deploy_token');
+    expect(wrapper).toContain('[[ -n "$deploy_token" ]]');
+    expect(wrapper).not.toContain("set -x");
+    expect(wrapper).not.toContain("GITHUB_TOKEN=");
+  });
+
+  test("uses fixed resources and serializes deployments", () => {
+    expect(wrapper).toContain('repo_dir=/home/ubuntu/munjib');
+    expect(wrapper).toContain('env_file=/etc/munjib/env');
+    expect(wrapper).toContain('secret_dir=/etc/munjib/secrets');
+    expect(wrapper).toContain('state_file=/var/lib/munjib/deploy/current-sha');
+    expect(wrapper).toContain('lock_file=/run/lock/munjib-deploy.lock');
+    expect(wrapper).toContain('flock -n 9');
+    expect(wrapper).not.toContain("eval ");
+  });
+
+  test("proves the SHA belongs to main before mutation", () => {
+    expect(wrapper).toContain(
+      'fetch --force "https://github.com/dschoi30/munjib.git" "main:refs/remotes/origin/main"',
+    );
+    expect(wrapper).not.toContain(
+      'fetch --force "https://github.com/dschoi30/munjib.git" main\n',
+    );
+    expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$deploy_sha" origin/main');
+    expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" merge-base --is-ancestor "$previous_sha" "$deploy_sha"');
+    expect(wrapper).toContain('sudo -u ubuntu git -C "$repo_dir" checkout --detach "$deploy_sha"');
+    expect(wrapper).toContain('[[ "$(sudo -u ubuntu git -C "$repo_dir" rev-parse HEAD)" == "$deploy_sha" ]]');
+  });
+
+  test("runs preflight migration index deployment and health in order", () => {
+    const preflight = wrapper.indexOf("pnpm security:auth-preflight");
+    const migrate = wrapper.indexOf("pnpm exec prisma migrate deploy");
+    const index = wrapper.indexOf("pnpm run db:rag:index");
+    const up = wrapper.indexOf("up -d web");
+    const localHealth = wrapper.indexOf('--header "Host: $health_host" "$health_url"');
+    const publicHealth = wrapper.indexOf('"$public_health_url" >/dev/null');
+    const stateWrite = wrapper.indexOf('mv -f "$state_tmp" "$state_file"');
+
+    expect(preflight).toBeGreaterThan(-1);
+    expect(migrate).toBeGreaterThan(preflight);
+    expect(index).toBeGreaterThan(migrate);
+    expect(up).toBeGreaterThan(index);
+    expect(localHealth).toBeGreaterThan(up);
+    expect(publicHealth).toBeGreaterThan(localHealth);
+    expect(stateWrite).toBeGreaterThan(publicHealth);
+  });
+
+  test("retains only the current and previous production image tags", () => {
+    expect(wrapper).toContain('previous_sha="$(tr -d \'\\n\' < "$state_file")"');
+    expect(wrapper).toContain(
+      '[[ "$previous_sha" =~ ^[a-f0-9]{40}$ ]]',
+    );
+    expect(wrapper).toContain("--filter reference='munjib-web:*'");
+    expect(wrapper).toContain('[[ "$image_ref" == "$web_image" ]]');
+    expect(wrapper).toContain('[[ "$image_ref" == "munjib-web:$previous_sha" ]]');
+    expect(wrapper).toContain(
+      'docker image inspect "munjib-web:$previous_sha" >/dev/null 2>&1',
+    );
+    expect(wrapper).toContain(
+      '[[ "$preserve_legacy_latest" == true && "$image_ref" == "munjib-web:latest" ]]',
+    );
+    expect(wrapper).toContain('docker image rm "$image_ref"');
+    expect(wrapper).not.toContain("docker image prune --all");
+  });
+
+  test("authorizes only the fixed wrapper through sudo", () => {
+    expect(sudoers).toContain(
+      "munjib-runner ALL=(root) NOPASSWD: /usr/local/sbin/munjib-deploy *",
+    );
+    expect(sudoers).not.toMatch(/\b(docker|git|systemctl|bash|sh|cp|mv|tee|vi|nano)\b/);
+  });
+
+  test("bootstraps deployment state from the running release", () => {
+    expect(runbook).toContain("SENTRY_RELEASE=");
+    expect(runbook).toContain('git -C /home/ubuntu/munjib merge-base --is-ancestor "$running_sha" origin/main');
+    expect(runbook).toContain('printf \'%s\\n\' "$running_sha"');
+    expect(runbook).not.toContain("git -C /home/ubuntu/munjib rev-parse HEAD | \\\n  sudo tee /var/lib/munjib/deploy/current-sha");
+  });
+
+  test("keeps the project deployment summary on the per-SHA runner path", () => {
+    expect(projectPrd).toContain("Issue #210");
+    expect(projectPrd).toContain("`munjib-web:<sha>`");
+    expect(projectPrd).not.toContain("Production compose `web` service는 `WEB_IMAGE=munjib-web:latest`");
+  });
+
+  test("removes the retired SSH production instructions from local workflow docs", () => {
+    expect(localWorkflow).toContain("Issue #210");
+    expect(localWorkflow).toContain("`WEB_IMAGE=munjib-web:<sha>`");
+    expect(localWorkflow).not.toContain("DEPLOY_SSH_KEY");
+    expect(localWorkflow).not.toContain("DEPLOY_HOST=146.56.170.25");
+  });
+});

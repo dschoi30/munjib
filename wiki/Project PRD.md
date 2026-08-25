@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-07-07
-source_count: 113
+updated: 2026-08-25
+source_count: 114
 tags:
   - munjib
   - source
@@ -114,7 +114,7 @@ Issue #104는 AI assistant 경험을 두 request profile로 나누는 구현이�
 
 Issue #81은 이미 구현된 Ask AI/RAG가 현재 Docker 서버에서 정상 응답하도록 host Ollama 운영 설정을 적용했다. 서버 host에 Ollama `gemma4:e4b`와 `bge-m3`를 설치했고, Docker web container는 `MUNJIB_OLLAMA_BASE_URL=http://host.docker.internal:11434`로 host Ollama에 접근한다. `docker-compose.yml`은 Docker `host-gateway`를 `host.docker.internal`로 매핑해 Linux host gateway IP를 동적으로 해석한다. Host firewall은 compose bridge interface의 TCP 11434 inbound만 허용하고 `netfilter-persistent`에 저장했다. 설계 근거는 `docs/superpowers/specs/2026-06-03-ollama-rag-model-server-setup-design.md`이다.
 
-Issue #88은 GitHub Actions CI/CD를 추가했다. PR과 `main` push는 pgvector PostgreSQL service, pnpm install, Prisma generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 검증한다. 초기 구현은 `main` push에서 GitHub Container Registry에 `ghcr.io/dschoi30/munjib` image를 publish한 뒤 SSH로 production compose project를 갱신했지만, Issue #98 이후 현재 deploy path는 CI 성공 뒤 OCI host의 server checkout에서 workflow가 검증한 `github.sha`로 checkout을 고정하고 `docker compose build web tools`를 native ARM64로 실행한 뒤 migration/index/up/health check를 이어간다. Native build는 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 server `.env`와 deploy release env에서 받아 browser Sentry 설정이 compiled bundle에서 빠지지 않게 한다. Production compose `web` service는 `WEB_IMAGE=munjib-web:latest`를 받고, deploy job은 exact SHA checkout, native `web`/`tools` build, tools container Prisma migration deploy, RAG vector index setup, `docker compose up -d web`, remote local health check, dangling image prune, GitHub runner public health check를 실행한다. 설계 근거는 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`와 [[CI CD And Monitoring Workflow]]이다.
+Issue #88은 GitHub Actions CI/CD를 추가했다. PR과 `main` push는 pgvector PostgreSQL service, pnpm install, Prisma generate, Prisma migration deploy, RAG vector index setup, Vitest, Next build, Docker `runner` target build를 검증한다. 초기 구현은 `main` push에서 GitHub Container Registry에 `ghcr.io/dschoi30/munjib` image를 publish한 뒤 SSH로 production compose project를 갱신했지만, Issue #98 이후 OCI host native ARM64 build로 전환했고 Issue #210은 production deploy를 repository-scoped private OCI self-hosted runner와 root-owned fixed wrapper로 제한했다. CI가 성공한 `main`의 exact `github.sha`만 wrapper가 받아 `munjib-web:<sha>`와 tools image를 build하고 auth preflight, Prisma migration, RAG vector index setup, Compose service replacement, local/public health check를 순서대로 수행한다. 두 health check가 성공한 뒤에만 `current-sha`를 atomically 갱신하며 현재와 직전 SHA image를 보존한다. Runner는 outbound HTTPS만 사용하고 공개 SSH나 Docker group 권한을 요구하지 않는다. Native build는 `NEXT_PUBLIC_SENTRY_*`와 `SENTRY_RELEASE` Docker build args를 host-local env와 deploy release env에서 받아 browser Sentry 설정이 compiled bundle에서 빠지지 않게 한다. 설계 근거는 `docs/superpowers/specs/2026-06-03-github-actions-ci-cd-design.md`, Issue #210 운영 runbook과 [[CI CD And Monitoring Workflow]]이다.
 
 Issue #89 설계는 production deployment hardening의 첫 관측성 slice다. Docker stdout은 startup, 환경 변수, DB 연결, PostgreSQL process log 확인용으로 유지하고, Sentry SaaS는 Next.js App Router error monitoring과 낮은 sample rate tracing에만 사용한다. Browser SDK 설정은 Next.js build time에 bundle되므로 `NEXT_PUBLIC_SENTRY_*` 값은 Docker build args로도 전달해야 한다. Source map upload와 `SENTRY_AUTH_TOKEN` handling은 첫 slice에서 제외한다. Sentry event scrubber는 query parameter 기반 document/search state, request URL host, request body, cookies, request headers, user IP, URL/query/address/user-agent/host span data, span description/name URL text, and breadcrumb URL/query/host fields를 제거한다. 설계 근거는 [[Production Observability Workflow]]와 `docs/superpowers/specs/2026-06-03-sentry-saas-observability-design.md`이고, 구현 계획은 `docs/superpowers/plans/2026-06-03-sentry-saas-observability.md`에 둔다.
 

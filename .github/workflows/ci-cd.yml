@@ -11,7 +11,7 @@ permissions:
 
 concurrency:
   group: munjib-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
   IMAGE_TAG: ${{ github.sha }}
@@ -115,91 +115,19 @@ jobs:
 
   deploy:
     name: Deploy
-    runs-on: ubuntu-latest
+    runs-on:
+      - self-hosted
+      - linux
+      - ARM64
+      - munjib-production
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+    concurrency:
+      group: munjib-production
+      cancel-in-progress: false
+    timeout-minutes: 45
     steps:
-      - name: Deploy over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          WEB_IMAGE: munjib-web:latest
-          DEPLOY_SHA: ${{ github.sha }}
-          SENTRY_RELEASE: ${{ github.sha }}
-          NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
-          DEPLOY_ENV_FILE: /etc/munjib/env
-          DEPLOY_HEALTHCHECK_URL: http://127.0.0.1:3000
-          DEPLOY_HEALTHCHECK_HOST: munjib.andrewchoi.link
-          DEPLOY_REPOSITORY: ${{ github.repository }}
-          DEPLOY_GIT_TOKEN: ${{ github.token }}
-          DEPLOY_NEXTAUTH_SECRET: ${{ secrets.MUNJIB_NEXTAUTH_SECRET }}
-          DEPLOY_GOOGLE_CLIENT_SECRET: ${{ secrets.MUNJIB_GOOGLE_CLIENT_SECRET }}
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT || 22 }}
-          envs: WEB_IMAGE,DEPLOY_SHA,SENTRY_RELEASE,NEXT_PUBLIC_SENTRY_RELEASE,DEPLOY_ENV_FILE,DEPLOY_HEALTHCHECK_URL,DEPLOY_HEALTHCHECK_HOST,DEPLOY_REPOSITORY,DEPLOY_GIT_TOKEN,DEPLOY_NEXTAUTH_SECRET,DEPLOY_GOOGLE_CLIENT_SECRET
-          script: |
-            set -euo pipefail
-            cd "${{ secrets.DEPLOY_PATH }}"
-            git_auth_header="$(printf 'x-access-token:%s' "$DEPLOY_GIT_TOKEN" | base64 | tr -d '\n')"
-            git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $git_auth_header" fetch --force "https://github.com/$DEPLOY_REPOSITORY.git" main
-            git checkout --detach "$DEPLOY_SHA"
-            test "$(git rev-parse HEAD)" = "$DEPLOY_SHA"
-            sudo test -r "$DEPLOY_ENV_FILE"
-            umask 077
-            secret_dir=/etc/munjib/secrets
-            sudo install -d -o root -g root -m 0755 "$secret_dir"
-            install_secret() {
-              secret_name="$1"
-              secret_value="$2"
-              test -n "$secret_value"
-              secret_tmp="$(sudo mktemp "$secret_dir/.${secret_name}.XXXXXX")"
-              printf '%s' "$secret_value" | sudo tee "$secret_tmp" >/dev/null
-              sudo chown 10001:10001 "$secret_tmp"
-              sudo chmod 0400 "$secret_tmp"
-              sudo mv -fT "$secret_tmp" "$secret_dir/${secret_name}"
-            }
-            install_secret nextauth-current "$DEPLOY_NEXTAUTH_SECRET"
-            compose_files="-f docker-compose.yml"
-            google_client_id="$(
-              sudo awk -v key=GOOGLE_CLIENT_ID '
-                $0 ~ "^[[:space:]]*" key "[[:space:]]*=" {
-                  value=$0
-                  sub("^[[:space:]]*" key "[[:space:]]*=[[:space:]]*", "", value)
-                  sub("[[:space:]]*(#.*)?$", "", value)
-                  single=sprintf("%c", 39)
-                  if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
-                      (substr(value, 1, 1) == single && substr(value, length(value), 1) == single)) {
-                    value=substr(value, 2, length(value)-2)
-                  }
-                  sub("^[[:space:]]*", "", value)
-                  sub("[[:space:]]*$", "", value)
-                  print value
-                  exit
-                }
-              ' "$DEPLOY_ENV_FILE"
-            )"
-            if test -n "$google_client_id" && test -n "$DEPLOY_GOOGLE_CLIENT_SECRET"; then
-              install_secret google-client-current "$DEPLOY_GOOGLE_CLIENT_SECRET"
-              compose_files="$compose_files -f docker-compose.google.yml"
-            fi
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" build web tools
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight run --rm --no-deps auth-preflight pnpm security:auth-preflight
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" --profile auth-preflight rm --force --stop auth-preflight
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm exec prisma migrate deploy
-            sudo env WEB_IMAGE="$WEB_IMAGE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" run --rm tools pnpm run db:rag:index
-            sudo env WEB_IMAGE="$WEB_IMAGE" SENTRY_RELEASE="$SENTRY_RELEASE" NEXT_PUBLIC_SENTRY_RELEASE="$NEXT_PUBLIC_SENTRY_RELEASE" docker compose $compose_files --env-file "$DEPLOY_ENV_FILE" up -d web
-            for attempt in 1 2 3 4 5 6 7 8 9 10; do
-              if curl --fail --silent --show-error --location --max-time 20 --header "Host: $DEPLOY_HEALTHCHECK_HOST" "$DEPLOY_HEALTHCHECK_URL" >/dev/null; then
-                break
-              fi
-              if [ "$attempt" = "10" ]; then
-                exit 1
-              fi
-              sleep 3
-            done
-            sudo docker image prune -f
-
-      - name: Verify public deployment
-        run: curl --fail --silent --show-error --location --max-time 20 https://munjib.andrewchoi.link >/dev/null
+      - name: Deploy exact main SHA
+        run: printf '%s\n' "${{ github.token }}" | sudo /usr/local/sbin/munjib-deploy "${{ github.sha }}"
