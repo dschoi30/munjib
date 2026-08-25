@@ -61,6 +61,8 @@ function renderLoginForm(
     isDevLoginEnabled?: boolean;
     isGoogleLoginEnabled?: boolean;
     isTrialLoginEnabled?: boolean;
+    trialTurnstileSiteKey?: string;
+    requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
     isSignupEnabled?: boolean;
   } = {},
 ) {
@@ -71,6 +73,8 @@ function renderLoginForm(
         isDevLoginEnabled={options.isDevLoginEnabled ?? true}
         isGoogleLoginEnabled={options.isGoogleLoginEnabled ?? true}
         isTrialLoginEnabled={options.isTrialLoginEnabled ?? true}
+        trialTurnstileSiteKey={options.trialTurnstileSiteKey}
+        requestTrialChallengeToken={options.requestTrialChallengeToken}
         isSignupEnabled={options.isSignupEnabled ?? true}
       />
     </I18nProvider>,
@@ -285,7 +289,9 @@ describe("LoginForm", () => {
       });
     });
     expect(authMock.signIn).not.toHaveBeenCalledWith("trial", expect.anything());
-    expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook");
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
+    );
   });
 
   it("fails closed when Trial entitlement returns an external or malformed entry path", async () => {
@@ -307,6 +313,52 @@ describe("LoginForm", () => {
     expect(
       await screen.findByText("Sign in failed. Clear the local session and try again."),
     ).toBeTruthy();
+  });
+
+  it("solves a required Turnstile challenge and resubmits exactly once", async () => {
+    const requestTrialChallengeToken = vi.fn().mockResolvedValue("single-use-token");
+    vi.mocked(fetch)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ challengeRequired: true }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+      } as Response);
+
+    renderLoginForm(undefined, {
+      trialTurnstileSiteKey: "0x4AAAAAAAtest-site-key",
+      requestTrialChallengeToken,
+    });
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+
+    await waitFor(() => expect(requestTrialChallengeToken).toHaveBeenCalledTimes(1));
+    expect(requestTrialChallengeToken).toHaveBeenCalledWith("0x4AAAAAAAtest-site-key");
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenNthCalledWith(2, "/api/trial/entitlement", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ challengeToken: "single-use-token" }),
+    });
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
+    );
+  });
+
+  it("fails closed without retry when Turnstile configuration or solving fails", async () => {
+    vi.mocked(fetch).mockResolvedValue({
+      ok: false,
+      json: async () => ({ challengeRequired: true }),
+    } as Response);
+    const requestTrialChallengeToken = vi.fn().mockRejectedValue(new Error("widget failed"));
+
+    renderLoginForm(undefined, { requestTrialChallengeToken });
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+
+    await screen.findByText("Sign in failed. Clear the local session and try again.");
+    expect(requestTrialChallengeToken).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
   });
 
   it("keeps development login shortcuts hidden when the server gate is off", async () => {

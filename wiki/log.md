@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-08-25T18:40:00+09:00 - Trial Turnstile escalation UI
+
+- Result: the login Trial CTA now handles `challengeRequired` with explicit Cloudflare Turnstile rendering and one bounded token resubmission before following the server-owned local entry path.
+- Failure boundary: missing/invalid public site key, script/widget error, expiry, timeout, malformed token, repeated challenge, or invalid entry stays fail closed; the challenge token is not logged, stored, or placed in a URL.
+- Source evidence: `app/login/login-form.tsx`, `app/login/page.tsx`, `lib/auth/turnstile-client.ts`, localized messages, and focused login tests. Cloudflare documents explicit rendering for conditional SPA challenges and requires `https://challenges.cloudflare.com` in `script-src` when CSP is enforced.
+
 ## 2026-08-25T18:20:00+09:00 - Trial admission PostgreSQL runtime validation
 
 - Result: live migrated PostgreSQL verification exposed Prisma's inability to deserialize the `void` result of `pg_advisory_xact_lock`. The query now casts only the lock result to text while retaining the same transaction-scoped visitor lock.

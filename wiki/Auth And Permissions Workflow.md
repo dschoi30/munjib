@@ -115,6 +115,12 @@ Issue #212 Task 7 removes that legacy provider even from development registratio
 `/trial/workspaces/<exact-slug>` public entry projection, and follows it only
 after the opaque HttpOnly visitor cookie can be issued. Capability, edge-proof,
 challenge, malformed JSON, and non-local path failures stay on the login page.
+When the server requires escalation, the form loads Cloudflare Turnstile only
+from `https://challenges.cloudflare.com`, using the public
+`MUNJIB_TURNSTILE_SITE_KEY`, and submits the bounded single-use token exactly
+once. Missing site-key configuration, widget load/error/expiry/timeout, a
+second challenge response, or malformed entry output fails closed without
+storing or logging the token. The secret remains server-only.
 The dedicated Trial viewer re-verifies the cookie plus fresh edge proof for its
 own GET pathname, resolves the immutable workspace ID and exact slug together,
 and loads only active documents with no explicit permission rows. It does not
