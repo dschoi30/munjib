@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   authOptions,
+  buildAuthOptions,
   resolveAuthCookieSecure,
   resolveGoogleAuthCredentials,
   resolveAuthSecret,
@@ -315,6 +316,21 @@ describe("authOptions", () => {
       name: "Munjib Trial",
       image: null,
     });
+  });
+
+  it("does not register or query the legacy Trial provider in production", () => {
+    const options = buildAuthOptions({
+      deploymentEnvironment: "production",
+      secret: "production-secret-placeholder",
+      canonicalOrigin: "https://munjib.example",
+      secureCookies: true,
+      developmentLoginEnabled: false,
+      passwordSignupEnabled: false,
+      oauthSignupEnabled: false,
+    });
+
+    expect(options.providers.map((provider) => provider.id)).not.toContain("trial");
+    expect(prismaMock.user.findUnique).not.toHaveBeenCalled();
   });
 
   it("resolves Google auth credentials only when both env values are present", () => {

@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-08-25
-source_count: 126
+source_count: 131
 tags:
   - munjib
   - workflow
@@ -83,6 +83,26 @@ before starting the second request. It remains unexecuted while
 Docker/PostgreSQL is unavailable. Tasks 4 and 5 must place this admission
 after their existing validation/authorization checks and before any provider
 call or Workspace stream response starts.
+
+Issue #212 Task 3 adds the route-facing actor and entitlement boundary without
+wiring either AI route yet. An ordinary session becomes a user authorization
+principal and receives `not-applicable` admission behavior. A verified Trial
+cookie becomes a separate anonymous admission actor and an exact-demo-workspace
+`VIEWER` principal; it never becomes a `User.id`, never inherits explicit USER
+document grants, and never queries the legacy shared Trial email. The
+entitlement route returns only `remaining`, fixed `limit: 3`, `resetsAt`, and
+optional `challengeRequired`; tokens and visitor/network digests remain server
+only.
+
+New-token issuance on a network with prior Trial traffic requires one bounded
+Turnstile verification with the exact configured hostname and
+`trial_entitlement` action. A provider timeout or invalid response fails closed,
+while a valid existing visitor does not call Turnstile. Staging/production
+secrets use fixed strict-reader paths and anonymous Trial activation remains
+off unless every capability input is valid. Task 5 must not reuse the current
+`AiChatThread.userId` for all Trial visitors; it needs a visitor-keyed
+non-shared conversation path or a stateless path before anonymous Workspace AI
+can open.
 
 ## Process Map
 
