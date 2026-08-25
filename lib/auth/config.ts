@@ -147,6 +147,14 @@ export function resolveTrialLoginEnabled(
   return env.MUNJIB_ANONYMOUS_TRIAL_ENABLED === "true";
 }
 
+/** Returns only a validated public key suitable for the browser Turnstile widget. */
+export function resolveTrialTurnstileSiteKey(
+  env: Record<string, string | undefined> = process.env,
+): string | undefined {
+  const value = env.MUNJIB_TURNSTILE_SITE_KEY?.trim();
+  return value && /^[A-Za-z0-9_-]{10,128}$/.test(value) ? value : undefined;
+}
+
 function credentialsProvider(options: Parameters<typeof CredentialsProvider>[0]) {
   const provider = CredentialsProvider(options);
   return { ...provider, ...options, options };
