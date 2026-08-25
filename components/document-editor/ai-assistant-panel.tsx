@@ -98,7 +98,6 @@ export function AiAssistantPanel({
   function updateTrialAiAllowance(value: unknown) {
     const allowance = parseTrialAiAllowance(value);
     if (!allowance) return;
-    setTrialAiAllowance(allowance);
     publishTrialAiAllowance(allowance);
   }
 
@@ -163,7 +162,12 @@ export function AiAssistantPanel({
       </div>
       <form className="space-y-2" onSubmit={handleSubmit}>
         {trialAiAllowance ? (
-          <div className="space-y-0.5 text-xs text-slate-600">
+          <div
+            id={`trial-ai-allowance-ask-${documentId}`}
+            role="status"
+            aria-live="polite"
+            className="space-y-0.5 text-xs text-slate-600"
+          >
             <p>{t("ai.trial.remaining", { remaining: trialAiAllowance.remaining, limit: 3 })}</p>
             <p>{t("ai.trial.resetsAtKst")}</p>
           </div>
@@ -172,6 +176,7 @@ export function AiAssistantPanel({
           aria-label={t("ai.questionLabel")}
           value={question}
           disabled={trialAiAllowance?.remaining === 0}
+          aria-describedby={trialAiAllowance ? `trial-ai-allowance-ask-${documentId}` : undefined}
           onChange={(event) => setQuestion(event.target.value)}
           rows={3}
           className="w-full resize-y rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"

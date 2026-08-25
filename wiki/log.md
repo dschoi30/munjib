@@ -3863,3 +3863,10 @@ links:
 - Public projection: entitlement JSON exposes only quota/reset values plus `{ entry: { path } }`; workspace ID and visitor/network subjects or digests remain private.
 - Source evidence: Issue #212 approved design, `app/login/login-form.tsx`, `app/api/trial/entitlement/route.ts`, `app/trial/workspaces/[workspaceSlug]/page.tsx`, `lib/auth/config.ts`, `lib/auth/trial-entitlement.ts`, `lib/workspaces/trial-viewer.ts`, and focused auth/login/workspace tests.
 - Verification: strict RED reproduced the legacy provider, missing entry projection, old Trial sign-in call, and missing viewer; focused 74-test GREEN suite and TypeScript compilation passed.
+
+## 2026-08-25T17:40:00+09:00 - Trial allowance UI review hardening
+
+- Ordering boundary: same-window allowance merges are monotonic decreasing, later reset windows may replace them, and delayed older-window responses cannot regress the current projection. Cross-surface reverse-resolution coverage keeps an observed zero from becoming one.
+- Reset boundary: a mounted timer removes expired allowance state and unlocks the composers without guessing a new three-use entitlement. A subsequent entitlement or route response remains authoritative.
+- Accessibility: both dynamic allowance summaries use polite status regions, and Ask/Workspace composer controls reference their allowance/reset explanation with `aria-describedby`.
+- Verification: focused fake-timer, reverse-resolution, accessibility, component, i18n, and TypeScript checks.

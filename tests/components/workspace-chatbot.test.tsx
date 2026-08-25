@@ -1143,6 +1143,107 @@ describe("WorkspaceChatbot", () => {
 
     await waitFor(() => expect((screen.getByLabelText("AI question") as HTMLTextAreaElement).disabled).toBe(true));
   });
+
+  it("keeps the lower allowance when cross-surface responses resolve out of order", async () => {
+    const askResponse = createDeferred<Response>();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/ask")) return askResponse.promise;
+      if (url.endsWith("/assistant/messages")) {
+        return ndjsonResponse([
+          { type: "start", trialAi: { remaining: 0, resetsAt: "2099-08-25T15:00:00.000Z" } },
+          { type: "done", assistantMessage: { role: "ASSISTANT", content: "Workspace answer" } },
+        ]);
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(
+      <>
+        <AiAssistantPanel workspaceSlug="company-handbook" documentId="doc-1" hasUnsavedChanges={false} defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} />
+        <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("AI question"), { target: { value: "Slow ask" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), { target: { value: "Fast workspace" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(await screen.findAllByText("0 of 3 trial AI uses remaining today")).toHaveLength(2);
+
+    await act(async () => {
+      askResponse.resolve(jsonResponse({
+        answer: "Late answer",
+        citations: [],
+        trialAi: { remaining: 1, resetsAt: "2099-08-25T15:00:00.000Z" },
+      }));
+    });
+
+    expect(await screen.findAllByText("0 of 3 trial AI uses remaining today")).toHaveLength(2);
+    expect(screen.queryByText("1 of 3 trial AI uses remaining today")).toBeNull();
+  });
+
+  it("clears an expired allowance without granting a guessed replacement", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-25T14:59:59.000Z"));
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/assistant/messages")) {
+        return ndjsonResponse([
+          { type: "start", trialAi: { remaining: 0, resetsAt: "2026-08-25T15:00:00.000Z" } },
+          { type: "done", assistantMessage: { role: "ASSISTANT", content: "Answer" } },
+        ]);
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(<WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await act(async () => Promise.resolve());
+    fireEvent.change(screen.getByLabelText("Workspace chat message"), { target: { value: "Last use" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await act(async () => Promise.resolve());
+    expect((screen.getByLabelText("Workspace chat message") as HTMLInputElement).disabled).toBe(true);
+
+    await act(async () => vi.advanceTimersByTimeAsync(1_001));
+
+    expect((screen.getByLabelText("Workspace chat message") as HTMLInputElement).disabled).toBe(false);
+    expect(screen.queryByText(/trial AI uses remaining/)).toBeNull();
+    expect(screen.queryByText("3 of 3 trial AI uses remaining today")).toBeNull();
+  });
+
+  it("announces allowance changes politely and connects disabled composers to reset guidance", async () => {
+    vi.useRealTimers();
+    fetchMock.mockImplementation(async (url: string) => {
+      if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
+      if (url.endsWith("/ask")) {
+        return jsonResponse({
+          code: "TRIAL_AI_DAILY_LIMIT_REACHED",
+          resetsAt: "2099-08-25T15:00:00.000Z",
+        }, { status: 429 });
+      }
+      throw new Error(`Unexpected fetch ${url}`);
+    });
+    render(
+      <>
+        <AiAssistantPanel workspaceSlug="company-handbook" documentId="doc-1" hasUnsavedChanges={false} defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} />
+        <WorkspaceChatbot defaultChatModel="openrouter/fusion" defaultChatProvider="openai-compatible" availableChatProviders={{ ollama: true, openai: true, "openai-compatible": true }} workspaceSlug="company-handbook" selectedDocumentId={null} />
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open workspace AI chat" }));
+    await screen.findByText("Ask across this workspace.");
+    fireEvent.change(screen.getByLabelText("AI question"), { target: { value: "Fourth ask" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask AI" }));
+    await screen.findAllByText("0 of 3 trial AI uses remaining today");
+    const statuses = screen.getAllByRole("status").filter((status) =>
+      status.id.startsWith("trial-ai-allowance-"),
+    );
+    expect(statuses).toHaveLength(2);
+    expect(statuses.every((status) => status.getAttribute("aria-live") === "polite")).toBe(true);
+    const askInput = screen.getByLabelText("AI question");
+    const workspaceInput = screen.getByLabelText("Workspace chat message");
+    expect(document.getElementById(askInput.getAttribute("aria-describedby") ?? "")?.textContent).toContain("Resets at midnight");
+    expect(document.getElementById(workspaceInput.getAttribute("aria-describedby") ?? "")?.textContent).toContain("Resets at midnight");
+  });
 });
 
 function ndjsonResponse(events: unknown[], init?: ResponseInit) {

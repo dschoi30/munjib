@@ -124,7 +124,6 @@ export function WorkspaceChatbot({
   function updateTrialAiAllowance(value: unknown) {
     const allowance = parseTrialAiAllowance(value);
     if (!allowance) return;
-    setTrialAiAllowance(allowance);
     publishTrialAiAllowance(allowance);
   }
 
@@ -454,7 +453,12 @@ export function WorkspaceChatbot({
       </div>
 
       {trialAiAllowance ? (
-        <div className="shrink-0 space-y-0.5 border-t border-border px-3 py-2 text-xs text-slate-600">
+        <div
+          id={`trial-ai-allowance-workspace-${workspaceSlug}`}
+          role="status"
+          aria-live="polite"
+          className="shrink-0 space-y-0.5 border-t border-border px-3 py-2 text-xs text-slate-600"
+        >
           <p>{t("ai.trial.remaining", { remaining: trialAiAllowance.remaining, limit: 3 })}</p>
           <p>{t("ai.trial.resetsAtKst")}</p>
         </div>
@@ -464,6 +468,7 @@ export function WorkspaceChatbot({
           aria-label={t("ai.workspace.messageLabel")}
           value={messageInput}
           disabled={isResetting || trialAiAllowance?.remaining === 0}
+          aria-describedby={trialAiAllowance ? `trial-ai-allowance-workspace-${workspaceSlug}` : undefined}
           onChange={(event) => setMessageInput(event.target.value)}
           className="min-w-0 flex-1 rounded-md border border-border px-3 py-2 text-sm outline-none placeholder:text-slate-400 focus:border-ink"
           placeholder={t("ai.workspace.placeholder")}

@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-08-25
-source_count: 136
+source_count: 137
 tags:
   - munjib
   - workflow
@@ -168,6 +168,15 @@ Daily/network/global limit 429 responses disable both composers until the KST
 reset guidance shown in the UI; the transient concurrent-request 429 does not
 become a daily lockout. Responses without Trial allowance data leave the normal
 authenticated UI unchanged.
+
+Task 6 review hardening makes the same-tab projection monotonic: responses with
+the same `resetsAt` can only reduce `remaining`, older reset windows cannot
+replace newer state, and only a later reset window may increase the displayed
+allowance. A timer removes the projection when `resetsAt` arrives and unlocks
+the mounted composers, but does not invent a replacement count; the next value
+must still come from entitlement or an AI route. Both allowance blocks are
+polite live status regions, and each composer references its status text with
+`aria-describedby` so a disabled zero-use state includes the KST reset reason.
 
 ## Process Map
 
