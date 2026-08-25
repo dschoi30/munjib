@@ -3747,3 +3747,10 @@ links:
 - Result: Attachment lifecycle inventory now counts only validated metadata rows as references, so files paired with workspace-mismatched metadata remain visible as orphan bytes; same-key entries use their issue as a deterministic ordering tie-breaker.
 - Source evidence: `lib/attachments/lifecycle-inventory.ts`, `tests/attachments/lifecycle-inventory.test.ts`, PR #195 review threads.
 - Verification: focused attachment lifecycle inventory tests.
+
+## 2026-08-25T11:03:00+09:00 - running release state bootstrap
+
+- Result: PR #211 review corrected the first-cutover procedure so `current-sha` comes from the active web container's verified `SENTRY_RELEASE`, not the installer checkout's undeployed PR `HEAD`.
+- Failure boundary: A missing, malformed, or non-main running SHA stops bootstrap; operators must identify the last healthy deployed release rather than guess rollback state.
+- Source evidence: PR #211 review thread, `docs/runbooks/private-oci-self-hosted-runner.md`, `tests/deploy/self-hosted-deploy-contract.test.ts`, and [[CI CD And Monitoring Workflow]].
+- Verification: focused self-hosted deploy contract tests passed (7 tests).
