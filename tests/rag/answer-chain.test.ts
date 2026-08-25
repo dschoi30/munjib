@@ -173,6 +173,35 @@ describe("RAG answer chain", () => {
     );
   });
 
+  it("logs only stable metadata for privacy-safe streaming failures", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const secretPrompt = "SECRET_PROMPT customer merger plans";
+    const secretResponse = "SECRET_PROVIDER_RESPONSE upstream payload";
+    const chatModel = fakeStreamingChatModel(
+      new Error(`${secretPrompt}; ${secretResponse}`),
+    );
+
+    await expect(
+      streamAnswerChain({
+        systemPrompt: secretPrompt,
+        userPrompt: "SECRET_QUESTION",
+        chatModel,
+        privacySafeLogging: true,
+        onToken: vi.fn(),
+      }),
+    ).rejects.toThrow(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith("RAG answer chain failed", {
+      code: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      surface: "stream",
+    });
+    const logged = JSON.stringify(consoleError.mock.calls);
+    expect(logged).not.toContain(secretPrompt);
+    expect(logged).not.toContain(secretResponse);
+    expect(logged).not.toContain("SECRET_QUESTION");
+  });
+
   it("maps empty streamed output to a recoverable RAG error", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const chatModel = fakeStreamingChatModel([
