@@ -1,14 +1,15 @@
 name: Production runner smoke
 
 on:
-  workflow_dispatch:
+  repository_dispatch:
+    types:
+      - production-runner-smoke
 
 permissions:
   contents: read
 
 jobs:
   smoke:
-    if: github.ref == 'refs/heads/main'
     runs-on:
       - self-hosted
       - linux

@@ -210,6 +210,12 @@ links:
 - Source evidence: PR #211 review thread, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
 - Verification: The new smoke-ref contract failed before the job guard and passes after it.
 
+## 2026-08-25T10:24:00+09:00 - production runner trusted smoke dispatch
+
+- Result: Re-review confirmed that an in-file `github.ref` guard cannot secure a branch-selectable `workflow_dispatch`, because the selected branch supplies the workflow file itself. Production smoke now uses only `repository_dispatch` type `production-runner-smoke`, which runs the default-branch workflow and SHA; the branch-selectable dispatch path is removed.
+- Source evidence: PR #211 review threads, GitHub repository-dispatch documentation, `.github/workflows/runner-smoke.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, and [[CI CD And Monitoring Workflow]].
+- Verification: The replacement event contract failed against `workflow_dispatch` and passes with the default-branch repository dispatch.
+
 ## 2026-07-13T15:35:00+09:00 - Issue #165 review follow-up
 
 - Result: the attachment lifecycle contract retains own-property checks for required fields and documents the prototype-pollution boundary; the review suggestion is covered by the existing regression test.
