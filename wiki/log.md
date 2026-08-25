@@ -3760,3 +3760,9 @@ links:
 - Result: PR #211 review updated [[Project PRD]] to describe the current private OCI self-hosted wrapper, exact per-SHA image, health-gated state update, and outbound-only runner path instead of the superseded SSH and `munjib-web:latest` flow.
 - Source evidence: PR #211 review thread, [[Project PRD]], [[CI CD And Monitoring Workflow]], and `tests/deploy/self-hosted-deploy-contract.test.ts`.
 - Verification: focused deployment contract regression test covers the Project PRD entry point.
+
+## 2026-08-25T11:30:00+09:00 - monotonic production deployment admission
+
+- Result: PR #211 review added a monotonic wrapper gate requiring the recorded `current-sha` to be an ancestor of the requested deploy SHA, preventing historical `main` workflow reruns from silently rolling production back.
+- Documentation: [[Local Development Workflow]] now describes the self-hosted per-SHA path and removes retired SSH deploy secrets and `munjib-web:latest` instructions.
+- Source evidence: PR #211 review threads, `scripts/deploy/munjib-deploy.sh`, `tests/deploy/self-hosted-deploy-contract.test.ts`, `docs/runbooks/private-oci-self-hosted-runner.md`, [[CI CD And Monitoring Workflow]], and [[Local Development Workflow]].
