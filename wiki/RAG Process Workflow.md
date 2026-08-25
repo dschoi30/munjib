@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-20
-source_count: 121
+updated: 2026-08-25
+source_count: 125
 tags:
   - munjib
   - workflow
@@ -39,6 +39,38 @@ Issue #158 Task 3는 이 renderer 경계를 SSR과 실제 브라우저/Next 서�
 Task 3 보정 oracle은 고정 test-only probe port와 Compose alias, OPTIONS/CORS preflight, password-hash fixture login, deterministic local provider transport를 사용한다. Provider 응답은 실제 Workspace AI service, NDJSON route, client renderer를 통과하며 assistant pre-seed나 route/client response mock을 사용하지 않는다. Provider/auth harness는 명시적인 test transport와 non-production deployment gate 없이는 404이고, browser speculative media link는 dev webpack preload를 포함해 제거한다. 런타임 배포환경 값은 인증 파서가 허용하는 `development`로 유지하고 `NEXTAUTH_URL`을 함께 고정해, `test`라는 미지원 배포환경으로 인증 검증을 약화하지 않는다.
 
 Probe binding is local-only in the in-process Playwright harness (`127.0.0.1` default), which owns the recording oracle and calibration counters. The `egress-test` Compose overlay keeps a separate `0.0.0.0` listener only for explicit container-network smoke checks and does not publish a host port; it does not redirect the web harness to an unobserved listener and is never a production setting.
+
+## Anonymous Trial AI admission ledger
+
+Issue #212 Task 2 adds the shared `lib/rag/trial-ai-admission.ts` persistence
+boundary, but does **not** yet connect it to either Ask AI or Workspace AI
+routes. The service accepts the approved `TrialAiAdmissionInput` actor contract:
+ordinary authenticated users receive `not-applicable`; an anonymous Trial must
+provide its opaque server-derived visitor subject, a trusted network digest, a
+valid KST date, and a positive global cap. Missing or malformed admission
+inputs, an invalid/missing global cap, and database failures return the stable
+fail-closed `TRIAL_AI_ADMISSION_UNAVAILABLE` result rather than permitting a
+model call.
+
+`TrialAiVisitorDailyUsage`, `TrialAiNetworkDailyUsage`, and
+`TrialAiGlobalDailyUsage` keep independent KST-day counters. Their unique keys
+are respectively visitor digest/date, network digest/date, and date.
+`TrialAiAdmissionLease` records a short-lived active request and has a partial
+unique index that permits only one unreleased lease for a visitor/day. The
+ledger does not create or record raw visitor tokens, raw network identifiers,
+questions, prompts, context, or answers.
+
+Admission uses one PostgreSQL transaction: upsert the three day rows, lock
+Global → Network → Visitor in that fixed order, clear same-visitor expired
+leases using database time, evaluate the global/network/visitor ceilings and
+active lease, then increment every counter and insert the lease together.
+Visitor and network ceilings are 3 and 15; the global ceiling is an operational
+positive integer and defaults closed. Lease release only marks `releasedAt` and
+never returns an admitted count. Unit coverage uses a serializable in-memory
+database double for these contracts; live PostgreSQL migration/locking evidence
+is still pending because Docker/PostgreSQL was unavailable. Tasks 4 and 5 must
+place this admission after their existing validation/authorization checks and
+before any provider call or Workspace stream response starts.
 
 ## Process Map
 

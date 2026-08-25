@@ -400,6 +400,46 @@ model AiChatMessage {
   @@index([threadId, createdAt])
 }
 
+model TrialAiVisitorDailyUsage {
+  id            String   @id @default(cuid())
+  visitorDigest String
+  kstDate       String
+  admittedCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([visitorDigest, kstDate])
+}
+
+model TrialAiNetworkDailyUsage {
+  id            String   @id @default(cuid())
+  networkDigest String
+  kstDate       String
+  admittedCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([networkDigest, kstDate])
+}
+
+model TrialAiGlobalDailyUsage {
+  kstDate       String   @id
+  admittedCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model TrialAiAdmissionLease {
+  id            String    @id
+  visitorDigest String
+  kstDate       String
+  expiresAt     DateTime
+  releasedAt    DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([visitorDigest, kstDate, expiresAt])
+}
+
 model Permission {
   id              String                 @id @default(cuid())
   resourceType    PermissionResourceType
