@@ -3,6 +3,7 @@ import {
   resolveDevLoginEnabled,
   resolveGoogleAuthCredentials,
   resolveTrialLoginEnabled,
+  resolveTrialTurnstileSiteKey,
 } from "@/lib/auth/config";
 import { ensureCurrentUserWorkspaceAndRedirect } from "@/lib/auth/provisioning";
 import { getCurrentUser } from "@/lib/auth/session";
@@ -25,6 +26,7 @@ export default async function HomePage() {
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
         isTrialLoginEnabled={resolveTrialLoginEnabled()}
+        trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
         isSignupEnabled={false}
       />
     </main>

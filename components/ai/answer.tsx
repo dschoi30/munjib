@@ -30,6 +30,7 @@ type AiAnswerProps = {
 type AiCitationsProps = {
   citations?: AiCitation[] | null;
   workspaceSlug: string;
+  mode?: "authenticated" | "anonymous-trial-readonly";
   className?: string;
 };
 
@@ -82,7 +83,12 @@ export function AiAnswer({ content, className, allowedAttachmentIds = [] }: AiAn
   );
 }
 
-export function AiCitations({ citations, workspaceSlug, className }: AiCitationsProps) {
+export function AiCitations({
+  citations,
+  workspaceSlug,
+  mode = "authenticated",
+  className,
+}: AiCitationsProps) {
   if (!citations?.length) return null;
 
   return (
@@ -90,7 +96,7 @@ export function AiCitations({ citations, workspaceSlug, className }: AiCitations
       {citations.map((citation, index) => {
         const label = citationLabel(citation, index);
         const href = citation.documentId
-          ? workspaceDocumentHref({ workspaceSlug, documentId: citation.documentId })
+          ? workspaceDocumentHref({ workspaceSlug, documentId: citation.documentId, mode })
           : null;
 
         return (

@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-07-20
-source_count: 104
+updated: 2026-08-25
+source_count: 121
 tags:
   - munjib
   - auth
@@ -45,7 +45,7 @@ login path; the strict production runtime validator rejects an attempted
 `true` value. Only `docker-compose.dev.yml` forwards a direct development
 override.
 
-이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 launch 로그인은 별도 password/Google/trial provider가 처리한다.
+이 gate의 목표는 개발용 provider가 운영 환경에서 실수로 열리지 않게 하는 launch hardening이다. 실제 계정 로그인은 password/Google provider가 처리하고, 가입 없는 Trial은 NextAuth identity가 아니라 별도 anonymous capability가 처리한다.
 
 ### Fail-closed auth runtime
 
@@ -92,6 +92,74 @@ avatar resolution uses `getReadableAttachment()` with the current user's
 workspace/document ACL; missing, malformed, or unauthorized attachment images
 fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
 gate, and the component default is also fail closed.
+
+## Isolated anonymous Trial principal
+
+Issue #212 Task 3 keeps the anonymous Trial outside NextAuth and ordinary
+`User.id` identity. `resolveAnonymousTrialCapability()` defaults closed and
+opens only with an explicit positive global ceiling, one canonical demo
+workspace ID (with a slug used only as display metadata), an exact canonical
+Turnstile hostname/action, and fixed-path secret files in staging/production.
+Production and staging also require a file-backed edge-proof secret: a bounded
+timestamp and HMAC bind the normalized client IP to the exact request method
+and pathname, so a raw `x-munjib-trusted-client-ip` header is never sufficient.
+Only development may opt into the explicit raw-header resolver, and that mode
+remains closed unless separately enabled.
+The signing, visitor-digest, network-bucket, and Turnstile secret bytes are
+never returned to the browser. The legacy development-only
+`legacy-account-2@example.invalid` Credentials provider is not queried, reactivated, or used
+as the anonymous authorization principal.
+
+Issue #212 Task 7 removes that legacy provider even from development registration.
+`LoginForm` now POSTs `/api/trial/entitlement`, accepts only the server-owned
+`/trial/workspaces/<exact-slug>` public entry projection, and follows it only
+after the opaque HttpOnly visitor cookie can be issued. Capability, edge-proof,
+challenge, malformed JSON, and non-local path failures stay on the login page.
+When the server requires escalation, the form loads Cloudflare Turnstile only
+from `https://challenges.cloudflare.com`, using the public
+`MUNJIB_TURNSTILE_SITE_KEY`, and submits the bounded single-use token exactly
+once. Missing site-key configuration, widget load/error/expiry/timeout, a
+second challenge response, or malformed entry output fails closed without
+storing or logging the token. The secret remains server-only.
+If script loading errors, times out, or completes without the Turnstile API,
+the client removes that failed script element after cleaning listeners and its
+timer. A later Trial click can load a fresh script after a transient CDN
+failure, while concurrent clicks still share one pending load.
+Every server-rendered login gate (`/login`, `/`, and the unauthenticated
+workspace page) resolves the same validated public site key and passes it to
+`LoginForm`; therefore Turnstile escalation works consistently regardless of
+which login surface a fresh visitor enters through.
+The dedicated Trial viewer re-verifies the cookie plus fresh edge proof for its
+own GET pathname, resolves the immutable workspace ID and exact slug together,
+and loads only active documents with no explicit permission rows. It does not
+use `WorkspaceMember`, USER grants, account navigation, server actions, or a
+shared `User`; Workspace AI remains the stateless anonymous route from Task 5.
+
+The DB-independent Task 7 privacy source contract additionally locks the public
+entitlement projection against visitor/network identifiers or digests, keeps
+the visitor cookie HttpOnly/Secure/SameSite=Lax with a maximum 180-day lifetime,
+proves the legacy `trial` provider stays absent, and requires production Trial
+activation to remain exact-`true` opt-in and absent from the default Compose env.
+
+`requireAiActor(request)` preserves the existing authenticated-user shape, but
+returns anonymous callers as a separate admission actor plus an
+`anonymous-trial-demo` authorization principal. That principal is valid only
+when the resolved workspace row's immutable ID equals the server-owned demo
+workspace ID, projects only `VIEWER`, and has no `userId` or USER-grant subject.
+Path slugs never authorize the principal, including a same-slug workspace in a
+different organization. `resolveAiWorkspaceAuthorization()` exposes this denial
+boundary to the Ask AI and Workspace AI integrations instead of letting callers
+substitute the visitor subject into `WorkspaceMember.userId`.
+
+Visitor signing-key rotation is bounded by an exact previous-key cutoff. The
+previous key is accepted only strictly before that instant, and visitor tokens
+with a future issued-at value or a signed lifetime over 180 days are rejected.
+
+Workspace AI must not persist anonymous conversations under a static or legacy
+`AiChatThread.userId`, because that would share history across visitors. Its
+Task 5 integration must use a visitor-keyed non-shared conversation path or an
+explicitly stateless Trial path. Until such a path is installed, the anonymous
+conversation branch stays fail closed.
 
 ## Active-resource authorization boundary
 

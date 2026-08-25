@@ -110,6 +110,32 @@ describe("document RAG indexing", () => {
     expect(maxActiveEmbeddingRequests).toBe(1);
   });
 
+  it("stops a multi-chunk backfill before starting the next embedding after abort", async () => {
+    const controller = new AbortController();
+    const replaceDocumentChunks = vi.fn();
+    const embedText = vi.fn(async (_text, options) => {
+      expect(options?.signal).toBe(controller.signal);
+      controller.abort();
+      return Array.from({ length: 1024 }, () => 0.01);
+    });
+
+    await expect(
+      indexSavedDocument({
+        document: {
+          ...savedDocument,
+          contentMarkdown: "# One\n\nFirst\n\n# Two\n\nSecond\n\n# Three\n\nThird",
+        },
+        embeddingModel: "bge-m3",
+        signal: controller.signal,
+        embedText,
+        replaceDocumentChunks,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+
+    expect(embedText).toHaveBeenCalledTimes(1);
+    expect(replaceDocumentChunks).not.toHaveBeenCalled();
+  });
+
   it("clears existing chunks for an empty saved document", async () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
@@ -192,6 +218,29 @@ describe("document RAG indexing", () => {
         documentId: "saved-doc",
         workspaceId: "saved-workspace",
       }),
+    );
+  });
+
+  it("propagates privacy-safe logging through the safe indexing wrapper", async () => {
+    const controller = new AbortController();
+    const embedText = vi.fn().mockResolvedValue(Array.from({ length: 1024 }, () => 0.01));
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      safeIndexSavedDocument({
+        documentId: savedDocument.id,
+        privacySafeLogging: true,
+        signal: controller.signal,
+        loadDocument: async () => savedDocument,
+        embedText,
+        replaceDocumentChunks,
+        isDocumentCurrent: async () => true,
+      }),
+    ).resolves.toBe(true);
+
+    expect(embedText).toHaveBeenCalledWith(
+      savedDocument.contentMarkdown,
+      { privacySafeLogging: true, signal: controller.signal },
     );
   });
 

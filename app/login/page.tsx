@@ -3,6 +3,7 @@ import {
   resolveDevLoginEnabled,
   resolveGoogleAuthCredentials,
   resolveTrialLoginEnabled,
+  resolveTrialTurnstileSiteKey,
 } from "@/lib/auth/config";
 
 // The form reflects a runtime env gate, so avoid baking it into a static route.
@@ -15,6 +16,7 @@ export default function LoginPage() {
         isDevLoginEnabled={resolveDevLoginEnabled()}
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
         isTrialLoginEnabled={resolveTrialLoginEnabled()}
+        trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
         isSignupEnabled={false}
       />
     </main>

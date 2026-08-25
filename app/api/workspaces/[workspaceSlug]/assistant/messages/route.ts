@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireCurrentUser } from "@/lib/auth/session";
+import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
 import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
 import {
@@ -9,18 +9,33 @@ import {
 } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 import {
-  prepareWorkspaceChatMessageStream,
+  preflightWorkspaceChatMessageStream,
+  preparePreflightedWorkspaceChatMessageStream,
   sendPreparedWorkspaceChatMessageStream,
   type WorkspaceChatPreparedMessage,
   WORKSPACE_CHAT_ERROR_CODES,
 } from "@/lib/rag/workspace-chat";
-import { workspaceChatErrorResponse } from "../error-response";
+import {
+  admitTrialAiRequest,
+  releaseTrialAiLease,
+  startTrialAiLeaseHeartbeat,
+  type TrialAiAdmission,
+  type TrialAiLeaseHeartbeat,
+} from "@/lib/rag/trial-ai-admission";
+import {
+  normalizeWorkspaceChatTrialFailure,
+  workspaceChatErrorResponse,
+  workspaceChatTrialAdmissionDeniedResponse,
+  workspaceChatTrialFailureResponse,
+} from "../error-response";
+
+const TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED = "TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED";
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ workspaceSlug: string }> },
 ) {
-  const user = await requireCurrentUser();
+  const actor = await requireAiActor(request);
   const { workspaceSlug } = await params;
   const body = await parseJsonBody(request);
 
@@ -49,6 +64,15 @@ export async function POST(
   const hasChatProvider =
     body.value.chatProvider !== undefined && body.value.chatProvider !== null;
   const hasChatModel = body.value.chatModel !== undefined && body.value.chatModel !== null;
+  if (
+    actor.admissionActor.kind === "anonymous-trial" &&
+    (hasChatProvider || hasChatModel)
+  ) {
+    return NextResponse.json(
+      { error: TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED },
+      { status: 400 },
+    );
+  }
   if (hasChatProvider && !hasChatModel) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
@@ -72,19 +96,11 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
 
-  let prepared: WorkspaceChatPreparedMessage;
+  let preflight;
   try {
-    prepared = await prepareWorkspaceChatMessageStream({
+    preflight = await preflightWorkspaceChatMessageStream({
       workspaceSlug,
-      actorId: user.id,
-      message,
-      signal: request.signal,
-      ...(uiLanguage ? { uiLanguage } : {}),
-      ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
-      ...(chatProviderValidation?.ok
-        ? { chatProviderOverride: chatProviderValidation.value }
-        : {}),
-      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
+      authorizationPrincipal: actor.authorizationPrincipal,
     });
   } catch (error) {
     return workspaceChatErrorResponse(error, {
@@ -94,14 +110,100 @@ export async function POST(
       ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
     });
   }
+  if (request.signal.aborted) {
+    return NextResponse.json(
+      { error: "WORKSPACE_CHAT_REQUEST_ABORTED" },
+      { status: 499, headers: { "cache-control": "private, no-store" } },
+    );
+  }
 
-  return workspaceChatStreamResponse(prepared, request.signal, workspaceSlug);
+  let admission: TrialAiAdmission;
+  try {
+    admission = await admitTrialAiRequest({
+      actor: actor.admissionActor,
+      surface: "workspace_chat",
+      workspaceId: preflight.workspaceId,
+      kstDate: actor.kstDate,
+      ...(actor.networkBucketDigest
+        ? { networkBucketDigest: actor.networkBucketDigest }
+        : {}),
+    });
+  } catch {
+    admission = { kind: "denied", code: "TRIAL_AI_ADMISSION_UNAVAILABLE" };
+  }
+  if (admission.kind === "denied") {
+    return workspaceChatTrialAdmissionDeniedResponse(admission);
+  }
+  if (actor.admissionActor.kind === "anonymous-trial" && admission.kind !== "admitted") {
+    return workspaceChatTrialAdmissionDeniedResponse({
+      kind: "denied",
+      code: "TRIAL_AI_ADMISSION_UNAVAILABLE",
+    });
+  }
+
+  const leaseHeartbeat = admission.kind === "admitted"
+    ? startTrialAiLeaseHeartbeat(admission.leaseId)
+    : undefined;
+  const providerSignal = leaseHeartbeat
+    ? AbortSignal.any([request.signal, leaseHeartbeat.signal])
+    : request.signal;
+
+  let prepared: WorkspaceChatPreparedMessage;
+  try {
+    prepared = await preparePreflightedWorkspaceChatMessageStream({
+      preflight,
+      message,
+      signal: providerSignal,
+      ...(uiLanguage ? { uiLanguage } : {}),
+      ...(selectedDocumentId !== undefined ? { selectedDocumentId } : {}),
+      ...(chatProviderValidation?.ok
+        ? { chatProviderOverride: chatProviderValidation.value }
+        : {}),
+      ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
+    });
+  } catch (error) {
+    await leaseHeartbeat?.stop();
+    await releaseAdmissionLeaseBestEffort(admission);
+    if (admission.kind === "admitted") {
+      if (request.signal.aborted) {
+        return NextResponse.json(
+          { error: "WORKSPACE_CHAT_REQUEST_ABORTED" },
+          { status: 499, headers: { "cache-control": "private, no-store" } },
+        );
+      }
+      return workspaceChatTrialFailureResponse(admission);
+    }
+    return workspaceChatErrorResponse(error, {
+      surface: "workspace_chat_prepare",
+      workspaceSlug,
+      ...(chatProviderValidation?.ok ? { chatProvider: chatProviderValidation.value } : {}),
+      ...(chatModelValidation?.ok ? { chatModel: chatModelValidation.value } : {}),
+    });
+  }
+
+  if (leaseHeartbeat?.signal.aborted && admission.kind === "admitted") {
+    await leaseHeartbeat.stop();
+    await releaseAdmissionLeaseBestEffort(admission);
+    return workspaceChatTrialFailureResponse(admission);
+  }
+
+  return workspaceChatStreamResponse(
+    prepared,
+    request.signal,
+    providerSignal,
+    workspaceSlug,
+    admission,
+    leaseHeartbeat,
+  );
 }
 
 function workspaceChatStreamResponse(
   prepared: WorkspaceChatPreparedMessage,
-  signal: AbortSignal,
+  requestSignal: AbortSignal,
+  providerSignal: AbortSignal,
   workspaceSlug: string,
+  admission: Exclude<TrialAiAdmission, { kind: "denied" }>,
+  leaseHeartbeat?: TrialAiLeaseHeartbeat,
 ) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -118,19 +220,37 @@ function workspaceChatStreamResponse(
         }
       };
 
-      writeEvent({ type: "start" });
+      writeEvent({
+        type: "start",
+        ...(admission.kind === "admitted"
+          ? { trialAi: { remaining: admission.remaining, resetsAt: admission.resetsAt } }
+          : {}),
+      });
       try {
         const result = await sendPreparedWorkspaceChatMessageStream(prepared, {
           onToken(token) {
             writeEvent({ type: "token", content: token });
           },
-          signal,
+          signal: providerSignal,
         });
-        if (!signal.aborted) {
+        const heartbeatStop = await leaseHeartbeat?.stop();
+        const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
+        leaseHeartbeat = undefined;
+        if (heartbeatStop?.ok === false || heartbeatAborted) {
+          throw new Error("TRIAL_AI_LEASE_RENEWAL_FAILED");
+        }
+        if (!requestSignal.aborted) {
           writeEvent({ type: "done", ...result });
         }
       } catch (error) {
-        if (signal.aborted) return;
+        if (requestSignal.aborted) return;
+        if (admission.kind === "admitted") {
+          writeEvent({
+            type: "error",
+            error: normalizeWorkspaceChatTrialFailure(admission.remaining),
+          });
+          return;
+        }
         const message = error instanceof Error ? error.message : "";
         const isArchivedThread = message === WORKSPACE_CHAT_ERROR_CODES.THREAD_ARCHIVED;
         const streamError = isArchivedThread
@@ -149,6 +269,8 @@ function workspaceChatStreamResponse(
         }
         writeEvent({ type: "error", error: streamError });
       } finally {
+        await leaseHeartbeat?.stop();
+        await releaseAdmissionLeaseBestEffort(admission);
         if (!streamClosed) {
           try {
             controller.close();
@@ -166,6 +288,17 @@ function workspaceChatStreamResponse(
       "cache-control": "no-cache, no-transform",
     },
   });
+}
+
+async function releaseAdmissionLeaseBestEffort(
+  admission: Exclude<TrialAiAdmission, { kind: "denied" }>,
+) {
+  if (admission.kind !== "admitted") return;
+  try {
+    await releaseTrialAiLease(admission.leaseId);
+  } catch {
+    // Lease expiry remains the recovery path; cleanup must not replace the request result.
+  }
 }
 
 async function parseJsonBody(request: Request) {

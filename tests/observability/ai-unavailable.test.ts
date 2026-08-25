@@ -1,6 +1,9 @@
 import * as Sentry from "@sentry/nextjs";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { captureHandledAiUnavailable } from "@/lib/observability/ai-unavailable";
+import {
+  captureHandledAiUnavailable,
+  captureTrialAiFailure,
+} from "@/lib/observability/ai-unavailable";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 type ScopeMock = {
@@ -103,6 +106,49 @@ describe("captureHandledAiUnavailable", () => {
     expect(capturedError.message).toBe("Handled AI provider failure returned AI_UNAVAILABLE");
     expect(capturedError.cause).toBeUndefined();
     expect(capturedError.message).not.toContain("raw details");
+  });
+
+  test("captures Trial failures with only approved coarse dimensions", () => {
+    captureTrialAiFailure({
+      surface: "workspace_chat",
+      resultCode: "AI_UNAVAILABLE",
+      remaining: 1,
+      error: new Error("raw provider response and prompt"),
+      workspaceSlug: "secret-workspace",
+      chatProvider: "secret-provider",
+      chatModel: "secret-model",
+    } as never);
+
+    expect(Sentry.metrics.count).toHaveBeenCalledWith("munjib.trial_ai.result", 1, {
+      attributes: {
+        anonymous_trial: true,
+        remaining_bucket: "available",
+        result_code: "AI_UNAVAILABLE",
+        surface: "workspace_chat",
+      },
+    });
+    expect(Sentry.withScope).not.toHaveBeenCalled();
+    expect(JSON.stringify(sentryMock)).not.toContain("raw provider response");
+    expect(JSON.stringify(sentryMock)).not.toContain("secret-workspace");
+    expect(JSON.stringify(sentryMock)).not.toContain("secret-provider");
+    expect(JSON.stringify(sentryMock)).not.toContain("secret-model");
+  });
+
+  test("uses an unknown remaining bucket before Trial admission", () => {
+    captureTrialAiFailure({
+      surface: "ask_document",
+      resultCode: "AI_UNAVAILABLE",
+    });
+
+    expect(Sentry.metrics.count).toHaveBeenCalledWith("munjib.trial_ai.result", 1, {
+      attributes: {
+        anonymous_trial: true,
+        remaining_bucket: "unknown",
+        result_code: "AI_UNAVAILABLE",
+        surface: "ask_document",
+      },
+    });
+    expect(Sentry.withScope).not.toHaveBeenCalled();
   });
 
   test("names provider configuration failures distinctly", () => {

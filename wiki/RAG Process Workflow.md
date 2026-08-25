@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-07-20
-source_count: 121
+updated: 2026-08-25
+source_count: 138
 tags:
   - munjib
   - workflow
@@ -40,6 +40,233 @@ Task 3 보정 oracle은 고정 test-only probe port와 Compose alias, OPTIONS/CO
 
 Probe binding is local-only in the in-process Playwright harness (`127.0.0.1` default), which owns the recording oracle and calibration counters. The `egress-test` Compose overlay keeps a separate `0.0.0.0` listener only for explicit container-network smoke checks and does not publish a host port; it does not redirect the web harness to an unobserved listener and is never a production setting.
 
+## Anonymous Trial AI admission ledger
+
+Issue #212 Task 2 adds the shared `lib/rag/trial-ai-admission.ts` persistence
+boundary, but does **not** yet connect it to either Ask AI or Workspace AI
+routes. The service accepts the approved `TrialAiAdmissionInput` actor contract:
+ordinary authenticated users receive `not-applicable`; an anonymous Trial must
+provide its opaque server-derived visitor subject, a trusted network digest, a
+valid KST date, and a positive global cap. Missing or malformed admission
+inputs, an invalid/missing global cap, and database failures return the stable
+fail-closed `TRIAL_AI_ADMISSION_UNAVAILABLE` result rather than permitting a
+model call.
+
+`TrialAiVisitorDailyUsage`, `TrialAiNetworkDailyUsage`, and
+`TrialAiGlobalDailyUsage` keep independent KST-day counters. Their unique keys
+are respectively visitor digest/date, network digest/date, and date.
+`TrialAiAdmissionLease` records a short-lived active request and has a partial
+unique index that permits only one unreleased lease for a visitor across every
+KST day. The
+ledger does not create or record raw visitor tokens, raw network identifiers,
+questions, prompts, context, or answers.
+
+Admission uses one PostgreSQL transaction: first acquire a domain-separated,
+visitor-digest advisory transaction lock, then upsert the three day rows and
+lock Global → Network → Visitor in that fixed order. Two advisory hash lanes
+make accidental cross-visitor collisions only add harmless serialization, not
+an admission bypass. The transaction clears same-visitor expired leases using
+database time, evaluates the global/network/visitor ceilings and active lease,
+then increments every counter and inserts the lease together.
+Visitor and network ceilings are 3 and 15; the global ceiling is an operational
+positive integer and defaults closed. Lease release only marks `releasedAt` and
+never returns an admitted count. Unit coverage uses a serializable in-memory
+database double for these contracts. An opt-in PostgreSQL suite
+(`MUNJIB_RUN_TRIAL_AI_ADMISSION_DB_TESTS=1`) exercises the applied migration,
+raw locks, concurrent global admission, cross-midnight lease denial, and
+lease-insertion rollback. It pre-seeds the daily rows before concurrent calls
+and gives each global-ceiling visitor a distinct network digest, so only the
+global row is shared and `INSERT ... ON CONFLICT` cannot hide a missing
+`FOR UPDATE`. Its
+cross-midnight case waits for a test-only lease-insert PostgreSQL sleep barrier
+before starting the second request. It remains unexecuted while
+Docker/PostgreSQL is unavailable. Task 5 now places Workspace AI admission
+after request validation and a read-only workspace/document authorization
+preflight, but before thread/index/model preparation, provider work, or the
+NDJSON response. Ask AI route integration remains a separate Task 4 change.
+
+PR #213 review follow-up adds `lib/rag/trial-ai-retention.ts` and the
+`trial-ai:purge-retention` maintenance command. The purge reads PostgreSQL
+`CURRENT_TIMESTAMP` and its `Asia/Seoul` calendar date inside one transaction,
+retains exactly the current 35 KST visitor buckets and current 8 KST
+network/global buckets, and removes a lease only when its `expiresAt` boundary
+has been past for at least 24 hours. Deletion order is lease → visitor → network
+→ global; any failure rolls the whole transaction back and no counter is
+updated. The command defaults to a non-mutating dry-run and requires explicit
+`--execute`; repeated execution is idempotent. The retention indexes make the
+date-only maintenance predicates independent of digest lookup indexes. Operator
+commands, expected output, least-privilege `SELECT`/`DELETE` role, completion
+criteria, and stop criteria are in
+`docs/runbooks/anonymous-trial-ai-retention.md`. The opt-in migrated PostgreSQL
+test requires `MUNJIB_RUN_TRIAL_AI_RETENTION_DB_TESTS=1`.
+
+Issue #212 Task 3 adds the route-facing actor and entitlement boundary. An ordinary session becomes a user authorization
+principal and receives `not-applicable` admission behavior. A verified Trial
+cookie becomes a separate anonymous admission actor and an exact-demo-workspace
+`VIEWER` principal; authorization compares the resolved workspace row's
+immutable ID, never its path slug, so a same-slug workspace in another
+organization is denied. It never becomes a `User.id`, never inherits explicit
+USER document grants, and never queries the legacy shared Trial email. The
+entitlement route returns only `remaining`, fixed `limit: 3`, `resetsAt`, and
+optional `challengeRequired`; tokens and visitor/network digests remain server
+only.
+
+New-token issuance on a network with prior Trial traffic requires one bounded
+Turnstile verification with the exact configured hostname and
+`trial_entitlement` action. A provider timeout or invalid response fails closed,
+while a valid existing visitor does not call Turnstile. Staging/production
+secrets use fixed strict-reader paths, and their normalized network evidence
+requires a fresh HMAC proof bound to the client IP, request method, and pathname;
+a caller-supplied IP header alone is untrusted. Previous visitor signing keys
+also require an exact cutoff and are invalid at or after it, while future-issued
+or over-180-day tokens are rejected. Anonymous Trial activation remains off
+unless every capability input is valid. Issue #212 Task 5 uses the approved
+stateless option: anonymous Workspace AI never loads, creates, or updates
+`AiChatThread`/`AiChatMessage`, never maps the visitor to a shared `User`, and
+never carries conversation history across requests or visitors. Trial
+preparation also forces Langfuse to metadata-only capture even when the normal
+workspace runtime explicitly enables full prompt tracing.
+
+The visitor-wide PostgreSQL advisory lock projects its `void` result to text
+before Prisma deserialization. This preserves the transaction-scoped lock while
+avoiding a runtime admission failure at the database adapter boundary; the live
+concurrency suite covers global ceiling, cross-midnight serialization, and full
+counter rollback on lease insertion failure.
+An admitted route starts a DB-time lease heartbeat for the full Ask provider or
+Workspace preparation/stream lifetime. Every 30 seconds it conditionally
+extends the still-active lease by two minutes; renewal failure or lease loss
+aborts the composed provider signal, and route cleanup awaits heartbeat stop
+before releasing the lease. `stop()` also awaits any renewal already in flight
+and reports its outcome; Ask success JSON and Workspace `done` are emitted only
+after that barrier succeeds, so a late renewal failure cannot be hidden by
+timer shutdown. This keeps one visitor at one concurrent request
+even when indexing or model work exceeds the original lease window. A concurrent
+`TRIAL_AI_REQUEST_IN_PROGRESS` denial is transient and therefore omits KST
+midnight `resetsAt` and `Retry-After`; daily/network/global denials retain their
+day reset projection.
+
+Issue #212 Task 4 connects the Ask AI route through the shared ledger without
+changing normal-user results. The route validates its body and resolves
+`requireAiActor()`, then `prepareAskDocumentQuestion()` resolves the exact
+workspace ID, the active selected document, and the `AiAuthorizationPrincipal`
+before it calls `admitTrialAiRequest()`. The preparation split is provider-free:
+only `answerPreparedAskDocumentQuestion()` constructs or invokes the model.
+An admitted Trial response includes the authoritative `trialAi.remaining` and
+`trialAi.resetsAt`, and its lease is released in `finally` without decrementing
+the charged counter. If Ask provider execution fails after admission, its
+private no-store 503 also carries that authoritative `trialAi` projection so
+the browser reflects the already charged use. Daily/active-lease denials are pre-provider JSON 429
+responses with `Cache-Control: private, no-store` and `Retry-After`; an
+admission infrastructure denial is a private no-store 503. Anonymous Trial
+authorization reads only active documents in the capability's exact workspace
+ID, uses no `WorkspaceMember` or `USER` document grant, and does not emit the
+visitor subject into Ask observability metadata.
+
+Task 4 review hardening keeps those boundaries explicit: anonymous preparation
+queries the exact capability workspace ID **and** requested slug, while a
+normal user query remains membership-scoped so another organization with the
+same slug cannot shadow it. An anonymous `VIEWER` still queries whether the
+candidate active document has any explicit grant; if so it is excluded, but no
+`USER` grant or membership lookup is issued for the Trial principal. Trial
+client provider/model overrides are rejected with `INVALID_CHAT_MODEL` before
+admission, leaving model choice server-owned. Prepared Ask inputs carry a
+privacy mode, forcing anonymous Trial Langfuse to metadata-only even when the
+server configuration requests full capture; no content-capturing callback is
+attached. Release failures remain best-effort and cannot replace a successful,
+provider-failed, or aborted admitted request outcome. After asynchronous Ask
+authorization/preparation, the route checks `request.signal.aborted`
+immediately before admission and returns private no-store 499 without charging
+an already disconnected request. An admitted anonymous Ask provider failure
+uses the Trial-only observability seam with only surface, public
+`AI_UNAVAILABLE`, coarse remaining-count bucket, and anonymous flag; the raw
+error, workspace slug, RAG code, provider, and model stay out of that path.
+The privacy branch is selected from the anonymous Trial principal rather than
+successful admission. A server-owned RAG/configuration failure during
+authorization/preparation therefore uses the same coarse metric with an
+`unknown` remaining bucket and a private no-store 503, without emitting normal
+workspace or provider diagnostics. Authenticated callers keep the existing
+handled-error telemetry.
+
+Task 7 adds a DB-independent cross-file privacy source contract. It rejects
+schema/migration drift that introduces raw IP, visitor token, challenge token,
+question, prompt, context, or answer columns; requires digest-only Trial ledger
+identity; pins Ask Trial to metadata-only capture and Workspace Trial to the
+stateless branch before chat persistence; rejects client model overrides on
+both surfaces; and constrains Trial failure metrics to surface, public result,
+coarse remaining bucket, and anonymous flag. Each source validator includes a
+forbidden mutation fixture so a weakened assertion cannot silently pass.
+
+Task 5 review hardening keeps Trial at the demo workspace's `VIEWER` ceiling:
+the preflight queries only whether each active document has any explicit
+permission row and excludes those documents because an anonymous principal has
+no USER grant. It never queries a USER subject for Trial. Any non-null
+provider/model override is rejected with
+`TRIAL_AI_MODEL_OVERRIDE_NOT_ALLOWED` 400 before preflight or admission, so an
+invalid override cannot consume quota. After an asynchronous preflight, the
+route checks `request.signal.aborted` immediately before admission and returns
+without charging an already disconnected request.
+
+Post-admission Trial preparation/stream failures normalize to public
+`AI_UNAVAILABLE` through a Trial-only observability seam. That seam emits only
+surface, public result code, coarse remaining-count bucket, and
+`anonymous_trial: true`; it receives no raw error/provider response, workspace
+slug, provider/model, question, prompt, context, answer, or document content.
+Pre-stream Workspace preparation failures also return the admitted
+`remaining`/`resetsAt` projection in their private no-store 503 response; the
+client publishes validated allowance data from non-success JSON before showing
+the generic error. A stale UI therefore cannot hide uses already consumed by
+Ask or Workspace preparation/provider failures.
+The same privacy-safe flag reaches Trial retrieval query embedding and targeted
+document-index backfill. Embedding provider exceptions are normalized to stable
+code and coarse `embedding` surface without logging the raw SDK error; normal
+authenticated retrieval retains its existing diagnostic error logging. The
+composed request/lease signal also reaches every backfill chunk embedding and
+the query embedding provider invocation, with abort checks before and after
+each await; lease loss stops the pending request and prevents later chunks from
+starting.
+
+Task 6 keeps the browser UI subordinate to those server decisions. Ask AI
+accepts allowance state only from a successful response's `trialAi` projection,
+and Workspace AI accepts it only from the validated first NDJSON `start` event.
+Both surfaces publish the validated `{ remaining, resetsAt }` value through an
+in-memory same-tab event, so the latest server response updates both composers
+without treating `localStorage` as identity, quota, or authorization evidence.
+The validated range includes the initial entitlement value of three as well as
+the post-admission values zero through two.
+Daily/network/global limit 429 responses disable both composers until the KST
+reset guidance shown in the UI; the transient concurrent-request 429 does not
+become a daily lockout. Responses without Trial allowance data leave the normal
+authenticated UI unchanged.
+
+Task 6 review hardening makes the same-tab projection monotonic: responses with
+the same `resetsAt` can only reduce `remaining`, older reset windows cannot
+replace newer state, and only a later reset window may increase the displayed
+allowance. A timer removes the projection when `resetsAt` arrives and unlocks
+the mounted composers, but does not invent a replacement count; the next value
+must still come from entitlement or an AI route. Both allowance blocks are
+polite live status regions, and each composer references its status text with
+`aria-describedby` so a disabled zero-use state includes the KST reset reason.
+
+Task 7 review hardening connects both AI surfaces to the dedicated Trial viewer
+without weakening their route authority. The selected active document that has
+no explicit permission row renders an Ask AI panel, while Workspace AI receives
+an explicit `anonymous-trial-readonly` UX mode. In that mode the client never
+loads or resets an authenticated conversation thread and sends only the
+stateless messages POST; the reset control is absent. Both Trial surfaces also
+skip browser model-setting reads, subscriptions, and request fields, so the
+displayed and requested model remains server-owned. These props are presentation
+controls only: the Ask and Workspace routes still re-resolve the cookie-backed
+actor, exact demo workspace/document, and edge evidence before authorization.
+The viewer independently resolves the entitlement on the server and projects
+only `{ remaining, resetsAt }` into the two clients; workspace IDs and visitor or
+network subjects/digests are not serialized. That initial projection enters the
+same monotonic in-memory allowance channel, preserving expiry timers,
+cross-surface synchronization, and accessibility behavior.
+Shared citation rendering also receives this mode. Ask and Workspace Trial
+citations remain under `/trial/workspaces/<slug>?document=...`, while ordinary
+authenticated citations keep `/workspaces/<slug>?document=...`, so following a
+Trial source never falls back into an authenticated login gate.
+
 ## Process Map
 
 이 지도는 현재 Ask AI direct path와 workspace chatbot RAG service path를 분리해서 보여준다.
@@ -48,13 +275,14 @@ Probe binding is local-only in the in-process Playwright harness (`127.0.0.1` de
 flowchart TD
     User["User asks in editor"] --> Panel["AI assistant panel<br/>question + optional provider/model"]
     Panel --> AskRoute["Ask route<br/>parse JSON and validate input"]
-    AskRoute --> AskService["askDocumentQuestion()"]
-    AskService --> AskPermission["Load active workspace membership<br/>and selected active document"]
+    AskRoute --> AskService["prepareAskDocumentQuestion()<br/>then Trial admission"]
+    AskService --> AskPermission["Authorize exact workspace principal<br/>and selected active document"]
     AskPermission --> AskReadable{"Selected document readable?"}
     AskReadable -- "No" --> AskNotFound["DOCUMENT_NOT_FOUND"]
     AskReadable -- "Yes" --> AskContext["buildCurrentDocumentContext()<br/>full doc, heading-aware pack,<br/>or no-heading paragraph chunks"]
     AskContext --> AskPrompt["buildDirectDocumentPrompt()<br/>current document sections only"]
-    AskPrompt --> AskTrace["Langfuse metadata<br/>operation rag.ask_document"]
+    AskPrompt --> AskAdmission["admitTrialAiRequest()<br/>before model work"]
+    AskAdmission --> AskTrace["Langfuse metadata<br/>operation rag.ask_document"]
     AskTrace --> AskAnswer["invokeAnswerChain()<br/>LangChain chat model"]
     AskAnswer --> AskNormalize["normalizeAnswerCitations()<br/>used sources renumbered 1..n"]
     AskNormalize --> AskUI["Markdown answer + clickable current-document citations"]
@@ -80,7 +308,8 @@ flowchart TD
 | --- | --- | --- | --- |
 | UI request | `components/document-editor/ai-assistant-panel.tsx` | Saved document id, trimmed question, optional browser/workspace `chatModel` | Ask route payload; unsaved draft stays out of RAG |
 | Route validation | `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts` | JSON body | Normalized `question`, validated optional provider+model pair, or stable 400 error |
-| Ask permission gate | `askDocumentQuestion()`, `filterReadableDocuments()` | Active workspace membership, selected active document, explicit document permissions | Permission-safe selected document |
+| Ask permission gate | `prepareAskDocumentQuestion()`, `resolveAiWorkspaceAuthorization()`, `filterReadableDocuments()` | User or exact anonymous Trial principal, selected active document, explicit document permissions | Permission-safe selected document; Trial uses its exact workspace ID and no USER grant/membership |
+| Trial admission | Ask route, `admitTrialAiRequest()` | Authorized workspace ID and resolved route actor | `not-applicable` normal-user continuation, or charged Trial lease before provider work; 429/503 denial never calls provider |
 | Provider boundary | `getRagGenerationConfig()`, `getRagModelConfig()`, and provider/model override | Server env plus optional `chatProvider` + `chatModel` | Effective chat provider/model; complete provider overrides do not require the default provider config; Ask direct path does not validate embedding env; chatbot retrieval keeps embedding provider/model/dimension unchanged |
 | Ask context packing | `buildCurrentDocumentContext()` | Selected saved markdown and question | Full saved markdown, heading-aware section subset, no-heading paragraph chunk subset, or oversized-heading paragraph chunk subset with inline citation labels |
 | Ask prompt and citations | `buildDirectDocumentPrompt()`, `normalizeAnswerCitations()` | Current document context and answer text | System/user prompt plus answer-referenced current document section citations renumbered by answer appearance |
@@ -111,9 +340,9 @@ Legacy/vector maintenance phases still exist for saved document indexing and fut
 
 Server entry point는 `app/api/workspaces/[workspaceSlug]/documents/[documentId]/ask/route.ts`다. Route는 JSON body에서 `question`, optional provider+model pair, optional valid `uiLanguage`만 읽고, malformed JSON 또는 `null`/array JSON body는 missing question과 같은 `QUESTION_REQUIRED` 400 흐름으로 정규화한다. Invalid `uiLanguage`는 request rejection이 아니라 no UI language hint로 무시한다. Missing 또는 `null` `chatModel`은 no override로 처리하지만, `chatProvider`가 있으면 matching `chatModel`도 있어야 하며 provider-only override는 service 호출 전에 `INVALID_CHAT_MODEL` 400으로 중단한다. String override는 shared provider/model validators를 통과해야 한다. 인증 redirect는 broad service error catch 밖에서 유지하고, recoverable RAG runtime failure는 user-facing detail 없이 `AI_UNAVAILABLE` 503으로 정규화한다.
 
-Ask AI core service는 `lib/rag/ask.ts`의 `askDocumentQuestion()`이다. 이 함수는 active workspace membership check, permission check, chat/Langfuse generation config, current-document context packing, direct prompt, LangChain answer generation, optional Langfuse metadata를 연결한다. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다. Issue #147 review follow-up 이후 archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 Ask AI context를 읽지 않는다.
+Ask AI core service는 `lib/rag/ask.ts`의 `prepareAskDocumentQuestion()`와 `answerPreparedAskDocumentQuestion()`이다. Preparation resolves active workspace/document authorization, chat/Langfuse generation config, current-document context, and the direct prompt without constructing a model; answer execution performs the provider work only after admission. The legacy `askDocumentQuestion()` wrapper preserves the authenticated service contract. Issue #104 backend slice 이후 Ask AI 기본 path는 selected document indexing refresh, retrieval scopes, question embedding/vector search, rerank를 호출하지 않는다. Issue #147 review follow-up 이후 archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하므로 stale tab에서 Ask AI context를 읽지 않는다.
 
-Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 현재 사용자+active workspace의 active thread를 만들거나 재사용한다. `prepareWorkspaceChatMessageStream()`은 message validation, active thread load, provider/model resolution, embedding index guard, conversation-aware retrieval, prompt creation, Langfuse trace metadata, chat model creation을 answer generation 전에 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, final answer가 성공했을 때만 normalized answer/citations를 persistence helper에 넘긴다. Existing `sendWorkspaceChatMessage()`는 같은 preparation과 persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 JSON route로 thread state를 다루고, `/messages`는 validation/preparation error만 JSON으로 반환한 뒤 successful send를 `application/x-ndjson` stream으로 노출한다. `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
+Workspace chatbot backend service는 `lib/rag/workspace-chat.ts`다. `getOrCreateWorkspaceChatThread()`는 일반 로그인 사용자+active workspace의 active thread를 만들거나 재사용한다. `preflightWorkspaceChatMessageStream()`은 thread, indexing, embedding, model side effect 없이 workspace/document authority를 먼저 확정한다. 일반 사용자는 기존 membership/USER grant 기반 readable-document path와 persistent history를 유지한다. 익명 Trial은 capability에 고정된 immutable demo workspace ID와 slug를 함께 조회한 뒤, explicit permission row가 없는 active demo document만 viewer로 읽고 USER-subject grant query는 하지 않는다. Admission 이후 `preparePreflightedWorkspaceChatMessageStream()`이 persistent user이면 기존 thread/memory path를, Trial이면 현재 message만 쓰는 stateless retrieval/prompt path를 준비한다. `sendPreparedWorkspaceChatMessageStream()`은 prepared prompt/model로 `streamAnswerChain()`을 호출해 tokens를 전달하고, 일반 사용자의 성공 answer만 persistence helper에 넘긴다. Trial call은 answer-chain privacy-safe logging mode를 명시해 provider exception object나 prompt/question/context/answer를 전달하지 않고 stable RAG code와 coarse stream surface만 기록한다. 일반 authenticated call은 기존 diagnostic logging behavior를 유지한다. Trial final event는 transient assistant message/citations이며 `AiChatThread`/`AiChatMessage` row를 만들지 않는다. `/assistant/messages`는 Trial provider/model override와 post-preflight abort를 admission 전에 거절하고, quota denial을 NDJSON 시작 전 JSON 429로, admission 장애를 JSON 503으로 반환하며, admitted Trial의 첫 `start` event에 `trialAi.remaining`/`resetsAt`을 넣는다. Trial provider/stream failure telemetry uses only the approved coarse dimensions and never the normal workspace/provider/model error context. Lease는 success, error, abort, post-admission preparation failure에서 awaited best-effort로 release하지만 admitted counters는 감소하지 않으며 release rejection은 원래 success/error 결과를 바꾸지 않는다. Existing `sendWorkspaceChatMessage()`는 일반 사용자 preparation/persistence path를 공유하는 non-streaming wrapper다. Archived workspace slug는 `WORKSPACE_NOT_FOUND`로 중단하며 thread/message persistence 전에 실패한다. `app/api/workspaces/[workspaceSlug]/assistant/thread`와 `/thread/reset`은 기존 authenticated JSON route로 thread state를 다루고, `components/workspace-chatbot.tsx`가 workspace page의 우측 하단 launcher/panel로 이 endpoints를 호출한다.
 
 ### Derived AI history authorization readiness (Issue #163)
 
@@ -279,7 +508,7 @@ Full capture가 켜진 Node runtime에서는 `instrumentation.ts`가 `initialize
 
 Selected document가 actor에게 readable하지 않으면 `DOCUMENT_NOT_FOUND`로 처리한다. 빈 question은 `QUESTION_REQUIRED`다. 선택된 effective chat provider env가 불완전하거나 unsupported provider이면 answer generation 전에 `INVALID_CONFIG` 계열 recoverable RAG error로 이어진다. Complete provider+model override가 있으면 default chat provider env가 불완전해도 해당 default provider를 먼저 읽지 않는다. Embedding provider/dimension config 오류는 direct Ask path를 막지 않지만, `DocumentChunk` indexing과 workspace chatbot retrieval에서는 current index guard와 함께 fail-fast한다.
 
-Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다.
+Embedding request failure, invalid embedding shape, chat request failure, vector search/indexing failure는 stable RAG error code로 mapping된다. Answer and embedding provider catch blocks는 원본 error를 server log에 남기고, route는 user-facing response를 `AI_UNAVAILABLE`로 정규화한다. Trial lease가 embedding 도중 상실되면 request별 `AbortSignal`을 Ollama/OpenAI SDK의 custom `fetch`에 결합해 실제 provider HTTP transport를 중단하며, OpenAI SDK가 만든 timeout signal도 `AbortSignal.any()`로 함께 보존한다.
 
 Issue #116의 handled AI unavailable capture는 이 response contract를 바꾸지 않는다. Ask AI와 Workspace AI pre-stream preparation failure는 기존 JSON body/status를 유지하고, Workspace AI post-start stream failure는 기존 NDJSON `AI_UNAVAILABLE` event와 HTTP 200 stream contract를 유지한다. Capture 대상은 `isRagRuntimeError()`로 확인된 stable RAG runtime code뿐이며, validation errors, auth redirects, archived-thread races, client aborts는 provider unavailable Sentry event로 기록하지 않는다.
 
