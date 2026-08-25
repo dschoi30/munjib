@@ -12,6 +12,7 @@ import {
   resolveDevLoginEnabled,
   resolveGoogleAuthCredentials,
   resolveTrialLoginEnabled,
+  resolveTrialTurnstileSiteKey,
 } from "@/lib/auth/config";
 import { getCurrentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
@@ -78,6 +79,7 @@ export default async function WorkspacePage({
           isDevLoginEnabled={resolveDevLoginEnabled()}
           isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
           isTrialLoginEnabled={resolveTrialLoginEnabled()}
+          trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
           isSignupEnabled={false}
         />
       </main>

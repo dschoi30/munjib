@@ -8,6 +8,7 @@ import {
   resolveDevLoginEnabled,
   resolveDefaultRuntime,
   resolveTrialLoginEnabled,
+  resolveTrialTurnstileSiteKey,
 } from "@/lib/auth/config";
 
 type CredentialsAuthorizeForTest = (
@@ -366,6 +367,16 @@ describe("authOptions", () => {
     [{ NODE_ENV: "development" }, false],
   ])("gates the Trial entry on the anonymous capability flag", (env, expected) => {
     expect(resolveTrialLoginEnabled(env)).toBe(expected);
+  });
+
+  it("returns only a trimmed validated public Turnstile site key", () => {
+    expect(resolveTrialTurnstileSiteKey({
+      MUNJIB_TURNSTILE_SITE_KEY: " 0x4AAAAAAAtest-site-key ",
+    })).toBe("0x4AAAAAAAtest-site-key");
+    expect(resolveTrialTurnstileSiteKey({ MUNJIB_TURNSTILE_SITE_KEY: "short" })).toBeUndefined();
+    expect(resolveTrialTurnstileSiteKey({
+      MUNJIB_TURNSTILE_SITE_KEY: "invalid key with spaces",
+    })).toBeUndefined();
   });
 
   it("keeps explicit development deployment ahead of NODE_ENV for trial registration", () => {
