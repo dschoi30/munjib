@@ -55,7 +55,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
-    "next": "15.5.21",
+    "next": "15.5.24",
     "next-auth": "^4.24.15",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -75,7 +75,7 @@
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.17.0",
-    "eslint-config-next": "15.5.21",
+    "eslint-config-next": "15.5.24",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.49",
     "prisma": "^6.5.0",
@@ -90,15 +90,18 @@
     "overrides": {
       "postcss": "8.5.23",
       "uuid": "11.1.1",
-      "minimatch@10.2.5>brace-expansion": "5.0.9",
+      "minimatch@10.2.5>brace-expansion": "5.0.12",
       "@opentelemetry/core": "2.8.0",
       "@opentelemetry/propagator-jaeger": "2.9.0",
-      "fast-uri": "3.1.5",
+      "fast-uri": "3.1.8",
       "nanoid": "3.3.18",
       "protobufjs": "7.6.5",
-      "sharp": "0.35.0",
+      "sharp": "0.35.4",
       "deepmerge-ts": "8.0.0",
-      "tsx>esbuild": "0.28.1"
+      "tsx>esbuild": "0.28.1",
+      "browserslist": "4.28.7",
+      "@grpc/grpc-js": "1.14.5",
+      "baseline-browser-mapping": "2.11.0"
     }
   }
 }

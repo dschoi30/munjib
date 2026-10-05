@@ -19,6 +19,12 @@ links:
 
 # Wiki Log
 
+## 2026-10-05 - Demo PR dependency audit remediation
+
+- PR #215 CI found 17 advisories in the existing lockfile. Updated Next.js/eslint-config-next to 15.5.24 and pinned patched transitive versions for browserslist, baseline-browser-mapping, fast-uri, sharp, brace-expansion and @grpc/grpc-js.
+- Updated [[CI CD And Monitoring Workflow]] and the Next.js minimum-version contract. Evidence: GitHub Actions run 37311988012 dependency audit; Next.js release https://github.com/vercel/next.js/releases/tag/v15.5.24.
+
+
 ## 2026-10-05 - Manual demo access controls (Issue #214)
 
 - Updated [[Auth And Permissions Workflow]] and [[index|Wiki Index]] with explicit password/Google signup and anonymous Trial opt-in controls, manual closure, retained account login, and the production evidence boundary.

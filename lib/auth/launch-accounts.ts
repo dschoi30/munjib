@@ -16,4 +16,3 @@ export const launchAccountSeeds = [
   name: string;
   workspaceRole: WorkspaceRole;
 }>;
-
