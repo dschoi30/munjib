@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-10-05 - Bound public signup password hashing
+
+- PR #215 review identified unbounded signup KDF admission. `createPasswordSignup` now shares `withPasswordWorkPermit` with login, rejecting saturated work before hashing. Added the saturation regression test and updated [[Auth And Permissions Workflow]].
+
+
 ## 2026-10-05 - Demo PR dependency audit remediation
 
 - PR #215 CI found 17 advisories in the existing lockfile. Updated Next.js/eslint-config-next to 15.5.24 and pinned patched transitive versions for browserslist, baseline-browser-mapping, fast-uri, sharp, brace-expansion and @grpc/grpc-js.

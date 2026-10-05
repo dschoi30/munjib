@@ -1,3 +1,4 @@
+import { withPasswordWorkPermit } from "@/lib/auth/password-work-limit";
 import { prisma } from "@/lib/db/client";
 import { hashPassword } from "@/lib/auth/passwords";
 import { parseLanguage, type Language } from "@/lib/i18n/language";
@@ -73,7 +74,8 @@ export async function createPasswordSignup(input: {
     return { ok: false, code: "WEAK_PASSWORD" };
   }
   const language = parseLanguage(input.language) ?? "en";
-  const passwordHash = await hashPassword(input.password);
+  const password = input.password;
+  const passwordHash = await withPasswordWorkPermit(() => hashPassword(password));
 
   return prisma.$transaction(async (tx) => {
     const existingUser = await tx.user.findUnique({
