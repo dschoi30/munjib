@@ -1,3 +1,4 @@
+import { resolvePublicSignupEnabled, isReservedSignupEmail } from "@/lib/auth/signup-policy";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import type { Adapter } from "next-auth/adapters";
 import type { NextAuthOptions } from "next-auth";
@@ -189,8 +190,8 @@ export function resolveDefaultRuntime(
     canonicalOrigin: readProcessEnv("NEXTAUTH_URL", env)?.trim() ?? "",
     secureCookies: resolveAuthCookieSecure(env),
     developmentLoginEnabled: resolveDevLoginEnabled(env),
-    passwordSignupEnabled: false,
-    oauthSignupEnabled: false,
+    passwordSignupEnabled: resolvePublicSignupEnabled(env),
+    oauthSignupEnabled: resolvePublicSignupEnabled(env),
   };
 }
 
@@ -257,7 +258,7 @@ export function buildAuthOptions(
   downstreamHooks: AuthDownstreamHooks = authDownstreamHooks,
 ): NextAuthOptions {
   const baseAdapter = PrismaAdapter(prisma) as Adapter;
-  const guardedCandidateAdapter = closedSignupAdapter(baseAdapter, downstreamHooks);
+  const guardedCandidateAdapter = closedSignupAdapter(baseAdapter, downstreamHooks, runtime.oauthSignupEnabled);
   const adapter = minimalGooglePersistenceAdapter(guardedCandidateAdapter);
 
   const providers = [
@@ -335,6 +336,8 @@ export function buildAuthOptions(
           return true;
         }
         if (!(await isGoogleProviderAccountUnclaimed(projected.account))) return false;
+        if (runtime.oauthSignupEnabled && !isReservedSignupEmail(projected.profile.email) && projected.profile.email_verified === true &&
+            typeof projected.profile.email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(projected.profile.email)) return true;
         return downstreamHooks.authorizeCandidateGoogle({
           guardedIdentity,
           account: projected.account,

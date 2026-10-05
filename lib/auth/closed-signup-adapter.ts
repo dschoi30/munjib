@@ -1,4 +1,5 @@
-import type { Adapter } from "next-auth/adapters";
+import { isReservedSignupEmail } from "@/lib/auth/signup-policy";
+import type { Adapter, AdapterAccount } from "next-auth/adapters";
 import type { AuthDownstreamHooks } from "@/lib/auth/downstream/contract";
 import { minimalGoogleAccountData } from "@/lib/auth/minimal-google-account";
 
@@ -12,7 +13,7 @@ function closedError(): Error {
 
 /**
  * Guard access-increasing adapter methods before they reach the persistence
- * delegate. Candidate hooks are intentionally closed in Leaf 1.
+ * delegate. Explicit public signup permits the minimal outer adapter to persist.
  */
 export function closedSignupAdapter(
   delegate: Adapter,
@@ -20,6 +21,7 @@ export function closedSignupAdapter(
     AuthDownstreamHooks,
     "createCandidateUser" | "linkCandidateAccount"
   >,
+  publicSignupEnabled = false,
 ): Adapter {
   return {
     getUser: delegate.getUser,
@@ -35,6 +37,8 @@ export function closedSignupAdapter(
     createVerificationToken: delegate.createVerificationToken,
     useVerificationToken: delegate.useVerificationToken,
     async createUser(user: AdapterCreateUserInput) {
+      if (publicSignupEnabled && isReservedSignupEmail(user.email)) throw closedError();
+      if (publicSignupEnabled && delegate.createUser) return delegate.createUser({ ...user, name: "Munjib User" } as never);
       const handled = await candidatePersistence.createCandidateUser({
         email: typeof user.email === "string" ? user.email : null,
       });
@@ -50,6 +54,7 @@ export function closedSignupAdapter(
         // payload validation can influence persistence behavior.
         throw closedError();
       }
+      if (publicSignupEnabled && delegate.linkAccount) return (await delegate.linkAccount(minimal)) as AdapterAccount | null | undefined;
       const handled = await candidatePersistence.linkCandidateAccount(minimal);
       if (!handled) throw closedError();
       return handled.result;

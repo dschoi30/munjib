@@ -1,3 +1,4 @@
+import { resolvePublicSignupEnabled } from "@/lib/auth/signup-policy";
 import { createHmac } from "node:crypto";
 import { parseDeploymentEnvironment } from "@/lib/runtime/deployment-env";
 import {
@@ -36,8 +37,8 @@ export type AuthRuntimeConfig = {
   canonicalOrigin: string;
   secureCookies: boolean;
   developmentLoginEnabled: boolean;
-  passwordSignupEnabled: false;
-  oauthSignupEnabled: false;
+  passwordSignupEnabled: boolean;
+  oauthSignupEnabled: boolean;
 };
 
 export class AuthRuntimeConfigurationError extends Error {
@@ -232,8 +233,8 @@ export function inspectAuthRuntimeEnv(
       secureCookies,
       developmentLoginEnabled:
         deploymentEnvironment === "development" && requestedDevelopmentLogin,
-      passwordSignupEnabled: false,
-      oauthSignupEnabled: false,
+      passwordSignupEnabled: resolvePublicSignupEnabled(env),
+      oauthSignupEnabled: resolvePublicSignupEnabled(env),
     },
     errors: Array.from(new Set(errors)),
   };

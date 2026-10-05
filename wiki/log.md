@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-20
+updated: 2026-10-05
 source_count: 366
 tags:
   - log
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-10-05 - Manual demo access controls (Issue #214)
+
+- Updated [[Auth And Permissions Workflow]] and [[index|Wiki Index]] with explicit password/Google signup and anonymous Trial opt-in controls, manual closure, retained account login, and the production evidence boundary.
+- Sources: `lib/auth/signup-policy.ts`, `app/api/auth/signup/route.ts`, `lib/auth/config.ts`, `docker-compose.trial.yml`, `scripts/deploy/munjib-deploy.sh`, `docs/runbooks/demo-public-access.md`.
+- Trial UI verification fixtures now use future reset times instead of expired August dates.
+
 
 ## 2026-08-25T18:40:00+09:00 - Trial Turnstile escalation UI
 

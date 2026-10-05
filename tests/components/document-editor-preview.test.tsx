@@ -415,7 +415,7 @@ describe("DocumentEditor heading preview folding", () => {
       new Response(
         JSON.stringify({
           code: "TRIAL_AI_DAILY_LIMIT_REACHED",
-          resetsAt: "2026-08-25T15:00:00.000Z",
+          resetsAt: "2099-08-25T15:00:00.000Z",
         }),
         { status: 429, headers: { "content-type": "application/json" } },
       ),

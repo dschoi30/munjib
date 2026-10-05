@@ -40,7 +40,7 @@ describe("production auth runtime oracle", () => {
     const options = buildAuthOptions(productionRuntime);
     expect(options.providers.map((provider) => provider.id)).toEqual(["password"]);
 
-    const response = await signupPost();
+    const response = await signupPost(new Request("https://munjib.example/api/auth/signup", { method: "POST" }));
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({ ok: false, code: "SIGNUP_NOT_ALLOWED" });
   });

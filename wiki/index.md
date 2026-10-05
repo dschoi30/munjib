@@ -39,6 +39,8 @@ links:
 
 이 페이지는 broad source search 전에 읽는 munjib repository wiki의 시작점이다. 먼저 관련 wiki page를 읽고, wiki가 비어 있거나 stale하거나 code-level verification이 필요할 때 source file search로 내려간다.
 
+- Issue #214: public email/Google signup and anonymous Trial have manual opt-in deployment controls with no expiry. See [[Auth And Permissions Workflow]] and `docs/runbooks/demo-public-access.md`; production activation requires host configuration and live verification.
+
 ## 제품과 근거
 
 - [[Munjib]] - Obsidian형 기업 문서 위키로서의 제품 정의와 최신 구현 범위.
