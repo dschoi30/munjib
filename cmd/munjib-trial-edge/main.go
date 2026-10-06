@@ -1,0 +1,103 @@
+package main
+
+import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
+	"fmt"
+	"log"
+	"net"
+	"net/http"
+	"net/netip"
+	"net/url"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+var methodPattern = regexp.MustCompile(`^[A-Z]{3,10}$`)
+var pathPattern = regexp.MustCompile(`^(/api/trial/entitlement|/trial/workspaces/[^/]+|/api/workspaces/[^/]+/(assistant/messages|documents/[^/]+/ask))$`)
+
+func proof(key, timestamp, method, uri, ip string) (string, error) {
+	addr, err := netip.ParseAddr(ip)
+	if err != nil || addr.Zone() != "" || !methodPattern.MatchString(method) || !strings.HasPrefix(uri, "/") {
+		return "", fmt.Errorf("invalid authority")
+	}
+	u, err := url.ParseRequestURI(uri)
+	if err != nil {
+		return "", fmt.Errorf("invalid URI")
+	}
+	path := u.EscapedPath()
+	if len(path) > 2048 || !pathPattern.MatchString(path) {
+		return "", fmt.Errorf("invalid path")
+	}
+	normalized := "v4:" + addr.String()
+	if addr.Is6() {
+		b := addr.As16()
+		normalized = fmt.Sprintf("v6:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5], b[6], b[7], b[8], b[9], b[10], b[11], b[12], b[13], b[14], b[15])
+	}
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write([]byte("munjib/trial-network-evidence/v1\x00" + timestamp + "\x00" + method + "\x00" + path + "\x00" + normalized))
+	return base64.RawURLEncoding.EncodeToString(mac.Sum(nil)), nil
+}
+
+func handler(key string, now func() time.Time) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "private, no-store")
+		peer, _, err := net.SplitHostPort(r.RemoteAddr)
+		peerIP := net.ParseIP(peer)
+		if err != nil || peerIP == nil || !peerIP.IsLoopback() {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+		if r.Method != "GET" || r.URL.Path != "/proof" || r.URL.RawQuery != "" {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		for _, name := range []string{"X-Munjib-Edge-Client-IP", "X-Forwarded-Method", "X-Forwarded-Uri"} {
+			if len(r.Header.Values(name)) != 1 {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}
+		ip := r.Header.Get("X-Munjib-Edge-Client-IP")
+		timestamp := strconv.FormatInt(now().Unix(), 10)
+		signature, err := proof(key, timestamp, r.Header.Get("X-Forwarded-Method"), r.Header.Get("X-Forwarded-Uri"), ip)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("X-Munjib-Trusted-Client-IP", ip)
+		w.Header().Set("X-Munjib-Trusted-Network-Timestamp", timestamp)
+		w.Header().Set("X-Munjib-Trusted-Network-Proof", signature)
+		w.WriteHeader(http.StatusOK)
+	})
+}
+
+func loadKey(path string) (string, error) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0400 || info.Size() < 32 || info.Size() > 256 {
+		return "", fmt.Errorf("unsafe secret file")
+	}
+	stat, ok := info.Sys().(*syscall.Stat_t)
+	if !ok || int(stat.Uid) != os.Geteuid() {
+		return "", fmt.Errorf("invalid secret owner")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || len(data) < 32 || len(data) > 256 || strings.TrimSpace(string(data)) != string(data) {
+		return "", fmt.Errorf("invalid secret bytes")
+	}
+	return string(data), nil
+}
+
+func main() {
+	key, err := loadKey("/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret")
+	if err != nil {
+		log.Fatal("Trial edge secret unavailable or unsafe")
+	}
+	server := &http.Server{Addr: "127.0.0.1:9187", Handler: handler(key, time.Now), ReadHeaderTimeout: 2 * time.Second, ReadTimeout: 2 * time.Second, WriteTimeout: 2 * time.Second, IdleTimeout: 5 * time.Second, MaxHeaderBytes: 4096}
+	log.Fatal(server.ListenAndServe())
+}
