@@ -61,6 +61,10 @@ export function buildSafeMarkdownComponents({
           const attachmentId = /^\/api\/(?:trial\/)?attachments\/([A-Za-z0-9_-]+)$/i.exec(decodedPath)?.[1];
           if (!attachmentId || !allowedAttachmentIds.has(attachmentId)) return <span>{children}</span>;
           internalHref = `/api/trial/attachments/${attachmentId}${parsed.search}${parsed.hash}`;
+        } else if (/^\/api(?:\/|$)/i.test(decodedPath)) {
+          return <span>{children}</span>;
+        } else if (/^\/workspaces(?:\/|$)/i.test(decodedPath)) {
+          internalHref = `${decodedPath.replace(/^\/workspaces/i, "/trial/workspaces")}${parsed.search}${parsed.hash}`;
         }
       }
       return (

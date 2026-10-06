@@ -178,3 +178,9 @@ it("normalizes encoded Trial attachment paths before checking the allowed set", 
  expect(html).not.toContain('href="/api/attachments/');
  expect(html).not.toContain('href="/API/ATTACHMENTS/');
 });
+
+it.each(["/workspaces/demo?document=doc-1#heading", "/%77orkspaces/demo?document=doc-1#heading", "/WORKSPACES/demo?document=doc-1#heading"])("keeps explicit workspace links inside Trial: %s", (href) => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content={`[document](${href}) [private API](/api/workspaces/private/assistant/thread)`}/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/trial/workspaces/demo?document=doc-1#heading"');
+ expect(html).not.toContain('href="/api/workspaces/');
+});

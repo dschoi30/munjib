@@ -4029,3 +4029,4 @@ links:
 - Trial attachment responses sandbox direct document navigation so stored HTML/SVG cannot execute scripts in the application origin.
 - Live Google-plus-Trial browser verification exposed authenticated-user precedence on AI calls (404 for the isolated snapshot). Added an explicit narrower-principal hint, fail-closed resolution, and coexistence regression tests; normal signed-in AI precedence remains unchanged.
 - PR #220 review tightened folder projection to readable branches, normalized suffixed/encoded attachment links before allowed-ID checks, and hid ineffective Trial workspace model settings. Regression tests cover each boundary; the protected Markdown renderer hash was updated for this reviewed change.
+- Follow-up PR review keeps explicit/encoded/case-variant workspace Markdown links in Trial routes and rejects other internal API links; forged/cross-workspace document IDs still fail at the exact-snapshot viewer boundary.
