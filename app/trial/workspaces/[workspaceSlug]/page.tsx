@@ -58,7 +58,7 @@ export default async function TrialWorkspacePage({ params, searchParams }: {
     documents:docs.map(({id,title,path,contentMarkdown}) => ({id,title,path,contentMarkdown})),links:[...workspace.links],
     tags:docs.flatMap(d => d.tagNames.map(name => ({documentId:d.id,tag:{name,normalizedName:name}}))),
   }) : {nodes:[],links:[]};
-  return <WorkspaceModeProvider mode="anonymous-trial-readonly">
+  return <WorkspaceModeProvider mode="anonymous-trial-readonly" applicationOrigin={process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).origin : undefined}>
     <AppShell workspaceSlug={workspaceSlug}
       left={<DocumentList workspaceSlug={workspaceSlug} workspaceName={workspace.name}
         currentUser={{name:"Trial",email:""}} readableWorkspaces={[{id:workspace.id,name:workspace.name,slug:workspace.slug,role:"VIEWER"}]}

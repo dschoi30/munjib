@@ -12,6 +12,7 @@ import {
 type BuildSafeMarkdownComponentsInput = {
   allowedAttachmentIds: ReadonlySet<string>;
   trialAttachments?: boolean;
+  applicationOrigin?: string;
   components?: Components;
   onExternalMediaRequest: (request: ExternalMediaRequest) => void;
 };
@@ -19,6 +20,7 @@ type BuildSafeMarkdownComponentsInput = {
 export function buildSafeMarkdownComponents({
   allowedAttachmentIds,
   trialAttachments = false,
+  applicationOrigin,
   components = {},
   onExternalMediaRequest,
 }: BuildSafeMarkdownComponentsInput): Components {
@@ -29,7 +31,9 @@ export function buildSafeMarkdownComponents({
       if (!safeHref) return <span>{children}</span>;
 
       const external = safeHref.startsWith("http://") || safeHref.startsWith("https://");
-      if (external) {
+      const applicationUrl = external && trialAttachments && applicationOrigin && new URL(safeHref).origin === applicationOrigin
+        ? new URL(safeHref) : null;
+      if (external && !applicationUrl) {
         const originLabel = new URL(safeHref).origin;
         const label =
           extractTextContent(children).trim() || extractImageAlt(node) || "External destination";
@@ -51,7 +55,7 @@ export function buildSafeMarkdownComponents({
         );
       }
 
-      let internalHref = href?.startsWith("?") ? href : safeHref;
+      let internalHref = applicationUrl ? `${applicationUrl.pathname}${applicationUrl.search}${applicationUrl.hash}` : href?.startsWith("?") ? href : safeHref;
       if (trialAttachments) {
         const parsed = new URL(internalHref ?? "", "https://munjib-relative.invalid");
         let decodedPath: string;

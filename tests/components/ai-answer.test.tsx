@@ -184,3 +184,10 @@ it.each(["/workspaces/demo?document=doc-1#heading", "/%77orkspaces/demo?document
  expect(html).toContain('href="/trial/workspaces/demo?document=doc-1#heading"');
  expect(html).not.toContain('href="/api/workspaces/');
 });
+
+it("scopes same-origin absolute workspace links while keeping outside destinations explicit", () => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly" applicationOrigin="https://munjib.example"><AiAnswer content="[local](https://munjib.example/workspaces/demo?document=doc-1) [outside](https://outside.example/workspaces/demo) [private](https://munjib.example/api/auth/session)"/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/trial/workspaces/demo?document=doc-1"');
+ expect(html).toContain('outside · https://outside.example');
+ expect(html).not.toContain('https://munjib.example');
+});
