@@ -247,9 +247,10 @@ export async function ensureCurrentUserWorkspaceAndRedirect(input: {
 }
 
 function normalizeEmail(value: unknown) {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string" || /[\u0000-\u001f\u007f]/.test(value)) return null;
   const email = value.trim().toLowerCase();
-  return email.includes("@") ? email : null;
+  if (email.length > 320) return null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
 function deriveNameFromEmail(email: string) {
