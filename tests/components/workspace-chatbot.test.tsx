@@ -1140,7 +1140,7 @@ describe("WorkspaceChatbot", () => {
         return ndjsonResponse([
           {
             type: "start",
-            trialAi: { remaining: 3, resetsAt: "2026-08-25T15:00:00.000Z" },
+            trialAi: { remaining: 3, resetsAt: "2099-08-25T15:00:00.000Z" },
           },
           {
             type: "done",
@@ -1168,7 +1168,7 @@ describe("WorkspaceChatbot", () => {
         return jsonResponse({
           answer: "Document answer",
           citations: [],
-          trialAi: { remaining: 1, resetsAt: "2026-08-25T15:00:00.000Z" },
+          trialAi: { remaining: 1, resetsAt: "2099-08-25T15:00:00.000Z" },
         });
       }
       throw new Error(`Unexpected fetch ${url}`);
@@ -1194,7 +1194,7 @@ describe("WorkspaceChatbot", () => {
       if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
       if (url.endsWith("/assistant/messages")) {
         return jsonResponse(
-          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2099-08-25T15:00:00.000Z" },
           { status: 429 },
         );
       }
@@ -1239,7 +1239,7 @@ describe("WorkspaceChatbot", () => {
       if (url.endsWith("/assistant/thread")) return jsonResponse({ messages: [] });
       if (url.endsWith("/assistant/messages")) {
         return jsonResponse(
-          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2026-08-25T15:00:00.000Z" },
+          { code: "TRIAL_AI_DAILY_LIMIT_REACHED", resetsAt: "2099-08-25T15:00:00.000Z" },
           { status: 429 },
         );
       }

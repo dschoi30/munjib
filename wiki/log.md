@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-07-20
+updated: 2026-10-05
 source_count: 366
 tags:
   - log
@@ -18,6 +18,34 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-10-06 - Follow-up production dependency audit
+
+- CI run 37483087997 reported a newly published source-map-js advisory. Pinned source-map-js 1.2.2 (reported patched floor) before demo deployment. Source: production dependency audit in that CI run.
+
+
+## 2026-10-06 - Unicode signup password minimum
+
+- PR #215 follow-up review: public signup now counts Unicode code points for its eight-character password minimum rather than UTF-16 code units. A regression test rejects four astral emoji before hashing. Source: `lib/auth/provisioning.ts`, `tests/auth/signup-work-limit.test.ts`.
+
+
+## 2026-10-05 - Bound public signup password hashing
+
+- PR #215 review identified unbounded signup KDF admission. `createPasswordSignup` now shares `withPasswordWorkPermit` with login, rejecting saturated work before hashing. Added the saturation regression test and updated [[Auth And Permissions Workflow]].
+
+
+## 2026-10-05 - Demo PR dependency audit remediation
+
+- PR #215 CI found 17 advisories in the existing lockfile. Updated Next.js/eslint-config-next to 15.5.24 and pinned patched transitive versions for browserslist, baseline-browser-mapping, fast-uri, sharp, brace-expansion and @grpc/grpc-js.
+- Updated [[CI CD And Monitoring Workflow]] and the Next.js minimum-version contract. Evidence: GitHub Actions run 37311988012 dependency audit; Next.js release https://github.com/vercel/next.js/releases/tag/v15.5.24.
+
+
+## 2026-10-05 - Manual demo access controls (Issue #214)
+
+- Updated [[Auth And Permissions Workflow]] and [[index|Wiki Index]] with explicit password/Google signup and anonymous Trial opt-in controls, manual closure, retained account login, and the production evidence boundary.
+- Sources: `lib/auth/signup-policy.ts`, `app/api/auth/signup/route.ts`, `lib/auth/config.ts`, `docker-compose.trial.yml`, `scripts/deploy/munjib-deploy.sh`, `docs/runbooks/demo-public-access.md`.
+- Trial UI verification fixtures now use future reset times instead of expired August dates.
+
 
 ## 2026-08-25T18:40:00+09:00 - Trial Turnstile escalation UI
 

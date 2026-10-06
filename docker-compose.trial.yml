@@ -1,0 +1,39 @@
+services:
+  web:
+    environment:
+      MUNJIB_ANONYMOUS_TRIAL_ENABLED: "${MUNJIB_ANONYMOUS_TRIAL_ENABLED:-false}"
+      MUNJIB_TRIAL_DEMO_WORKSPACE_ID: "${MUNJIB_TRIAL_DEMO_WORKSPACE_ID:?demo workspace ID required}"
+      MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG: "${MUNJIB_TRIAL_DEMO_WORKSPACE_SLUG:?demo workspace slug required}"
+      MUNJIB_TRIAL_AI_GLOBAL_DAILY_LIMIT: "${MUNJIB_TRIAL_AI_GLOBAL_DAILY_LIMIT:?trial global daily limit required}"
+      MUNJIB_TRIAL_TRUSTED_NETWORK_HEADER: "x-munjib-trusted-client-ip"
+      MUNJIB_TURNSTILE_HOSTNAME: "${MUNJIB_TURNSTILE_HOSTNAME:?canonical hostname required}"
+      MUNJIB_TURNSTILE_ACTION: "trial_entitlement"
+      MUNJIB_TURNSTILE_SITE_KEY: "${MUNJIB_TURNSTILE_SITE_KEY:?Turnstile public site key required}"
+      MUNJIB_TRIAL_VISITOR_SIGNING_KEY_FILE: /run/secrets/munjib_trial_visitor_signing_key
+      MUNJIB_TRIAL_VISITOR_DIGEST_KEY_FILE: /run/secrets/munjib_trial_visitor_digest_key
+      MUNJIB_TRIAL_NETWORK_BUCKET_KEY_FILE: /run/secrets/munjib_trial_network_bucket_key
+      MUNJIB_TRIAL_EDGE_PROOF_SECRET_FILE: /run/secrets/munjib_trial_edge_proof_secret
+      MUNJIB_TURNSTILE_SECRET_FILE: /run/secrets/munjib_turnstile_secret
+    secrets:
+      - source: munjib_trial_visitor_signing_key
+        target: munjib_trial_visitor_signing_key
+      - source: munjib_trial_visitor_digest_key
+        target: munjib_trial_visitor_digest_key
+      - source: munjib_trial_network_bucket_key
+        target: munjib_trial_network_bucket_key
+      - source: munjib_trial_edge_proof_secret
+        target: munjib_trial_edge_proof_secret
+      - source: munjib_turnstile_secret
+        target: munjib_turnstile_secret
+
+secrets:
+  munjib_trial_visitor_signing_key:
+    file: /etc/munjib/secrets/trial-visitor-signing-key
+  munjib_trial_visitor_digest_key:
+    file: /etc/munjib/secrets/trial-visitor-digest-key
+  munjib_trial_network_bucket_key:
+    file: /etc/munjib/secrets/trial-network-bucket-key
+  munjib_trial_edge_proof_secret:
+    file: /etc/munjib/secrets/trial-edge-proof-secret
+  munjib_turnstile_secret:
+    file: /etc/munjib/secrets/turnstile-secret

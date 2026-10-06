@@ -1,3 +1,4 @@
+import { resolvePublicSignupEnabled } from "@/lib/auth/signup-policy";
 import { LoginForm } from "@/app/login/login-form";
 import {
   resolveDevLoginEnabled,
@@ -27,7 +28,7 @@ export default async function HomePage() {
         isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
         isTrialLoginEnabled={resolveTrialLoginEnabled()}
         trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
-        isSignupEnabled={false}
+        isSignupEnabled={resolvePublicSignupEnabled()}
       />
     </main>
   );

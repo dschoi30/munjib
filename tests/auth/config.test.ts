@@ -399,6 +399,15 @@ describe("authOptions", () => {
     expect(result).toBe(false);
   });
 
+  it("accepts a verified new Google identity only when public signup is enabled", async () => {
+    prismaMock.account.findUnique.mockResolvedValue(null);
+    const runtime = { ...resolveDefaultRuntime({ NODE_ENV: "development" }), oauthSignupEnabled: true };
+    const options = buildAuthOptions(runtime);
+    const input = { account: { provider: "google", providerAccountId: "new-google-subject" }, profile: { email: "new@example.com", email_verified: true } };
+    expect(await options.callbacks!.signIn!(input as never)).toBe(true);
+    expect(await options.callbacks!.signIn!({ ...input, profile: { email: "new@example.com", email_verified: false } } as never)).toBe(false);
+  });
+
   it("denies a verified but unlinked Google identity without candidate signup", async () => {
     prismaMock.account.findUnique.mockResolvedValue(null);
     const result = await authOptions.callbacks?.signIn?.({
