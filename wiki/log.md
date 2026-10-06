@@ -4003,3 +4003,6 @@ links:
 - Nine rejection cases cover duplicate at signs, internal whitespace, missing local/domain components, missing domain dot, control characters and the login length limit; positive cases preserve plus-addressing and trimmed mixed-case input.
 - Production CI stopped on the newly published sharp advisory GHSA-wq5f-xc86-pv6w; pin sharp 0.35.5. Public signup host flag remains disabled until the corrected release is verified.
 - Source evidence: `lib/auth/provisioning.ts`, `tests/auth/signup-work-limit.test.ts`, production CI run 37484865738.
+
+- Follow-up review synchronized current dependency versions and metadata across [[Local Development Workflow]], [[CI CD And Monitoring Workflow]] and [[index]]. Historical log entries retain their original version evidence.
+- Google basic identity scope exception was confirmed against official documentation and the installed provider defaults; console remains Testing and a live callback is still unverified.
