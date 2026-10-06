@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-10-06 - Follow-up production dependency audit
+
+- CI run 37483087997 reported a newly published source-map-js advisory. Pinned source-map-js 1.2.2 (reported patched floor) before demo deployment. Source: production dependency audit in that CI run.
+
+
 ## 2026-10-06 - Unicode signup password minimum
 
 - PR #215 follow-up review: public signup now counts Unicode code points for its eight-character password minimum rather than UTF-16 code units. A regression test rejects four astral emoji before hashing. Source: `lib/auth/provisioning.ts`, `tests/auth/signup-work-limit.test.ts`.

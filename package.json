@@ -101,7 +101,8 @@
       "tsx>esbuild": "0.28.1",
       "browserslist": "4.28.7",
       "@grpc/grpc-js": "1.14.5",
-      "baseline-browser-mapping": "2.11.0"
+      "baseline-browser-mapping": "2.11.0",
+      "source-map-js": "1.2.2"
     }
   }
 }
