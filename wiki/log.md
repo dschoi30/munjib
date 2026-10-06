@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-10-06 - Unicode signup password minimum
+
+- PR #215 follow-up review: public signup now counts Unicode code points for its eight-character password minimum rather than UTF-16 code units. A regression test rejects four astral emoji before hashing. Source: `lib/auth/provisioning.ts`, `tests/auth/signup-work-limit.test.ts`.
+
+
 ## 2026-10-05 - Bound public signup password hashing
 
 - PR #215 review identified unbounded signup KDF admission. `createPasswordSignup` now shares `withPasswordWorkPermit` with login, rejecting saturated work before hashing. Added the saturation regression test and updated [[Auth And Permissions Workflow]].

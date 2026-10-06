@@ -70,7 +70,7 @@ export async function createPasswordSignup(input: {
 }): Promise<SignupResult> {
   const email = normalizeEmail(input.email);
   if (!email) return { ok: false, code: "INVALID_EMAIL" };
-  if (typeof input.password !== "string" || input.password.length < minPasswordLength) {
+  if (typeof input.password !== "string" || Array.from(input.password).length < minPasswordLength) {
     return { ok: false, code: "WEAK_PASSWORD" };
   }
   const language = parseLanguage(input.language) ?? "en";

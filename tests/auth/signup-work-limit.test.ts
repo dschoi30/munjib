@@ -16,3 +16,9 @@ it("rejects signup before hashing when the shared password work queue is saturat
     await Promise.all(work);
   }
 });
+
+it("counts Unicode code points instead of UTF-16 units for the minimum password length", async () => {
+  hash.mockClear();
+  expect(await createPasswordSignup({ email: "new@example.com", password: "😀😀😀😀", language: "en" })).toEqual({ ok: false, code: "WEAK_PASSWORD" });
+  expect(hash).not.toHaveBeenCalled();
+});
