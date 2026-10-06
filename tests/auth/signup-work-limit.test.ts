@@ -24,7 +24,7 @@ it("counts Unicode code points instead of UTF-16 units for the minimum password 
   expect(hash).not.toHaveBeenCalled();
 });
 
-it.each(["a@@b", "a b@example.com", "a@example", "@example.com", "a@", "a@example.com\nother@example.com"])("rejects malformed email %j before hashing or database work", async (email) => {
+it.each(["a@@b", "a b@example.com", "a@example", "@example.com", "a@", "a@example.com\nother@example.com", "user@example.com\u007f", "user@example.com\u0000", "x".repeat(309) + "@example.com"])("rejects malformed email %j before hashing or database work", async (email) => {
   hash.mockClear();
   vi.mocked(prisma.$transaction).mockClear();
   expect(await createPasswordSignup({ email, password: "test-password", language: "en" })).toEqual({ ok: false, code: "INVALID_EMAIL" });
