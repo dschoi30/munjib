@@ -15,7 +15,7 @@ import {
 const root = resolve(__dirname, "../..");
 const ownersPath = resolve(root, "deploy/security/protected-artifact-owners.json");
 const expectedCoreHashes = {
-  "components/markdown/safe-media.tsx": "8a4617e61d70ef19860cf7e83e19160b439e98a0bc13747cd8c49e479b3ae6ba",
+  "components/markdown/safe-media.tsx": "02f5df988adee2274717d2cd396b0750b288094e7d599777b2dbb9fdd71d771e",
   "components/markdown/external-media-interstitial.tsx": "c51b365c0b6ba09ae9c7e98c7ebc6d78fef041c21e68b162a19463e2ea48f663",
 } as const;
 

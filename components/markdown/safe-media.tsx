@@ -11,12 +11,16 @@ import {
 
 type BuildSafeMarkdownComponentsInput = {
   allowedAttachmentIds: ReadonlySet<string>;
+  trialAttachments?: boolean;
+  applicationOrigin?: string;
   components?: Components;
   onExternalMediaRequest: (request: ExternalMediaRequest) => void;
 };
 
 export function buildSafeMarkdownComponents({
   allowedAttachmentIds,
+  trialAttachments = false,
+  applicationOrigin,
   components = {},
   onExternalMediaRequest,
 }: BuildSafeMarkdownComponentsInput): Components {
@@ -27,7 +31,9 @@ export function buildSafeMarkdownComponents({
       if (!safeHref) return <span>{children}</span>;
 
       const external = safeHref.startsWith("http://") || safeHref.startsWith("https://");
-      if (external) {
+      const applicationUrl = external && trialAttachments && applicationOrigin && new URL(safeHref).origin === applicationOrigin
+        ? new URL(safeHref) : null;
+      if (external && !applicationUrl) {
         const originLabel = new URL(safeHref).origin;
         const label =
           extractTextContent(children).trim() || extractImageAlt(node) || "External destination";
@@ -49,7 +55,22 @@ export function buildSafeMarkdownComponents({
         );
       }
 
-      const internalHref = href?.startsWith("?") ? href : safeHref;
+      let internalHref = applicationUrl ? `${applicationUrl.pathname}${applicationUrl.search}${applicationUrl.hash}` : href?.startsWith("?") ? href : safeHref;
+      if (trialAttachments) {
+        const parsed = new URL(internalHref ?? "", "https://munjib-relative.invalid");
+        let decodedPath: string;
+        try { decodedPath = decodeURIComponent(parsed.pathname); }
+        catch { return <span>{children}</span>; }
+        if (/^\/api\/(?:trial\/)?attachments(?:\/|$)/i.test(decodedPath)) {
+          const attachmentId = /^\/api\/(?:trial\/)?attachments\/([A-Za-z0-9_-]+)$/i.exec(decodedPath)?.[1];
+          if (!attachmentId || !allowedAttachmentIds.has(attachmentId)) return <span>{children}</span>;
+          internalHref = `/api/trial/attachments/${attachmentId}${parsed.search}${parsed.hash}`;
+        } else if (/^\/api(?:\/|$)/i.test(decodedPath)) {
+          return <span>{children}</span>;
+        } else if (/^\/workspaces(?:\/|$)/i.test(decodedPath)) {
+          internalHref = `${decodedPath.replace(/^\/workspaces/i, "/trial/workspaces")}${parsed.search}${parsed.hash}`;
+        }
+      }
       return (
         <a
           {...props}
@@ -67,7 +88,7 @@ export function buildSafeMarkdownComponents({
       );
 
       if (decision.kind === "attachment") {
-        return <img {...props} src={decision.src} alt={alt ?? ""} />;
+        return <img {...props} src={trialAttachments ? `/api/trial/attachments/${decision.attachmentId}` : decision.src} alt={alt ?? ""} />;
       }
 
       if (decision.kind === "external") {

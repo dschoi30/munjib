@@ -137,7 +137,10 @@ export function AiAssistantPanel({
         `/api/workspaces/${workspaceSlug}/documents/${documentId}/ask`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+          "Content-Type": "application/json",
+          ...(mode === "anonymous-trial-readonly" ? { "X-Munjib-AI-Mode": "anonymous-trial-readonly" } : {}),
+        },
           body: JSON.stringify(requestBody),
         },
       );

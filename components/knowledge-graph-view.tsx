@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceStorageScope } from "@/lib/workspace-routes";
+
 import dynamic from "next/dynamic";
 import { ChevronDown, ChevronRight, Settings2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -125,6 +128,8 @@ export function KnowledgeGraphView({
   graph: KnowledgeGraphData;
   selectedDocumentId: string | null;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { t } = useI18n();
   const router = useRouter();
   const tagSearch = useTagSearch();
@@ -153,7 +158,7 @@ export function KnowledgeGraphView({
   );
 
   useEffect(() => {
-    const storedGraph = readStoredWorkspaceUiState(workspaceSlug).graph;
+    const storedGraph = readStoredWorkspaceUiState(storageScope).graph;
     setSettingsOpen(storedGraph?.settingsOpen ?? true);
     setFiltersOpen(storedGraph?.filtersOpen ?? true);
     setDisplayOpen(storedGraph?.displayOpen ?? false);
@@ -162,14 +167,14 @@ export function KnowledgeGraphView({
     setDisplay(storedGraph?.display ?? DEFAULT_DISPLAY_SETTINGS);
     setForces(storedGraph?.forces ?? DEFAULT_FORCE_SETTINGS);
     setSettingsHydrated(workspaceSlug);
-  }, [workspaceSlug]);
+  }, [workspaceSlug, workspaceMode, storageScope]);
 
   useEffect(() => {
     if (settingsHydrated !== workspaceSlug) {
       return;
     }
 
-    updateStoredWorkspaceUiState(workspaceSlug, () => ({
+    updateStoredWorkspaceUiState(storageScope, () => ({
       graph: {
         settingsOpen,
         filtersOpen,
@@ -383,7 +388,7 @@ export function KnowledgeGraphView({
         return;
       }
 
-      router.push(workspaceDocumentHref({ workspaceSlug, documentId: node.documentId }));
+      router.push(workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: node.documentId }));
     },
     [router, tagSearch, workspaceSlug],
   );

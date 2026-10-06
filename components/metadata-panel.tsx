@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
 import Link from "next/link";
@@ -24,6 +26,10 @@ import {
 } from "@/lib/markdown/folding";
 import { scrollToOutlineHeading } from "@/lib/outline-targets";
 
+type DisplayAttachment = Pick<Attachment, "id" | "fileName" | "mimeType" | "size">;
+type DisplayVersion = Pick<DocumentVersion, "id" | "versionNumber" | "title" | "changeSummary">;
+type DisplayAuditLog = Pick<AuditLog, "id" | "action">;
+
 type MetadataTab = "outline" | "attachments" | "versions" | "audit";
 
 type MetadataDocument = {
@@ -42,9 +48,9 @@ export function MetadataPanel({
   onNavigateToHeading,
 }: {
   document: MetadataDocument | null;
-  versions: DocumentVersion[];
-  auditLogs: AuditLog[];
-  attachments: Attachment[];
+  versions: DisplayVersion[];
+  auditLogs: DisplayAuditLog[];
+  attachments: DisplayAttachment[];
   canWrite: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
   onTogglePanel?: () => void;
@@ -243,7 +249,8 @@ function MetadataTabButton({
   );
 }
 
-function AttachmentsList({ attachments }: { attachments: Attachment[] }) {
+function AttachmentsList({ attachments }: { attachments: DisplayAttachment[] }) {
+  const workspaceMode = useWorkspaceMode();
   const { t } = useI18n();
 
   return (
@@ -253,7 +260,7 @@ function AttachmentsList({ attachments }: { attachments: Attachment[] }) {
         {attachments.length === 0 ? <li>{t("metadata.noAttachments")}</li> : null}
         {attachments.map((attachment) => (
           <li key={attachment.id} className="rounded border border-border px-2 py-2">
-            <Link className="font-medium underline" href={`/api/attachments/${attachment.id}`}>
+            <Link className="font-medium underline" href={`${workspaceMode === "anonymous-trial-readonly" ? "/api/trial" : "/api"}/attachments/${attachment.id}`}>
               {attachment.fileName}
             </Link>
             <p className="mt-1 text-xs text-slate-500">
@@ -271,7 +278,7 @@ function VersionsList({
   canWrite,
   restoreVersionAction,
 }: {
-  versions: DocumentVersion[];
+  versions: DisplayVersion[];
   canWrite: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
 }) {
@@ -304,7 +311,7 @@ function VersionsList({
   );
 }
 
-function AuditLogList({ auditLogs }: { auditLogs: AuditLog[] }) {
+function AuditLogList({ auditLogs }: { auditLogs: DisplayAuditLog[] }) {
   const { t } = useI18n();
 
   return (

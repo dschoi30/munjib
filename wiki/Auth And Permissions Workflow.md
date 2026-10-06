@@ -668,3 +668,15 @@ Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI a
 The loopback-only Go signer in `cmd/munjib-trial-edge` produces the existing signed-network proof. Caddy removes visitor-supplied proof headers and overwrites peer IP and original method/URI before `forward_auth`; the signer excludes the query and uses the same IPv4/IPv6 normalization as the app. The fixed systemd credential supplies the existing edge key under the dedicated service DynamicUser. See `docs/runbooks/demo-public-access.md` for validation and rollback; code presence is not evidence of live Trial activation.
 
 Issue #217 also supplies a 00:40 KST retention timer using a dedicated four-table SELECT/DELETE role. The timer shares the deployment lock and requires dry-run → execute → dry-run validation before enablement. See `docs/runbooks/anonymous-trial-ai-retention.md`.
+
+## Read-only full workspace Trial (Issue #219)
+
+Anonymous Trial now composes the ordinary workspace shell for search, folders, graph, wiki links/backlinks, tabs, metadata and attachments. All write controls are disabled and every supplied Server Action rejects with `TRIAL_READ_ONLY`, including when a Google owner session coexists. A mode context keeps links in Trial routes and browser state in a separate `trial:<slug>` namespace. Ask/Workspace AI retain anonymous quotas and ephemeral history.
+
+Viewer queries expose only active unprotected documents from the exact configured snapshot. Graph and backlink endpoints remain inside that readable set. Attachment downloads independently validate the fresh anonymous actor, document/workspace state, explicit permissions and storage containment; a dedicated signed edge route returns private/no-store bytes. Minimal display DTOs exclude source storage keys and actor identifiers. See `lib/workspaces/trial-viewer.ts`, `lib/workspaces/trial-attachments.ts`, `app/trial/workspaces/[workspaceSlug]/page.tsx`, and `docs/runbooks/demo-public-access.md`.
+
+The operator selected all Company Handbook data for a separate snapshot, excluding automatic test workspaces. Archived rows remain archived and are not displayed. Copying does not grant anonymous access to the original workspace or reuse the legacy Trial account/session. Deployment and copy verification must be recorded separately from code checks.
+
+Trial AI clients send an explicit `X-Munjib-AI-Mode: anonymous-trial-readonly` hint. This selects the narrower signed Trial principal even alongside Google cookies; it never replaces visitor-token/edge-proof validation and invalid Trial evidence cannot fall back to an authenticated owner. Ordinary AI requests preserve authenticated-user precedence.
+
+Trial folder projection includes only readable-document folders and their required ancestors, hiding empty/protected-only branches. Trial hides workspace settings because server-owned AI models cannot be changed by anonymous visitors. Attachment links normalize paths and preserve query/fragment suffixes only after allowed-ID checks, always targeting the hardened Trial endpoint.
