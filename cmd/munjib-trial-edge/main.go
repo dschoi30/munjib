@@ -24,7 +24,7 @@ import (
 const credentialPath = "/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret"
 
 var methodPattern = regexp.MustCompile(`^[A-Z]{3,10}$`)
-var pathPattern = regexp.MustCompile(`^(/api/trial/entitlement|/trial/workspaces/[^/]+|/api/workspaces/[^/]+/(assistant/messages|documents/[^/]+/ask))$`)
+var pathPattern = regexp.MustCompile(`^(/api/trial/entitlement|/api/trial/attachments/[A-Za-z0-9_-]+|/trial/workspaces/[^/]+|/api/workspaces/[^/]+/(assistant/messages|documents/[^/]+/ask))$`)
 
 func proof(key, timestamp, method, uri, ip string) (string, error) {
 	addr, err := netip.ParseAddr(ip)

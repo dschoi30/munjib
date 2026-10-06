@@ -3,6 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
 import { AiAnswer, AiCitations } from "@/components/ai/answer";
 
 afterEach(() => {
@@ -154,4 +155,39 @@ describe("AiAnswer", () => {
       "/trial/workspaces/company-handbook?document=doc-1",
     );
   });
+});
+
+
+it("routes authorized Trial attachment media through the isolated read-only endpoint", () => {
+  const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content="![demo](/api/attachments/file-1) [download](/api/attachments/file-1) [hidden](/api/attachments/private)" allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+  expect(html).toContain('src="/api/trial/attachments/file-1"');
+  expect(html).toContain('href="/api/trial/attachments/file-1"');
+  expect(html).not.toContain('href="/api/attachments/private"');
+});
+
+it.each(["?download=1", "#page=2", "?download=1#page=2"])("scopes suffixed Trial attachment links %s", (suffix) => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content={`[allowed](/api/attachments/file-1${suffix}) [hidden](/api/attachments/private${suffix})`} allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+ expect(html).toContain(`href="/api/trial/attachments/file-1${suffix}"`);
+ expect(html).not.toContain('href="/api/attachments/');
+ expect(html).not.toContain('href="/api/trial/attachments/private');
+});
+
+it("normalizes encoded Trial attachment paths before checking the allowed set", () => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content="[allowed](/api/%61ttachments/file-1?download=1) [hidden](/api/attachments/%70rivate) [case](/API/ATTACHMENTS/private)" allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/api/trial/attachments/file-1?download=1"');
+ expect(html).not.toContain('href="/api/attachments/');
+ expect(html).not.toContain('href="/API/ATTACHMENTS/');
+});
+
+it.each(["/workspaces/demo?document=doc-1#heading", "/%77orkspaces/demo?document=doc-1#heading", "/WORKSPACES/demo?document=doc-1#heading"])("keeps explicit workspace links inside Trial: %s", (href) => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content={`[document](${href}) [private API](/api/workspaces/private/assistant/thread)`}/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/trial/workspaces/demo?document=doc-1#heading"');
+ expect(html).not.toContain('href="/api/workspaces/');
+});
+
+it("scopes same-origin absolute workspace links while keeping outside destinations explicit", () => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly" applicationOrigin="https://munjib.example"><AiAnswer content="[local](https://munjib.example/workspaces/demo?document=doc-1) [outside](https://outside.example/workspaces/demo) [private](https://munjib.example/api/auth/session)"/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/trial/workspaces/demo?document=doc-1"');
+ expect(html).toContain('outside · https://outside.example');
+ expect(html).not.toContain('https://munjib.example');
 });

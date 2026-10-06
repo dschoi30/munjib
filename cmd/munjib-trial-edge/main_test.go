@@ -136,3 +136,9 @@ func TestApplicationSecretContract(t *testing.T) {
 		}
 	}
 }
+
+func TestTrialAttachmentPath(t *testing.T) {
+	if _, err := proof(strings.Repeat("a", 43), "1800000000", "GET", "/api/trial/attachments/file-1", "203.0.113.7"); err != nil {
+		t.Fatal(err)
+	}
+}

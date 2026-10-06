@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory(prefix='munjib-edge-smoke-') as tmp:
    try:
     with socket.create_connection(('127.0.0.1',port),timeout=.2):break
    except OSError:time.sleep(.1)
-  for method,path in [('POST','/api/trial/entitlement'),('GET','/trial/workspaces/demo?document=fake'),('POST','/api/workspaces/demo/documents/fake/ask'),('POST','/api/workspaces/demo/assistant/messages'),('GET','/login')]:
+  for method,path in [('POST','/api/trial/entitlement'),('GET','/trial/workspaces/demo?document=fake'),('POST','/api/workspaces/demo/documents/fake/ask'),('POST','/api/workspaces/demo/assistant/messages'),('GET','/api/trial/attachments/demo-file'),('GET','/login')]:
    req=urllib.request.Request('http://127.0.0.1:'+str(port)+path,data=b'{"demo":true}' if method=='POST' else None,headers={'X-Munjib-Trusted-Client-IP':'198.51.100.123','X-Munjib-Trusted-Network-Timestamp':'1','X-Munjib-Trusted-Network-Proof':'forged','X-Munjib-Edge-Client-IP':'192.0.2.99','X-Forwarded-Method':'DELETE','X-Forwarded-Uri':'/forged'})
    try:
     with urllib.request.urlopen(req,timeout=5) as r:assert r.status==200 and r.read()==b'valid'
@@ -42,6 +42,6 @@ with tempfile.TemporaryDirectory(prefix='munjib-edge-smoke-') as tmp:
   for path in ['/api/auth/signin/trial','/api/auth/callback/trial']:
    try:urllib.request.urlopen('http://127.0.0.1:'+str(port)+path,timeout=5);raise AssertionError('legacy route reached upstream')
    except urllib.error.HTTPError as e:assert e.code==503
-  assert len(seen)==5 and all(seen)
+  assert len(seen)==6 and all(seen)
   print('PASS: actual Caddy header stripping, original POST/body/path, query exclusion, forged authority replacement, ordinary route passthrough and both legacy denials.')
  finally:proc.terminate();proc.wait(timeout=5);server.shutdown()

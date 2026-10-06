@@ -4018,3 +4018,18 @@ links:
 - Independent review tightened the host probe to require the actual loopback peer IP and exactly one copy of each proof header, so a valid signature over an attacker-supplied IP cannot pass the probe.
 - Trial operations include a daily 00:40 KST retention timer with a dedicated four-table SELECT/DELETE role and shared deployment lock; initial dry-run/execute/dry-run is required before enabling it.
 - PR review aligned the signer with the application's existing 16-character secret minimum, 256-byte file cap, UTF-8/UTF-16 length behavior and forbidden control/BOM characters. Descriptor-based no-follow loading checks inode, link count and bounded reads.
+
+## 2026-10-07 - Full read-only Trial workspace browsing
+
+- Issue #219 restores ordinary graph, search, folder, wiki-link/backlink, metadata and tab browsing while all write actions reject. Trial browser state and attachment routes remain separate from authenticated access; AI quota behavior is preserved.
+- Updated [[Auth And Permissions Workflow]], [[index]] and `docs/runbooks/demo-public-access.md` with the authorization boundary and approved separate Company Handbook snapshot procedure.
+- Source evidence: Trial page, workspace mode/routes, Trial viewer/attachment services, Caddy/Go matcher, and tests for hidden references, read-only actions, Korean attachment filenames and Trial tab isolation.
+- Production baseline #218 was deployed (Actions 37491804650); email/Google signup and anonymous Trial entry plus warm Ask were observed. Full-viewer/snapshot deployment is a separate outstanding step. Previous deploy disk exhaustion was recovered by removing unused build cache and verification image, preserving data volumes and current/rollback images.
+- The Markdown renderer still denies ambient external media; reviewed internal Trial attachment routing updates its protected artifact hash. Existing downstream slot ownership/version remain unchanged.
+- Trial attachment responses sandbox direct document navigation so stored HTML/SVG cannot execute scripts in the application origin.
+- Live Google-plus-Trial browser verification exposed authenticated-user precedence on AI calls (404 for the isolated snapshot). Added an explicit narrower-principal hint, fail-closed resolution, and coexistence regression tests; normal signed-in AI precedence remains unchanged.
+- PR #220 review tightened folder projection to readable branches, normalized suffixed/encoded attachment links before allowed-ID checks, and hid ineffective Trial workspace model settings. Regression tests cover each boundary; the protected Markdown renderer hash was updated for this reviewed change.
+- Follow-up PR review keeps explicit/encoded/case-variant workspace Markdown links in Trial routes and rejects other internal API links; forged/cross-workspace document IDs still fail at the exact-snapshot viewer boundary.
+- The same routing rule also covers absolute URLs on the configured application origin; genuine outside destinations retain the explicit external-navigation confirmation.
+- Final review also separated heading-fold keys and Workspace AI panel state for Trial. Editor and Markdown preview share one scoped fold key, preventing browser preference changes from reaching the same authenticated document.
+- Fresh Trial entry selects the first readable document while explicit folder/graph navigation and invalid document IDs retain their separate behavior; page regression tests cover the initial view and denial.

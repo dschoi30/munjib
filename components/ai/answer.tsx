@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceMode, useWorkspaceApplicationOrigin } from "@/components/workspace-mode";
+
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
@@ -56,6 +58,8 @@ const aiTextComponents: Components = {
 };
 
 export function AiAnswer({ content, className, allowedAttachmentIds = [] }: AiAnswerProps) {
+  const workspaceMode = useWorkspaceMode();
+  const applicationOrigin = useWorkspaceApplicationOrigin();
   const [externalRequest, setExternalRequest] = useState<ExternalMediaRequest | null>(null);
   const allowedAttachmentIdsKey = JSON.stringify([...new Set(allowedAttachmentIds)].sort());
   const allowed = useMemo(
@@ -63,10 +67,12 @@ export function AiAnswer({ content, className, allowedAttachmentIds = [] }: AiAn
     [allowedAttachmentIdsKey],
   );
   const components = useMemo(() => buildSafeMarkdownComponents({
+    trialAttachments: workspaceMode === "anonymous-trial-readonly",
+        applicationOrigin,
     allowedAttachmentIds: allowed,
     components: aiTextComponents,
     onExternalMediaRequest: setExternalRequest,
-  }), [allowed]);
+  }), [allowed, workspaceMode, applicationOrigin]);
 
   return (
     <>

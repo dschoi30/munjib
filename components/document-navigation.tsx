@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceBaseHref, workspaceFolderHref, workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useEffect, useMemo, useState, useTransition } from "react";
@@ -88,6 +91,8 @@ export function DocumentNavigation({
   folderError: string;
   selectedDocumentId: string | null;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { t } = useI18n();
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -105,7 +110,7 @@ export function DocumentNavigation({
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(
     () => new Set(folders.map((folder) => folder.id)),
   );
-  const recentDocumentStorageKey = `munjib:recents:${workspaceSlug}`;
+  const recentDocumentStorageKey = `munjib:recents:${storageScope}`;
   const untitledDocumentLabel = t("nav.untitledDocument");
 
   const favoriteDocumentIds = useMemo(
@@ -174,13 +179,13 @@ export function DocumentNavigation({
   }, [documents, searchQuery, untitledDocumentLabel]);
   const folderErrorText = folderErrorMessage(folderError, t);
   useEffect(() => {
-    const raw = window.localStorage.getItem(`munjib:favorites:${workspaceSlug}`);
+    const raw = window.localStorage.getItem(`munjib:favorites:${storageScope}`);
     setFavorites(parseFavorites(raw));
-  }, [workspaceSlug]);
+  }, [workspaceSlug, workspaceMode, storageScope]);
 
   useEffect(() => {
-    window.localStorage.setItem(`munjib:favorites:${workspaceSlug}`, JSON.stringify(favorites));
-  }, [favorites, workspaceSlug]);
+    window.localStorage.setItem(`munjib:favorites:${storageScope}`, JSON.stringify(favorites));
+  }, [favorites, workspaceSlug, storageScope]);
 
   useEffect(() => {
     const loadedDocumentIds = parseRecentDocumentIds(
@@ -295,13 +300,13 @@ export function DocumentNavigation({
   }
 
   function openDocumentRowInNewTab(document: DocumentListItem) {
-    openDocumentInNewTab(workspaceSlug, {
+    openDocumentInNewTab(storageScope, {
       id: document.id,
       title: document.title,
       path: document.path,
     });
     setOpenMenuId(null);
-    router.push(workspaceDocumentHref({ workspaceSlug, documentId: document.id }));
+    router.push(workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: document.id }));
   }
 
   function toggleFavoriteFolder(folderId: string) {
@@ -341,7 +346,7 @@ export function DocumentNavigation({
       setClearCreatePendingAfterTransition(true);
       startCreateTransition(() => {
         if (result?.folderId) {
-          router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+          router.push(workspaceFolderHref({ workspaceSlug, folderId: result.folderId, mode: workspaceMode }));
           return;
         }
         router.refresh();
@@ -372,7 +377,7 @@ export function DocumentNavigation({
       setClearCreatePendingAfterTransition(true);
       startCreateTransition(() => {
         if (result?.documentId) {
-          router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+          router.push(workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: result.documentId }));
           return;
         }
         router.refresh();
@@ -416,7 +421,7 @@ export function DocumentNavigation({
         trashSummary.selectedFolderWillBeArchived ||
         trashSummary.selectedDocumentWillBeArchived
       ) {
-        router.push(`/workspaces/${workspaceSlug}`);
+        router.push(workspaceBaseHref({ workspaceSlug, mode: workspaceMode }));
         return;
       }
       router.refresh();
@@ -445,7 +450,7 @@ export function DocumentNavigation({
     setOpenMenuId(null);
     startTransition(() => {
       if (result.documentId === selectedDocumentId) {
-        router.push(`/workspaces/${workspaceSlug}`);
+        router.push(workspaceBaseHref({ workspaceSlug, mode: workspaceMode }));
         return;
       }
       router.refresh();

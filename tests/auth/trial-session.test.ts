@@ -25,7 +25,7 @@ describe("AI route actor isolation", () => {
     expect(resolveAnonymousTrialActor).not.toHaveBeenCalled();
   });
 
-  it("returns a viewer-only anonymous principal for only the exact capability workspace", async () => {
+  it.each([false, true])("returns a viewer-only anonymous principal with coexisting login %s", async (coexistingLogin) => {
     const capability = testCapability();
     const token = issueTrialVisitorToken({
       key: capability.visitorSigningKeys[0],
@@ -35,6 +35,7 @@ describe("AI route actor isolation", () => {
     const request = new Request("https://munjib.example/api/ai", {
       headers: {
         cookie: `munjib.trial-visitor=${token}`,
+        ...(coexistingLogin ? { "x-munjib-ai-mode": "anonymous-trial-readonly" } : {}),
         "x-munjib-trusted-client-ip": "203.0.113.42",
         "x-munjib-trusted-network-timestamp": "1787623200",
         "x-munjib-trusted-network-proof": edgeProof("GET", "/api/ai"),
@@ -42,7 +43,7 @@ describe("AI route actor isolation", () => {
     });
 
     const actor = await requireAiActor(request, {
-      getCurrentUser: async () => null,
+      getCurrentUser: async () => coexistingLogin ? {id:"user-1",email:"user@example.com"} : null,
       resolveAnonymousTrialActor: undefined,
       resolveCapability: () => capability,
       now: () => now,
@@ -66,6 +67,17 @@ describe("AI route actor isolation", () => {
     });
     expect(actor.authorizationPrincipal).not.toHaveProperty("userId");
     expect(JSON.stringify(actor)).not.toContain("legacy-account-2@example.invalid");
+  });
+
+  it("does not fall back to an authenticated owner when explicit Trial evidence is invalid", async () => {
+    await expect(requireAiActor(new Request("https://munjib.example/api/ai", {
+      headers: {"x-munjib-ai-mode":"anonymous-trial-readonly"},
+    }), {
+      getCurrentUser: async () => ({id:"owner",email:"owner@example.com"}),
+      resolveAnonymousTrialActor: () => null,
+      resolveCapability: () => null,
+      onUnauthenticated: () => {throw new Error("AI_ACTOR_REQUIRED");},
+    })).rejects.toThrow("AI_ACTOR_REQUIRED");
   });
 
   it("fails closed instead of mapping a forged visitor token to a legacy or shared user", async () => {

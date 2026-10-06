@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { markdown } from "@codemirror/lang-markdown";
 import { foldEffect } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
@@ -224,6 +227,7 @@ function withImageExtension(fileName: string, mimeType: string) {
 }
 
 export function DocumentEditor({
+  initialTrialAiAllowance,
   workspaceSlug,
   defaultChatModel,
   defaultChatProvider,
@@ -243,13 +247,14 @@ export function DocumentEditor({
   createCommentAction,
 }: DocumentEditorProps) {
   const { t } = useI18n();
+  const workspaceMode = useWorkspaceMode();
   const { mode } = useDocumentViewMode();
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
-  const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${document.id}` : null;
+  const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${workspaceMode === "anonymous-trial-readonly" ? `${workspaceStorageScope(workspaceSlug, workspaceMode)}:` : ""}${document.id}` : null;
   const editorFoldContextRef = useRef<{
     storageKey: string;
   } | null>(null);
@@ -493,13 +498,12 @@ export function DocumentEditor({
 
   const restoreEditorFolds = useCallback(
     (view: EditorView) => {
-      if (!document?.id || typeof window === "undefined") {
+      if (!document?.id || !editorFoldStorageKey || typeof window === "undefined") {
         return;
       }
 
       const foldTree = buildHeadingFoldTree(contentMarkdown);
-      const storageKey = `munjib:heading-folds:${document.id}`;
-      const foldedKeys = readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys);
+      const foldedKeys = readStoredFoldedHeadingKeys(editorFoldStorageKey, foldTree.headingKeys);
       const effects = foldedKeys.flatMap((key) => {
         const editorRange = foldTree.sectionByKey.get(key)?.editorRange;
 
@@ -521,7 +525,7 @@ export function DocumentEditor({
         view.dispatch({ effects });
       }
     },
-    [contentMarkdown, document?.id],
+    [contentMarkdown, document?.id, editorFoldStorageKey],
   );
   const handleCreateEditor = useCallback(
     (view: EditorView) => {
@@ -662,6 +666,8 @@ export function DocumentEditor({
       </div>
       {isAiAssistantOpen ? (
         <AiAssistantPanel
+          mode={workspaceMode}
+          initialTrialAiAllowance={initialTrialAiAllowance}
           key={document.id}
           workspaceSlug={workspaceSlug}
           documentId={document.id}
@@ -731,7 +737,7 @@ export function DocumentEditor({
         {mode === "preview" ? (
           <MarkdownPreview
             markdown={contentMarkdown}
-            documentId={document.id}
+            foldStorageKey={editorFoldStorageKey!}
             attachmentIds={previewAttachmentIds}
             linkCandidates={linkCandidates}
             registerHeadingExpander={(expander) => {

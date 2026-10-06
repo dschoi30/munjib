@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render as testingRender, screen, waitFor, with
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { AppShell, useHeadingNavigation, useTagSearch } from "@/components/app-shell";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
 import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -2078,4 +2079,13 @@ describe("DocumentEditor properties", () => {
     expect(within(properties).queryByText("[object Object]")).toBeNull();
     expect(within(properties).queryByText("null")).toBeNull();
   });
+});
+
+it("keeps Trial heading folds separate from the same authenticated document", () => {
+ localStorage.setItem("munjib:heading-folds:doc-1", '["1-a-0"]');
+ render(<WorkspaceModeProvider mode="anonymous-trial-readonly"><DocumentViewModeProvider><DocumentEditor {...baseProps} canWrite={false} document={{id:"doc-1",title:"Foldable",contentMarkdown:"# A\nVisible body"}}/></DocumentViewModeProvider></WorkspaceModeProvider>);
+ expect(screen.getByText("Visible body")).toBeTruthy();
+ fireEvent.click(screen.getByRole("button", {name:"Collapse section A"}));
+ expect(localStorage.getItem("munjib:heading-folds:trial:company-handbook:doc-1")).toBe('["1-a-0"]');
+ expect(localStorage.getItem("munjib:heading-folds:doc-1")).toBe('["1-a-0"]');
 });

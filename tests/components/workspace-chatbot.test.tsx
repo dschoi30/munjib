@@ -96,6 +96,7 @@ describe("WorkspaceChatbot", () => {
       "/api/workspaces/company-handbook/assistant/messages",
       expect.objectContaining({
         method: "POST",
+        headers: expect.objectContaining({"X-Munjib-AI-Mode":"anonymous-trial-readonly"}),
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
@@ -145,6 +146,7 @@ describe("WorkspaceChatbot", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/documents/doc-1/ask",
       expect.objectContaining({
+        headers: expect.objectContaining({"X-Munjib-AI-Mode":"anonymous-trial-readonly"}),
         body: JSON.stringify({ question: "Question", uiLanguage: "en" }),
       }),
     );
@@ -1441,3 +1443,13 @@ function createDeferred<T>() {
 
   return { promise, resolve, reject };
 }
+
+it("isolates Trial chat panel state from authenticated workspace preferences", () => {
+ const normalKey=workspaceUiStateStorageKey("company-handbook");
+ localStorage.setItem(normalKey, JSON.stringify({workspaceChatOpen:true}));
+ render(<WorkspaceChatbot mode="anonymous-trial-readonly" workspaceSlug="company-handbook" selectedDocumentId={null} defaultChatModel="server/model" defaultChatProvider="openai-compatible" availableChatProviders={{ollama:true,openai:true,"openai-compatible":true}}/>);
+ expect(screen.queryByRole("region", {name:"Workspace AI chat"})).toBeNull();
+ fireEvent.click(screen.getByRole("button", {name:"Open workspace AI chat"}));
+ expect(localStorage.getItem(workspaceUiStateStorageKey("trial:company-handbook"))).toContain('"workspaceChatOpen":true');
+ expect(localStorage.getItem(normalKey)).toBe(JSON.stringify({workspaceChatOpen:true}));
+});

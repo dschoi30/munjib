@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceBaseHref, workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLeftPanel } from "@/components/app-shell";
@@ -60,6 +63,8 @@ function WorkspaceCenterShellContent({
   restoreStoredActiveTab = true,
   children,
 }: WorkspaceCenterShellProps) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { t } = useI18n();
   const router = useRouter();
   const leftPanel = useLeftPanel();
@@ -67,7 +72,7 @@ function WorkspaceCenterShellContent({
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTopBeforeModeChangeRef = useRef<number | null>(null);
   const { tabs, activeTabId, activeDocumentId, closeTab, selectTab, createNewTab } = useDocumentTabs({
-    workspaceSlug,
+    workspaceSlug: storageScope,
     documents,
     selectedDocument,
   });
@@ -112,7 +117,7 @@ function WorkspaceCenterShellContent({
       return;
     }
 
-    router.replace(workspaceDocumentHref({ workspaceSlug, documentId: activeDocumentId }));
+    router.replace(workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: activeDocumentId }));
   }, [
     activeDocumentId,
     isGraphView,
@@ -152,11 +157,11 @@ function WorkspaceCenterShellContent({
 
   function openDocument(documentId: string | null) {
     if (!documentId) {
-      router.push(`/workspaces/${workspaceSlug}`);
+      router.push(workspaceBaseHref({ workspaceSlug, mode: workspaceMode }));
       return;
     }
 
-    router.push(`/workspaces/${workspaceSlug}?document=${documentId}`);
+    router.push(workspaceDocumentHref({ workspaceSlug, documentId, mode: workspaceMode }));
   }
 
   function handleSelect(tabId: string) {
