@@ -249,7 +249,7 @@ export async function ensureCurrentUserWorkspaceAndRedirect(input: {
 function normalizeEmail(value: unknown) {
   if (typeof value !== "string") return null;
   const email = value.trim().toLowerCase();
-  return email.includes("@") ? email : null;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 
 function deriveNameFromEmail(email: string) {
