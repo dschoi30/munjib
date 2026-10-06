@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-10-07
-source_count: 125
+source_count: 127
 tags:
   - munjib
   - auth
@@ -662,3 +662,9 @@ Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI a
 - `tests/auth/passwords.test.ts`
 - `tests/workspaces/membership-bootstrap.test.ts`
 - `docs/superpowers/specs/2026-07-08-logout-redirect-normalization-design.md`
+
+## Native Trial edge proof adapter (Issue #217)
+
+The loopback-only Go signer in `cmd/munjib-trial-edge` produces the existing signed-network proof. Caddy removes visitor-supplied proof headers and overwrites peer IP and original method/URI before `forward_auth`; the signer excludes the query and uses the same IPv4/IPv6 normalization as the app. The fixed systemd credential supplies the existing edge key under the dedicated service DynamicUser. See `docs/runbooks/demo-public-access.md` for validation and rollback; code presence is not evidence of live Trial activation.
+
+Issue #217 also supplies a 00:40 KST retention timer using a dedicated four-table SELECT/DELETE role. The timer shares the deployment lock and requires dry-run → execute → dry-run validation before enablement. See `docs/runbooks/anonymous-trial-ai-retention.md`.

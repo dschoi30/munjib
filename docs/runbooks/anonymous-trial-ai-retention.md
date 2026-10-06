@@ -45,3 +45,9 @@ docker compose run --rm tools pnpm run trial-ai:purge-retention -- --execute
 운영 scheduler는 하루 1회 KST 00:30 이후에 위 execute 명령을 호출한다. 배포 자체는 scheduler를 자동 설치하지 않는다. production 유지보수 principal에는 네 Trial 표의 `SELECT`, `DELETE`와 transaction 실행에 필요한 연결 권한만 부여하고 schema 변경 권한은 부여하지 않는다. 애플리케이션 web principal 대신 별도 maintenance role을 사용하는 환경에서는 동일한 `DATABASE_URL` 계약으로 `tools` container에 주입한다.
 
 수동 최초 실행은 반드시 dry-run → execute → dry-run 순서로 한다. 이 명령은 backup이나 migration을 대신하지 않는다.
+
+## Native OCI timer (Issue #217)
+
+`deploy/systemd/munjib-trial-retention.service` and `.timer` provide a daily 00:40 KST run (15:40 UTC). The root-owned 0600 `/etc/munjib/trial-retention.env` must contain a `DOCKER_DATABASE_URL` for the dedicated `munjib_trial_retention` role, with CONNECT/USAGE plus SELECT/DELETE only on the four Trial usage tables. The later env file overrides the application database principal only for this `tools` invocation. Do not print the URL or copy it into Git.
+
+The service shares the deployment lock, so it cannot run against a checkout/image being changed by deployment. First run the same Compose invocation without `--execute`, inspect candidate counts, then execute and repeat the dry run. Install the reviewed units and enable the timer only after that sequence passes. Stop `munjib-trial-retention.timer` to suspend future maintenance; this does not change Trial's opening flags or delete accounts/documents.

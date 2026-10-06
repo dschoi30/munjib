@@ -1,0 +1,22 @@
+# Install inside the existing canonical site block. Caddy directly terminates TLS.
+# Keep these operations inside route so header removal precedes signing.
+route {
+    @legacy_trial_auth path /api/auth/signin/trial /api/auth/callback/trial
+    respond @legacy_trial_auth "Trial login temporarily disabled" 503
+
+    request_header -X-Munjib-Trusted-Client-IP
+    request_header -X-Munjib-Trusted-Network-Timestamp
+    request_header -X-Munjib-Trusted-Network-Proof
+
+    @trial_proof path /api/trial/entitlement /trial/workspaces/* /api/workspaces/*/documents/*/ask /api/workspaces/*/assistant/messages
+    forward_auth @trial_proof 127.0.0.1:9187 {
+        uri /proof?
+        header_up X-Munjib-Edge-Client-IP {http.request.remote.host}
+        copy_headers X-Munjib-Trusted-Client-IP X-Munjib-Trusted-Network-Timestamp X-Munjib-Trusted-Network-Proof
+        transport http {
+            dial_timeout 1s
+            response_header_timeout 2s
+        }
+    }
+    reverse_proxy 127.0.0.1:3000
+}

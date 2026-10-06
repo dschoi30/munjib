@@ -69,6 +69,9 @@ jobs:
           go-version: "1.22.12"
           cache: false
 
+      - name: Test Trial edge proof signer
+        run: go test -race ./cmd/munjib-trial-edge
+
       - name: Build and verify Linux ARM64 delivery bundle
         run: |
           set -euo pipefail
