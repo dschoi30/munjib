@@ -28,3 +28,17 @@ Set both flags to `false` and recreate `web` with the same deployment setup. The
 ## Evidence boundary
 
 This change supplies application and deployment wiring. Live keys, edge configuration, selected demo workspace, OAuth callbacks, AI responses and production activation require verification on the actual host.
+
+## Native Caddy edge proof service (Issue #217)
+
+`cmd/munjib-trial-edge` implements the existing proof contract without touching bodies or changing application authorization. Build for this OCI host with `CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -trimpath -o munjib-trial-edge ./cmd/munjib-trial-edge`. Run `go test -race ./cmd/munjib-trial-edge`; old Go/macOS linker combinations may require `-ldflags=-linkmode=external` for local tests only.
+
+Install the reviewed binary at `/usr/local/libexec/munjib-trial-edge` (root-owned, 0755) and `deploy/systemd/munjib-trial-edge.service` at `/etc/systemd/system/`. The service runs as a dedicated systemd DynamicUser and obtains the existing key through `LoadCredential`, keeping `/etc/munjib/secrets` permissions unchanged. Restart the service whenever rotating that key; the application must receive the same bytes. The listener is strictly `127.0.0.1:9187`.
+
+Back up `/etc/caddy/Caddyfile`. Inside the canonical site, replace its final `reverse_proxy` with `deploy/caddy/munjib-trial.caddy` contents. The snippet places the legacy Trial-provider denial inside the route before its final proxy; an old top-level respond would otherwise become unreachable because Caddy sorts route before respond. Remove the redundant old top-level denial only after confirming the inner matcher covers both original paths. This template assumes Caddy directly receives the client connection; do not put another proxy in front without reviewing client-IP authority. Run `caddy adapt --config /etc/caddy/Caddyfile --adapter caddyfile --pretty` and confirm request-header removal precedes the signer and the signer sets original method/URI. Then `caddy validate`, start the signer, and reload Caddy. No public port or DNS change is needed.
+
+Before enabling Trial, verify IPv4 and IPv6 proof vectors, POST method and query exclusion, forged client proof replacement, and actual entitlement → viewer → AI requests. Unmatched ordinary routes keep their direct proxy. A failed signer closes the matched routes (including authenticated Ask/Workspace AI); roll back Caddy to its previous direct proxy and keep Trial disabled if the signer is unhealthy. Keep all IPs, cookies and proof headers out of operational logs.
+
+The signer accepts the systemd-managed credential at its fixed `/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret` path with systemd's root:root 0440 plus service-only ACL envelope; arbitrary group-readable files remain rejected. The application secret under `/etc/munjib/secrets` retains its existing UID 10001/0400 contract. Host validation must check a sustained active service and an actual signed request, not just the initial `systemctl start` result.
+
+After starting the signer, run `sudo python3 scripts/deploy/verify-trial-edge.py < deploy/caddy/munjib-trial.caddy` on the host. It uses temporary loopback Caddy/upstream processes, verifies signatures privately and leaves public routing unchanged. `uri /proof?` deliberately clears the copied query on the signer subrequest, while the original URI header preserves the path used for HMAC.

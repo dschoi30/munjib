@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
 updated: 2026-10-07
-source_count: 179
+source_count: 181
 tags:
   - index
   - munjib
@@ -142,3 +142,5 @@ links:
 - wiki 운영 규칙: [[Wiki Schema]], [[Wiki Maintenance Automation]], [[Local Development Workflow]]; 신규 기능 시작은 `pnpm wiki:feature-start "<feature title>"`로 GitHub issue를 먼저 만들고, 모든 task 종료 시 draft PR을 자동 작성한 뒤 리뷰 요청 완료 5분 후 PR review/CI feedback을 다시 확인한다. Issue #50 Docker workflow는 `docker compose up --build`로 PostgreSQL과 Next.js web service를 함께 실행하고, production compose는 DB data와 web attachment storage를 named volume으로 보존하며, development override는 `docker-compose.dev.yml`을 함께 지정한다. Issue #210 이후 GitHub Actions는 pgvector PostgreSQL service가 포함된 PR/`main` CI를 GitHub-hosted runner에서 실행하고, `main` deploy만 private OCI self-hosted runner의 fixed wrapper로 수행한다. Production compose `web`은 `WEB_IMAGE`로 deploy-selected image tag를 받을 수 있다.
 - 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
 - stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.
+
+- Issue #217: native Caddy Trial proof adapter, daily retention timer, service verification and rollback are documented in [[Auth And Permissions Workflow]] and [[CI CD And Monitoring Workflow]].

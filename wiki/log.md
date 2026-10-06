@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-10-07
-source_count: 367
+source_count: 369
 tags:
   - log
   - munjib
@@ -4006,3 +4006,15 @@ links:
 
 - Follow-up review synchronized current dependency versions and metadata across [[Local Development Workflow]], [[CI CD And Monitoring Workflow]] and [[index]]. Historical log entries retain their original version evidence.
 - Google basic identity scope exception was confirmed against official documentation and the installed provider defaults; console remains Testing and a live callback is still unverified.
+
+## 2026-10-07 - Native Trial edge proof adapter
+
+- Issue #217 supplies the existing Trial HMAC contract through a loopback Go signer, strict systemd credential loading and Caddy header replacement. No raw-header development bypass is enabled.
+- Tests cover independent Node vectors, malformed authorities, query exclusion, duplicate headers, endpoint/peer restrictions and secret permissions. CI adds race tests.
+- Sources: `cmd/munjib-trial-edge`, `deploy/caddy/munjib-trial.caddy`, `deploy/systemd/munjib-trial-edge.service`, `docs/runbooks/demo-public-access.md`. Live activation remains a separate verification step.
+
+- Host verification corrected the service identity to DynamicUser and accepted systemd's fixed-path root:root 0440 ACL-protected credential envelope; arbitrary group-readable keys remain rejected. The earlier numeric container UID has no host user entry.
+- Actual Caddy 2.6.2 integration passed original POST/body/path, query exclusion, forged header replacement, ordinary-route passthrough and both legacy denials. The query-clear suffix on `/proof?` is required by this Caddy version. Reproducible probe: `scripts/deploy/verify-trial-edge.py`.
+- Independent review tightened the host probe to require the actual loopback peer IP and exactly one copy of each proof header, so a valid signature over an attacker-supplied IP cannot pass the probe.
+- Trial operations include a daily 00:40 KST retention timer with a dedicated four-table SELECT/DELETE role and shared deployment lock; initial dry-run/execute/dry-run is required before enabling it.
+- PR review aligned the signer with the application's existing 16-character secret minimum, 256-byte file cap, UTF-8/UTF-16 length behavior and forbidden control/BOM characters. Descriptor-based no-follow loading checks inode, link count and bounded reads.

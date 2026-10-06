@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-10-07
-source_count: 68
+source_count: 70
 tags:
   - munjib
   - workflow
@@ -674,3 +674,9 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - [[Production Observability Workflow]]
 
 PR #215/#216 additionally pin `browserslist` 4.28.7, `baseline-browser-mapping` 2.11.0, `@grpc/grpc-js` 1.14.5 and `source-map-js` 1.2.2. The complete current override inventory is authoritative in `package.json` and `pnpm-lock.yaml`; verify with `pnpm audit --prod`.
+
+## Trial edge service verification (Issue #217)
+
+CI runs `go test -race ./cmd/munjib-trial-edge`. The independent service is installed using the demo runbook, not included in the existing three-binary release bundle. Caddy routes use a loopback signer with bounded HTTP timeouts; no request body or stream passes through the signer. A signer failure closes matched AI paths; rollback restores the direct proxy while Trial is disabled.
+
+The native Trial retention timer runs at 00:40 KST and holds a shared deployment lock while invoking the tools image with a separate least-privilege database env file. The deploy wrapper keeps its existing exclusive lock. See `docs/runbooks/anonymous-trial-ai-retention.md`.

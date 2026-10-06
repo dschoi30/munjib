@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Munjib Trial retention maintenance
+
+[Timer]
+OnCalendar=*-*-* 15:40:00 UTC
+Persistent=true
+Unit=munjib-trial-retention.service
+
+[Install]
+WantedBy=timers.target
