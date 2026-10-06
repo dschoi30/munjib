@@ -11,12 +11,14 @@ import {
 
 type BuildSafeMarkdownComponentsInput = {
   allowedAttachmentIds: ReadonlySet<string>;
+  trialAttachments?: boolean;
   components?: Components;
   onExternalMediaRequest: (request: ExternalMediaRequest) => void;
 };
 
 export function buildSafeMarkdownComponents({
   allowedAttachmentIds,
+  trialAttachments = false,
   components = {},
   onExternalMediaRequest,
 }: BuildSafeMarkdownComponentsInput): Components {
@@ -49,7 +51,12 @@ export function buildSafeMarkdownComponents({
         );
       }
 
-      const internalHref = href?.startsWith("?") ? href : safeHref;
+      let internalHref = href?.startsWith("?") ? href : safeHref;
+      const attachmentId = /^\/api\/attachments\/([A-Za-z0-9_-]+)$/.exec(internalHref ?? "")?.[1];
+      if (trialAttachments && attachmentId) {
+        if (!allowedAttachmentIds.has(attachmentId)) return <span>{children}</span>;
+        internalHref = `/api/trial/attachments/${attachmentId}`;
+      }
       return (
         <a
           {...props}
@@ -67,7 +74,7 @@ export function buildSafeMarkdownComponents({
       );
 
       if (decision.kind === "attachment") {
-        return <img {...props} src={decision.src} alt={alt ?? ""} />;
+        return <img {...props} src={trialAttachments ? `/api/trial/attachments/${decision.attachmentId}` : decision.src} alt={alt ?? ""} />;
       }
 
       if (decision.kind === "external") {

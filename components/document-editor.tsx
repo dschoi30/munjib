@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+
 import { markdown } from "@codemirror/lang-markdown";
 import { foldEffect } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
@@ -224,6 +226,7 @@ function withImageExtension(fileName: string, mimeType: string) {
 }
 
 export function DocumentEditor({
+  initialTrialAiAllowance,
   workspaceSlug,
   defaultChatModel,
   defaultChatProvider,
@@ -243,6 +246,7 @@ export function DocumentEditor({
   createCommentAction,
 }: DocumentEditorProps) {
   const { t } = useI18n();
+  const workspaceMode = useWorkspaceMode();
   const { mode } = useDocumentViewMode();
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
@@ -662,6 +666,8 @@ export function DocumentEditor({
       </div>
       {isAiAssistantOpen ? (
         <AiAssistantPanel
+          mode={workspaceMode}
+          initialTrialAiAllowance={initialTrialAiAllowance}
           key={document.id}
           workspaceSlug={workspaceSlug}
           documentId={document.id}

@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceFolderHref, workspaceStorageScope } from "@/lib/workspace-routes";
+
 import Link from "next/link";
 import { ChevronDown, ChevronRight, MoreHorizontal } from "lucide-react";
 import type { FolderListItem } from "@/components/document-list";
@@ -37,6 +40,8 @@ export function FavoriteFolderRow({
   onOpenMenu: OpenMenuHandler;
   onToggleFavorite: ToggleFavoriteFolderHandler;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { t } = useI18n();
   const isMenuOpen = openMenuId === rowId;
   const displayLabel = folderDisplayLabel(folder);
@@ -47,7 +52,7 @@ export function FavoriteFolderRow({
       data-folder-row-id={folder.id}
     >
       <Link
-        href={`/workspaces/${workspaceSlug}?folder=${folder.id}`}
+        href={workspaceFolderHref({ workspaceSlug, folderId: folder.id, mode: workspaceMode })}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"
       >

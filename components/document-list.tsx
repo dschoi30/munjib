@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceBaseHref, workspaceFolderHref, workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { toast } from "sonner";
@@ -137,6 +140,8 @@ export function DocumentList({
   availableChatProviders: ClientRagChatProviderAvailability;
   isGraphView?: boolean;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { isHydrated: languageHydrated, language, t } = useI18n();
   const router = useRouter();
   const [isTopLevelCreateTransitionPending, startTopLevelCreateTransition] = useTransition();
@@ -162,11 +167,11 @@ export function DocumentList({
     "h-8 w-8 bg-transparent p-0 text-slate-600 hover:bg-slate-200 hover:text-ink";
 
   useEffect(() => {
-    const storedState = readStoredWorkspaceUiState(workspaceSlug);
+    const storedState = readStoredWorkspaceUiState(storageScope);
     setActivePanel(storedState.activeSidebarPanel ?? "documents");
     setHasActivePanelInteraction(false);
     setActivePanelHydratedWorkspace(workspaceSlug);
-  }, [workspaceSlug]);
+  }, [workspaceSlug, workspaceMode, storageScope]);
 
   useEffect(() => {
     if (activePanelHydratedWorkspace !== workspaceSlug) {
@@ -176,7 +181,7 @@ export function DocumentList({
       return;
     }
 
-    updateStoredWorkspaceUiState(workspaceSlug, (current) => ({
+    updateStoredWorkspaceUiState(storageScope, (current) => ({
       ...current,
       activeSidebarPanel: activePanel,
     }));
@@ -193,10 +198,10 @@ export function DocumentList({
 
     router.push(
       selectedDocumentId
-        ? workspaceDocumentHref({ workspaceSlug, documentId: selectedDocumentId })
-        : `/workspaces/${workspaceSlug}`,
+        ? workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: selectedDocumentId })
+        : workspaceBaseHref({ workspaceSlug, mode: workspaceMode }),
     );
-  }, [isGraphView, router, selectedDocumentId, workspaceSlug]);
+  }, [isGraphView, router, selectedDocumentId, workspaceSlug, workspaceMode]);
 
   const closeAccountDrawer = useCallback(() => {
     setAccountDrawerOpen(false);
@@ -242,8 +247,8 @@ export function DocumentList({
   const openGraph = useCallback(() => {
     setAccountDrawerOpen(false);
     setSettingsOpen(false);
-    router.push(workspaceGraphHref({ workspaceSlug, documentId: selectedDocumentId }));
-  }, [router, selectedDocumentId, workspaceSlug]);
+    router.push(workspaceGraphHref({ workspaceSlug, mode: workspaceMode, documentId: selectedDocumentId }));
+  }, [router, selectedDocumentId, workspaceSlug, workspaceMode]);
 
   const showCreateFailedToast = useCallback(() => {
     toast(t("nav.folderCreateFailed"), {
@@ -267,7 +272,7 @@ export function DocumentList({
       startTopLevelCreateTransition(() => {
         if (result?.documentId) {
           setPendingCreatedTarget({ kind: "document", id: result.documentId });
-          router.push(workspaceDocumentHref({ workspaceSlug, documentId: result.documentId }));
+          router.push(workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: result.documentId }));
           return;
         }
         router.refresh();
@@ -300,7 +305,7 @@ export function DocumentList({
       startTopLevelCreateTransition(() => {
         if (result?.folderId) {
           setPendingCreatedTarget({ kind: "folder", id: result.folderId });
-          router.push(`/workspaces/${workspaceSlug}?folder=${result.folderId}`);
+          router.push(workspaceFolderHref({ workspaceSlug, folderId: result.folderId, mode: workspaceMode }));
           return;
         }
         router.refresh();
@@ -382,7 +387,7 @@ export function DocumentList({
   const switchWorkspace = useCallback(
     (slug: string) => {
       setAccountDrawerOpen(false);
-      router.push(`/workspaces/${slug}`);
+      router.push(workspaceBaseHref({ workspaceSlug: slug, mode: workspaceMode }));
     },
     [router],
   );
@@ -402,12 +407,16 @@ export function DocumentList({
 
   const logOut = useCallback(() => {
     setAccountDrawerOpen(false);
+    if (workspaceMode === "anonymous-trial-readonly") {
+      window.location.assign("/login");
+      return;
+    }
     void signOut({ redirect: false, callbackUrl: "/login" }).then((result) => {
       window.location.assign(
         resolveAuthClientRedirectPath(result?.url, "/login", window.location.origin) ?? "/login",
       );
     });
-  }, []);
+  }, [workspaceMode]);
 
   const activePanelHydrated = activePanelHydratedWorkspace === workspaceSlug;
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+
 import Link from "next/link";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -59,6 +61,7 @@ export function MarkdownPreview({
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
 }) {
+  const workspaceMode = useWorkspaceMode();
   const { t } = useI18n();
   const tagSearch = useTagSearch();
   const tagSearchLabel = useCallback(
@@ -115,12 +118,13 @@ export function MarkdownPreview({
         ),
       };
       return buildSafeMarkdownComponents({
+        trialAttachments: workspaceMode === "anonymous-trial-readonly",
         allowedAttachmentIds: attachmentIdSet,
         components: textComponents,
         onExternalMediaRequest: setExternalRequest,
       });
     },
-    [attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
+    [workspaceMode, attachmentIdSet, tagSearch?.requestTagSearch, tagSearchLabel],
   );
   const strippedMarkdown = useMemo(() => stripDocumentFrontmatter(markdown), [markdown]);
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);

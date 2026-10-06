@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceStorageScope } from "@/lib/workspace-routes";
+
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
 import type { DocumentListItem } from "@/components/document-list";
@@ -50,6 +53,8 @@ export function DocumentLinkRow({
   onOpenInNewTab: OpenDocumentInNewTabHandler;
   archiveDocumentAction: ArchiveDocumentAction;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { t } = useI18n();
   const menuId = rowId;
   const isMenuOpen = openMenuId === menuId;
@@ -66,7 +71,7 @@ export function DocumentLinkRow({
   return (
     <div className={rowClassName} data-document-row-id={document.id}>
       <Link
-        href={workspaceDocumentHref({ workspaceSlug, documentId: document.id })}
+        href={workspaceDocumentHref({ workspaceSlug, mode: workspaceMode, documentId: document.id })}
         aria-label={showDescription ? undefined : actionLabel}
         onClick={() => onOpenMenu(null)}
         className="min-w-0 flex-1 px-2 py-1.5 text-[13px]"

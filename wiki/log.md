@@ -4018,3 +4018,11 @@ links:
 - Independent review tightened the host probe to require the actual loopback peer IP and exactly one copy of each proof header, so a valid signature over an attacker-supplied IP cannot pass the probe.
 - Trial operations include a daily 00:40 KST retention timer with a dedicated four-table SELECT/DELETE role and shared deployment lock; initial dry-run/execute/dry-run is required before enabling it.
 - PR review aligned the signer with the application's existing 16-character secret minimum, 256-byte file cap, UTF-8/UTF-16 length behavior and forbidden control/BOM characters. Descriptor-based no-follow loading checks inode, link count and bounded reads.
+
+## 2026-10-07 - Full read-only Trial workspace browsing
+
+- Issue #219 restores ordinary graph, search, folder, wiki-link/backlink, metadata and tab browsing while all write actions reject. Trial browser state and attachment routes remain separate from authenticated access; AI quota behavior is preserved.
+- Updated [[Auth And Permissions Workflow]], [[index]] and `docs/runbooks/demo-public-access.md` with the authorization boundary and approved separate Company Handbook snapshot procedure.
+- Source evidence: Trial page, workspace mode/routes, Trial viewer/attachment services, Caddy/Go matcher, and tests for hidden references, read-only actions, Korean attachment filenames and Trial tab isolation.
+- Production baseline #218 was deployed (Actions 37491804650); email/Google signup and anonymous Trial entry plus warm Ask were observed. Full-viewer/snapshot deployment is a separate outstanding step. Previous deploy disk exhaustion was recovered by removing unused build cache and verification image, preserving data volumes and current/rollback images.
+- The Markdown renderer still denies ambient external media; reviewed internal Trial attachment routing updates its protected artifact hash. Existing downstream slot ownership/version remain unchanged.

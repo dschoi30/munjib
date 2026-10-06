@@ -1,5 +1,8 @@
 "use client";
 
+import { useWorkspaceMode } from "@/components/workspace-mode";
+import { workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PanelLeftOpen, PanelRightOpen } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
@@ -90,6 +93,8 @@ export function AppShell({
   right: React.ReactNode | ((controls: RightPanelControls) => React.ReactNode);
   workspaceSlug?: string;
 }) {
+  const workspaceMode = useWorkspaceMode();
+  const storageScope = workspaceStorageScope(workspaceSlug ?? "", workspaceMode);
   const { isHydrated: languageHydrated, t } = useI18n();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
@@ -106,18 +111,18 @@ export function AppShell({
       return;
     }
 
-    const storedState = readStoredWorkspaceUiState(workspaceSlug);
+    const storedState = readStoredWorkspaceUiState(storageScope);
     setLeftPanelOpen(storedState.leftSidebarOpen ?? true);
     setRightPanelOpen(storedState.rightSidebarOpen ?? true);
     setShellStorageHydratedWorkspace(workspaceSlug);
-  }, [workspaceSlug]);
+  }, [workspaceSlug, storageScope]);
 
   useEffect(() => {
     if (!workspaceSlug || shellStorageHydratedWorkspace !== workspaceSlug) {
       return;
     }
 
-    updateStoredWorkspaceUiState(workspaceSlug, (current) => ({
+    updateStoredWorkspaceUiState(storageScope, (current) => ({
       ...current,
       leftSidebarOpen: leftPanelOpen,
       rightSidebarOpen: rightPanelOpen,

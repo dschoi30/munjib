@@ -41,3 +41,10 @@ describe("workspaceGraphHref", () => {
     ).toBe("/workspaces/company-handbook?document=doc-1&graph=1");
   });
 });
+
+
+describe("Trial navigation", () => {
+  it("keeps graph navigation inside the read-only Trial route", () => {
+    expect(workspaceGraphHref({ workspaceSlug: "demo", documentId: "doc-1", mode: "anonymous-trial-readonly" })).toBe("/trial/workspaces/demo?document=doc-1&graph=1");
+  });
+});

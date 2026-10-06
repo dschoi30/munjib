@@ -8,7 +8,7 @@ route {
     request_header -X-Munjib-Trusted-Network-Timestamp
     request_header -X-Munjib-Trusted-Network-Proof
 
-    @trial_proof path /api/trial/entitlement /trial/workspaces/* /api/workspaces/*/documents/*/ask /api/workspaces/*/assistant/messages
+    @trial_proof path /api/trial/entitlement /api/trial/attachments/* /trial/workspaces/* /api/workspaces/*/documents/*/ask /api/workspaces/*/assistant/messages
     forward_auth @trial_proof 127.0.0.1:9187 {
         uri /proof?
         header_up X-Munjib-Edge-Client-IP {http.request.remote.host}

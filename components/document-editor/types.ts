@@ -22,6 +22,7 @@ export type CommentItem = {
 };
 
 export type DocumentEditorProps = {
+  initialTrialAiAllowance?: import("@/lib/auth/trial-entitlement").TrialAiAllowanceProjection | null;
   workspaceSlug: string;
   defaultChatModel: string;
   defaultChatProvider: "ollama" | "openai" | "openai-compatible";

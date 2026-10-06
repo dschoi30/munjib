@@ -3,6 +3,7 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
 import { AiAnswer, AiCitations } from "@/components/ai/answer";
 
 afterEach(() => {
@@ -154,4 +155,12 @@ describe("AiAnswer", () => {
       "/trial/workspaces/company-handbook?document=doc-1",
     );
   });
+});
+
+
+it("routes authorized Trial attachment media through the isolated read-only endpoint", () => {
+  const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content="![demo](/api/attachments/file-1) [download](/api/attachments/file-1) [hidden](/api/attachments/private)" allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+  expect(html).toContain('src="/api/trial/attachments/file-1"');
+  expect(html).toContain('href="/api/trial/attachments/file-1"');
+  expect(html).not.toContain('href="/api/attachments/private"');
 });

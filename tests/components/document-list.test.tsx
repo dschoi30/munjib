@@ -3,6 +3,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppShell, useTagSearch } from "@/components/app-shell";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
 import { DocumentList } from "@/components/document-list";
 import { I18nProvider, useI18n } from "@/components/i18n-provider";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
@@ -3181,3 +3182,24 @@ describe("DocumentList", () => {
     expect(router.refresh).not.toHaveBeenCalled();
   });
 });
+
+
+describe("read-only Trial navigation", () => {
+  it("keeps graph and search result links in the Trial workspace", () => {
+    renderWithI18n(<WorkspaceModeProvider mode="anonymous-trial-readonly"><DocumentList {...baseProps} canWrite={false} canManageWorkspace={false} documents={baseProps.documents.map(d => ({...d, canWrite:false}))} /></WorkspaceModeProvider>);
+    fireEvent.click(screen.getByRole("button", {name:"Graph"}));
+    expect(router.push).toHaveBeenCalledWith("/trial/workspaces/company-handbook?document=doc-1&graph=1");
+    fireEvent.click(screen.getByRole("button", {name:"Search"}));
+    fireEvent.change(screen.getByLabelText("Search documents"), {target:{value:"Welcome"}});
+    expect(screen.getByRole("link", {name:/Welcome/}).getAttribute("href")).toContain("/trial/workspaces/company-handbook?");
+  });
+});
+
+  it("stores Trial context-menu tabs separately from signed-in workspace tabs", () => {
+    localStorage.clear();
+    renderWithI18n(<WorkspaceModeProvider mode="anonymous-trial-readonly"><DocumentList {...baseProps} canWrite={false} canManageWorkspace={false} /></WorkspaceModeProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Open actions for Welcome" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open in new tab" }));
+    expect(localStorage.getItem("munjib:open-tabs:trial:company-handbook")).toContain("doc-1");
+    expect(localStorage.getItem("munjib:open-tabs:company-handbook")).toBeNull();
+  });

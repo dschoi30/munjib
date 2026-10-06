@@ -1,114 +1,92 @@
-import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { AiAnswer } from "@/components/ai/answer";
-import { AiAssistantPanel } from "@/components/document-editor/ai-assistant-panel";
+import { AppShell } from "@/components/app-shell";
+import { DocumentList } from "@/components/document-list";
+import { DocumentEditor } from "@/components/document-editor";
+import { FolderDetail } from "@/components/folder-detail";
+import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
+import { MetadataPanel } from "@/components/metadata-panel";
+import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
 import { WorkspaceChatbot } from "@/components/workspace-chatbot";
-import {
-  resolveAnonymousTrialActor,
-  resolveAnonymousTrialCapability,
-  projectTrialAiAllowance,
-  resolveTrialEntitlement,
-} from "@/lib/auth/trial-entitlement";
-import {
-  getDefaultRagChatModel,
-  getDefaultRagChatProvider,
-  getRagChatProviderAvailability,
-} from "@/lib/rag/model-config";
-import { loadTrialWorkspaceViewer } from "@/lib/workspaces/trial-viewer";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
+import { resolveAnonymousTrialActor, resolveAnonymousTrialCapability, projectTrialAiAllowance, resolveTrialEntitlement } from "@/lib/auth/trial-entitlement";
+import { getDefaultRagChatModel, getDefaultRagChatProvider, getRagChatProviderAvailability } from "@/lib/rag/model-config";
+import { loadTrialWorkspaceViewer, loadTrialDocumentDetails, trialDocumentLinkPanels } from "@/lib/workspaces/trial-viewer";
+import { buildKnowledgeGraph } from "@/lib/knowledge-graph/model";
+import { normalizeTag, parseDocumentMetadata } from "@/lib/document-metadata/parser";
+import { buildDocumentDisplayPathMap, buildFolderDisplayPathMap, countFolderChildren, folderDisplayPath } from "@/lib/workspace-tree";
+import { rejectTrialMutation } from "./actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function TrialWorkspacePage({
-  params,
-  searchParams,
-}: {
+export default async function TrialWorkspacePage({ params, searchParams }: {
   params: Promise<{ workspaceSlug: string }>;
-  searchParams: Promise<{ document?: string }>;
+  searchParams: Promise<{ document?: string; folder?: string; graph?: string }>;
 }) {
   const { workspaceSlug } = await params;
-  const requestHeaders = await headers();
-  const trialRequest = new Request(`https://trial.invalid/trial/workspaces/${workspaceSlug}`, {
-    headers: requestHeaders,
-  });
+  const trialRequest = new Request(`https://trial.invalid/trial/workspaces/${workspaceSlug}`, { headers: await headers() });
   const actor = resolveAnonymousTrialActor(trialRequest, resolveAnonymousTrialCapability());
   if (!actor || actor.authorizationPrincipal.kind !== "anonymous-trial-demo") notFound();
-
   const workspace = await loadTrialWorkspaceViewer(actor.authorizationPrincipal, workspaceSlug);
   if (!workspace) notFound();
-  const { document: requestedDocumentId } = await searchParams;
-  const selectedDocument =
-    workspace.documents.find((document) => document.id === requestedDocumentId) ??
-    workspace.documents[0] ??
-    null;
-  const initialTrialAiAllowance = projectTrialAiAllowance(
-    await resolveTrialEntitlement(trialRequest),
-  );
-  const defaultChatProvider = getDefaultRagChatProvider();
+  const query = await searchParams;
+  const isGraphView = query.graph === "1";
+  const selectedFolder = workspace.folders.find(f => f.id === query.folder) ?? null;
+  const selectedDocument = selectedFolder && !isGraphView ? null : workspace.documents.find(d => d.id === query.document) ?? null;
+  // Guessed/hidden IDs must not silently select a different document.
+  if (query.document && !selectedDocument && !selectedFolder) notFound();
+  if (query.folder && !selectedFolder) notFound();
+  const details = selectedDocument ? await loadTrialDocumentDetails(workspace, selectedDocument.id) : null;
+  const allowance = projectTrialAiAllowance(await resolveTrialEntitlement(trialRequest));
   const defaultChatModel = getDefaultRagChatModel();
+  const defaultChatProvider = getDefaultRagChatProvider();
   const availableChatProviders = getRagChatProviderAvailability();
-
-  return (
-    <main className="min-h-screen bg-surface-page text-ink">
-      <header className="border-b border-border bg-surface px-6 py-4">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">읽기 전용 Trial</p>
-            <h1 className="text-xl font-semibold">{workspace.name}</h1>
-          </div>
-          <Link className="text-sm font-medium text-[#174a76] hover:underline" href="/login">
-            로그인
-          </Link>
-        </div>
-      </header>
-      <div className="mx-auto grid max-w-6xl gap-6 px-6 py-6 md:grid-cols-[260px_minmax(0,1fr)]">
-        <nav aria-label="Trial 문서" className="rounded-xl border border-border bg-surface p-3">
-          <p className="px-2 pb-2 text-xs font-semibold text-ink-muted">공개 데모 문서</p>
-          <ul className="space-y-1">
-            {workspace.documents.map((document) => (
-              <li key={document.id}>
-                <Link
-                  className="block rounded-md px-2 py-2 text-sm hover:bg-surface-muted"
-                  href={`/trial/workspaces/${workspace.slug}?document=${encodeURIComponent(document.id)}`}
-                >
-                  {document.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </nav>
-        <article className="min-w-0 rounded-xl border border-border bg-surface p-6 shadow-card">
-          {selectedDocument ? (
-            <>
-              <h2 className="mb-5 text-2xl font-semibold">{selectedDocument.title}</h2>
-              <AiAnswer content={selectedDocument.contentMarkdown} />
-              <div className="mt-6 border-t border-border pt-6">
-                <AiAssistantPanel
-                  mode="anonymous-trial-readonly"
-                  initialTrialAiAllowance={initialTrialAiAllowance}
-                  workspaceSlug={workspace.slug}
-                  documentId={selectedDocument.id}
-                  hasUnsavedChanges={false}
-                  defaultChatProvider={defaultChatProvider}
-                  defaultChatModel={defaultChatModel}
-                  availableChatProviders={availableChatProviders}
-                />
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-ink-muted">표시할 수 있는 데모 문서가 없습니다.</p>
-          )}
-        </article>
-      </div>
-      <WorkspaceChatbot
-        mode="anonymous-trial-readonly"
-        initialTrialAiAllowance={initialTrialAiAllowance}
-        workspaceSlug={workspace.slug}
-        selectedDocumentId={selectedDocument?.id ?? null}
-        defaultChatProvider={defaultChatProvider}
-        defaultChatModel={defaultChatModel}
-        availableChatProviders={availableChatProviders}
-      />
-    </main>
-  );
+  const modelProps = {defaultChatModel,defaultChatProvider,availableChatProviders};
+  const folderPaths = buildFolderDisplayPathMap([...workspace.folders]);
+  const documentPaths = buildDocumentDisplayPathMap([...workspace.documents], folderPaths);
+  const docs = workspace.documents.map(d => ({ ...d,
+    displayPath:documentPaths.get(d.id)?.path ?? d.path,
+    displayPathNeedsStoredPath:documentPaths.get(d.id)?.needsStoredPathDisambiguation ?? false,
+    tagNames:parseDocumentMetadata(d.contentMarkdown).tags.map(normalizeTag), canWrite:false,
+  }));
+  const documentTabs = docs.map(({id,title,path,displayPath,displayPathNeedsStoredPath}) => ({id,title,path,displayPath,displayPathNeedsStoredPath}));
+  const selectedTab = documentTabs.find(d => d.id === selectedDocument?.id) ?? null;
+  const folder = selectedFolder ? { ...selectedFolder,displayPath:folderDisplayPath(selectedFolder,folderPaths),
+    childCount:countFolderChildren({folderId:selectedFolder.id,folders:[...workspace.folders],documents:[...workspace.documents]}) } : null;
+  const counts = docs.reduce<Record<string,number>>((n,d) => {if(d.folderId)n[d.folderId]=(n[d.folderId]??0)+1;return n;},{});
+  const graph = isGraphView ? buildKnowledgeGraph({
+    documents:docs.map(({id,title,path,contentMarkdown}) => ({id,title,path,contentMarkdown})),links:[...workspace.links],
+    tags:docs.flatMap(d => d.tagNames.map(name => ({documentId:d.id,tag:{name,normalizedName:name}}))),
+  }) : {nodes:[],links:[]};
+  return <WorkspaceModeProvider mode="anonymous-trial-readonly">
+    <AppShell workspaceSlug={workspaceSlug}
+      left={<DocumentList workspaceSlug={workspaceSlug} workspaceName={workspace.name}
+        currentUser={{name:"Trial",email:""}} readableWorkspaces={[{id:workspace.id,name:workspace.name,slug:workspace.slug,role:"VIEWER"}]}
+        folders={workspace.folders.map(f => ({...f,displayPath:folderDisplayPath(f,folderPaths)}))}
+        documents={docs.map(({id,folderId,title,path,displayPath,displayPathNeedsStoredPath,contentText,tagNames,canWrite}) => ({id,folderId,title,path,displayPath,displayPathNeedsStoredPath,contentText,tagNames,canWrite}))}
+        folderDocumentCounts={counts} canWrite={false} canManageWorkspace={false}
+        createAction={rejectTrialMutation} createFolderAction={rejectTrialMutation} createWorkspaceAction={rejectTrialMutation}
+        renameWorkspaceAction={rejectTrialMutation} archiveWorkspaceAction={rejectTrialMutation} importMarkdownAction={rejectTrialMutation}
+        renameFolderAction={rejectTrialMutation} archiveFolderAction={rejectTrialMutation} archiveDocumentAction={rejectTrialMutation}
+        archivedDocumentRetentionPolicy="NEVER" updateRetentionPolicyAction={rejectTrialMutation} folderError=""
+        selectedFolderId={selectedFolder?.id ?? selectedDocument?.folderId ?? null} selectedDocumentId={selectedDocument?.id ?? null}
+        isGraphView={isGraphView} {...modelProps}/ >}
+      center={<WorkspaceCenterShell workspaceSlug={workspaceSlug} documents={documentTabs} selectedDocument={selectedTab}
+        selectedFolder={folder} isGraphView={isGraphView} restoreStoredActiveTab={!query.document&&!query.folder&&!isGraphView}>
+        {isGraphView ? <KnowledgeGraphView workspaceSlug={workspaceSlug} graph={graph} selectedDocumentId={selectedDocument?.id??null}/>
+          : folder ? <FolderDetail folder={folder} canWrite={false}/>
+          : <DocumentEditor workspaceSlug={workspaceSlug} document={selectedDocument?{id:selectedDocument.id,title:selectedDocument.title,contentMarkdown:selectedDocument.contentMarkdown}:null}
+            canWrite={false} action={rejectTrialMutation} uploadAttachmentAction={rejectTrialMutation} pasteImageAttachmentAction={rejectTrialMutation}
+            attachmentIds={details?.attachments.map(a=>a.id)??[]} linkCandidates={docs.map(({id,slug,title,path})=>({id,slug,title,path}))}
+            tags={details?.tags.map(t=>t.tag)??[]} properties={details?.properties??[]}
+            comments={details?.comments.map(c=>({...c,user:{name:"Demo",email:""}}))??[]}
+            linkPanels={trialDocumentLinkPanels(workspace,selectedDocument?.id??"")}
+            createFromBrokenLinkAction={rejectTrialMutation} createCommentAction={rejectTrialMutation} initialTrialAiAllowance={allowance} {...modelProps}/>}
+      </WorkspaceCenterShell>}
+      right={<MetadataPanel document={selectedDocument?{id:selectedDocument.id,contentMarkdown:selectedDocument.contentMarkdown}:null}
+        versions={details?.versions??[]} auditLogs={details?.auditLogs??[]} attachments={details?.attachments??[]}
+        canWrite={false} restoreVersionAction={rejectTrialMutation}/>}/>
+    <WorkspaceChatbot mode="anonymous-trial-readonly" initialTrialAiAllowance={allowance} workspaceSlug={workspaceSlug}
+      selectedDocumentId={selectedDocument?.id??null} {...modelProps}/>
+  </WorkspaceModeProvider>;
 }
