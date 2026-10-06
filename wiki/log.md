@@ -4033,3 +4033,7 @@ links:
 - The same routing rule also covers absolute URLs on the configured application origin; genuine outside destinations retain the explicit external-navigation confirmation.
 - Final review also separated heading-fold keys and Workspace AI panel state for Trial. Editor and Markdown preview share one scoped fold key, preventing browser preference changes from reaching the same authenticated document.
 - Fresh Trial entry selects the first readable document while explicit folder/graph navigation and invalid document IDs retain their separate behavior; page regression tests cover the initial view and denial.
+
+## 2026-10-07 — Read-only archive menu visibility (#221)
+
+- Live Trial verification after #220 found a hidden archive button was made visible by its block display class. Omit the entire archive form for documents without write permission; retain the server mutation denial. Regression tests assert no archive button or document mutation input exists in the read-only menu.
