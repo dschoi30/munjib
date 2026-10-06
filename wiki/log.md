@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-05
-source_count: 366
+updated: 2026-10-07
+source_count: 367
 tags:
   - log
   - munjib
