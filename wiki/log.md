@@ -4026,3 +4026,4 @@ links:
 - Source evidence: Trial page, workspace mode/routes, Trial viewer/attachment services, Caddy/Go matcher, and tests for hidden references, read-only actions, Korean attachment filenames and Trial tab isolation.
 - Production baseline #218 was deployed (Actions 37491804650); email/Google signup and anonymous Trial entry plus warm Ask were observed. Full-viewer/snapshot deployment is a separate outstanding step. Previous deploy disk exhaustion was recovered by removing unused build cache and verification image, preserving data volumes and current/rollback images.
 - The Markdown renderer still denies ambient external media; reviewed internal Trial attachment routing updates its protected artifact hash. Existing downstream slot ownership/version remain unchanged.
+- Trial attachment responses sandbox direct document navigation so stored HTML/SVG cannot execute scripts in the application origin.

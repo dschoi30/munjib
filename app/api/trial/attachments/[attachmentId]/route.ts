@@ -13,6 +13,7 @@ export async function GET(request:Request,{params}:{params:Promise<{attachmentId
       "content-type":result.mimeType,"content-length":String(result.bytes.length),
       "content-disposition": `inline; filename="attachment"; filename*=UTF-8''${encodeURIComponent(result.fileName).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`,
       "cache-control":"private, no-store","x-content-type-options":"nosniff",
+      "content-security-policy":"sandbox; default-src 'none'",
     }});
   } catch {return deny();}
 }
