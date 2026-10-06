@@ -31,3 +31,11 @@ it.each(["a@@b", "a b@example.com", "a@example", "@example.com", "a@", "a@exampl
   expect(hash).not.toHaveBeenCalled();
   expect(prisma.$transaction).not.toHaveBeenCalled();
 });
+
+it.each(["user+demo@example.com", "  USER@Example.COM  "])("accepts valid email %j for provisioning", async (email) => {
+  hash.mockClear();
+  vi.mocked(prisma.$transaction).mockClear();
+  await createPasswordSignup({ email, password: "test-password", language: "en" });
+  expect(hash).toHaveBeenCalledOnce();
+  expect(prisma.$transaction).toHaveBeenCalledOnce();
+});
