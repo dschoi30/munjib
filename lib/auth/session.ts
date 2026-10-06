@@ -35,7 +35,9 @@ export async function requireAiActor(
   request: Request,
   deps: AiActorDependencies = {},
 ): Promise<AiRouteActor> {
-  const user = await (deps.getCurrentUser ?? getCurrentUser)();
+  // This client hint selects a narrower principal; signed Trial evidence is still required.
+  const explicitTrial = request.headers.get("x-munjib-ai-mode") === "anonymous-trial-readonly";
+  const user = explicitTrial ? null : await (deps.getCurrentUser ?? getCurrentUser)();
   const now = (deps.now ?? (() => new Date()))();
   if (user?.id) {
     return {

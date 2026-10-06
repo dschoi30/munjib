@@ -96,6 +96,7 @@ describe("WorkspaceChatbot", () => {
       "/api/workspaces/company-handbook/assistant/messages",
       expect.objectContaining({
         method: "POST",
+        headers: expect.objectContaining({"X-Munjib-AI-Mode":"anonymous-trial-readonly"}),
         body: JSON.stringify({
           message: "What is the policy?",
           selectedDocumentId: "doc-1",
@@ -145,6 +146,7 @@ describe("WorkspaceChatbot", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/workspaces/company-handbook/documents/doc-1/ask",
       expect.objectContaining({
+        headers: expect.objectContaining({"X-Munjib-AI-Mode":"anonymous-trial-readonly"}),
         body: JSON.stringify({ question: "Question", uiLanguage: "en" }),
       }),
     );

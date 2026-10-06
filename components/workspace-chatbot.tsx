@@ -265,7 +265,10 @@ export function WorkspaceChatbot({
     try {
       const response = await fetch(`/api/workspaces/${workspaceSlug}/assistant/messages`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(mode === "anonymous-trial-readonly" ? { "X-Munjib-AI-Mode": "anonymous-trial-readonly" } : {}),
+        },
         signal: abortController.signal,
         body: JSON.stringify({
           message: trimmedMessage,
