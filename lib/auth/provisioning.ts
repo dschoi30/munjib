@@ -247,9 +247,9 @@ export async function ensureCurrentUserWorkspaceAndRedirect(input: {
 }
 
 function normalizeEmail(value: unknown) {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string" || /[\u0000-\u001f\u007f]/.test(value)) return null;
   const email = value.trim().toLowerCase();
-  if (email.length > 320 || /[\u0000-\u001f\u007f]/.test(email)) return null;
+  if (email.length > 320) return null;
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 

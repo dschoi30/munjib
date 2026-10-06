@@ -4000,7 +4000,7 @@ links:
 ## 2026-10-07 - Public signup email validation follow-up
 
 - PR #215 late review: reject malformed email addresses before hashing and persistence, using the existing Google email shape policy.
-- Nine rejection cases cover duplicate at signs, internal whitespace, missing local/domain components, missing domain dot, control characters and the login length limit; positive cases preserve plus-addressing and trimmed mixed-case input.
+- Eleven rejection cases cover duplicate at signs, internal whitespace, missing local/domain components, missing domain dot, raw control characters (including surrounding whitespace controls) and the login length limit; positive cases preserve plus-addressing and trimmed mixed-case input.
 - Production CI stopped on the newly published sharp advisory GHSA-wq5f-xc86-pv6w; pin sharp 0.35.5. Public signup host flag remains disabled until the corrected release is verified.
 - Source evidence: `lib/auth/provisioning.ts`, `tests/auth/signup-work-limit.test.ts`, production CI run 37484865738.
 
