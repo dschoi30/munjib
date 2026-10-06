@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
 updated: 2026-10-07
-source_count: 180
+source_count: 181
 tags:
   - index
   - munjib
@@ -143,4 +143,4 @@ links:
 - 디자인 산출물: [[designs/index|UI Design Excalidraw Index]]
 - stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.
 
-- Issue #217: native Caddy Trial proof adapter, service verification and rollback are documented in [[Auth And Permissions Workflow]] and [[CI CD And Monitoring Workflow]].
+- Issue #217: native Caddy Trial proof adapter, daily retention timer, service verification and rollback are documented in [[Auth And Permissions Workflow]] and [[CI CD And Monitoring Workflow]].

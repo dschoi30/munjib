@@ -1,0 +1,11 @@
+[Unit]
+Description=Purge expired Munjib anonymous Trial usage records
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/ubuntu/munjib
+ExecStart=/usr/bin/flock --shared --timeout 1800 /run/lock/munjib-deploy.lock /usr/bin/docker compose --env-file /etc/munjib/env --env-file /etc/munjib/trial-retention.env run --rm --no-deps tools pnpm run trial-ai:purge-retention -- --execute
+TimeoutStartSec=40min
+UMask=0077
