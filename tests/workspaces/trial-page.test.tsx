@@ -80,3 +80,14 @@ it("rejects Trial mutation actions without consulting an authenticated account",
   const { rejectTrialMutation } = await import("@/app/trial/workspaces/[workspaceSlug]/actions");
   await expect(rejectTrialMutation(new FormData())).rejects.toThrow("TRIAL_READ_ONLY");
 });
+
+it("opens the first readable document on a fresh Trial entry", async () => {
+  const { default: Page } = await import("@/app/trial/workspaces/[workspaceSlug]/page");
+  const page = await Page({params:Promise.resolve({workspaceSlug:"company-handbook"}),searchParams:Promise.resolve({})});
+  testingRender(<I18nProvider>{page}</I18nProvider>);
+  expect((screen.getByLabelText("Document title") as HTMLInputElement).value).toBe("Welcome");
+});
+it("does not substitute the first document for an invalid explicit ID", async () => {
+  const { default: Page } = await import("@/app/trial/workspaces/[workspaceSlug]/page");
+  await expect(Page({params:Promise.resolve({workspaceSlug:"company-handbook"}),searchParams:Promise.resolve({document:"missing"})})).rejects.toThrow("NOT_FOUND");
+});

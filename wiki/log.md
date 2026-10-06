@@ -4032,3 +4032,4 @@ links:
 - Follow-up PR review keeps explicit/encoded/case-variant workspace Markdown links in Trial routes and rejects other internal API links; forged/cross-workspace document IDs still fail at the exact-snapshot viewer boundary.
 - The same routing rule also covers absolute URLs on the configured application origin; genuine outside destinations retain the explicit external-navigation confirmation.
 - Final review also separated heading-fold keys and Workspace AI panel state for Trial. Editor and Markdown preview share one scoped fold key, preventing browser preference changes from reaching the same authenticated document.
+- Fresh Trial entry selects the first readable document while explicit folder/graph navigation and invalid document IDs retain their separate behavior; page regression tests cover the initial view and denial.

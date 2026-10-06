@@ -32,7 +32,8 @@ export default async function TrialWorkspacePage({ params, searchParams }: {
   const query = await searchParams;
   const isGraphView = query.graph === "1";
   const selectedFolder = workspace.folders.find(f => f.id === query.folder) ?? null;
-  const selectedDocument = selectedFolder && !isGraphView ? null : workspace.documents.find(d => d.id === query.document) ?? null;
+  const isFreshEntry = query.document === undefined && query.folder === undefined && query.graph === undefined;
+  const selectedDocument = selectedFolder && !isGraphView ? null : workspace.documents.find(d => d.id === query.document) ?? (isFreshEntry ? workspace.documents[0] ?? null : null);
   // Guessed/hidden IDs must not silently select a different document.
   if (query.document && !selectedDocument && !selectedFolder) notFound();
   if (query.folder && !selectedFolder) notFound();
