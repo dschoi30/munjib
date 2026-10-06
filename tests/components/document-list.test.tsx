@@ -3209,3 +3209,10 @@ it("hides workspace model settings in read-only Trial", () => {
  fireEvent.click(screen.getByRole("button", {name:"Account menu"}));
  expect(screen.queryByRole("menuitem", {name:"Workspace settings"})).toBeNull();
 });
+
+it("omits archive form entirely for a read-only document", () => {
+  renderList({canWrite:false, documents:baseProps.documents.map(d=>({...d,canWrite:false}))});
+  fireEvent.click(screen.getAllByRole("button", {name:"Open actions for Welcome"})[0]);
+  expect(screen.queryByText("Move to trash")).toBeNull();
+  expect(document.querySelector('input[name="documentId"]')).toBeNull();
+});
