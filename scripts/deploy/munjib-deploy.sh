@@ -77,6 +77,13 @@ if [[ -n "$google_client_id" ]]; then
 fi
 google_client_id=
 
+# Enable only the reviewed, fixed Trial overlay; never source the host env as shell.
+trial_enabled="$(awk -F= '/^[[:space:]]*MUNJIB_ANONYMOUS_TRIAL_ENABLED[[:space:]]*=/ { value=$2; sub(/[[:space:]]+#.*$/, "", value); gsub(/^[[:space:]"\047]+|[[:space:]"\047]+$/, "", value); print value; exit }' "$env_file")"
+if [[ "$trial_enabled" == true ]]; then
+  compose_files+=(-f docker-compose.trial.yml)
+fi
+trial_enabled=
+
 cd "$repo_dir"
 web_image="munjib-web:$deploy_sha"
 

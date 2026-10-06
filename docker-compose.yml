@@ -42,6 +42,7 @@ services:
       NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
       NEXTAUTH_COOKIE_SECURE: "true"
       MUNJIB_ENABLE_DEV_LOGIN: "false"
+      MUNJIB_PUBLIC_SIGNUP_ENABLED: ${MUNJIB_PUBLIC_SIGNUP_ENABLED:-false}
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
       SENTRY_RELEASE: ${SENTRY_RELEASE:-}
@@ -113,6 +114,7 @@ services:
       NEXTAUTH_SECRET_FILE: /run/secrets/munjib_nextauth_secret
       NEXTAUTH_COOKIE_SECURE: "true"
       MUNJIB_ENABLE_DEV_LOGIN: "false"
+      MUNJIB_PUBLIC_SIGNUP_ENABLED: ${MUNJIB_PUBLIC_SIGNUP_ENABLED:-false}
     command: pnpm security:auth-preflight
     secrets:
       - source: munjib_nextauth_secret

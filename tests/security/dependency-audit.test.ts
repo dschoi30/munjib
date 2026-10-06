@@ -25,13 +25,13 @@ describe("production dependency audit remediation", () => {
     expect(packageJson.pnpm?.overrides).toMatchObject({
       postcss: "8.5.23",
       uuid: "11.1.1",
-      "minimatch@10.2.5>brace-expansion": "5.0.9",
+      "minimatch@10.2.5>brace-expansion": "5.0.12",
       "@opentelemetry/core": "2.8.0",
       "@opentelemetry/propagator-jaeger": "2.9.0",
-      "fast-uri": "3.1.5",
+      "fast-uri": "3.1.8",
       "nanoid": "3.3.18",
       "protobufjs": "7.6.5",
-      "sharp": "0.35.0",
+      "sharp": "0.35.4",
       "deepmerge-ts": "8.0.0",
     });
   });
@@ -59,17 +59,17 @@ describe("production dependency audit remediation", () => {
 
   test("scopes brace-expansion v5 to minimatch v10 without a global override", () => {
     expect(packageJson.pnpm?.overrides).toMatchObject({
-      "minimatch@10.2.5>brace-expansion": "5.0.9",
+      "minimatch@10.2.5>brace-expansion": "5.0.12",
     });
     expect(packageJson.pnpm?.overrides).not.toHaveProperty("brace-expansion");
     expect(packageKeys).toEqual(
-      expect.arrayContaining(["brace-expansion@1.1.16", "brace-expansion@5.0.9"]),
+      expect.arrayContaining(["brace-expansion@1.1.16", "brace-expansion@5.0.12"]),
     );
     expect(snapshots["minimatch@3.1.5"]?.dependencies?.["brace-expansion"]).toBe(
       "1.1.16",
     );
     expect(snapshots["minimatch@10.2.5"]?.dependencies?.["brace-expansion"]).toBe(
-      "5.0.9",
+      "5.0.12",
     );
   });
 

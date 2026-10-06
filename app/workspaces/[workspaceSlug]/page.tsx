@@ -1,3 +1,4 @@
+import { resolvePublicSignupEnabled } from "@/lib/auth/signup-policy";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DocumentEditor } from "@/components/document-editor";
@@ -80,7 +81,7 @@ export default async function WorkspacePage({
           isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
           isTrialLoginEnabled={resolveTrialLoginEnabled()}
           trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
-          isSignupEnabled={false}
+          isSignupEnabled={resolvePublicSignupEnabled()}
         />
       </main>
     );

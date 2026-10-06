@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-08-25
-source_count: 121
+updated: 2026-10-05
+source_count: 123
 tags:
   - munjib
   - auth
@@ -53,7 +53,7 @@ override.
 load `NEXTAUTH_SECRET_FILE` and optional `GOOGLE_CLIENT_SECRET_FILE` through the
 same no-follow, same-FD, owner/mode/size-bounded reader; direct secret environment
 values are forbidden. The runtime also requires one canonical origin, Secure cookies,
-disabled development login, and closed password/OAuth signup.
+disabled development login, and password/OAuth signup closed by default.
 The reader also compares the pre-open path identity with the opened descriptor to
 reject a path swap before consuming the bounded secret bytes, and treats Unicode
 line separators and all C1 controls as content violations alongside ASCII
@@ -68,6 +68,12 @@ source fragments so a production-source secret scan cannot mistake it for a
 deployable credential. Strict staging/production validation never uses that
 fallback and rejects its decoded value, as well as the other known local fallback
 vectors, with `AUTH_SECRET_FALLBACK`.
+
+## Manual public signup and Trial opening (Issue #214)
+
+`MUNJIB_PUBLIC_SIGNUP_ENABLED=true` explicitly opens password account creation and verified new Google identities; absent, false or malformed values keep them closed. The same policy feeds login gates and auth preflight/runtime. Password signup requires a canonical same-origin request and shares the login KDF work limit (2 active, 8 queued, 2-second queue deadline), returning a private no-store 503 when saturated. It provisions a personal workspace; Google uses the existing post-login provisioning path and still does not auto-link accounts by matching email. Provider tokens and media are stripped before persistence; a neutral local name satisfies the required user field. Public signup rejects reserved legacy launch-account email addresses before persistence. Turning the flag off requires web recreation for the OAuth runtime snapshot and leaves existing account sign-in available.
+
+Anonymous Trial remains a separate read-only, quota-limited capability. `docker-compose.trial.yml` wires fixed-path secrets, exact demo workspace, Turnstile and signed edge evidence; the deployment wrapper selects it only on explicit `MUNJIB_ANONYMOUS_TRIAL_ENABLED=true`. There is no automatic expiry. The operator disables both flags to close the demo. See `docs/runbooks/demo-public-access.md` for activation prerequisites and verification. Repository wiring is not evidence of production activation.
 
 ## Closed signup covers OAuth
 
@@ -90,7 +96,7 @@ sanitized again after downstream claims resolution and restores the original
 validated `sub`, so hooks cannot add provider media or replace identity. Session
 avatar resolution uses `getReadableAttachment()` with the current user's
 workspace/document ACL; missing, malformed, or unauthorized attachment images
-fail closed to `null`. All server-side `LoginForm` callers pass the closed signup
+fail closed to `null`. All server-side `LoginForm` callers pass the server-owned signup
 gate, and the component default is also fail closed.
 
 ## Isolated anonymous Trial principal
@@ -254,11 +260,10 @@ Successful current hashes are not rewritten. A verified legacy value is wrapped
 with the same salt/key into v1 and conditionally updated with `WHERE id AND the
 exact old passwordHash`; a zero-row compare-and-swap or database failure returns
 no user before session issuance. Seed and one-shot provisioning use `hashPassword()`
-so new rows are v1, while `/api/auth/signup` remains a stable `403
-SIGNUP_NOT_ALLOWED` closed boundary.
+so new rows are v1. `/api/auth/signup` returns `403 SIGNUP_NOT_ALLOWED` unless the explicit Issue #214 public signup opt-in is enabled.
 
-Production signup invariant: password account creation and unlinked OAuth are both
-closed. Google `email_verified` is checked, then the exact provider account must
+Default production signup invariant: password account creation and unlinked OAuth are both
+closed unless Issue #214 public signup is enabled. Google `email_verified` is checked, then the exact provider account must
 already exist. Callback denial plus the adapter persistence guard produce zero new
 User/Account rows. Google credentials and profile media are never persisted; only a
 canonical internal attachment URL whose exact ID is server-authorized for the current
@@ -459,8 +464,8 @@ and Korean strings live in `lib/i18n/messages.ts`.
 `createPasswordSignup()` remains the one-shot provisioning helper for internal
 callers: it normalizes email, enforces an 8-character minimum password, hashes
 with the versioned helper, creates the `User`, and provisions a personal
-organization plus default workspace. The public `/api/auth/signup` route is
-closed with `403 SIGNUP_NOT_ALLOWED`. The
+organization plus default workspace. The public `/api/auth/signup` route defaults
+closed with `403 SIGNUP_NOT_ALLOWED` and opens only via the Issue #214 opt-in. The
 workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
 launch membership bootstrap so the new user is `OWNER`, `legacy-account-1@example.invalid`

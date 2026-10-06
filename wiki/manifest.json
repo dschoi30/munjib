@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-08-25",
+  "updated": "2026-10-06",
   "pages": [
     {
       "id": "workflow-attachment-lifecycle-readiness",
@@ -46,7 +46,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 121,
+      "source_count": 123,
       "searchPriority": 50
     },
     {
