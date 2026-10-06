@@ -4012,3 +4012,6 @@ links:
 - Issue #217 supplies the existing Trial HMAC contract through a loopback Go signer, strict systemd credential loading and Caddy header replacement. No raw-header development bypass is enabled.
 - Tests cover independent Node vectors, malformed authorities, query exclusion, duplicate headers, endpoint/peer restrictions and secret permissions. CI adds race tests.
 - Sources: `cmd/munjib-trial-edge`, `deploy/caddy/munjib-trial.caddy`, `deploy/systemd/munjib-trial-edge.service`, `docs/runbooks/demo-public-access.md`. Live activation remains a separate verification step.
+
+- Host verification corrected the service identity to DynamicUser and accepted systemd's fixed-path root:root 0440 ACL-protected credential envelope; arbitrary group-readable keys remain rejected. The earlier numeric container UID has no host user entry.
+- Actual Caddy 2.6.2 integration passed original POST/body/path, query exclusion, forged header replacement, ordinary-route passthrough and both legacy denials. The query-clear suffix on `/proof?` is required by this Caddy version. Reproducible probe: `scripts/deploy/verify-trial-edge.py`.

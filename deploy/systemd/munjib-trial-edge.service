@@ -4,8 +4,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=10001
-Group=10001
+DynamicUser=yes
+User=munjib-trial-edge
 LoadCredential=trial-edge-proof-secret:/etc/munjib/secrets/trial-edge-proof-secret
 ExecStart=/usr/local/libexec/munjib-trial-edge
 Restart=on-failure

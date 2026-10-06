@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const credentialPath = "/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret"
+
 var methodPattern = regexp.MustCompile(`^[A-Z]{3,10}$`)
 var pathPattern = regexp.MustCompile(`^(/api/trial/entitlement|/trial/workspaces/[^/]+|/api/workspaces/[^/]+/(assistant/messages|documents/[^/]+/ask))$`)
 
@@ -79,11 +81,15 @@ func handler(key string, now func() time.Time) http.Handler {
 
 func loadKey(path string) (string, error) {
 	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Mode().Perm() != 0400 || info.Size() < 32 || info.Size() > 256 {
+	if err != nil || !info.Mode().IsRegular() || info.Size() < 32 || info.Size() > 256 {
 		return "", fmt.Errorf("unsafe secret file")
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok || int(stat.Uid) != os.Geteuid() {
+	// systemd may expose credentials as root:root 0440 with a service-only ACL.
+	// Accept that envelope only at the fixed systemd-managed credential path.
+	privateOwner := ok && int(stat.Uid) == os.Geteuid() && info.Mode() == 0400
+	systemdCredential := ok && path == credentialPath && stat.Uid == 0 && stat.Gid == 0 && info.Mode() == 0440
+	if !privateOwner && !systemdCredential {
 		return "", fmt.Errorf("invalid secret owner")
 	}
 	data, err := os.ReadFile(path)
@@ -94,7 +100,7 @@ func loadKey(path string) (string, error) {
 }
 
 func main() {
-	key, err := loadKey("/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret")
+	key, err := loadKey(credentialPath)
 	if err != nil {
 		log.Fatal("Trial edge secret unavailable or unsafe")
 	}

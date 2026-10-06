@@ -77,6 +77,12 @@ func TestKeyFileBoundary(t *testing.T) {
 	if _, err := loadKey(link); err == nil {
 		t.Fatal("symlink accepted")
 	}
+	if err := os.Chmod(path, 0440); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadKey(path); err == nil {
+		t.Fatal("group-readable arbitrary file accepted")
+	}
 	if err := os.Chmod(path, 0644); err != nil {
 		t.Fatal(err)
 	}

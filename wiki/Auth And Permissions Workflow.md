@@ -665,4 +665,4 @@ Leaf 4의 zero-egress browser oracle은 saved Markdown preview와 Workspace AI a
 
 ## Native Trial edge proof adapter (Issue #217)
 
-The loopback-only Go signer in `cmd/munjib-trial-edge` produces the existing signed-network proof. Caddy removes visitor-supplied proof headers and overwrites peer IP and original method/URI before `forward_auth`; the signer excludes the query and uses the same IPv4/IPv6 normalization as the app. The fixed systemd credential supplies the existing edge key under UID 10001. See `docs/runbooks/demo-public-access.md` for validation and rollback; code presence is not evidence of live Trial activation.
+The loopback-only Go signer in `cmd/munjib-trial-edge` produces the existing signed-network proof. Caddy removes visitor-supplied proof headers and overwrites peer IP and original method/URI before `forward_auth`; the signer excludes the query and uses the same IPv4/IPv6 normalization as the app. The fixed systemd credential supplies the existing edge key under the dedicated service DynamicUser. See `docs/runbooks/demo-public-access.md` for validation and rollback; code presence is not evidence of live Trial activation.
