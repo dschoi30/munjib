@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-08-17
-source_count: 71
+updated: 2026-10-07
+source_count: 72
 tags:
   - munjib
   - workflow
@@ -24,16 +24,16 @@ links:
 
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.
 
-Issue #171 production dependency audit remediation의 2026-08-17 follow-up은 `postcss` 8.5.23,
+Issue #171 및 PR #215/#216의 2026-10-07 production dependency audit remediation은 `postcss` 8.5.23,
 `uuid` 11.1.1, `@opentelemetry/core` 2.8.0, `@opentelemetry/propagator-jaeger` 2.9.0,
-`fast-uri` 3.1.5, `nanoid` 3.3.18, `protobufjs` 7.6.5, `sharp` 0.35.0을 exact
-`pnpm.overrides`로 고정하고, Sentry의 `minimatch@10.2.5` 경로에만 `brace-expansion` 5.0.9을
+`fast-uri` 3.1.8, `nanoid` 3.3.18, `protobufjs` 7.6.5, `sharp` 0.35.5을 exact
+`pnpm.overrides`로 고정하고, Sentry의 `minimatch@10.2.5` 경로에만 `brace-expansion` 5.0.12을
 scoped override한다. 이 설정은 `minimatch@3`의 기존 callable API를
 보존한다. `tests/security/dependency-audit.test.ts`가 lock-graph와
 NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
 보호한다. 검증 명령은 advisory allowlist나 severity filter 없이
 `pnpm audit --prod`를 그대로 사용하며, CI는 frozen install 직후 이 명령을
-실행한다. Next.js와 matching ESLint config는 15.5.21 exact pin이며 별도 advisory gate는
+실행한다. Next.js와 matching ESLint config는 15.5.24 exact pin이며 별도 advisory gate는
 유지한다.
 
 2026-08-25 CI follow-up은 Prisma config 경로의 재귀 객체 병합 advisory를 막기 위해
@@ -349,3 +349,5 @@ Issue #158의 `tests/e2e/zero-egress-rendering.spec.ts`는 실제 Next 서버와
 - GitHub issue #98
 - GitHub Actions run `27017475831`
 - PR #99 review threads
+
+PR #215/#216 additionally pin `browserslist` 4.28.7, `baseline-browser-mapping` 2.11.0, `@grpc/grpc-js` 1.14.5 and `source-map-js` 1.2.2. The complete current override inventory is authoritative in `package.json` and `pnpm-lock.yaml`; verify with `pnpm audit --prod`.

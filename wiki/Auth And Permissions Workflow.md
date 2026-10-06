@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-10-05
-source_count: 123
+updated: 2026-10-07
+source_count: 125
 tags:
   - munjib
   - auth
@@ -71,9 +71,11 @@ vectors, with `AUTH_SECRET_FALLBACK`.
 
 ## Manual public signup and Trial opening (Issue #214)
 
-`MUNJIB_PUBLIC_SIGNUP_ENABLED=true` explicitly opens password account creation and verified new Google identities; absent, false or malformed values keep them closed. The same policy feeds login gates and auth preflight/runtime. Password signup requires a canonical same-origin request and shares the login KDF work limit (2 active, 8 queued, 2-second queue deadline), returning a private no-store 503 when saturated. It provisions a personal workspace; Google uses the existing post-login provisioning path and still does not auto-link accounts by matching email. Provider tokens and media are stripped before persistence; a neutral local name satisfies the required user field. Public signup rejects reserved legacy launch-account email addresses before persistence. Turning the flag off requires web recreation for the OAuth runtime snapshot and leaves existing account sign-in available.
+`MUNJIB_PUBLIC_SIGNUP_ENABLED=true` explicitly opens password account creation and verified new Google identities; absent, false or malformed values keep them closed. The same policy feeds login gates and auth preflight/runtime. Password signup rejects malformed email shapes, ASCII control characters and normalized addresses over the login limit of 320 characters before password hashing or database work and requires a canonical same-origin request and shares the login KDF work limit (2 active, 8 queued, 2-second queue deadline), returning a private no-store 503 when saturated. It provisions a personal workspace; Google uses the existing post-login provisioning path and still does not auto-link accounts by matching email. Provider tokens and media are stripped before persistence; a neutral local name satisfies the required user field. Public signup rejects reserved legacy launch-account email addresses before persistence. Turning the flag off requires web recreation for the OAuth runtime snapshot and leaves existing account sign-in available.
 
 Anonymous Trial remains a separate read-only, quota-limited capability. `docker-compose.trial.yml` wires fixed-path secrets, exact demo workspace, Turnstile and signed edge evidence; the deployment wrapper selects it only on explicit `MUNJIB_ANONYMOUS_TRIAL_ENABLED=true`. There is no automatic expiry. The operator disables both flags to close the demo. See `docs/runbooks/demo-public-access.md` for activation prerequisites and verification. Repository wiring is not evidence of production activation.
+
+Google OAuth currently requests only `openid email profile` (NextAuth Google provider defaults). Google documents a Testing-status exception for these basic identity scopes: users need not be registered as test users. This does not establish a successful live callback or complete production branding. Source: https://support.google.com/cloud/answer/15549945?hl=en .
 
 ## Closed signup covers OAuth
 

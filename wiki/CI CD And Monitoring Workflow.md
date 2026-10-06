@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-05
-source_count: 67
+updated: 2026-10-07
+source_count: 68
 tags:
   - munjib
   - workflow
@@ -155,12 +155,11 @@ these review-critical lifecycle guarantees.
 
 Issue #171 adds a production dependency audit gate for the same runtime graph.
 `package.json` uses exact pnpm overrides for `postcss` 8.5.23, `uuid` 11.1.1,
-`minimatch@10.2.5>brace-expansion` 5.0.9, `@opentelemetry/core` 2.8.0,
-`@opentelemetry/propagator-jaeger` 2.9.0, `fast-uri` 3.1.5, `nanoid` 3.3.18,
-`protobufjs` 7.6.5, and `sharp` 0.35.0.
+`minimatch@10.2.5>brace-expansion` 5.0.12, `@opentelemetry/core` 2.8.0,
+`@opentelemetry/propagator-jaeger` 2.9.0, `fast-uri` 3.1.8, `nanoid` 3.3.18,
+`protobufjs` 7.6.5, and `sharp` 0.35.5.
 The scoped brace override preserves the callable `minimatch@3` development
-path while patching the production/Sentry `minimatch@10` path. The lockfile
-must resolve those patched versions on production paths while keeping the
+path while patching the production/Sentry `minimatch@10` path. The lockfile must resolve those patched versions on production paths.
 Next.js 15.5.24 and NextAuth 4.24.15 are the current patched floors. Compatibility contracts cover NextAuth JWT UUID
 generation, minimatch major compatibility, and Sentry/OpenTelemetry module
 loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
@@ -673,3 +672,5 @@ Full CI path에서는 `pnpm test`, `pnpm run build`, Docker `runner` target buil
 - OCI server read-only inspection for `munjib.example.invalid`
 - [[Local Development Workflow]]
 - [[Production Observability Workflow]]
+
+PR #215/#216 additionally pin `browserslist` 4.28.7, `baseline-browser-mapping` 2.11.0, `@grpc/grpc-js` 1.14.5 and `source-map-js` 1.2.2. The complete current override inventory is authoritative in `package.json` and `pnpm-lock.yaml`; verify with `pnpm audit --prod`.

@@ -31,7 +31,7 @@ describe("production dependency audit remediation", () => {
       "fast-uri": "3.1.8",
       "nanoid": "3.3.18",
       "protobufjs": "7.6.5",
-      "sharp": "0.35.4",
+      "sharp": "0.35.5",
       "deepmerge-ts": "8.0.0",
     });
   });
