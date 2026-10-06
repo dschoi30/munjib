@@ -4015,3 +4015,4 @@ links:
 
 - Host verification corrected the service identity to DynamicUser and accepted systemd's fixed-path root:root 0440 ACL-protected credential envelope; arbitrary group-readable keys remain rejected. The earlier numeric container UID has no host user entry.
 - Actual Caddy 2.6.2 integration passed original POST/body/path, query exclusion, forged header replacement, ordinary-route passthrough and both legacy denials. The query-clear suffix on `/proof?` is required by this Caddy version. Reproducible probe: `scripts/deploy/verify-trial-edge.py`.
+- Independent review tightened the host probe to require the actual loopback peer IP and exactly one copy of each proof header, so a valid signature over an attacker-supplied IP cannot pass the probe.

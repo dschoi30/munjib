@@ -20,7 +20,7 @@ class Upstream(BaseHTTPRequestHandler):
    normalized='v4:'+str(ipaddress.ip_address(ip))
    msg='munjib/trial-network-evidence/v1\0'+ts+'\0'+self.command+'\0'+path+'\0'+normalized
    expected=base64.urlsafe_b64encode(hmac.new(key,msg.encode(),hashlib.sha256).digest()).decode().rstrip('=')
-   ok=hmac.compare_digest(proof or '',expected) and abs(time.time()-int(ts))<30 and (self.command!='POST' or body==b'{"demo":true}')
+   ok=ip=='127.0.0.1' and all(len(self.headers.get_all(x,[]))==1 for x in ['X-Munjib-Trusted-Client-IP','X-Munjib-Trusted-Network-Proof','X-Munjib-Trusted-Network-Timestamp']) and hmac.compare_digest(proof or '',expected) and abs(time.time()-int(ts))<30 and (self.command!='POST' or body==b'{"demo":true}')
   seen.append(ok);self.send_response(200 if ok else 500);self.end_headers();self.wfile.write(b'valid' if ok else b'invalid')
 server=HTTPServer(('127.0.0.1',0),Upstream);threading.Thread(target=server.serve_forever,daemon=True).start()
 sock=socket.socket();sock.bind(('127.0.0.1',0));port=sock.getsockname()[1];sock.close()
