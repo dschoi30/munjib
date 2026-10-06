@@ -119,3 +119,20 @@ func TestRejectNonlocalAndWrongEndpoint(t *testing.T) {
 		}
 	}
 }
+
+func TestApplicationSecretContract(t *testing.T) {
+	for _, tc := range []struct {
+		value string
+		valid bool
+	}{
+		{strings.Repeat("a", 16), true}, {strings.Repeat("a", 15), false},
+		{strings.Repeat("a", 256), true}, {strings.Repeat("a", 257), false},
+		{strings.Repeat("😀", 8), true}, {strings.Repeat("가", 8), false},
+		{strings.Repeat("a", 16) + "\n", false}, {"\ufeff" + strings.Repeat("a", 16), false},
+		{strings.Repeat("a", 16) + "\u0085", false}, {strings.Repeat("a", 16) + "\x00", false},
+	} {
+		if got := validKeyBytes([]byte(tc.value)); got != tc.valid {
+			t.Fatalf("secret contract mismatch for length %d", len(tc.value))
+		}
+	}
+}

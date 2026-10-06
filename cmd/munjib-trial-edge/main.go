@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -16,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf16"
+	"unicode/utf8"
 )
 
 const credentialPath = "/run/credentials/munjib-trial-edge.service/trial-edge-proof-secret"
@@ -79,9 +82,34 @@ func handler(key string, now func() time.Time) http.Handler {
 	})
 }
 
+func validKeyBytes(data []byte) bool {
+	if len(data) > 256 || !utf8.Valid(data) {
+		return false
+	}
+	value := string(data)
+	if len(utf16.Encode([]rune(value))) < 16 || strings.TrimSpace(value) != value {
+		return false
+	}
+	for _, r := range value {
+		if r <= 0x1f || (r >= 0x7f && r <= 0x9f) || r == 0x2028 || r == 0x2029 || r == 0xfeff {
+			return false
+		}
+	}
+	return true
+}
+
 func loadKey(path string) (string, error) {
-	info, err := os.Lstat(path)
-	if err != nil || !info.Mode().IsRegular() || info.Size() < 32 || info.Size() > 256 {
+	pathInfo, err := os.Lstat(path)
+	if err != nil || !pathInfo.Mode().IsRegular() {
+		return "", fmt.Errorf("unsafe secret file")
+	}
+	file, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return "", fmt.Errorf("secret unavailable")
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !os.SameFile(pathInfo, info) || !info.Mode().IsRegular() || info.Size() < 16 || info.Size() > 256 {
 		return "", fmt.Errorf("unsafe secret file")
 	}
 	stat, ok := info.Sys().(*syscall.Stat_t)
@@ -89,11 +117,11 @@ func loadKey(path string) (string, error) {
 	// Accept that envelope only at the fixed systemd-managed credential path.
 	privateOwner := ok && int(stat.Uid) == os.Geteuid() && info.Mode() == 0400
 	systemdCredential := ok && path == credentialPath && stat.Uid == 0 && stat.Gid == 0 && info.Mode() == 0440
-	if !privateOwner && !systemdCredential {
+	if (!privateOwner && !systemdCredential) || stat.Nlink != 1 {
 		return "", fmt.Errorf("invalid secret owner")
 	}
-	data, err := os.ReadFile(path)
-	if err != nil || len(data) < 32 || len(data) > 256 || strings.TrimSpace(string(data)) != string(data) {
+	data, err := io.ReadAll(io.LimitReader(file, 257))
+	if err != nil || int64(len(data)) != info.Size() || !validKeyBytes(data) {
 		return "", fmt.Errorf("invalid secret bytes")
 	}
 	return string(data), nil

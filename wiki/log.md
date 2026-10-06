@@ -4017,3 +4017,4 @@ links:
 - Actual Caddy 2.6.2 integration passed original POST/body/path, query exclusion, forged header replacement, ordinary-route passthrough and both legacy denials. The query-clear suffix on `/proof?` is required by this Caddy version. Reproducible probe: `scripts/deploy/verify-trial-edge.py`.
 - Independent review tightened the host probe to require the actual loopback peer IP and exactly one copy of each proof header, so a valid signature over an attacker-supplied IP cannot pass the probe.
 - Trial operations include a daily 00:40 KST retention timer with a dedicated four-table SELECT/DELETE role and shared deployment lock; initial dry-run/execute/dry-run is required before enabling it.
+- PR review aligned the signer with the application's existing 16-character secret minimum, 256-byte file cap, UTF-8/UTF-16 length behavior and forbidden control/BOM characters. Descriptor-based no-follow loading checks inode, link count and bounded reads.
