@@ -50,13 +50,13 @@ const previewRemarkPlugins = [remarkGfm, remarkPreviewSoftLineBreaks];
 
 export function MarkdownPreview({
   markdown,
-  documentId,
+  foldStorageKey,
   attachmentIds,
   linkCandidates,
   registerHeadingExpander,
 }: {
   markdown: string;
-  documentId: string;
+  foldStorageKey: string;
   attachmentIds: string[];
   linkCandidates: LinkCandidate[];
   registerHeadingExpander?: (expander: ((id: string) => void) | null) => void;
@@ -132,7 +132,7 @@ export function MarkdownPreview({
   const foldTree = useMemo(() => buildHeadingFoldTree(strippedMarkdown), [strippedMarkdown]);
   const leadingMarkdown = useMemo(() => getMarkdownBeforeFirstHeading(strippedMarkdown), [strippedMarkdown]);
   const sharedDefinitions = useMemo(() => getSharedMarkdownDefinitions(strippedMarkdown), [strippedMarkdown]);
-  const storageKey = `munjib:heading-folds:${documentId}`;
+  const storageKey = foldStorageKey;
   const [foldedKeys, setFoldedKeys] = useState<Set<string>>(() =>
     new Set(readStoredFoldedHeadingKeys(storageKey, foldTree.headingKeys)),
   );

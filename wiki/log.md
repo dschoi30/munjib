@@ -4031,3 +4031,4 @@ links:
 - PR #220 review tightened folder projection to readable branches, normalized suffixed/encoded attachment links before allowed-ID checks, and hid ineffective Trial workspace model settings. Regression tests cover each boundary; the protected Markdown renderer hash was updated for this reviewed change.
 - Follow-up PR review keeps explicit/encoded/case-variant workspace Markdown links in Trial routes and rejects other internal API links; forged/cross-workspace document IDs still fail at the exact-snapshot viewer boundary.
 - The same routing rule also covers absolute URLs on the configured application origin; genuine outside destinations retain the explicit external-navigation confirmation.
+- Final review also separated heading-fold keys and Workspace AI panel state for Trial. Editor and Markdown preview share one scoped fold key, preventing browser preference changes from reaching the same authenticated document.

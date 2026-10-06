@@ -1,5 +1,7 @@
 "use client";
 
+import { workspaceStorageScope } from "@/lib/workspace-routes";
+
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Bot, RotateCcw, Send, X } from "lucide-react";
 import { AiAnswer, AiCitations, type AiCitation } from "@/components/ai/answer";
@@ -57,6 +59,7 @@ export function WorkspaceChatbot({
   availableChatProviders,
 }: WorkspaceChatbotProps) {
   const { language, t } = useI18n();
+  const storageScope = workspaceStorageScope(workspaceSlug, mode);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [messageInput, setMessageInput] = useState("");
@@ -95,7 +98,7 @@ export function WorkspaceChatbot({
   const optimisticMessageCounterRef = useRef(0);
   const trimmedMessage = messageInput.trim();
   const effectiveChatModel = chatModelOverride?.chatModel ?? defaultChatModel;
-  const isCurrentWorkspaceHydrated = hydratedWorkspaceSlug === workspaceSlug;
+  const isCurrentWorkspaceHydrated = hydratedWorkspaceSlug === storageScope;
 
   useEffect(() => {
     requestGenerationRef.current += 1;
@@ -139,13 +142,13 @@ export function WorkspaceChatbot({
     hydratedWorkspaceSlugRef.current = null;
     setHydratedWorkspaceSlug(null);
 
-    const storedWorkspaceUiState = readStoredWorkspaceUiState(workspaceSlug);
+    const storedWorkspaceUiState = readStoredWorkspaceUiState(storageScope);
     const storedWorkspaceChatOpen = storedWorkspaceUiState.workspaceChatOpen === true;
 
-    hydratedWorkspaceSlugRef.current = workspaceSlug;
+    hydratedWorkspaceSlugRef.current = storageScope;
     setIsOpen(storedWorkspaceChatOpen);
-    setHydratedWorkspaceSlug(workspaceSlug);
-  }, [workspaceSlug]);
+    setHydratedWorkspaceSlug(storageScope);
+  }, [storageScope]);
 
   useEffect(() => {
     if (mode === "anonymous-trial-readonly") return;
@@ -183,8 +186,8 @@ export function WorkspaceChatbot({
 
   function setWorkspaceChatOpen(nextIsOpen: boolean) {
     setIsOpen(nextIsOpen);
-    if (hydratedWorkspaceSlugRef.current !== workspaceSlug) return;
-    updateStoredWorkspaceUiState(workspaceSlug, () => ({
+    if (hydratedWorkspaceSlugRef.current !== storageScope) return;
+    updateStoredWorkspaceUiState(storageScope, () => ({
       workspaceChatOpen: nextIsOpen,
     }));
   }
