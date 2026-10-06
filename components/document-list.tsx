@@ -554,7 +554,7 @@ export function DocumentList({
                 <Plus className="h-4 w-4" aria-hidden="true" />
                 {t("account.addWorkspace")}
               </button>
-              <button
+              {workspaceMode !== "anonymous-trial-readonly" ? <button
                 type="button"
                 role="menuitem"
                 onClick={openWorkspaceSettings}
@@ -562,7 +562,7 @@ export function DocumentList({
               >
                 <Settings className="h-4 w-4" aria-hidden="true" />
                 {t("account.workspaceSettings")}
-              </button>
+              </button> : null}
               <button
                 type="button"
                 role="menuitem"
@@ -576,7 +576,7 @@ export function DocumentList({
           </div>
         ) : null}
       </div>
-      {settingsOpen ? (
+      {settingsOpen && workspaceMode !== "anonymous-trial-readonly" ? (
         <WorkspaceSettingsPanel
           canWrite={canWrite}
           canManageWorkspace={canManageWorkspace}

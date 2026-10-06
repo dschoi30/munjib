@@ -164,3 +164,17 @@ it("routes authorized Trial attachment media through the isolated read-only endp
   expect(html).toContain('href="/api/trial/attachments/file-1"');
   expect(html).not.toContain('href="/api/attachments/private"');
 });
+
+it.each(["?download=1", "#page=2", "?download=1#page=2"])("scopes suffixed Trial attachment links %s", (suffix) => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content={`[allowed](/api/attachments/file-1${suffix}) [hidden](/api/attachments/private${suffix})`} allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+ expect(html).toContain(`href="/api/trial/attachments/file-1${suffix}"`);
+ expect(html).not.toContain('href="/api/attachments/');
+ expect(html).not.toContain('href="/api/trial/attachments/private');
+});
+
+it("normalizes encoded Trial attachment paths before checking the allowed set", () => {
+ const html=renderToStaticMarkup(<WorkspaceModeProvider mode="anonymous-trial-readonly"><AiAnswer content="[allowed](/api/%61ttachments/file-1?download=1) [hidden](/api/attachments/%70rivate) [case](/API/ATTACHMENTS/private)" allowedAttachmentIds={["file-1"]}/></WorkspaceModeProvider>);
+ expect(html).toContain('href="/api/trial/attachments/file-1?download=1"');
+ expect(html).not.toContain('href="/api/attachments/');
+ expect(html).not.toContain('href="/API/ATTACHMENTS/');
+});

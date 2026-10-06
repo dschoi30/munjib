@@ -52,10 +52,16 @@ export function buildSafeMarkdownComponents({
       }
 
       let internalHref = href?.startsWith("?") ? href : safeHref;
-      const attachmentId = /^\/api\/attachments\/([A-Za-z0-9_-]+)$/.exec(internalHref ?? "")?.[1];
-      if (trialAttachments && attachmentId) {
-        if (!allowedAttachmentIds.has(attachmentId)) return <span>{children}</span>;
-        internalHref = `/api/trial/attachments/${attachmentId}`;
+      if (trialAttachments) {
+        const parsed = new URL(internalHref ?? "", "https://munjib-relative.invalid");
+        let decodedPath: string;
+        try { decodedPath = decodeURIComponent(parsed.pathname); }
+        catch { return <span>{children}</span>; }
+        if (/^\/api\/(?:trial\/)?attachments(?:\/|$)/i.test(decodedPath)) {
+          const attachmentId = /^\/api\/(?:trial\/)?attachments\/([A-Za-z0-9_-]+)$/i.exec(decodedPath)?.[1];
+          if (!attachmentId || !allowedAttachmentIds.has(attachmentId)) return <span>{children}</span>;
+          internalHref = `/api/trial/attachments/${attachmentId}${parsed.search}${parsed.hash}`;
+        }
       }
       return (
         <a

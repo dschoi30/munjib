@@ -38,10 +38,21 @@ export async function loadTrialWorkspaceViewer(
     ? await store.listExplicitDocumentIds(workspace.documents.map(d => d.id)) : []);
   const documents = workspace.documents.filter(d => d.status === "ACTIVE" && !explicitIds.has(d.id));
   const readableIds = new Set(documents.map(d => d.id));
+  const foldersById = new Map(workspace.folders.map(folder => [folder.id, folder]));
+  const visibleFolderIds = new Set<string>();
+  for (const document of documents) {
+    let folderId = document.folderId;
+    while (folderId && !visibleFolderIds.has(folderId)) {
+      const folder = foldersById.get(folderId);
+      if (!folder) break;
+      visibleFolderIds.add(folderId);
+      folderId = folder.parentFolderId;
+    }
+  }
   const links = documents.length ? await store.listDocumentLinks(workspace.id, [...readableIds]) : [];
   return {
     id: workspace.id, slug: workspace.slug, name: workspace.name, documents,
-    folders: workspace.folders.map(({ id, parentFolderId, name, path }) => ({ id, parentFolderId, name, path })),
+    folders: workspace.folders.filter(folder => visibleFolderIds.has(folder.id)).map(({ id, parentFolderId, name, path }) => ({ id, parentFolderId, name, path })),
     links: links.filter(l => readableIds.has(l.sourceDocumentId) && (!l.targetDocumentId || readableIds.has(l.targetDocumentId))),
   };
 }

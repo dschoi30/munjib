@@ -3203,3 +3203,9 @@ describe("read-only Trial navigation", () => {
     expect(localStorage.getItem("munjib:open-tabs:trial:company-handbook")).toContain("doc-1");
     expect(localStorage.getItem("munjib:open-tabs:company-handbook")).toBeNull();
   });
+
+it("hides workspace model settings in read-only Trial", () => {
+ renderWithI18n(<WorkspaceModeProvider mode="anonymous-trial-readonly"><DocumentList {...baseProps} canWrite={false} canManageWorkspace={false} /></WorkspaceModeProvider>);
+ fireEvent.click(screen.getByRole("button", {name:"Account menu"}));
+ expect(screen.queryByRole("menuitem", {name:"Workspace settings"})).toBeNull();
+});

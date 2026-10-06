@@ -678,3 +678,5 @@ Viewer queries expose only active unprotected documents from the exact configure
 The operator selected all Company Handbook data for a separate snapshot, excluding automatic test workspaces. Archived rows remain archived and are not displayed. Copying does not grant anonymous access to the original workspace or reuse the legacy Trial account/session. Deployment and copy verification must be recorded separately from code checks.
 
 Trial AI clients send an explicit `X-Munjib-AI-Mode: anonymous-trial-readonly` hint. This selects the narrower signed Trial principal even alongside Google cookies; it never replaces visitor-token/edge-proof validation and invalid Trial evidence cannot fall back to an authenticated owner. Ordinary AI requests preserve authenticated-user precedence.
+
+Trial folder projection includes only readable-document folders and their required ancestors, hiding empty/protected-only branches. Trial hides workspace settings because server-owned AI models cannot be changed by anonymous visitors. Attachment links normalize paths and preserve query/fragment suffixes only after allowed-ID checks, always targeting the hardened Trial endpoint.

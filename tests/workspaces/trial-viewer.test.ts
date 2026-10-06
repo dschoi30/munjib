@@ -8,10 +8,10 @@ describe("anonymous Trial workspace viewer", () => {
       slug: "company-handbook",
       name: "Company Handbook",
       archivedAt: null,
-      folders: [{ id: "folder-1", parentFolderId: null, name: "Guides", path: "/guides", status: "ACTIVE" }],
+      folders: [{ id: "folder-1", parentFolderId: null, name: "Guides", path: "/guides", status: "ACTIVE" }, {id:"private-folder",parentFolderId:null,name:"Secret folder",path:"/secret"}],
       documents: [
-        { id: "doc-open", title: "Welcome", contentMarkdown: "Hello", status: "ACTIVE" },
-        { id: "doc-private", title: "Private", contentMarkdown: "Secret", status: "ACTIVE" },
+        { id: "doc-open", folderId:"folder-1", title: "Welcome", contentMarkdown: "Hello", status: "ACTIVE" },
+        { id: "doc-private", folderId:"private-folder", title: "Private", contentMarkdown: "Secret", status: "ACTIVE" },
       ],
     });
     const listExplicitDocumentIds = vi.fn().mockResolvedValue(["doc-private"]);
