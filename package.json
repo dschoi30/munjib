@@ -47,6 +47,7 @@
     "@langchain/openai": "^1.4.7",
     "@langfuse/langchain": "^5.4.1",
     "@langfuse/otel": "^5.4.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.219.0",
     "@opentelemetry/sdk-node": "^0.219.0",
     "@prisma/client": "^6.5.0",
     "@radix-ui/react-tooltip": "^1.2.8",

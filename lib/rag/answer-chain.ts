@@ -1,3 +1,4 @@
+import { observeAiStage, recordAiUsage } from "@/lib/rag/ai-observation";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptValue } from "@langchain/core/prompt_values";
@@ -44,9 +45,14 @@ export type StreamAnswerChainInput = InvokeAnswerChainInput & {
 };
 
 export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<string> {
+  return observeAiStage("generation", () => invokeAnswerChainInternal(input), input.metadata);
+}
+
+async function invokeAnswerChainInternal(input: InvokeAnswerChainInput): Promise<string> {
   try {
     const promptValue = buildPromptValue(input);
     const result = await input.chatModel.invoke(promptValue, buildInvocationConfig(input));
+    recordAiUsage(result);
     const answer = (
       await new StringOutputParser().invoke(
         result as Parameters<StringOutputParser["invoke"]>[0],
@@ -70,6 +76,10 @@ export async function invokeAnswerChain(input: InvokeAnswerChainInput): Promise<
 }
 
 export async function streamAnswerChain(input: StreamAnswerChainInput): Promise<string> {
+  return observeAiStage("generation", () => streamAnswerChainInternal(input), input.metadata);
+}
+
+async function streamAnswerChainInternal(input: StreamAnswerChainInput): Promise<string> {
   try {
     if (!input.chatModel.stream) {
       throw new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
@@ -80,6 +90,7 @@ export async function streamAnswerChain(input: StreamAnswerChainInput): Promise<
     const chunks: string[] = [];
 
     for await (const chunk of stream) {
+      recordAiUsage(chunk);
       const token = extractStreamToken(chunk);
       if (!token) continue;
       chunks.push(token);

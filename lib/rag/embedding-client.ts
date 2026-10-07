@@ -1,3 +1,4 @@
+import { observeAiStage } from "@/lib/rag/ai-observation";
 import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 export { RAG_ERROR_CODES };
@@ -83,25 +84,27 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
     options.embeddingModel ?? (await loadEmbeddingModel(options, requireConfig(config)));
   throwIfAborted(options.signal);
 
-  let embedding: unknown;
-  try {
-    embedding = await embeddingModel.embedQuery(text);
-  } catch (error) {
-    if (options.privacySafeLogging) {
-      console.error("Embedding request failed", {
-        code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,
-        surface: "embedding",
-      });
-    } else {
-      console.error("Embedding request failed:", error);
+  return observeAiStage("embedding", async () => {
+    let embedding: unknown;
+    try {
+      embedding = await embeddingModel.embedQuery(text);
+    } catch (error) {
+      if (options.privacySafeLogging) {
+        console.error("Embedding request failed", {
+          code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,
+          surface: "embedding",
+        });
+      } else {
+        console.error("Embedding request failed:", error);
+      }
+      throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
     }
-    throw new Error(RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED);
-  }
 
-  return validateEmbedding(
-    embedding,
-    options.expectedDimensions ?? config?.embedding.dimensions ?? CURRENT_EMBEDDING_DIMENSIONS,
-  );
+    return validateEmbedding(
+      embedding,
+      options.expectedDimensions ?? config?.embedding.dimensions ?? CURRENT_EMBEDDING_DIMENSIONS,
+    );
+  }, { embeddingModel: config?.embedding.model, embeddingProvider: config?.embedding.provider, embeddingDimensions: config?.embedding.dimensions });
 }
 
 function throwIfAborted(signal: AbortSignal | undefined) {

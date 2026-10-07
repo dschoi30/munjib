@@ -1,3 +1,4 @@
+import { observeAiStage } from "@/lib/rag/ai-observation";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db/client";
 
@@ -148,6 +149,10 @@ export async function replaceDocumentChunks(tx: Prisma.TransactionClient, input:
 }
 
 export async function searchSimilarChunks(input: SearchSimilarChunksInput) {
+  return observeAiStage("retrieval", () => searchSimilarChunksInternal(input));
+}
+
+async function searchSimilarChunksInternal(input: SearchSimilarChunksInput) {
   if (input.readableDocumentIds.length === 0) return [];
 
   return prisma.$queryRawUnsafe<RetrievedChunk[]>(

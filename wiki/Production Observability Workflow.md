@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib production Docker 로그 확인, Sentry SaaS error/tracing/runtime metrics/Replay, low-cardinality app metrics 관측성 흐름.
 created: 2026-06-03
-updated: 2026-06-27
+updated: 2026-10-07
 source_count: 45
 tags:
   - munjib
@@ -87,7 +87,41 @@ Handled AI unavailable events are not expected to appear automatically in Sentry
 
 잘못된 runtime metrics interval, Replay sample rate, application metric send failure는 request failure로 전파하지 않는다. Metric attributes는 low-cardinality allowlist만 사용하고, per-workspace/per-document/per-user label은 Sentry metric cardinality와 privacy 양쪽 문제를 만들 수 있으므로 넣지 않는다.
 
-Langfuse production traces도 같은 privacy 방향을 따른다. 기본 production capture는 provider/model, embedding dimensions, retrieved chunk count, citation document ids, error code 같은 metadata 중심으로 내부 invocation metadata를 구성하되, raw saved document content, retrieved chunk text, full prompt, question body, answer body, unsaved draft title/markdown egress를 막기 위해 Langfuse callback과 OpenTelemetry exporter를 붙이지 않는다. Full prompt/answer trace는 development 또는 명시적 opt-in에서만 허용하며, 현재 implementation은 explicit `full` capture에서만 Node runtime Langfuse OpenTelemetry exporter와 LangChain Langfuse callback을 연결한다. `MUNJIB_LANGFUSE_ENABLED=false`는 credential이 남아 있어도 config와 exporter startup 양쪽에서 Langfuse를 disabled로 유지한다.
+Langfuse production metadata capture now exports real observations through
+`lib/rag/ai-observation.ts`. A private OpenTelemetry `BasicTracerProvider`
+uses only manually constructed `munjib-ai-metadata` spans, independently of
+Sentry's global provider and the opt-in full-content LangChain exporter.
+Ask AI and Workspace AI (including anonymous Trial) record request roots and
+preparation/indexing/embedding/retrieval/generation stages where executed.
+Generation records provider-reported finite nonnegative token counts and the
+validated model name; Langfuse can price models it recognizes. Missing usage
+or unknown prices remain unknown, never fabricated as zero.
+
+The export schema is an allowlist: model/provider, dimensions, result counts,
+anonymous flag, timings, and stable failure codes. It never copies question,
+answer, document/chunk text, prompt, actor/workspace/document/thread/visitor
+identifiers, IP, cookies, or raw exceptions. Trace IDs are independently generated
+per request. Anonymous Trial retains its existing metadata-only callback policy.
+`MUNJIB_LANGFUSE_ENABLED=false` or missing keys disables the metadata exporter.
+
+Export batches are asynchronous, have a five-second HTTP timeout, and flush in
+Next `after()` after the response. Export failures emit only
+`LANGFUSE_EXPORT_FAILED`, rate limited to once per minute, and cannot replace the
+AI result. This is best-effort observability: process termination or SDK queue
+pressure can lose pending spans; it is not an audit ledger.
+
+Production uses the existing `munjib` project with both capture variables set
+to `metadata`. Local development uses a separate `munjib-development` project
+and its own key pair. Full-content capture remains an explicit development/test
+opt-in and is not enabled for production diagnosis. Any future production
+content capture needs a scoped operator workflow, source-side masking, and a
+verified deletion policy. Langfuse Hobby's data access window is not automatic
+retention deletion; do not describe it as a 30-day deletion policy.
+
+Issue #227 source evidence: `lib/rag/ai-observation.ts`, the two AI services and
+routes, `tests/rag/ai-observation.test.ts`, and
+`tests/rag/ai-observation-export.test.ts` (real OTLP payload privacy test).
+
 
 ## Tests
 

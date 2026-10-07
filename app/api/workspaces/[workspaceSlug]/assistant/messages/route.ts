@@ -1,3 +1,4 @@
+import { scheduleAiObservationFlush } from "@/lib/rag/ai-observation";
 import { NextResponse } from "next/server";
 import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
@@ -148,6 +149,7 @@ export async function POST(
     ? AbortSignal.any([request.signal, leaseHeartbeat.signal])
     : request.signal;
 
+  scheduleAiObservationFlush();
   let prepared: WorkspaceChatPreparedMessage;
   try {
     prepared = await preparePreflightedWorkspaceChatMessageStream({
@@ -182,6 +184,7 @@ export async function POST(
   }
 
   if (leaseHeartbeat?.signal.aborted && admission.kind === "admitted") {
+    prepared.observation?.end(new Error("AI_STAGE_FAILED"));
     await leaseHeartbeat.stop();
     await releaseAdmissionLeaseBestEffort(admission);
     return workspaceChatTrialFailureResponse(admission);
@@ -232,6 +235,7 @@ function workspaceChatStreamResponse(
             writeEvent({ type: "token", content: token });
           },
           signal: providerSignal,
+          deferObservationEnd: true,
         });
         const heartbeatStop = await leaseHeartbeat?.stop();
         const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
@@ -243,6 +247,7 @@ function workspaceChatStreamResponse(
           writeEvent({ type: "done", ...result });
         }
       } catch (error) {
+        prepared.observation?.end(error);
         if (requestSignal.aborted) return;
         if (admission.kind === "admitted") {
           writeEvent({
@@ -269,6 +274,7 @@ function workspaceChatStreamResponse(
         }
         writeEvent({ type: "error", error: streamError });
       } finally {
+        prepared.observation?.end();
         await leaseHeartbeat?.stop();
         await releaseAdmissionLeaseBestEffort(admission);
         if (!streamClosed) {

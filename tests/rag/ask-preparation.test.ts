@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const { findWorkspace, findMembership, findPermissions } = vi.hoisted(() => ({
   findWorkspace: vi.fn(),
@@ -14,9 +14,29 @@ vi.mock("@/lib/db/client", () => ({
   },
 }));
 
+import { tracing } from "@opentelemetry/sdk-node";
+import * as observationModule from "@/lib/rag/ai-observation";
 import { prepareAskDocumentQuestion } from "@/lib/rag/ask";
 
 describe("Ask preparation authorization", () => {
+  afterEach(() => vi.restoreAllMocks());
+  it("exports sanitized preparation failures under the Ask request root", async () => {
+    const exporter = new tracing.InMemorySpanExporter();
+    const provider = new tracing.BasicTracerProvider({ spanProcessors: [new tracing.SimpleSpanProcessor(exporter)] });
+    const observer = observationModule.createAiObserver(provider.getTracer("munjib-ai-metadata"));
+    vi.spyOn(observationModule, "startAiObservation").mockImplementation(observer.start);
+    vi.spyOn(observationModule, "observeAiStage").mockImplementation(observer.stage);
+    findWorkspace.mockRejectedValue(new Error("PRIVATE database detail"));
+    await expect(prepareAskDocumentQuestion({
+      workspaceSlug: "private-slug", documentId: "private-id", question: "PRIVATE question",
+      authorizationPrincipal: anonymousPrincipal(),
+    })).rejects.toThrow("PRIVATE database detail");
+    const spans = exporter.getFinishedSpans();
+    expect(spans.map(span => span.name)).toEqual(["preparation", "ask_document"]);
+    expect(new Set(spans.map(span => span.spanContext().traceId)).size).toBe(1);
+    expect(JSON.stringify(spans.map(span => span.attributes))).not.toContain("PRIVATE");
+    await provider.shutdown();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
   });
