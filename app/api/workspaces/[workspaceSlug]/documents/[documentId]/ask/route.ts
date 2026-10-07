@@ -97,9 +97,10 @@ export async function POST(
     const providerSignal = leaseHeartbeat
       ? AbortSignal.any([request.signal, leaseHeartbeat.signal])
       : request.signal;
-    const result = leaseHeartbeat
-      ? await answerPreparedAskDocumentQuestion(prepared, { signal: providerSignal })
-      : await answerPreparedAskDocumentQuestion(prepared);
+    const result = await answerPreparedAskDocumentQuestion(prepared, {
+      signal: providerSignal,
+      deferObservationEnd: true,
+    });
     const heartbeatStop = await leaseHeartbeat?.stop();
     const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
     leaseHeartbeat = undefined;

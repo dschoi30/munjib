@@ -231,7 +231,7 @@ async function prepareAskDocumentQuestionInternal(
 
 export async function answerPreparedAskDocumentQuestion(
   prepared: PreparedAskDocumentQuestion,
-  options: Readonly<{ signal?: AbortSignal }> = {},
+  options: Readonly<{ signal?: AbortSignal; deferObservationEnd?: boolean }> = {},
 ): Promise<AskDocumentQuestionResult> {
   const observation = prepared.observation ?? startAiObservation("ask_document", prepared.privacyMode === "anonymous-trial");
   try {
@@ -266,5 +266,5 @@ export async function answerPreparedAskDocumentQuestion(
       return normalizeAnswerCitations(answer, prepared.citations);
     });
   } catch (error) { observation.end(error); throw error; }
-  finally { observation.end(); }
+  finally { if (!options.deferObservationEnd) observation.end(); }
 }

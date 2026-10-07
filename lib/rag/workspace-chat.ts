@@ -103,6 +103,8 @@ export type PreflightedWorkspaceChatMessageInput = {
 };
 
 export type WorkspaceChatStreamCallbacks = {
+  /** Routes finalize the request after validating the last lease heartbeat. */
+  deferObservationEnd?: boolean;
   onToken: (token: string) => Promise<void> | void;
   signal?: AbortSignal;
 };
@@ -448,7 +450,7 @@ export async function sendPreparedWorkspaceChatMessageStream(
   const observation = prepared.observation ?? startAiObservation("workspace_chat", prepared.kind === "stateless-trial");
   try { return await observation.run(() => sendPreparedWorkspaceChatMessageStreamInternal(prepared, callbacks)); }
   catch (error) { observation.end(error); throw error; }
-  finally { observation.end(); }
+  finally { if (!callbacks.deferObservationEnd) observation.end(); }
 }
 
 async function sendPreparedWorkspaceChatMessageStreamInternal(

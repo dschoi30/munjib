@@ -289,6 +289,8 @@ describe("RAG ask route", () => {
     });
     expect(response.status).toBe(503);
     expect(stop).toHaveBeenCalled();
+    expect(preparedAsk.observation.end.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+    expect(vi.mocked(answerPreparedAskDocumentQuestion).mock.calls[0]?.[1]).toMatchObject({ deferObservationEnd: true });
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-1");
   });
 

@@ -235,6 +235,7 @@ function workspaceChatStreamResponse(
             writeEvent({ type: "token", content: token });
           },
           signal: providerSignal,
+          deferObservationEnd: true,
         });
         const heartbeatStop = await leaseHeartbeat?.stop();
         const heartbeatAborted = leaseHeartbeat?.signal.aborted === true;
@@ -246,6 +247,7 @@ function workspaceChatStreamResponse(
           writeEvent({ type: "done", ...result });
         }
       } catch (error) {
+        prepared.observation?.end(error);
         if (requestSignal.aborted) return;
         if (admission.kind === "admitted") {
           writeEvent({
@@ -272,6 +274,7 @@ function workspaceChatStreamResponse(
         }
         writeEvent({ type: "error", error: streamError });
       } finally {
+        prepared.observation?.end();
         await leaseHeartbeat?.stop();
         await releaseAdmissionLeaseBestEffort(admission);
         if (!streamClosed) {
