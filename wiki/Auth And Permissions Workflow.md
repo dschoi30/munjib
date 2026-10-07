@@ -23,6 +23,15 @@ links:
 
 Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 개발 환경 전용이며 production에서는 항상 닫혀 있다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
 
+## Login entry copy and password reset
+
+Issue #223 uses a neutral welcome and sign-in description in Korean and English
+for all visitors, without assuming a previous visit. The password-reset button
+is temporarily disabled with no click handler; its localized title explains
+that password reset is coming soon. Password, Google, signup and Trial entry
+behavior remains unchanged. Evidence: `app/login/login-form.tsx`,
+`lib/i18n/messages.ts`, and `tests/components/login-form.test.tsx`.
+
 ## Development login gate
 
 Issue #143 keeps the email-only `development-login` Credentials provider for

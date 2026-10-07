@@ -85,7 +85,7 @@ describe("LoginForm", () => {
   it("omits account-creation controls when signup is disabled", async () => {
     renderLoginForm(undefined, { isSignupEnabled: false });
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Welcome to Munjib" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Create one" })).toBeNull();
     expect(screen.queryByText("Don't have an account?")).toBeNull();
   });
@@ -95,9 +95,9 @@ describe("LoginForm", () => {
 
     renderLoginForm();
 
-    expect(screen.queryByRole("heading", { name: "Welcome back" })).toBeNull();
-    expect(await screen.findByRole("heading", { name: "다시 오신 것을 환영합니다" })).toBeTruthy();
-    expect(screen.getByText("문집을 계속 사용하려면 로그인하세요.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Welcome to Munjib" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "문집에 오신 것을 환영합니다" })).toBeTruthy();
+    expect(screen.getByText("로그인하여 문집을 사용해 보세요.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Google로 계속하기" })).toBeTruthy();
     expect(screen.getByLabelText("이메일")).toBeTruthy();
     expect(screen.getByLabelText("비밀번호")).toBeTruthy();
@@ -108,13 +108,13 @@ describe("LoginForm", () => {
   it("renders the Hypothesis #3 Real Auth Stack hierarchy in English", async () => {
     renderLoginForm();
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
-    expect(screen.getByText("Sign in to continue to Munjib.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Welcome to Munjib" })).toBeTruthy();
+    expect(screen.getByText("Sign in to use Munjib.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Continue with Google" })).toBeTruthy();
     expect(screen.getByText("or")).toBeTruthy();
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Forgot password?" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Forgot password?" })).toHaveProperty("disabled", true);
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(screen.getByText("Don't have an account?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create one" })).toBeTruthy();
@@ -124,7 +124,7 @@ describe("LoginForm", () => {
   it("hides the Google provider block when Google login is not configured", async () => {
     renderLoginForm(undefined, { isGoogleLoginEnabled: false });
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Welcome to Munjib" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Continue with Google" })).toBeNull();
     expect(screen.queryByText("or")).toBeNull();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
@@ -133,7 +133,7 @@ describe("LoginForm", () => {
   it("hides the trial provider when the server deployment gate is off", async () => {
     renderLoginForm(undefined, { isTrialLoginEnabled: false });
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Welcome to Munjib" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Explore demo (read-only) No signup" })).toBeNull();
   });
 
@@ -364,7 +364,7 @@ describe("LoginForm", () => {
   it("keeps development login shortcuts hidden when the server gate is off", async () => {
     renderLoginForm(undefined, { isDevLoginEnabled: false });
 
-    expect(await screen.findByRole("heading", { name: "Welcome back" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Welcome to Munjib" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "owner@example.com" })).toBeNull();
     expect(screen.queryByText("Development email login")).toBeNull();
   });

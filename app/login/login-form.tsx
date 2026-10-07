@@ -271,13 +271,10 @@ export function LoginForm({
               </label>
               {!isSignupMode ? (
                 <button
-	                  type="button"
-	                  onClick={() => {
-	                    setErrorKey(null);
-	                    setStatusKey("login.passwordResetUnavailable");
-	                  }}
-                  disabled={isSubmitting}
-                  className="text-sm font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  disabled
+                  title={t("login.passwordResetUnavailable")}
+                  className="cursor-not-allowed text-sm font-medium text-ink-muted opacity-50"
                 >
                   {t("login.forgotPassword")}
                 </button>
