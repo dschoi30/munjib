@@ -3216,3 +3216,21 @@ it("omits archive form entirely for a read-only document", () => {
   expect(screen.queryByText("Move to trash")).toBeNull();
   expect(document.querySelector('input[name="documentId"]')).toBeNull();
 });
+
+
+it.each([
+  ["en", "Demo account", "Account menu"],
+  ["ko", "데모 계정", "계정 메뉴"],
+])("labels anonymous Trial in %s even when a signed-in user coexists", (language, label, menuLabel) => {
+  window.localStorage.setItem("munjib:language", language);
+  renderWithI18n(
+    <WorkspaceModeProvider mode="anonymous-trial-readonly">
+      <DocumentList {...baseProps} canWrite={false} canManageWorkspace={false} />
+    </WorkspaceModeProvider>,
+  );
+  const accountButton = screen.getByRole("button", { name: menuLabel });
+  expect(within(accountButton).getByText(label)).toBeTruthy();
+  fireEvent.click(accountButton);
+  expect(within(screen.getByRole("menu", { name: menuLabel })).getByText(label)).toBeTruthy();
+  expect(screen.queryByText(baseProps.currentUser.email)).toBeNull();
+});
