@@ -66,3 +66,12 @@ it("reports exporter failures without logging exporter errors or blocking callba
   expect(log).toHaveBeenCalledWith("Langfuse metadata export failed", { code: "LANGFUSE_EXPORT_FAILED" });
   expect(JSON.stringify(log.mock.calls)).not.toContain("sk-secret");
 });
+
+it("preserves model IDs accepted by the application at the 160-character boundary", async () => {
+  const { exporter, observer } = setup();
+  const model = "provider/" + "m".repeat(151);
+  const request = observer.start("ask_document", false);
+  await request.run(() => observer.stage("generation", async () => "answer", { chatModel: model }));
+  request.end();
+  expect(exporter.getFinishedSpans()[0].attributes["langfuse.observation.model.name"]).toBe(model);
+});

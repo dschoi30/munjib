@@ -1,4 +1,4 @@
-import { scheduleAiObservationFlush } from "@/lib/rag/ai-observation";
+import { scheduleAiObservationFlush, type AiObservation } from "@/lib/rag/ai-observation";
 import { NextResponse } from "next/server";
 import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
@@ -57,6 +57,7 @@ export async function POST(
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
   scheduleAiObservationFlush();
+  let observation: AiObservation | undefined;
   let admittedLeaseId: string | undefined;
   let admittedTrialAi: { remaining: 0 | 1 | 2; resetsAt: string } | undefined;
   let leaseHeartbeat: TrialAiLeaseHeartbeat | undefined;
@@ -72,6 +73,7 @@ export async function POST(
         : {}),
       ...(chatModelValidation?.ok ? { chatModelOverride: chatModelValidation.value } : {}),
     });
+    observation = prepared.observation;
     if (request.signal.aborted) {
       return NextResponse.json(
         { error: "ASK_REQUEST_ABORTED" },
@@ -111,6 +113,7 @@ export async function POST(
         : {}),
     });
   } catch (error) {
+    observation?.end(error);
     const message = error instanceof Error ? error.message : "";
     if (message === ASK_ERROR_CODES.QUESTION_REQUIRED || message === INVALID_CHAT_MODEL_ERROR) {
       return NextResponse.json({ error: message }, { status: 400 });
@@ -156,6 +159,7 @@ export async function POST(
     }
     return NextResponse.json({ error: "RAG_REQUEST_FAILED" }, { status: 500 });
   } finally {
+    observation?.end();
     await leaseHeartbeat?.stop();
     if (admittedLeaseId) {
       await releaseTrialAiLease(admittedLeaseId).catch(() => undefined);

@@ -29,7 +29,7 @@ vi.mock("@/lib/observability/ai-unavailable", () => ({
   captureTrialAiFailure: vi.fn(),
 }));
 
-const preparedAsk = { workspaceId: "workspace-1" };
+const preparedAsk = { workspaceId: "workspace-1", observation: { end: vi.fn() } };
 
 describe("RAG ask route", () => {
   beforeEach(() => {
@@ -153,6 +153,7 @@ describe("RAG ask route", () => {
     expect(Number(response.headers.get("retry-after"))).toBeGreaterThan(0);
     expect(answerPreparedAskDocumentQuestion).not.toHaveBeenCalled();
     expect(releaseTrialAiLease).not.toHaveBeenCalled();
+    expect(preparedAsk.observation.end).toHaveBeenCalledOnce();
   });
 
   it("returns private no-store 503 without calling the provider when Trial admission is unavailable", async () => {

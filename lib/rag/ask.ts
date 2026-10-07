@@ -1,4 +1,4 @@
-import { startAiObservation } from "@/lib/rag/ai-observation";
+import { startAiObservation, observeAiStage, type AiObservation } from "@/lib/rag/ai-observation";
 import { prisma } from "@/lib/db/client";
 import {
   resolveAiWorkspaceAuthorization,
@@ -61,6 +61,7 @@ export type PreparedAskDocumentQuestion = Readonly<{
   contextPartial: boolean;
   privacyMode: "authenticated-user" | "anonymous-trial";
   actorId?: string;
+  observation?: AiObservation;
 }>;
 
 export async function askDocumentQuestion(
@@ -75,6 +76,16 @@ export async function askDocumentQuestion(
 
 /** Resolves authorization and provider-ready prompt data without calling a model. */
 export async function prepareAskDocumentQuestion(
+  input: PrepareAskDocumentQuestionInput,
+): Promise<PreparedAskDocumentQuestion> {
+  const observation = startAiObservation("ask_document", input.authorizationPrincipal.kind === "anonymous-trial-demo");
+  try {
+    const prepared = await observation.run(() => observeAiStage("preparation", () => prepareAskDocumentQuestionInternal(input)));
+    return { ...prepared, observation };
+  } catch (error) { observation.end(error); throw error; }
+}
+
+async function prepareAskDocumentQuestionInternal(
   input: PrepareAskDocumentQuestionInput,
 ): Promise<PreparedAskDocumentQuestion> {
   const question = input.question.trim();
@@ -222,7 +233,7 @@ export async function answerPreparedAskDocumentQuestion(
   prepared: PreparedAskDocumentQuestion,
   options: Readonly<{ signal?: AbortSignal }> = {},
 ): Promise<AskDocumentQuestionResult> {
-  const observation = startAiObservation("ask_document", prepared.privacyMode === "anonymous-trial");
+  const observation = prepared.observation ?? startAiObservation("ask_document", prepared.privacyMode === "anonymous-trial");
   try {
     return await observation.run(async () => {
       const trace = createLangfuseCallbackConfig({

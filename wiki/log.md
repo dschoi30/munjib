@@ -4057,3 +4057,5 @@ links:
 - Live diagnosis: production credentials authenticated to the expected JP project, but metadata capture disabled both the old callback and exporter. Local credentials were empty.
 - Added a private manual exporter for content-free AI stage observations, independent of Sentry; retained explicit full-capture opt-in and Trial content exclusion.
 - Evidence: `lib/rag/ai-observation.ts`, AI service/route wiring, metadata/export privacy tests. Deployment verification is recorded separately after rollout; code tests alone do not prove production ingestion.
+
+- Issue #227 PR review follow-up: Ask preparation failures now share the request trace; model attribution follows the 160-character application validation contract; removed the obsolete metadata-export-disabled claim. Regression evidence: Ask preparation failure and model-ID boundary tests.

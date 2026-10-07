@@ -3,6 +3,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { api, tracing } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
+import { validateChatModelId } from "@/lib/rag/client-model-settings";
 import { isRagRuntimeError } from "@/lib/rag/errors";
 
 type Surface = "ask_document" | "workspace_chat";
@@ -50,7 +51,7 @@ export function createAiObserver(tracer?: api.Tracer) {
       // Do not spread caller metadata. Even authenticated metadata contains IDs.
       for (const key of ["chatModel", "chatProvider", "embeddingModel", "embeddingProvider"] as const) {
         const value = metadata[key];
-        if (typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:/@+-]{0,119}$/.test(value)) {
+        if (typeof value === "string" && (key === "chatModel" ? validateChatModelId(value).ok : /^[a-zA-Z0-9][a-zA-Z0-9._:/@+-]{0,159}$/.test(value))) {
           attributes[key === "chatModel" ? "langfuse.observation.model.name" : `langfuse.observation.metadata.${key}`] = value;
         }
       }
