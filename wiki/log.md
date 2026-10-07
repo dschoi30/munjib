@@ -4034,6 +4034,13 @@ links:
 - Final review also separated heading-fold keys and Workspace AI panel state for Trial. Editor and Markdown preview share one scoped fold key, preventing browser preference changes from reaching the same authenticated document.
 - Fresh Trial entry selects the first readable document while explicit folder/graph navigation and invalid document IDs retain their separate behavior; page regression tests cover the initial view and denial.
 
+## 2026-10-07 — Issue #223 login entry clarification
+
+- Updated [[Auth And Permissions Workflow]]: Korean/English login copy no longer assumes a returning visitor; password reset is temporarily disabled and has no click handler.
+- Evidence: `app/login/login-form.tsx`, `lib/i18n/messages.ts`, `tests/components/login-form.test.tsx`.
+
+- PR #224 review: expose the password-reset explanation as visible helper text linked with `aria-describedby`, including for keyboard and touch users.
+
 ## 2026-10-07 — Read-only archive menu visibility (#221)
 
 - Live Trial verification after #220 found a hidden archive button was made visible by its block display class. Omit the entire archive form for documents without write permission; retain the server mutation denial. Regression tests assert no archive button or document mutation input exists in the read-only menu.

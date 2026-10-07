@@ -271,13 +271,10 @@ export function LoginForm({
               </label>
               {!isSignupMode ? (
                 <button
-	                  type="button"
-	                  onClick={() => {
-	                    setErrorKey(null);
-	                    setStatusKey("login.passwordResetUnavailable");
-	                  }}
-                  disabled={isSubmitting}
-                  className="text-sm font-medium text-[#174a76] hover:text-[#123a5e] disabled:cursor-not-allowed disabled:opacity-50"
+                  type="button"
+                  disabled
+                  aria-describedby="password-reset-unavailable"
+                  className="cursor-not-allowed text-sm font-medium text-ink-muted opacity-50"
                 >
                   {t("login.forgotPassword")}
                 </button>
@@ -305,6 +302,11 @@ export function LoginForm({
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
+            {!isSignupMode ? (
+              <p id="password-reset-unavailable" className="mt-2 text-xs text-ink-muted">
+                {t("login.passwordResetUnavailable")}
+              </p>
+            ) : null}
           </div>
 
           <Button
