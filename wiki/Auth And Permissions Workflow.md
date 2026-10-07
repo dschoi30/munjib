@@ -689,3 +689,22 @@ The operator selected all Company Handbook data for a separate snapshot, excludi
 Trial AI clients send an explicit `X-Munjib-AI-Mode: anonymous-trial-readonly` hint. This selects the narrower signed Trial principal even alongside Google cookies; it never replaces visitor-token/edge-proof validation and invalid Trial evidence cannot fall back to an authenticated owner. Ordinary AI requests preserve authenticated-user precedence.
 
 Trial folder projection includes only readable-document folders and their required ancestors, hiding empty/protected-only branches. Trial hides workspace settings because server-owned AI models cannot be changed by anonymous visitors. Attachment links normalize paths and preserve query/fragment suffixes only after allowed-ID checks, always targeting the hardened Trial endpoint.
+
+
+## Demo account label and administrator access (Issue #225)
+
+Anonymous Trial displays a localized Demo account label in the account button
+and drawer, based on workspace mode rather than a blank or coexisting user's
+email. Ordinary authenticated account labels remain unchanged.
+
+The configured demo workspace can be edited through its ordinary authenticated
+`/workspaces/<demo-slug>` route by a workspace OWNER or ADMIN. The `/trial/`
+route remains read-only even for a coexisting administrator session. On
+2026-10-07, a read-only production query confirmed `mjadmin@munjib.com` already
+has OWNER membership in the configured `munjib-trial-handbook` workspace;
+no additional grant was necessary. The snapshot and original workspace currently
+share the display name Company Handbook, so the slug distinguishes them.
+
+Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`,
+`tests/components/document-list.test.tsx`, and the targeted production
+Workspace/WorkspaceMember query.

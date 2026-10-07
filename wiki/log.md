@@ -4044,3 +4044,9 @@ links:
 ## 2026-10-07 — Read-only archive menu visibility (#221)
 
 - Live Trial verification after #220 found a hidden archive button was made visible by its block display class. Omit the entire archive form for documents without write permission; retain the server mutation denial. Regression tests assert no archive button or document mutation input exists in the read-only menu.
+
+## 2026-10-07 — Demo identity and admin access (#225)
+
+- Updated [[Auth And Permissions Workflow]]: Trial account label uses the localized demo identity, including when an authenticated session coexists.
+- Read-only production query confirmed the configured `munjib-trial-handbook` already grants `mjadmin@munjib.com` OWNER. Administrative editing uses the ordinary workspace route; Trial stays read-only.
+- Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`, targeted production membership query.
