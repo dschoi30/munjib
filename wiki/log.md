@@ -4048,5 +4048,5 @@ links:
 ## 2026-10-07 — Demo identity and admin access (#225)
 
 - Updated [[Auth And Permissions Workflow]]: Trial account label uses the localized demo identity, including when an authenticated session coexists.
-- Read-only production query confirmed the configured `munjib-trial-handbook` already grants `mjadmin@munjib.com` OWNER. Administrative editing uses the ordinary workspace route; Trial stays read-only.
-- Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`, targeted production membership query.
+- Administrative editing uses the ordinary authenticated workspace route and existing membership checks; Trial stays read-only.
+- Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.

@@ -699,12 +699,7 @@ email. Ordinary authenticated account labels remain unchanged.
 
 The configured demo workspace can be edited through its ordinary authenticated
 `/workspaces/<demo-slug>` route by a workspace OWNER or ADMIN. The `/trial/`
-route remains read-only even for a coexisting administrator session. On
-2026-10-07, a read-only production query confirmed `mjadmin@munjib.com` already
-has OWNER membership in the configured `munjib-trial-handbook` workspace;
-no additional grant was necessary. The snapshot and original workspace currently
-share the display name Company Handbook, so the slug distinguishes them.
+route remains read-only even for a coexisting administrator session.
 
 Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`,
-`tests/components/document-list.test.tsx`, and the targeted production
-Workspace/WorkspaceMember query.
+`tests/components/document-list.test.tsx`.
