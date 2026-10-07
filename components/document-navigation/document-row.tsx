@@ -118,17 +118,16 @@ export function DocumentLinkRow({
           >
             {t("nav.openInNewTab")}
           </button>
-          <form action={archiveDocumentAction}>
+          {document.canWrite ? <form action={archiveDocumentAction}>
             <input type="hidden" name="documentId" value={document.id} />
             <button
               type="submit"
               role="menuitem"
-              hidden={!document.canWrite}
               className="block w-full rounded px-2 py-1.5 text-left text-rose-700 hover:bg-rose-50"
             >
               {t("nav.moveToTrash")}
             </button>
-          </form>
+          </form> : null}
         </div>
       ) : null}
     </div>

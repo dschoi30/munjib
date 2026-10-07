@@ -4038,3 +4038,7 @@ links:
 
 - Updated [[Auth And Permissions Workflow]]: Korean/English login copy no longer assumes a returning visitor; password reset is temporarily disabled and has no click handler.
 - Evidence: `app/login/login-form.tsx`, `lib/i18n/messages.ts`, `tests/components/login-form.test.tsx`.
+
+## 2026-10-07 — Read-only archive menu visibility (#221)
+
+- Live Trial verification after #220 found a hidden archive button was made visible by its block display class. Omit the entire archive form for documents without write permission; retain the server mutation denial. Regression tests assert no archive button or document mutation input exists in the read-only menu.
