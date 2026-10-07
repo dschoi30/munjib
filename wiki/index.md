@@ -86,6 +86,8 @@ links:
 
 ## 상태판
 
+- Issue #227 restores actual metadata-only Langfuse observations for authenticated and anonymous Trial AI through a private provider, with stage timings and no content or caller identifiers. See [[Production Observability Workflow]] and [[RAG Process Workflow]].
+
 - Issue #162 auth-abuse/session-revocation은 Leaf 2의 `authDisabledAt`/`sessionVersion`/journal authority, Leaf 13의 private binding/database-role/broker attestation, 그리고 Issue #166 host-edge binding/probe contract가 모두 준비될 때까지 readiness handoff로 유지한다. 공개 안전한 게이트와 다음 구현 순서는 `docs/runbooks/auth-abuse-sessions-readiness.md`와 [[Auth And Permissions Workflow]]에 기록한다.
 
 - Issue #162 readiness handoff에는 이미 `lib/auth/abuse/runtime.ts`의 strict file-backed guard runtime, bounded canonical-Origin/Fetch-Metadata primitives, 외부 durable-store 위임과 fail-closed stable codes가 포함되어 있다. Leaf 2의 support-grant와 runtime activation은 아직 구현 작업이며, schema/migration과 route integration은 Leaf 2/13/Issue #166/#184/#185 게이트가 충족된 뒤의 다음 slice다. 상세 contract와 순서는 `docs/runbooks/auth-abuse-sessions-readiness.md`와 [[Auth And Permissions Workflow]]에 기록한다.

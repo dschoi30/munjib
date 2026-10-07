@@ -4050,3 +4050,14 @@ links:
 - Updated [[Auth And Permissions Workflow]]: Trial account label uses the localized demo identity, including when an authenticated session coexists.
 - Administrative editing uses the ordinary authenticated workspace route and existing membership checks; Trial stays read-only.
 - Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.
+
+## 2026-10-07 — Issue #227 Langfuse metadata observability
+
+- Updated [[Production Observability Workflow]], [[RAG Process Workflow]], and [[index|Wiki Index]].
+- Live diagnosis: production credentials authenticated to the expected JP project, but metadata capture disabled both the old callback and exporter. Local credentials were empty.
+- Added a private manual exporter for content-free AI stage observations, independent of Sentry; retained explicit full-capture opt-in and Trial content exclusion.
+- Evidence: `lib/rag/ai-observation.ts`, AI service/route wiring, metadata/export privacy tests. Deployment verification is recorded separately after rollout; code tests alone do not prove production ingestion.
+
+- Issue #227 PR review follow-up: Ask preparation failures now share the request trace; model attribution follows the 160-character application validation contract; removed the obsolete metadata-export-disabled claim. Regression evidence: Ask preparation failure and model-ID boundary tests.
+- Live development export verified successful generation with reported token usage and no input/output. Fixed the private provider resource to `service.name=munjib-ai` so the SDK default cannot expose the local Node executable path.
+- PR #228 lease-finalization review: routes retain the Ask/Workspace request observation until the final heartbeat result is validated, so a lost Trial lease records an error instead of a premature successful root. Added service deferral and both route race regressions.

@@ -97,7 +97,9 @@ const citations = [
   },
 ];
 
+const observationEnd = vi.fn();
 const preparedWorkspaceChatMessage = {
+  observation: { end: observationEnd },
   kind: "persistent",
   threadId: "thread-1",
   message: "What changed?",
@@ -545,6 +547,8 @@ describe("workspace chat routes", () => {
     expect(events.at(-1)).toEqual({ type: "error", error: "AI_UNAVAILABLE" });
     expect(events.some((event) => event.type === "done")).toBe(false);
     expect(releaseTrialAiLease).toHaveBeenCalledWith("lease-stop-race");
+    expect(observationEnd.mock.calls[0]?.[0]).toBeInstanceOf(Error);
+    expect(vi.mocked(sendPreparedWorkspaceChatMessageStream).mock.calls[0]?.[1]).toMatchObject({ deferObservationEnd: true });
   });
 
   it("preserves the sanitized Trial error when best-effort lease release rejects", async () => {

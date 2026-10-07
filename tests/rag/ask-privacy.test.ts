@@ -18,7 +18,9 @@ describe("prepared Ask AI privacy", () => {
   });
 
   it("forces anonymous Trial Ask execution to metadata-only callbacks", async () => {
+    const end = vi.fn();
     await answerPreparedAskDocumentQuestion({
+      observation: { run: (work: () => Promise<unknown>) => work(), end },
       workspaceId: "workspace-1",
       workspaceSlug: "public-demo",
       selectedDocumentId: "document-1",
@@ -35,7 +37,8 @@ describe("prepared Ask AI privacy", () => {
       },
       contextPartial: false,
       privacyMode: "anonymous-trial",
-    } as unknown as Parameters<typeof answerPreparedAskDocumentQuestion>[0]);
+    } as unknown as Parameters<typeof answerPreparedAskDocumentQuestion>[0], { deferObservationEnd: true });
+    expect(end).not.toHaveBeenCalled();
 
     expect(createLangfuseCallbackConfig).toHaveBeenCalledWith(expect.objectContaining({
       captureMode: "metadata",
