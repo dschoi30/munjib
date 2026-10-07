@@ -4050,3 +4050,10 @@ links:
 - Updated [[Auth And Permissions Workflow]]: Trial account label uses the localized demo identity, including when an authenticated session coexists.
 - Administrative editing uses the ordinary authenticated workspace route and existing membership checks; Trial stays read-only.
 - Evidence: `components/document-list.tsx`, `lib/i18n/messages.ts`, `tests/components/document-list.test.tsx`.
+
+## 2026-10-07 — Issue #227 Langfuse metadata observability
+
+- Updated [[Production Observability Workflow]], [[RAG Process Workflow]], and [[index|Wiki Index]].
+- Live diagnosis: production credentials authenticated to the expected JP project, but metadata capture disabled both the old callback and exporter. Local credentials were empty.
+- Added a private manual exporter for content-free AI stage observations, independent of Sentry; retained explicit full-capture opt-in and Trial content exclusion.
+- Evidence: `lib/rag/ai-observation.ts`, AI service/route wiring, metadata/export privacy tests. Deployment verification is recorded separately after rollout; code tests alone do not prove production ingestion.

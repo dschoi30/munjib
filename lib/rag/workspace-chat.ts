@@ -1,3 +1,4 @@
+import { startAiObservation, observeAiStage, type AiObservation } from "@/lib/rag/ai-observation";
 import { Prisma } from "@prisma/client";
 import type { AiAuthorizationPrincipal } from "@/lib/auth/trial-entitlement";
 import { prisma } from "@/lib/db/client";
@@ -41,6 +42,7 @@ export type SendWorkspaceChatMessageInput = WorkspaceChatInput & {
 };
 
 type WorkspaceChatPreparedMessageCommon = {
+  observation?: AiObservation;
   message: string;
   prompt: RagPrompt;
   promptChunkCount: number;
@@ -186,15 +188,21 @@ export async function getOrCreateWorkspaceChatThread(input: WorkspaceChatInput) 
 
 export async function sendWorkspaceChatMessage(input: SendWorkspaceChatMessageInput) {
   const prepared = await prepareWorkspaceChatMessageStream(input);
-  const answer = await invokeAnswerChain({
-    systemPrompt: prepared.prompt.system,
-    userPrompt: prepared.prompt.user,
-    chatModel: prepared.chatModel,
-    callbacks: prepared.trace.callbacks,
-    metadata: prepared.trace.metadata,
-  });
+  const observation = prepared.observation;
+  const work = async () => {
+    const answer = await invokeAnswerChain({
+      systemPrompt: prepared.prompt.system,
+      userPrompt: prepared.prompt.user,
+      chatModel: prepared.chatModel,
+      callbacks: prepared.trace.callbacks,
+      metadata: prepared.trace.metadata,
+    });
 
-  return persistWorkspaceChatAnswer(prepared, answer);
+    return persistWorkspaceChatAnswer(prepared, answer);
+  };
+  try { return await (observation ? observation.run(work) : work()); }
+  catch (error) { observation?.end(error); throw error; }
+  finally { observation?.end(); }
 }
 
 /** Performs workspace/document authorization without chat, indexing, embedding, or model side effects. */
@@ -292,6 +300,16 @@ export async function prepareWorkspaceChatMessageStream(
 export async function preparePreflightedWorkspaceChatMessageStream(
   input: PreflightedWorkspaceChatMessageInput,
 ): Promise<WorkspaceChatPreparedMessage> {
+  const observation = startAiObservation("workspace_chat", input.preflight.kind === "stateless-trial");
+  try {
+    const prepared = await observation.run(() => observeAiStage("preparation", () => preparePreflightedWorkspaceChatMessageStreamInternal(input)));
+    return { ...prepared, observation };
+  } catch (error) { observation.end(error); throw error; }
+}
+
+async function preparePreflightedWorkspaceChatMessageStreamInternal(
+  input: PreflightedWorkspaceChatMessageInput,
+): Promise<WorkspaceChatPreparedMessage> {
   throwIfWorkspaceChatStreamAborted(input.signal);
   const message = input.message.trim();
   if (!message) throw new Error(WORKSPACE_CHAT_ERROR_CODES.MESSAGE_REQUIRED);
@@ -325,7 +343,7 @@ export async function preparePreflightedWorkspaceChatMessageStream(
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? (input.selectedDocumentId ?? undefined)
     : undefined;
-  await ensureWorkspaceChatRetrievalIndex({
+  await observeAiStage("indexing", () => ensureWorkspaceChatRetrievalIndex({
     workspaceId: workspace.workspaceId,
     readableDocuments: workspace.readableDocuments,
     query: conversationQuestion,
@@ -333,7 +351,7 @@ export async function preparePreflightedWorkspaceChatMessageStream(
     selectedDocumentId,
     privacySafeLogging: workspace.kind === "stateless-trial",
     signal: input.signal,
-  });
+  }));
   throwIfWorkspaceChatStreamAborted(input.signal);
   const embedding = await embedText(conversationQuestion, {
     config: effectiveModelConfig,
@@ -424,6 +442,16 @@ export function sendPreparedWorkspaceChatMessageStream(
   | ReturnType<typeof transientWorkspaceChatAnswer>
 >;
 export async function sendPreparedWorkspaceChatMessageStream(
+  prepared: WorkspaceChatPreparedMessage,
+  callbacks: WorkspaceChatStreamCallbacks,
+) {
+  const observation = prepared.observation ?? startAiObservation("workspace_chat", prepared.kind === "stateless-trial");
+  try { return await observation.run(() => sendPreparedWorkspaceChatMessageStreamInternal(prepared, callbacks)); }
+  catch (error) { observation.end(error); throw error; }
+  finally { observation.end(); }
+}
+
+async function sendPreparedWorkspaceChatMessageStreamInternal(
   prepared: WorkspaceChatPreparedMessage,
   callbacks: WorkspaceChatStreamCallbacks,
 ) {
@@ -1061,6 +1089,7 @@ async function summarizeConversationMemory(input: {
 
   for (const chunk of chunkText(source, CONVERSATION_MEMORY_SOURCE_CHUNK_CHARS)) {
     const summary = await invokeAnswerChain({
+      metadata: { chatModel: input.modelConfig.chat.model, chatProvider: input.modelConfig.chat.provider },
       systemPrompt: CONVERSATION_MEMORY_SUMMARY_SYSTEM_PROMPT,
       userPrompt: buildConversationMemorySummaryPrompt({
         existingMemorySummary: memorySummary,

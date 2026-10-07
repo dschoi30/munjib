@@ -1,3 +1,4 @@
+import { scheduleAiObservationFlush } from "@/lib/rag/ai-observation";
 import { NextResponse } from "next/server";
 import { requireAiActor } from "@/lib/auth/session";
 import { parseLanguage } from "@/lib/i18n/language";
@@ -55,6 +56,7 @@ export async function POST(
   if (actor.admissionActor.kind === "anonymous-trial" && (hasChatProvider || hasChatModel)) {
     return NextResponse.json({ error: INVALID_CHAT_MODEL_ERROR }, { status: 400 });
   }
+  scheduleAiObservationFlush();
   let admittedLeaseId: string | undefined;
   let admittedTrialAi: { remaining: 0 | 1 | 2; resetsAt: string } | undefined;
   let leaseHeartbeat: TrialAiLeaseHeartbeat | undefined;

@@ -1,3 +1,4 @@
+import { startAiObservation } from "@/lib/rag/ai-observation";
 import { prisma } from "@/lib/db/client";
 import {
   resolveAiWorkspaceAuthorization,
@@ -221,32 +222,38 @@ export async function answerPreparedAskDocumentQuestion(
   prepared: PreparedAskDocumentQuestion,
   options: Readonly<{ signal?: AbortSignal }> = {},
 ): Promise<AskDocumentQuestionResult> {
-  const trace = createLangfuseCallbackConfig({
-    enabled: prepared.effectiveModelConfig.langfuse.enabled,
-    captureMode: prepared.privacyMode === "anonymous-trial"
-      ? "metadata"
-      : prepared.effectiveModelConfig.langfuse.captureMode,
-    operation: "rag.ask_document",
-    chatProvider: prepared.effectiveModelConfig.chat.provider,
-    chatModel: prepared.effectiveModelConfig.chat.model,
-    citationDocumentIds: prepared.citations.map((citation) => citation.documentId),
-    metadata: {
-      workspaceSlug: prepared.workspaceSlug,
-      workspaceId: prepared.workspaceId,
-      selectedDocumentId: prepared.selectedDocumentId,
-      ...(prepared.actorId ? { actorId: prepared.actorId } : {}),
-      contextPartial: prepared.contextPartial,
-    },
-  });
-  const answer = await invokeAnswerChain({
-    systemPrompt: prepared.prompt.system,
-    userPrompt: prepared.prompt.user,
-    chatModel: createChatModel(prepared.effectiveModelConfig.chat) as ChatModelLike,
-    callbacks: trace.callbacks,
-    metadata: trace.metadata,
-    privacySafeLogging: prepared.privacyMode === "anonymous-trial",
-    ...(options.signal ? { config: { signal: options.signal } } : {}),
-  });
+  const observation = startAiObservation("ask_document", prepared.privacyMode === "anonymous-trial");
+  try {
+    return await observation.run(async () => {
+      const trace = createLangfuseCallbackConfig({
+        enabled: prepared.effectiveModelConfig.langfuse.enabled,
+        captureMode: prepared.privacyMode === "anonymous-trial"
+          ? "metadata"
+          : prepared.effectiveModelConfig.langfuse.captureMode,
+        operation: "rag.ask_document",
+        chatProvider: prepared.effectiveModelConfig.chat.provider,
+        chatModel: prepared.effectiveModelConfig.chat.model,
+        citationDocumentIds: prepared.citations.map((citation) => citation.documentId),
+        metadata: {
+          workspaceSlug: prepared.workspaceSlug,
+          workspaceId: prepared.workspaceId,
+          selectedDocumentId: prepared.selectedDocumentId,
+          ...(prepared.actorId ? { actorId: prepared.actorId } : {}),
+          contextPartial: prepared.contextPartial,
+        },
+      });
+      const answer = await invokeAnswerChain({
+        systemPrompt: prepared.prompt.system,
+        userPrompt: prepared.prompt.user,
+        chatModel: createChatModel(prepared.effectiveModelConfig.chat) as ChatModelLike,
+        callbacks: trace.callbacks,
+        metadata: trace.metadata,
+        privacySafeLogging: prepared.privacyMode === "anonymous-trial",
+        ...(options.signal ? { config: { signal: options.signal } } : {}),
+      });
 
-  return normalizeAnswerCitations(answer, prepared.citations);
+      return normalizeAnswerCitations(answer, prepared.citations);
+    });
+  } catch (error) { observation.end(error); throw error; }
+  finally { observation.end(); }
 }

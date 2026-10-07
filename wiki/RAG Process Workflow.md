@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-08-25
+updated: 2026-10-07
 source_count: 138
 tags:
   - munjib
@@ -636,3 +636,13 @@ caller는 Leaf 2/4/6/13B가 제공하는 canonical authority와 함께 이 경�
 - `tests/rag/langfuse-otel.test.ts`
 - `tests/rag/retriever.test.ts`
 - `tests/rag/vector-store.test.ts`
+
+## Langfuse metadata export repair (Issue #227)
+
+Metadata mode now sends content-free observations through a private manual
+OpenTelemetry provider. It still does not attach the content-capturing
+LangChain callback. This supersedes older statements equating metadata mode
+with no Langfuse egress. Both anonymous Trial and authenticated requests export
+only execution metadata; Trial identity and conversation persistence boundaries
+are unchanged. See [[Production Observability Workflow]] for the field allowlist,
+stage coverage, failure behavior, and development/production project separation.
