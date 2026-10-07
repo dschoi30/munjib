@@ -273,7 +273,7 @@ export function LoginForm({
                 <button
                   type="button"
                   disabled
-                  title={t("login.passwordResetUnavailable")}
+                  aria-describedby="password-reset-unavailable"
                   className="cursor-not-allowed text-sm font-medium text-ink-muted opacity-50"
                 >
                   {t("login.forgotPassword")}
@@ -302,6 +302,11 @@ export function LoginForm({
                 {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
+            {!isSignupMode ? (
+              <p id="password-reset-unavailable" className="mt-2 text-xs text-ink-muted">
+                {t("login.passwordResetUnavailable")}
+              </p>
+            ) : null}
           </div>
 
           <Button

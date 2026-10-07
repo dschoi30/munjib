@@ -27,7 +27,7 @@ Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google
 
 Issue #223 uses a neutral welcome and sign-in description in Korean and English
 for all visitors, without assuming a previous visit. The password-reset button
-is temporarily disabled with no click handler; its localized title explains
+is temporarily disabled with no click handler; visible localized helper text linked with `aria-describedby` explains
 that password reset is coming soon. Password, Google, signup and Trial entry
 behavior remains unchanged. Evidence: `app/login/login-form.tsx`,
 `lib/i18n/messages.ts`, and `tests/components/login-form.test.tsx`.

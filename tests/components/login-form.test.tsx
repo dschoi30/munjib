@@ -115,6 +115,7 @@ describe("LoginForm", () => {
     expect(screen.getByLabelText("Email")).toBeTruthy();
     expect(screen.getByLabelText("Password")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Forgot password?" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Password reset is coming soon.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(screen.getByText("Don't have an account?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Create one" })).toBeTruthy();

@@ -4042,3 +4042,5 @@ links:
 ## 2026-10-07 — Read-only archive menu visibility (#221)
 
 - Live Trial verification after #220 found a hidden archive button was made visible by its block display class. Omit the entire archive form for documents without write permission; retain the server mutation denial. Regression tests assert no archive button or document mutation input exists in the read-only menu.
+
+- PR #224 review: expose the password-reset explanation as visible helper text linked with `aria-describedby`, including for keyboard and touch users.

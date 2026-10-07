@@ -287,7 +287,7 @@ export const messages = {
     "login.email": "이메일",
     "login.password": "비밀번호",
     "login.forgotPassword": "비밀번호를 잊으셨나요?",
-    "login.passwordResetUnavailable": "비밀번호 재설정은 곧 제공됩니다.",
+    "login.passwordResetUnavailable": "비밀번호 재설정은 준비 중입니다.",
     "login.showPassword": "비밀번호 보기",
     "login.hidePassword": "비밀번호 숨기기",
     "login.signIn": "로그인",
