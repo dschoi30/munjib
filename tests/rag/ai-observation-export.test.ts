@@ -36,6 +36,8 @@ it("exports real answer-chain OTLP metadata without prompt, output, or caller id
     const wire = bodies.join("");
     expect(wire).toContain("generation"); expect(wire).toContain("gpt-test");
     expect(wire).toContain("usage_details"); expect(wire).toContain("RAG_CHAT_REQUEST_FAILED");
+    expect(wire).not.toContain(process.execPath);
+    expect(wire).toContain("munjib-ai");
     expect(wire).not.toContain("PRIVATE_"); expect(wire).not.toContain("sk-test");
     expect(wire).not.toContain('"key":"langfuse.observation.input"');
     expect(wire).not.toContain('"key":"langfuse.observation.output"');

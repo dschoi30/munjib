@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { api, tracing } from "@opentelemetry/sdk-node";
+import { api, tracing, resources } from "@opentelemetry/sdk-node";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { LangfuseSpanProcessor } from "@langfuse/otel";
 import { validateChatModelId } from "@/lib/rag/client-model-settings";
@@ -112,7 +112,7 @@ function getObserver() {
       timeout: 5, flushInterval: 2,
       additionalHeaders: { "x-langfuse-ingestion-version": "4" },
     });
-    provider = new tracing.BasicTracerProvider({ spanProcessors: [processor] });
+    provider = new tracing.BasicTracerProvider({ resource: resources.resourceFromAttributes({ "service.name": "munjib-ai" }), spanProcessors: [processor] });
     observer = createAiObserver(provider.getTracer("munjib-ai-metadata"));
     return observer;
   } catch { reportFailure(); return createAiObserver(); }

@@ -4059,3 +4059,4 @@ links:
 - Evidence: `lib/rag/ai-observation.ts`, AI service/route wiring, metadata/export privacy tests. Deployment verification is recorded separately after rollout; code tests alone do not prove production ingestion.
 
 - Issue #227 PR review follow-up: Ask preparation failures now share the request trace; model attribution follows the 160-character application validation contract; removed the obsolete metadata-export-disabled claim. Regression evidence: Ask preparation failure and model-ID boundary tests.
+- Live development export verified successful generation with reported token usage and no input/output. Fixed the private provider resource to `service.name=munjib-ai` so the SDK default cannot expose the local Node executable path.
