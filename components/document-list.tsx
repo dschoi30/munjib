@@ -143,6 +143,9 @@ export function DocumentList({
   const workspaceMode = useWorkspaceMode();
   const storageScope = workspaceStorageScope(workspaceSlug, workspaceMode);
   const { isHydrated: languageHydrated, language, t } = useI18n();
+  const accountLabel = workspaceMode === "anonymous-trial-readonly"
+    ? t("account.demo")
+    : currentUser.email;
   const router = useRouter();
   const [isTopLevelCreateTransitionPending, startTopLevelCreateTransition] = useTransition();
   const leftPanel = useLeftPanel();
@@ -503,7 +506,7 @@ export function DocumentList({
           className="h-10 w-full justify-start gap-2 border border-border bg-surface-control px-2 text-left text-sm text-ink hover:bg-surface-muted"
         >
           <UserCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 truncate">{currentUser.email}</span>
+          <span className="min-w-0 truncate">{accountLabel}</span>
         </Button>
         {accountDrawerOpen ? (
           <div
@@ -512,7 +515,9 @@ export function DocumentList({
             className="absolute bottom-14 left-0 right-0 z-30 flex max-h-[min(28rem,calc(100vh-7rem))] flex-col overflow-hidden rounded-md border border-border bg-surface p-2 text-sm shadow-lg"
           >
             <p className="shrink-0 px-2 py-1.5 text-xs font-medium text-ink-muted">
-              {t("account.signedInAs", { email: currentUser.email })}
+              {workspaceMode === "anonymous-trial-readonly"
+                ? t("account.demo")
+                : t("account.signedInAs", { email: currentUser.email })}
             </p>
             <div className="mt-1 min-h-0 border-t border-border pt-1">
               <p className="px-2 py-1 text-[0.68rem] font-semibold uppercase tracking-wide text-ink-muted">
