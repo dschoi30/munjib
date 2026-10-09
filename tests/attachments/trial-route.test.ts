@@ -10,6 +10,7 @@ it("serves Korean attachment filenames using an ASCII-safe UTF-8 disposition",as
   vi.mocked(readTrialAttachment).mockResolvedValue({id:"file",fileName:"시연 안내.pdf",mimeType:"application/pdf",bytes:Buffer.from("file")});
   const response=await GET(new Request("https://example.test/api/trial/attachments/file"),{params:Promise.resolve({attachmentId:"file"})});
   expect(response.status).toBe(200);
+  expect(response.headers.get("content-disposition")).toMatch(/^attachment;/);
   expect(response.headers.get("content-security-policy")).toBe("sandbox; default-src 'none'");
   expect(response.headers.get("content-disposition")).toContain("filename*=UTF-8''"+encodeURIComponent("시연 안내.pdf"));
   expect(await response.text()).toBe("file");

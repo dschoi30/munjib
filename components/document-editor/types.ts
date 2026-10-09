@@ -30,7 +30,7 @@ export type DocumentEditorProps = {
   document: EditableDocument | null;
   canWrite: boolean;
   action: (formData: FormData) => Promise<void>;
-  uploadAttachmentAction: (formData: FormData) => Promise<void>;
+  uploadAttachmentAction: (formData: FormData) => Promise<{ attachmentId: string } | { error: string } | void>;
   pasteImageAttachmentAction: (formData: FormData) => Promise<{ markdown: string }>;
   attachmentIds: string[];
   linkCandidates: LinkCandidate[];

@@ -797,3 +797,28 @@ function createMockNodeRequestError(error: Error) {
     return request;
   };
 }
+
+test("manual upload rejects missing and empty files without throwing or storing", async () => {
+  const { uploadDocumentAttachmentAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+  mocks.requireCurrentUser.mockResolvedValue({ id: "user-1" });
+  mocks.uploadDocumentAttachment.mockClear();
+  for (const file of [null, new File([], ""), new File([], "empty.txt")]) {
+    const data = new FormData();
+    data.set("documentId", "doc-1");
+    if (file) data.set("attachment", file);
+    await expect(uploadDocumentAttachmentAction("wiki", data)).resolves.toEqual({ error: "ATTACHMENT_FILE_REQUIRED" });
+  }
+  expect(mocks.uploadDocumentAttachment).not.toHaveBeenCalled();
+});
+
+test("manual upload returns the exact new attachment id for sidebar focus", async () => {
+  const { uploadDocumentAttachmentAction } = await import("@/app/workspaces/[workspaceSlug]/actions");
+  mocks.requireCurrentUser.mockResolvedValue({ id: "user-1" });
+  mocks.uploadDocumentAttachment.mockResolvedValue({ id: "new-file", documentId: "doc-1" });
+  mocks.redirect.mockClear();
+  const data = new FormData();
+  data.set("documentId", "doc-1");
+  data.set("attachment", new File(["본문"], "한글.txt", { type: "text/plain" }));
+  await expect(uploadDocumentAttachmentAction("wiki", data)).resolves.toEqual({ attachmentId: "new-file" });
+  expect(mocks.redirect).not.toHaveBeenCalled();
+});

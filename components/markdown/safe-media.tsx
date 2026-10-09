@@ -71,11 +71,13 @@ export function buildSafeMarkdownComponents({
           internalHref = `${decodedPath.replace(/^\/workspaces/i, "/trial/workspaces")}${parsed.search}${parsed.hash}`;
         }
       }
+      const attachmentLink = /^\/api\/(?:trial\/)?attachments\/[A-Za-z0-9_-]+(?:[?#]|$)/.test(internalHref ?? "");
       return (
         <a
           {...props}
           className="text-primary underline underline-offset-2 hover:text-primary-hover focus:outline-none focus:ring-2 focus:ring-[var(--color-focus-visible)]"
           href={internalHref}
+          download={attachmentLink || undefined}
         >
           {children}
         </a>

@@ -1,5 +1,7 @@
 "use client";
 
+import { AttachmentUpload } from "@/components/attachment-upload";
+
 import { useWorkspaceMode } from "@/components/workspace-mode";
 import { workspaceStorageScope } from "@/lib/workspace-routes";
 
@@ -8,10 +10,8 @@ import { foldEffect } from "@codemirror/language";
 import { EditorView } from "@codemirror/view";
 import dynamic from "next/dynamic";
 import {
-  Paperclip,
   Save,
   Sparkles,
-  Upload,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -687,28 +687,7 @@ export function DocumentEditor({
         createFromBrokenLinkAction={createFromBrokenLinkAction}
         createCommentAction={createCommentAction}
       />
-      <form
-        action={uploadAttachmentAction}
-        className="flex flex-wrap items-center gap-2 rounded-md border border-border bg-surface-control px-3 py-2"
-      >
-        <input type="hidden" name="documentId" value={document.id} />
-        <Paperclip className="h-4 w-4 text-slate-500" aria-hidden="true" />
-        <label className="sr-only" htmlFor={`attachment-${document.id}`}>
-          {t("editor.uploadAttachment")}
-        </label>
-        <input
-          id={`attachment-${document.id}`}
-          name="attachment"
-          type="file"
-          disabled={!canWrite}
-          accept="image/png,image/jpeg,image/gif,image/webp,application/pdf,text/plain,text/markdown"
-          className="min-w-0 flex-1 text-sm text-slate-600 file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink"
-        />
-        <Button type="submit" disabled={!canWrite} className="h-8 px-2 text-xs">
-          <Upload className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-          {t("editor.upload")}
-        </Button>
-      </form>
+      <AttachmentUpload key={`attachment-upload-${document.id}`} documentId={document.id} canWrite={canWrite} action={uploadAttachmentAction} />
       <div className="overflow-hidden rounded-md border border-border bg-surface-editor">
         {mode === "edit" && editorMarkdownReady ? (
           <div className="relative min-w-0">

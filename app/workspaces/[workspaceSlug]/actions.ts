@@ -343,8 +343,8 @@ export async function uploadDocumentAttachmentAction(
   const file = formData.get("attachment");
   const documentId = String(formData.get("documentId"));
 
-  if (!(file instanceof File)) {
-    throw new Error(SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED);
+  if (!(file instanceof File) || !file.name || file.size === 0) {
+    return { error: SERVICE_ERROR_CODES.ATTACHMENT_FILE_REQUIRED };
   }
 
   const attachment = await uploadDocumentAttachment({
@@ -356,7 +356,7 @@ export async function uploadDocumentAttachmentAction(
   });
 
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${attachment.documentId}`);
+  return { attachmentId: attachment.id };
 }
 
 export async function pasteDocumentImageAttachmentAction(
