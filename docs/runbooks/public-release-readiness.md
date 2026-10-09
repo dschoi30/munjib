@@ -119,3 +119,18 @@ necessary even when history is rewritten.
 - [GitHub: Secure use](https://docs.github.com/en/actions/reference/security/secure-use)
 - [GitHub: Removing sensitive data](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository)
 - Issue #234
+
+## External source redistribution gate
+
+The owner authorized source links and a project-written summary for LLM Wiki.
+The original `llm-wiki.md` and `raw/sources/llm-wiki.md` bytes were verified against
+private backups before the tracked files became a summary and reference note.
+Author: Andrej Karpathy; source: https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f.
+Do not infer that the repository MIT license covers this external full text.
+
+Before publication, remove the historical full-text copies from every rewritten
+reachable ref as well, including old wiki source pages if present. Use exact
+original blob identities and inspect affected paths; do not replace the new
+project summary or silently omit refs. Preserve originals privately. Verify
+the rewritten objects and the latest tree independently. The current-tree change
+alone does not satisfy that history gate.

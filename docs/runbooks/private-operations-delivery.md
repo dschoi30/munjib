@@ -56,3 +56,16 @@ Legacy bootstrap evidence remains in `private-oci-self-hosted-runner.md`.
 
 - [GitHub scheduled workflows](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 - [GitHub secure use](https://docs.github.com/en/actions/reference/security/secure-use)
+
+## Verified cutover — 2026-10-09
+
+Private delivery run `37945673261` succeeded for source commit
+`f94359945f118f86f68607f69f085fc5c5687c56`. An independent SSH read matched
+the deployment state, source checkout and running image to that SHA; local and
+public HTTP returned 200. The old source runner service is disabled and its
+GitHub registration removed. Source runner count is zero; the private operations
+runner is online. Operations issue #1 is closed as completed.
+
+This evidence applies to that SHA, not to future main commits or rewritten history.
+Renew the source-read token before expiry and retain the ancestry reconciliation
+gate for publication.

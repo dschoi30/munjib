@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 372
+source_count: 374
 tags:
   - log
   - munjib
@@ -19,9 +19,21 @@ links:
 
 # Wiki Log
 
+## 2026-10-09 - Verified private delivery and branch cleanup (Issue #234)
+
+- Private delivery run `37945673261` succeeded. Independent host verification matched state, checkout and image to `f94359945f118f86f68607f69f085fc5c5687c56`, with local/public HTTP 200. Disabled the old source runner service and removed its GitHub registration; source has zero runners and private operations has one online runner. Ops issue #1 is completed.
+- Owner-authorized branch cleanup removed sixteen obsolete source remote branches, one operations branch and thirteen unused local branches after private recovery backups; checked-out worktree branches and dirty files remain. PR #237 merged after review/CI, and its remote branch was removed.
+- Updated [[Public Repository Release Workflow]], [[index|Wiki Index]] and `docs/runbooks/private-operations-delivery.md`. These observations do not attest later commits or history replacement.
+
+## 2026-10-09 - External LLM Wiki publication reference (Issue #234)
+
+- Owner authorized private archival of both full-text copies and publication of source attribution plus a project-written summary. Verified original bytes against private backup before replacement; ordinary raw-source immutability still applies.
+- Updated `llm-wiki.md`, `raw/sources/llm-wiki.md`, historical design/implementation notices, [[Wiki Maintenance Automation]], [[Public Repository Release Workflow]] and the public-release runbook.
+- Existing Git history still contains the full text. A reviewed history rewrite and object scan remain required; this change does not claim redistribution permission or completed publication.
+
 ## 2026-10-09 - Current MVP issue triage
 
-- Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code/branches remain. PR #188 closed without merging; #234 stays active.
+- Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code remain recoverable (obsolete remote branches subsequently removed after private backup). PR #188 closed without merging; #234 stays active.
 - Refreshed [[Security Hardening Public Status]] and `docs/runbooks/security-hardening-status.md` from live GitHub state; removed obsolete open-readiness-PR/billing-blocked claims. Added scope notes to affected workflow pages and [[index|Wiki Index]].
 - Review follow-up: reconciled recovery, invite-signup and attachment runbook status fields; updated the existing recovery documentation assertion to require the actual deferred state.
 - Evidence: owner's 2026-10-09 scope choice, issue states/reasons/labels and current PR API results. Closure is not implementation, deployment or security acceptance evidence.

@@ -46,6 +46,8 @@ links:
 
 - Issue #219: the read-only Trial reuses full workspace browsing with scoped navigation, minimal display data and independently authorized attachments. See [[Auth And Permissions Workflow]].
 
+- External LLM Wiki reference: the public tree retains author attribution and a project-written summary; historical full-text removal remains a publication gate. See [[Public Repository Release Workflow]].
+
 ## 제품과 근거
 
 - [[Munjib]] - Obsidian형 기업 문서 위키로서의 제품 정의와 최신 구현 범위.
@@ -91,7 +93,7 @@ links:
 
 ## 상태판
 
-- 2026-10-09 MVP triage: long-term issues #139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185 are closed as `not_planned`, not completed. PR #188 is closed unmerged with its branch preserved. Public release #234 remains active. Future-gate descriptions below are retained evidence; see [[Security Hardening Public Status]].
+- 2026-10-09 MVP triage: long-term issues #139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185 are closed as `not_planned`, not completed. PR #188 is closed unmerged with its commits preserved in a private recovery backup. Public release #234 remains active. Future-gate descriptions below are retained evidence; see [[Security Hardening Public Status]].
 
 
 - Issue #227 restores actual metadata-only Langfuse observations for authenticated and anonymous Trial AI through a private provider, with stage timings and no content or caller identifiers. See [[Production Observability Workflow]] and [[RAG Process Workflow]].
