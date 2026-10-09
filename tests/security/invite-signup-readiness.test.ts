@@ -17,7 +17,7 @@ describe("invite-first signup readiness handoff", () => {
     expect(runbook).toContain("Leaf 2");
     expect(runbook).toContain("PREPARATION_ONLY");
     expect(runbook).toMatch(/does not add invitation tables, attempt cookies, link grants/i);
-    expect(runbook).toMatch(/Issue #161 remains open/i);
+    expect(runbook).toMatch(/Readiness PR #161 is merged/i);
   });
 
   test("does not include an executable operation or secret material", () => {

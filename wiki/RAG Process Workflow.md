@@ -6,7 +6,7 @@ status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
 updated: 2026-10-09
-source_count: 138
+source_count: 139
 tags:
   - munjib
   - workflow
@@ -25,6 +25,12 @@ links:
 ---
 
 # RAG Process Workflow
+
+> MVP scope update (2026-10-09): the owner deferred the remaining long-term
+> hardening/runtime program. Its issues are closed as `not_planned`, not completed.
+> Readiness/dependency sections below preserve future activation criteria; they
+> are not the current MVP execution plan. See [[Security Hardening Public Status]].
+
 
 이 page는 document editor의 `AI에게 묻기` direct-context request와 workspace chatbot의 saved DB content RAG request가 어떻게 answer와 citation으로 끝나는지 정리한다. 제품 contract는 [[Project PRD]]와 [[Munjib]]에, local/production env와 observability 세부 설정은 [[Local Development Workflow]]와 [[Production Observability Workflow]]에 둔다.
 

@@ -61,11 +61,13 @@ before the corresponding phase can be implemented or accepted:
 
 | Phase | Required evidence | Current status |
 | --- | --- | --- |
-| A | Leaf 13 delivery broker is installed and attested on the target host | blocked pending broker substrate work (#185) |
-| B | Leaf 13B exact-digest runtime is deployed and the Leaf 2 journal contract is live | blocked pending runtime gate (#184) and Leaf 2 |
-| B | Leaf 9 purge hooks and Leaf 11 attachment lifecycle are deployed | blocked pending their dependency leaves |
+| A | Leaf 13 delivery broker is installed and attested on the target host | deferred; #185 closed as not planned, acceptance still required if resumed |
+| B | Leaf 13B exact-digest runtime is deployed and the Leaf 2 journal contract is live | deferred; #184 closed as not planned, runtime/Leaf 2 acceptance still required if resumed |
+| B | Leaf 9 purge hooks and Leaf 11 attachment lifecycle are deployed | deferred; dependency acceptance still required if resumed |
 
-Issue #168 remains open. A green contract test is not evidence that a backup
+Issue #168 is closed as `not_planned` for the current MVP; its remaining scope
+is deferred, not completed. Reopen/re-scope before adopting this future work.
+A green contract test is not evidence that a backup
 exists, that a restore succeeded, or that production is recoverable.
 
 ## Evidence boundary
