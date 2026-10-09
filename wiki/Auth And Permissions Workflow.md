@@ -36,7 +36,9 @@ from server-only `MUNJIB_LAUNCH_ADMIN_EMAIL` and `MUNJIB_LAUNCH_VIEWER_EMAIL`.
 Production/staging require both valid, distinct email addresses; missing, partial
 or malformed configuration fails with a generic error that contains no identity.
 Resolution is lazy, so a production build does not need these runtime values.
-Deployment auth preflight validates the same configuration before service replacement.
+Deployment auth preflight and the Node instrumentation startup gate validate the same
+configuration before serving. Explicit deployment environment is authoritative;
+local `next start` with `development` keeps reserved fixtures despite NODE_ENV=production.
 The variables are passed only into web/auth-preflight runtime, never browser config
 or image build arguments. Preserve the exact existing private identities before
 rolling out; this refactor is not an account or role migration.

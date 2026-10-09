@@ -22,6 +22,7 @@ links:
 ## 2026-10-09 - Private launch identity configuration (Issue #234)
 
 - Replaced operational identity literals in runtime, fixtures and project documentation with reserved examples. Runtime membership and signup checks resolve server-only identity configuration lazily; production/staging fail closed without a valid distinct pair.
+- Review follow-up: explicit deployment environment takes precedence over NODE_ENV, and Node instrumentation validates the same pair during startup.
 - Auth preflight validates the same pair before replacement. Compose passes runtime variables to web/preflight only; production seed remains forbidden and local seed uses local-only passwords.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]]. Source: `lib/auth/launch-accounts.ts`, membership/signup policy, auth preflight, Compose and seed. Preserve existing private values before rollout; no deployment is claimed by this source change.
 

@@ -14,8 +14,11 @@ export function resolveLaunchAccountSeeds(
   env: Record<string, string | undefined> = process.env,
 ): ReadonlyArray<Omit<(typeof launchAccountSeeds)[number], "email"> & { email: string }> {
   const raw = [env.MUNJIB_LAUNCH_ADMIN_EMAIL, env.MUNJIB_LAUNCH_VIEWER_EMAIL];
-  const strict = env.NODE_ENV === "production" ||
-    env.MUNJIB_DEPLOYMENT_ENV === "production" || env.MUNJIB_DEPLOYMENT_ENV === "staging";
+  const deployment = env.MUNJIB_DEPLOYMENT_ENV?.trim().toLowerCase();
+  if (deployment && !["development", "staging", "production"].includes(deployment)) {
+    throw new Error("LAUNCH_ACCOUNT_CONFIG_INVALID");
+  }
+  const strict = deployment ? deployment !== "development" : env.NODE_ENV === "production";
   if (raw.every(value => value === undefined || value === "") && !strict) {
     return launchAccountSeeds;
   }
