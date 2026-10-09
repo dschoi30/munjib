@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 73
+source_count: 74
 tags:
   - munjib
   - workflow
@@ -22,6 +22,13 @@ links:
 ---
 
 # Local Development Workflow
+
+> Issue #234: application CI is GitHub-hosted only. Delivery belongs to separate
+> private operations, which admits exact source main after successful CI and
+> secret scan. Older Issue #210 source-scoped runner descriptions below are
+> historical. Host cutover remains independently gated; see
+> [[CI CD And Monitoring Workflow]].
+
 
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.
 

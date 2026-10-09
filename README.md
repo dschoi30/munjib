@@ -144,7 +144,7 @@ raw/sources/  보존 대상 원본 근거
 - [문서 편집](wiki/Document%20Editing%20Workflow.md): 저장, 첨부, 버전, 메타데이터
 - [AI/RAG](wiki/RAG%20Process%20Workflow.md): Ask AI와 Workspace AI의 처리 흐름
 - [CI/CD와 관측성](wiki/CI%20CD%20And%20Monitoring%20Workflow.md): 빌드, 배포, 모니터링
-- [운영 배포 runbook](docs/runbooks/private-oci-self-hosted-runner.md): private OCI runner 설치·배포·복구
+- [운영 배포 전환](docs/runbooks/private-operations-delivery.md): 비공개 운영 저장소 자동 배포·전환 게이트
 
 ## 기여 워크플로우
 
