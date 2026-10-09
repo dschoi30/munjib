@@ -29,6 +29,7 @@ links:
 
 - Owner authorized private archival of both full-text copies and publication of source attribution plus a project-written summary. Verified original bytes against private backup before replacement; ordinary raw-source immutability still applies.
 - Updated `llm-wiki.md`, `raw/sources/llm-wiki.md`, historical design/implementation notices, [[Wiki Maintenance Automation]], [[Public Repository Release Workflow]] and the public-release runbook.
+- Review follow-up: recorded the narrowly scoped owner-approved migration in `AGENTS.md`; audits requiring original bytes must consult the private archive or disclose unavailable evidence, not assume a live URL is unchanged.
 - Existing Git history still contains the full text. A reviewed history rewrite and object scan remain required; this change does not claim redistribution permission or completed publication.
 
 ## 2026-10-09 - Current MVP issue triage

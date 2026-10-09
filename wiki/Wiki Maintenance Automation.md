@@ -31,6 +31,8 @@ Munjib wiki는 `llm-wiki.md`의 의도처럼 source change와 질문이 쌓일 �
 자체 요약이다. `raw/sources/llm-wiki.md`도 원문이 아닌 출처 참조 문서다.
 2026-10-09 소유자가 공개 준비를 위해 원문 사본을 비공개 백업하고 두 파일을
 교체하도록 명시 승인했다. 일반 Ingest 작업의 원자료 불변 규칙은 계속 적용한다.
+원본 바이트가 필요한 재검토는 비공개 보존본을 확인하거나 확인 불가를 명시한다.
+외부 URL의 현재 내용이 보존 원본과 같다고 추정하지 않는다. 이 예외는 `AGENTS.md`에도 기록한다.
 기존 Git 이력의 원문 제거는 [[Public Repository Release Workflow]]의 별도 gate다.
 
 ## 명령
