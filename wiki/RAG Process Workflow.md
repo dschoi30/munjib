@@ -339,7 +339,7 @@ Legacy/vector maintenance phases still exist for saved document indexing and fut
 Issue #229 adds a model-specific connection indicator to the AI settings summary.
 Opening the AI tab or changing the saved provider/model sends an authenticated
 POST to `/api/workspaces/[workspaceSlug]/ai/connection`. The server verifies active
-workspace membership, validates the model pair and uses server-only credentials.
+workspace membership and the canonical `NEXTAUTH_URL` Origin, validates the model pair and uses server-only credentials.
 A short fixed prompt checks actual model inference with at most 16 completion
 tokens (Ollama: 1), without document content, retrieval, conversation persistence
 or Langfuse callbacks. Each check can incur a small provider usage charge.
@@ -348,6 +348,7 @@ The provider request is aborted after 15 seconds; the browser bounds its wait at
 completion; pending and failure have separate localized labels. Leaving the tab
 or changing models aborts the old request and ignores late results. Reopening
 checks again; status is not a persistent guarantee of future availability.
+Provider fallback uses the same effective provider/model pair as the Ask AI clients.
 The endpoint requires an authenticated user and does not admit anonymous Trial.
 
 Evidence: `components/ai/model-connection-status.tsx`,

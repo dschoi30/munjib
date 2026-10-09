@@ -10,7 +10,7 @@ const packageJson = JSON.parse(
   devDependencies?: Record<string, string>;
 };
 const lockfile = readFileSync(join(root, "pnpm-lock.yaml"), "utf8");
-const MINIMUM_SECURE_NEXT_VERSION = "15.5.24";
+const MINIMUM_SECURE_NEXT_VERSION = "15.5.27";
 
 export function readPinnedVersion(name: string): string {
   const version = packageJson.dependencies?.[name] ?? packageJson.devDependencies?.[name];

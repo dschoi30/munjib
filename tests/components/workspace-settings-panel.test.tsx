@@ -93,6 +93,14 @@ describe("WorkspaceSettingsPanel", () => {
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
   });
 
+  it("checks the matching fallback model when the default provider becomes unavailable", async () => {
+    renderSettingsPanel({ defaultChatProvider: "openai", defaultChatModel: "gpt-5.4-mini",
+      availableChatProviders: { ollama: true, openai: false, "openai-compatible": false } });
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await screen.findByText("Could not connect");
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toEqual({ chatProvider: "ollama", chatModel: "gemma4:e4b" });
+  });
+
   it("opens to workspace management before import settings", () => {
     renderSettingsPanel();
 

@@ -6,13 +6,14 @@ vi.mock("@/lib/db/client", () => ({ prisma: { workspace: { findFirst: mocks.work
 vi.mock("@/lib/rag/check-model-connection", () => ({ checkModelConnection: mocks.probe }));
 vi.mock("@/lib/rag/model-config", () => ({ getRagGenerationConfig: mocks.config, getRagChatProviderAvailability: mocks.availability }));
 const input = { chatProvider: "openai", chatModel: "gpt-5.4-mini" };
-function request(body: unknown = input) { return new Request("http://localhost/api/workspaces/test/ai/connection", { method: "POST", body: JSON.stringify(body) }); }
+function request(body: unknown = input) { return new Request("http://localhost/api/workspaces/test/ai/connection", { method: "POST", headers: { Origin: "http://localhost" }, body: JSON.stringify(body) }); }
 const context = { params: Promise.resolve({ workspaceSlug: "test" }) };
 beforeEach(() => {
+  vi.stubEnv("NEXTAUTH_URL", "http://localhost");
   vi.resetAllMocks(); mocks.user.mockResolvedValue({ id: "user" }); mocks.workspace.mockResolvedValue({ id: "workspace" });
   mocks.availability.mockReturnValue({ openai: true }); mocks.config.mockReturnValue({ chat: { provider: "openai", model: input.chatModel } }); mocks.probe.mockResolvedValue(true);
 });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllEnvs(); });
 describe("model connection route", () => {
   it("authorizes active workspace membership and probes the requested model", async () => {
     const response = await POST(request(), context);
@@ -33,6 +34,20 @@ describe("model connection route", () => {
   });
   it.each([null, [], {}, { chatProvider: "openai", chatModel: "../bad?" }, { chatProvider: "invalid", chatModel: "ok" }])("rejects invalid settings %j", async (body) => {
     expect((await POST(request(body), context)).status).toBe(400); expect(mocks.probe).not.toHaveBeenCalled();
+  });
+  it.each([null, "null", "http://sibling.localhost", "https://attacker.example"])("rejects non-canonical origin %s before provider work", async (origin) => {
+    const req = request();
+    if (origin === null) req.headers.delete("origin"); else req.headers.set("origin", origin);
+    req.headers.set("sec-fetch-site", "same-site");
+    req.headers.set("content-type", "text/plain");
+    expect((await POST(req, context)).status).toBe(403);
+    expect(mocks.probe).not.toHaveBeenCalled();
+    expect(mocks.workspace).not.toHaveBeenCalled();
+  });
+  it("fails closed without a canonical origin", async () => {
+    vi.stubEnv("NEXTAUTH_URL", "");
+    expect((await POST(request(), context)).status).toBe(403);
+    expect(mocks.probe).not.toHaveBeenCalled();
   });
   it("does not expose provider errors", async () => {
     mocks.probe.mockRejectedValue(new Error("secret endpoint and token"));

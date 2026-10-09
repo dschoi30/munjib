@@ -32,6 +32,7 @@ import {
   addStoredCustomChatModel,
   availableChatModelSetting,
   firstAvailableChatProvider,
+  effectiveChatModelSetting,
   getRagChatModelPresets,
   getRagChatProviderResetDefault,
   readStoredChatModelSetting,
@@ -198,8 +199,11 @@ export function WorkspaceSettingsPanel({
       customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
     [customChatModels, selectedChatProvider],
   );
-  const effectiveChatProvider = storedChatModel?.chatProvider ?? fallbackChatProvider;
-  const effectiveChatModel = storedChatModel?.chatModel ?? defaultChatModel;
+  const effectiveSetting = effectiveChatModelSetting(
+    storedChatModel, defaultChatProvider, availableChatProviders,
+  );
+  const effectiveChatProvider = effectiveSetting?.chatProvider ?? defaultChatProvider;
+  const effectiveChatModel = effectiveSetting?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
     if (!availableChatProviders[selectedChatProvider]) {

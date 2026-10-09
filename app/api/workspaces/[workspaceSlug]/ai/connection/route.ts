@@ -13,7 +13,15 @@ export async function POST(
 ) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ connected: false }, { status: 401, headers });
-  if (request.headers.get("sec-fetch-site") === "cross-site") {
+  // Compare with configured origin, never forwarded/request host headers.
+  let canonicalOrigin: string;
+  try {
+    canonicalOrigin = new URL(process.env.NEXTAUTH_URL ?? "").origin;
+  } catch {
+    return NextResponse.json({ connected: false }, { status: 403, headers });
+  }
+  if (request.headers.get("origin") !== canonicalOrigin ||
+      request.headers.get("sec-fetch-site") === "cross-site") {
     return NextResponse.json({ connected: false }, { status: 403, headers });
   }
   const body = await request.json().catch(() => null);

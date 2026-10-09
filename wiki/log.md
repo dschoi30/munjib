@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-10-09 - PR #230 review and CI follow-up
+
+- Require canonical Origin for model probes and pair fallback providers with their matching model. Added regression tests. Updated [[RAG Process Workflow]].
+- CI run 37903421792 failed production audit on GHSA-4jqv-mc3x-m676 and GHSA-mcj8-r9mp-w47p. Bumped Next.js and eslint-config-next to 15.5.27, the reported patched floor, with the runtime contract. See [[CI CD And Monitoring Workflow]].
+
 ## 2026-10-09 - AI settings model connection status (Issue #229)
 
 - Updated [[RAG Process Workflow]] and [[index|Wiki Index]] for authenticated, model-specific probes, bounded requests and stale-result protection. Evidence: `lib/rag/check-model-connection.ts`, `app/api/workspaces/[workspaceSlug]/ai/connection/route.ts`, `components/ai/model-connection-status.tsx` and their tests.
