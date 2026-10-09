@@ -6,7 +6,7 @@ status: draft
 summary: Existing-repository publication gates for credential revocation, private delivery, history and metadata cleanup, licensing, and public CI.
 created: 2026-10-09
 updated: 2026-10-09
-source_count: 8
+source_count: 9
 tags:
   - munjib
   - security

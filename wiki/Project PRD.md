@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-08-25
-source_count: 114
+updated: 2026-10-09
+source_count: 116
 tags:
   - munjib
   - source
@@ -216,3 +216,5 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 ## Wiki 작성 원칙
 
 이 wiki는 현재 구현과 계획을 분리한다. 구현된 기능은 현재형으로 설명하고, PRD에는 있지만 코드에 없는 기능은 roadmap 또는 planned scope로만 언급한다.
+
+- Issue #234 and `docs/runbooks/private-operations-delivery.md`: separate private delivery and independently verified live cutover gates.

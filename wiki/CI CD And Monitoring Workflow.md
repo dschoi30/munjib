@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-10-09
-source_count: 74
+source_count: 75
 tags:
   - munjib
   - workflow
@@ -64,8 +64,7 @@ CI/CD entry point는 `.github/workflows/ci-cd.yml` 하나다. Workflow 이름은
 
 Workflow는 `munjib-${{ github.ref }}` concurrency group을 사용한다. PR처럼
 `main`이 아닌 같은 ref의 이전 run은 취소하지만, production migration이나 health
-검사를 중간에 끊지 않도록 `main` run은 취소하지 않는다. deploy job도
-`munjib-production` group에서 직렬화되고 취소되지 않는다. 기본 permission은
+검사를 중간에 끊지 않도록 `main` run은 취소하지 않는다. Production delivery 직렬화와 비취소 정책은 private operations workflow가 관리한다. 기본 permission은
 repository read인 `contents: read`만 사용한다.
 
 공통 workflow env:
@@ -78,7 +77,7 @@ PNPM_VERSION=10.28.1
 Production runtime entry point는 `docker-compose.yml`이다. `web` service는
 `WEB_IMAGE`가 있으면 그 image tag를 쓰고, 없으면
 `ghcr.io/dschoi30/munjib:latest`를 기본값으로 쓴다. 현재 production deploy는
-private OCI self-hosted runner의 root-owned wrapper가 exact `github.sha`를 받아
+private operations runner의 root-owned wrapper가 검증된 exact source SHA를 받아
 `WEB_IMAGE=munjib-web:<deploy_sha>`로 `web`과 `tools`를 native build한다.
 `docker-compose.dev.yml`은 local development override이며 production CI/CD deploy
 path에는 직접 쓰이지 않는다.
@@ -354,43 +353,21 @@ exact-candidate envelopes; they are not committed to this repository.
 
 ### Main deploy: private OCI self-hosted runner path
 
-The reviewed `.github/workflows/ci-cd.yml` deploy job runs after successful CI on
-every `main` push. PR and main validation stay on GitHub-hosted `ubuntu-latest`;
-only deploy targets the repository-scoped labels `self-hosted`, `linux`, `ARM64`,
-and `munjib-production`. The runner on the existing private OCI connects outbound
-over HTTPS 443, so no inbound runner port or public SSH rule is required.
+Private operations now owns delivery workflow and runner smoke. Source validation
+uses only GitHub-hosted runners; the application repository has no production job.
+The private runner selects exact current main after source CI and secret scan,
+then repeats admission before using the fixed root-owned wrapper. No app copy or
+per-release operations commit is needed.
 
-The unprivileged `munjib-runner` account has no Docker group or SSH key. It may
-sudo only `/usr/local/sbin/munjib-deploy`. The root-owned wrapper accepts one exact
-40-character SHA and an ephemeral GitHub token on stdin, explicitly refreshes
-`main:refs/remotes/origin/main`, and admits only that refreshed `origin/main`,
-serializes deployments, and uses fixed `/home/ubuntu/munjib`, `/etc/munjib/env`,
-`/etc/munjib/secrets`, `/var/lib/munjib/deploy/current-sha`, and
-`/run/lock/munjib-deploy.lock` paths. Host-local secret files are no longer
-rewritten from GitHub secrets on each deploy.
+The wrapper keeps source-main and previous-SHA ancestry, fixed host resources,
+flock, native ARM64 build, auth preflight, migration/index, service replacement,
+health and atomic deployed-state update. Current and previous `munjib-web:<sha>`
+images follow the existing retention policy. The new smoke is read-only and
+restricted to private operations main.
 
-The wrapper performs the native Docker Compose build, auth preflight, migration,
-RAG index, service replacement, local/public health checks, and deployed-SHA state
-update. It also requires the recorded `current-sha` to be an ancestor of the
-requested deploy SHA, so rerunning a historical `main` workflow cannot silently
-roll production back. Production deploy concurrency is `munjib-production` with cancellation
-disabled. Workflow-level cancellation remains enabled for superseded PR runs but
-is disabled for every `main` run, so a newer push cannot terminate a deployment
-after migration or indexing. After a successful deploy, image cleanup keeps only
-the current and immediately previous `munjib-web:<sha>` tags and removes older
-Munjib web tags without pruning unrelated images. During the first cutover, when
-the bootstrapped SHA does not yet have a matching image tag, legacy
-`munjib-web:latest` is retained for one rollback generation. The permanent
-`Production runner smoke` uses only a `production-runner-smoke`
-`repository_dispatch`, which GitHub resolves to the default branch SHA and workflow;
-the branch-selectable `workflow_dispatch` path is absent. The smoke remains read-only.
-Before the first automated deploy, `current-sha` is bootstrapped from the active
-web container's 40-character `SENTRY_RELEASE`, after confirming that commit is an
-ancestor of `origin/main`. The installer checkout's PR `HEAD` is never used as the
-running release state; missing or unverifiable runtime release metadata stops the
-cutover instead of guessing a rollback SHA.
-Exact bootstrap, readiness, disablement, and recovery steps are in
-`docs/runbooks/private-oci-self-hosted-runner.md`.
+Follow `docs/runbooks/private-operations-delivery.md` for independent live cutover
+checks. The old runner runbook remains bootstrap evidence only; do not use it to
+register a runner with the application repository.
 
 There is currently no `MUNJIB_PRIVATE_RUNTIME_BROKER_READY` workflow gate, and
 the broker-only exact-digest submission path is not active production behavior.
