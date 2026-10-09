@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 import { describe, expect, test } from "vitest";
@@ -121,53 +121,17 @@ describe("GitHub Actions CI/CD workflow", () => {
     expect(workflowText).not.toContain("docker/login-action");
   });
 
-  test("deploys successful main pushes through the private OCI runner", () => {
-    const deploy = workflow.jobs.deploy;
-    const deployStep = deploy.steps.find(
-      (step: { name?: string }) => step.name === "Deploy exact main SHA",
-    );
-
-    expect(workflowText).not.toContain("appleboy/ssh-action");
-    expect(deploy.needs).toBe("ci");
-    expect(deploy.if).toBe("github.event.repository.private == true && github.event_name == 'push' && github.ref == 'refs/heads/main'");
-    expect(deploy["runs-on"]).toEqual([
-      "self-hosted",
-      "linux",
-      "ARM64",
-      "munjib-production",
-    ]);
-    expect(deploy.permissions).toEqual({ contents: "read" });
-    expect(deploy.concurrency).toEqual({
-      group: "munjib-production",
-      "cancel-in-progress": false,
-    });
-    expect(deployStep?.run).toBe(
-      'printf \'%s\\n\' "${{ github.token }}" | sudo /usr/local/sbin/munjib-deploy "${{ github.sha }}"',
-    );
-    expect(workflowText).not.toMatch(/DEPLOY_(HOST|USER|PORT|PATH|SSH_KEY)/);
-    expect(workflowText).not.toMatch(/DEPLOY_(NEXTAUTH_SECRET|GOOGLE_CLIENT_SECRET)/);
+  test("keeps source validation off production runners", () => {
+    expect(workflow.jobs.deploy).toBeUndefined();
+    expect(Object.keys(workflow.jobs)).toEqual(["ci"]);
+    expect(workflowText).not.toContain("self-hosted");
+    expect(workflowText).not.toContain("sudo");
+    expect(workflowText).not.toContain("secrets.");
+    expect(workflowText).not.toContain("repository_dispatch");
   });
 
-  test("keeps the production runner smoke default-branch only and read only", () => {
-    const smokeText = read(".github/workflows/runner-smoke.yml");
-    const smoke = parse(smokeText);
-
-    expect(smoke.on).toEqual({
-      repository_dispatch: {
-        types: ["production-runner-smoke"],
-      },
-    });
-    expect(smokeText).not.toContain("workflow_dispatch");
-    expect(smoke.permissions).toEqual({ contents: "read" });
-    expect(smoke.jobs.smoke.if).toBe("github.event.repository.private == true");
-    expect(smoke.jobs.smoke["runs-on"]).toEqual([
-      "self-hosted",
-      "linux",
-      "ARM64",
-      "munjib-production",
-    ]);
-    expect(smokeText).not.toContain("sudo");
-    expect(smokeText).not.toContain("secrets.");
-    expect(smokeText).not.toContain("actions/checkout");
+  test("removes the legacy source-scoped runner smoke workflow", () => {
+    expect(existsSync(join(root, ".github/workflows/runner-smoke.yml"))).toBe(false);
+    expect(workflow.permissions).toEqual({ contents: "read" });
   });
 });

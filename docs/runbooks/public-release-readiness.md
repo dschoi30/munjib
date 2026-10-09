@@ -53,18 +53,16 @@ operations repository can own runner registration, host readiness evidence,
 operator runbooks, and deployment credentials. Public CI must use
 GitHub-hosted runners with read-only default tokens.
 
-The current deploy and runner-smoke jobs additionally require
-`github.event.repository.private == true`. This prevents their unchanged jobs
-from running after an accidental visibility change. It is not an isolation
-boundary: a fork can propose a modified workflow. Runner registration/access
-must still be removed from the repository before it becomes public.
+The source CI no longer defines production deploy or runner-smoke jobs. Private
+operations polls exact source main after successful source CI and secret scan;
+it repeats provenance checks before using the fixed wrapper. App code is not
+copied and each release does not need an operations commit. Follow
+`private-operations-delivery.md` for the live cutover gate.
 
-Prepare and verify the private delivery path before switching off the current
-path. If a public main build notifies private operations, use an authenticated,
-least-privilege dispatch containing only an exact source SHA; the private side
-must independently verify its provenance, current-main ancestry, CI result,
-and deployment policy. A token belonging only to the private operations
-repository cannot read the still-private source repository automatically.
+Workflow removal alone does not detach a registered runner. Complete runner
+smoke, actual deployment and source runner detachment before publication.
+While source is private, operations needs a narrowly scoped source read token;
+its own repository token does not automatically read private source.
 
 ## 4. Rehearse and replace Git history
 
@@ -115,7 +113,7 @@ necessary even when history is rewritten.
 ## Sources
 
 - `LICENSE`, `SECURITY.md`, `.gitleaksignore`, `scripts/security/scan-secrets.sh`
-- `.github/workflows/{ci-cd,runner-smoke,secret-scan}.yml`
+- `.github/workflows/{ci-cd,secret-scan}.yml`
 - `lib/auth/{launch-accounts,signup-policy}.ts`, `prisma/seed.ts`
 - `lib/security/production-seed-guard.ts`, `scripts/deploy/munjib-deploy.sh`
 - [GitHub: Secure use](https://docs.github.com/en/actions/reference/security/secure-use)

@@ -117,22 +117,3 @@ jobs:
 
       - name: Build runtime image
         run: docker build --target runner --tag munjib-ci:${IMAGE_TAG} .
-
-  deploy:
-    name: Deploy
-    runs-on:
-      - self-hosted
-      - linux
-      - ARM64
-      - munjib-production
-    needs: ci
-    if: github.event.repository.private == true && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-    concurrency:
-      group: munjib-production
-      cancel-in-progress: false
-    timeout-minutes: 45
-    steps:
-      - name: Deploy exact main SHA
-        run: printf '%s\n' "${{ github.token }}" | sudo /usr/local/sbin/munjib-deploy "${{ github.sha }}"

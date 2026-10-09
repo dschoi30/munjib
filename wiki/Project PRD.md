@@ -5,8 +5,8 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-08-25
-source_count: 114
+updated: 2026-10-09
+source_count: 116
 tags:
   - munjib
   - source
@@ -24,6 +24,13 @@ links:
 ---
 
 # Project PRD
+
+> Issue #234: application CI is GitHub-hosted only. Delivery belongs to separate
+> private operations, which admits exact source main after successful CI and
+> secret scan. Older Issue #210 source-scoped runner descriptions below are
+> historical. Host cutover remains independently gated; see
+> [[CI CD And Monitoring Workflow]].
+
 
 이 source note는 root의 `prd.md`, `obsidian-analysis-report.md`, 현재 애플리케이션 source를 munjib wiki의 근거로 묶는다. `raw/sources/`는 immutable source로 취급하므로 이 작업에서는 수정하지 않는다.
 
@@ -209,3 +216,5 @@ Issue #94는 현재 Oracle Cloud instance의 `munjib.andrewchoi.link` production
 ## Wiki 작성 원칙
 
 이 wiki는 현재 구현과 계획을 분리한다. 구현된 기능은 현재형으로 설명하고, PRD에는 있지만 코드에 없는 기능은 roadmap 또는 planned scope로만 언급한다.
+
+- Issue #234 and `docs/runbooks/private-operations-delivery.md`: separate private delivery and independently verified live cutover gates.

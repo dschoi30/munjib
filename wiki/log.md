@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 370
+source_count: 371
 tags:
   - log
   - munjib
@@ -18,6 +18,15 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-10-09 - Private operations delivery preparation (Issue #234)
+
+- Removed source deploy and runner-smoke jobs. Private operations polls exact main after successful source CI and secret scan, repeats admission and skips already deployed SHAs; app commits remain in one repository.
+- Pages: [[Public Repository Release Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]].
+- Evidence: `.github/workflows/ci-cd.yml`, `tests/github-actions/ci-cd.test.ts`, `docs/runbooks/private-operations-delivery.md`, Issue #234 and the owner decision.
+- Credential review follow-up: private operations keeps its source-only read credential after publication; renew it before expiry or independently verify a source-read App token replacement before revocation.
+- Review follow-up: reconciled both state-board deployment entries and refreshed affected-page evidence/freshness metadata; the source-scoped deployment path is explicitly historical.
+- Live runner cutover, source runner detachment and actual exact-SHA private deployment remain independent gates. This source change alone does not attest them.
 
 ## 2026-10-09 - Existing repository public-release preparation (Issue #234)
 
