@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 15
 tags:
   - munjib

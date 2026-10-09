@@ -5,7 +5,7 @@ type: source
 status: active
 summary: Munjib 제품 방향과 현재 repository 구현을 연결하는 source note.
 created: 2026-04-29
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 116
 tags:
   - munjib

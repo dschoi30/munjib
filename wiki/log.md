@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 374
 tags:
   - log
@@ -23,6 +23,7 @@ links:
 
 - Private delivery run `37945673261` succeeded. Independent host verification matched state, checkout and image to `f94359945f118f86f68607f69f085fc5c5687c56`, with local/public HTTP 200. Disabled the old source runner service and removed its GitHub registration; source has zero runners and private operations has one online runner. Ops issue #1 is completed.
 - Owner-authorized branch cleanup removed sixteen obsolete source remote branches, one operations branch and thirteen unused local branches after private recovery backups; checked-out worktree branches and dirty files remain. PR #237 merged after review/CI, and its remote branch was removed.
+- Review follow-up: reconciled the public-release checklist and prior runner-guard section with the completed cutover for the verified SHA; recorded log-audit limitations and sanitized historical issue bodies.
 - Updated [[Public Repository Release Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]] and `docs/runbooks/private-operations-delivery.md`; review follow-up reconciles the same verified-SHA cutover status across wiki entry points. These observations do not attest later commits or history replacement.
 
 ## 2026-10-09 - External LLM Wiki publication reference (Issue #234)

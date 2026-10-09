@@ -5,7 +5,7 @@ type: workflow
 status: draft
 summary: Existing-repository publication gates for credential revocation, private delivery, history and metadata cleanup, licensing, and public CI.
 created: 2026-10-09
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 10
 tags:
   - munjib

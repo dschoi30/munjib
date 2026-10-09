@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 76
 tags:
   - munjib
@@ -64,7 +64,8 @@ Checkout and Node setup actions in the application CI are pinned to full SHAs;
 checkout does not retain credentials. The previous production deploy and runner-smoke jobs
 required `github.event.repository.private == true`. This conditional was an
 accidental-execution guard, not a guarantee against a modified fork workflow.
-Production runner access must be removed from this repository before publication.
+Production runner access was removed on 2026-10-09 after independent verification
+of `f94359945f118f86f68607f69f085fc5c5687c56`; do not re-register it here.
 History rewrites change the deployed-SHA ancestry relation; review the commit map
 and host transition before resuming deployment.
 

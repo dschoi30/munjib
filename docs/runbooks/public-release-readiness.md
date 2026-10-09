@@ -23,8 +23,13 @@ findings after the two fixture classifications. Manual review found historical
 credential context and operational identifiers that require cleanup. The
 metadata inventory included 234 issue/PR records, 175 issue comments, 914 inline
 review comments, 495 workflow runs, and no release records or current artifacts.
-Review-submission bodies, retained Actions log contents, and other attachments
-are separate pending audit surfaces. Private findings remain outside Git.
+A subsequent pass scanned available logs for those 495 runs (344 available,
+151 expired/unavailable) with no automated secret findings; review-submission
+bodies were also scanned. Unavailable logs and other attachments are not covered
+by that result. On 2026-10-10, owner-authored issue bodies #145/#146/#148 had
+historical identity/credential examples replaced with placeholders after private
+backup and read-back verification. Refresh the inventory again before publication.
+Private findings remain outside Git.
 
 ## 2. Revoke credentials and externalize operator configuration
 
@@ -57,10 +62,15 @@ The source CI no longer defines production deploy or runner-smoke jobs. Private
 operations polls exact source main after successful source CI and secret scan;
 it repeats provenance checks before using the fixed wrapper. App code is not
 copied and each release does not need an operations commit. Follow
-`private-operations-delivery.md` for the live cutover gate.
+`private-operations-delivery.md` for the verified cutover evidence and future revalidation procedure.
 
-Workflow removal alone does not detach a registered runner. Complete runner
-smoke, actual deployment and source runner detachment before publication.
+The live cutover gate is complete for source SHA
+`f94359945f118f86f68607f69f085fc5c5687c56` (2026-10-09): private smoke and
+actual deployment succeeded; independent host state, checkout and image matched,
+and local/public HTTP returned 200. The old source runner service is disabled,
+its registration removed, and the source repository has zero registered runners.
+Private operations has one online runner. Workflow removal alone was not used
+as evidence. Later main commits and rewritten history require new verification.
 While source is private, operations needs a narrowly scoped source read token;
 its own repository token does not automatically read private source.
 
