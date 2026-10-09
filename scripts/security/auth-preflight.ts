@@ -1,3 +1,4 @@
+import { resolveLaunchAccountSeeds } from "../../lib/auth/launch-accounts";
 import { pathToFileURL } from "node:url";
 import { assertValidAuthRuntimeEnv } from "../../lib/auth/runtime";
 
@@ -7,6 +8,7 @@ export function runAuthPreflight(input: {
   write(line: string): void;
 }) {
   const config = assertValidAuthRuntimeEnv(input.env, input.deps);
+  resolveLaunchAccountSeeds(input.env);
   input.write(
     `AUTH_PREFLIGHT_OK deployment=${config.deploymentEnvironment} secureCookies=${config.secureCookies} developmentLogin=${config.developmentLoginEnabled} passwordSignup=${config.passwordSignupEnabled} oauthSignup=${config.oauthSignupEnabled}`,
   );

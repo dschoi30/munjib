@@ -16,8 +16,8 @@ change the production login UI or introduce a new public signup flow.
   seed accounts, and workspace membership bootstrap.
 - Represent global launch access through normal `WorkspaceMember` rows rather
   than a hidden superuser role.
-- Seed `mjadmin@munjib.com` as `ADMIN` on every workspace.
-- Seed `mjtrial@munjib.com` as `VIEWER` on every workspace.
+- Seed `admin@example.invalid` as `ADMIN` on every workspace.
+- Seed `trial@example.invalid` as `VIEWER` on every workspace.
 - Keep production password auth, Google OAuth UI, signup provisioning, trial
   button behavior, invitations, and workspace-management UI for follow-up
   branches.
