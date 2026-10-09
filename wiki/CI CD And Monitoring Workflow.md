@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-10-09
-source_count: 75
+source_count: 76
 tags:
   - munjib
   - workflow
@@ -25,6 +25,12 @@ links:
 ---
 
 # CI CD And Monitoring Workflow
+
+> MVP scope update (2026-10-09): the owner deferred the remaining long-term
+> hardening/runtime program. Its issues are closed as `not_planned`, not completed.
+> Readiness/dependency sections below preserve future activation criteria; they
+> are not the current MVP execution plan. See [[Security Hardening Public Status]].
+
 
 이 page는 현재 repository의 자동 검증, production compose deploy, monitoring 구성을 한 곳에서 본다. 세부 production observability 원칙은 [[Production Observability Workflow]]에 있고, 이 page는 CI/CD와 monitoring이 어떻게 이어지는지 요약한다.
 
@@ -146,8 +152,7 @@ Public-safe parent/child status, branch and PR handles, dependency gates, and
 explicit non-claims are maintained in [[Security Hardening Public Status]] and
 the companion `docs/runbooks/security-hardening-status.md` runbook.
 The map is anchored to the checked-in `origin/main` release line and must not
-be read as deployment or host-attestation evidence: draft readiness PRs remain
-open, and the immutable runtime path remains fail-closed until the delivery
+be read as deployment or host-attestation evidence: the deferred runtime PR is closed without merging, and the immutable runtime path remains fail-closed until the delivery
 broker is installed and independently attested.
 Issue #185의 공개 코드 조각은 이 substrate를 위한 고정 delivery bundle
 layout(`deploy/delivery/bundle-layout-v1.json`)과 빌더/검증기
@@ -286,7 +291,7 @@ the snapshot image is evidence only. Phase A cannot proceed until the Leaf 13
 delivery broker is installed and attested (#185). Phase B additionally waits for
 the exact-digest Leaf 13B runtime (#184), Leaf 2 journal readiness, Leaf 9 purge
 hooks, and Leaf 11 attachment lifecycle. A green contract test is not a snapshot,
-restore, key, purge, or production acceptance result; Issue #168 remains open
+restore, key, purge, or production acceptance result; Issue #168 is deferred as not planned
 until those dependencies and independent restore evidence are complete.
 
 The dependency-safe v2 manifest slice adds recursive exact-key validation and

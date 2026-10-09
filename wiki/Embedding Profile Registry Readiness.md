@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Issue #139의 embedding profile metadata와 runtime/schema activation dependency gate.
 created: 2026-07-13
-updated: 2026-07-13
-source_count: 4
+updated: 2026-10-09
+source_count: 5
 tags:
   - munjib
   - ai
@@ -20,6 +20,12 @@ links:
 ---
 
 # Embedding Profile Registry Readiness
+
+> MVP scope update (2026-10-09): the owner deferred the remaining long-term
+> hardening/runtime program. Its issues are closed as `not_planned`, not completed.
+> Readiness/dependency sections below preserve future activation criteria; they
+> are not the current MVP execution plan. See [[Security Hardening Public Status]].
+
 
 Issue #139의 현재 dependency-safe slice는 `lib/rag/embedding-registry.ts`에
 server/client-safe embedding profile metadata 계약만 둔다. Registry는 기존

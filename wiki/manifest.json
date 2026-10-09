@@ -46,7 +46,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Local Development Workflow]]"
       ],
-      "source_count": 127,
+      "source_count": 128,
       "searchPriority": 50
     },
     {
@@ -73,7 +73,7 @@
         "[[Wiki Maintenance Automation]]",
         "[[Public Repository Release Workflow]]"
       ],
-      "source_count": 75,
+      "source_count": 76,
       "searchPriority": 50
     },
     {
@@ -181,7 +181,7 @@
         "[[index|Wiki Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 4,
+      "source_count": 5,
       "searchPriority": 50
     },
     {
@@ -261,7 +261,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 182,
+      "source_count": 183,
       "searchPriority": 5
     },
     {
@@ -305,7 +305,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 371,
+      "source_count": 372,
       "searchPriority": 1
     },
     {
@@ -502,7 +502,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 138,
+      "source_count": 139,
       "searchPriority": 50
     },
     {
@@ -527,7 +527,7 @@
         "[[Production Observability Workflow]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 19,
+      "source_count": 20,
       "searchPriority": 50
     },
     {
@@ -536,7 +536,7 @@
       "title": "Security Hardening Public Status",
       "type": "workflow",
       "status": "active",
-      "summary": "Issues #154/#167의 public-safe child status, open readiness PR, dependency gate, and non-claim navigation.",
+      "summary": "Current MVP에서 보류 종료한 hardening 과제와 보존된 준비 코드, 공개 준비 추적 상태.",
       "tags": [
         "security",
         "deployment",
@@ -546,7 +546,7 @@
         "[[index|Wiki Index]]",
         "[[CI CD And Monitoring Workflow]]"
       ],
-      "source_count": 1,
+      "source_count": 3,
       "searchPriority": 50
     },
     {
