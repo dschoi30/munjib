@@ -150,3 +150,5 @@ links:
 - stale/draft 후보: 현재 명시된 후보 없음. `pnpm wiki:lint` warning이나 semantic lint에서 발견되면 이곳에 추가한다.
 
 - Issue #217: native Caddy Trial proof adapter, daily retention timer, service verification and rollback are documented in [[Auth And Permissions Workflow]] and [[CI CD And Monitoring Workflow]].
+
+- Issue #231: document attachment upload selection, sidebar card focus, Unicode filenames and browser downloads are described in [[Document Editing Workflow]].

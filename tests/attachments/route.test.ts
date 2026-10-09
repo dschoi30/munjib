@@ -47,3 +47,20 @@ describe("attachment route", () => {
     expect(response.status).toBe(404);
   });
 });
+
+it.each([
+  ["text/plain", "", "attachment"],
+  ["image/png", "", "inline"],
+  ["image/png", "?download=1", "attachment"],
+])("serves %s %s with Unicode filename and unchanged bytes", async (mimeType, query, disposition) => {
+  const bytes = Buffer.from([0xbe, 0xc8, 0xb3, 0xe7]); // legacy Korean text bytes must remain untouched
+  vi.mocked(getReadableAttachment).mockResolvedValue({
+    attachment: { fileName: "한글-문서.txt", mimeType, size: bytes.length }, bytes,
+  } as Awaited<ReturnType<typeof getReadableAttachment>>);
+  const response = await GET(new Request(`http://test.local/api/attachments/file${query}`), {
+    params: Promise.resolve({ attachmentId: "file" }),
+  });
+  expect(response.status).toBe(200);
+  expect(response.headers.get("content-disposition")).toBe(`${disposition}; filename="attachment"; filename*=UTF-8''${encodeURIComponent("한글-문서.txt")}`);
+  expect(Buffer.from(await response.arrayBuffer())).toEqual(bytes);
+});

@@ -29,6 +29,9 @@ type LeftPanelControls = {
 };
 
 type RightPanelControls = {
+  attachmentFocus: { documentId: string; attachmentId: string | null } | null;
+  showAttachments: (documentId: string, attachmentId: string | null) => void;
+  clearAttachmentFocus: () => void;
   collapse: () => void;
 };
 
@@ -98,6 +101,12 @@ export function AppShell({
   const { isHydrated: languageHydrated, t } = useI18n();
   const [leftPanelOpen, setLeftPanelOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [attachmentFocus, setAttachmentFocus] = useState<RightPanelControls["attachmentFocus"]>(null);
+  const showAttachments = useCallback((documentId: string, attachmentId: string | null) => {
+    setRightPanelOpen(true);
+    setAttachmentFocus({ documentId, attachmentId });
+  }, []);
+  const clearAttachmentFocus = useCallback(() => setAttachmentFocus(null), []);
   const [shellStorageHydratedWorkspace, setShellStorageHydratedWorkspace] =
     useState<string | null>(null);
   const [outlineDocument, setOutlineDocument] = useState<HeadingNavigationDocument | null>(null);
@@ -147,9 +156,12 @@ export function AppShell({
   );
   const rightPanelControls = useMemo(
     () => ({
-      collapse: () => setRightPanelOpen(false),
+      collapse: () => { setRightPanelOpen(false); setAttachmentFocus(null); },
+      attachmentFocus,
+      showAttachments,
+      clearAttachmentFocus,
     }),
-    [],
+    [attachmentFocus, showAttachments, clearAttachmentFocus],
   );
   const headingNavigationControls = useMemo<HeadingNavigationControls>(
     () => ({
@@ -183,6 +195,7 @@ export function AppShell({
   return (
     <HeadingNavigationContext.Provider value={headingNavigationControls}>
       <TagSearchContext.Provider value={tagSearchControls}>
+        <RightPanelContext.Provider value={rightPanelControls}>
         <main className={appShellGridClassName({ leftPanelOpen, rightPanelOpen })}>
           <LeftPanelContext.Provider value={leftPanelControls}>
             {leftPanelOpen ? (
@@ -211,9 +224,7 @@ export function AppShell({
             <section className="min-h-0 min-w-0 overflow-hidden bg-surface-page">{center}</section>
             {rightPanelOpen ? (
               <aside className="scrollbar-gutter-stable overflow-auto border-l border-border bg-muted px-4 pb-4 pt-0">
-                <RightPanelContext.Provider value={rightPanelControls}>
-                  {shellHydrated ? rightContent : <WorkspaceSidebarLoadingSkeleton side="right" />}
-                </RightPanelContext.Provider>
+                {shellHydrated ? rightContent : <WorkspaceSidebarLoadingSkeleton side="right" />}
               </aside>
             ) : shellHydrated ? (
               <TooltipProvider delayDuration={0}>
@@ -236,6 +247,7 @@ export function AppShell({
             )}
           </LeftPanelContext.Provider>
         </main>
+        </RightPanelContext.Provider>
       </TagSearchContext.Provider>
     </HeadingNavigationContext.Provider>
   );

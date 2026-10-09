@@ -9,6 +9,8 @@ import { DocumentEditor } from "@/components/document-editor";
 import { DocumentViewModeProvider, useDocumentViewMode } from "@/components/document-view-mode";
 import { I18nProvider } from "@/components/i18n-provider";
 
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
 const toastError = vi.hoisted(() => vi.fn());
 
 const codeMirrorHarness = vi.hoisted(() => ({

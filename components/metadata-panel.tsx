@@ -4,9 +4,8 @@ import { useWorkspaceMode } from "@/components/workspace-mode";
 
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   useHeadingNavigation,
   useRightPanel,
@@ -59,6 +58,17 @@ export function MetadataPanel({
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
   const rightPanel = useRightPanel();
+  const attachmentFocus = rightPanel?.attachmentFocus;
+  const clearAttachmentFocus = rightPanel?.clearAttachmentFocus;
+  const focusedAttachmentId = attachmentFocus && attachmentFocus.documentId === document?.id ? attachmentFocus.attachmentId : null;
+  useEffect(() => {
+    if (!attachmentFocus) return;
+    if (attachmentFocus.documentId !== document?.id) {
+      clearAttachmentFocus?.();
+      return;
+    }
+    setActiveTab("attachments");
+  }, [attachmentFocus, document?.id, clearAttachmentFocus]);
   const headingNavigation = useHeadingNavigation();
   const liveOutlineDocument = headingNavigation?.outlineDocument;
   const navigateToHeading = headingNavigation?.navigateToHeading;
@@ -134,7 +144,7 @@ export function MetadataPanel({
       {activeTab === "outline" ? (
         <OutlineList items={outlineItems} onNavigateToHeading={handleNavigateToHeading} />
       ) : null}
-      {activeTab === "attachments" ? <AttachmentsList attachments={attachments} /> : null}
+      {activeTab === "attachments" ? <AttachmentsList attachments={attachments} focusedAttachmentId={focusedAttachmentId} onClearFocus={clearAttachmentFocus} /> : null}
       {activeTab === "versions" ? (
         <VersionsList
           versions={versions}
@@ -249,7 +259,28 @@ function MetadataTabButton({
   );
 }
 
-function AttachmentsList({ attachments }: { attachments: DisplayAttachment[] }) {
+function AttachmentsList({ attachments, focusedAttachmentId, onClearFocus }: {
+  attachments: DisplayAttachment[];
+  focusedAttachmentId?: string | null;
+  onClearFocus?: () => void;
+}) {
+  const focusedCard = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (!focusedAttachmentId) return;
+    focusedCard.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
+    const clearOutside = (event: Event) => {
+      if (event.target instanceof Node && !focusedCard.current?.contains(event.target)) onClearFocus?.();
+    };
+    const clearOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClearFocus?.(); };
+    document.addEventListener("pointerdown", clearOutside, true);
+    document.addEventListener("focusin", clearOutside, true);
+    document.addEventListener("keydown", clearOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", clearOutside, true);
+      document.removeEventListener("focusin", clearOutside, true);
+      document.removeEventListener("keydown", clearOnEscape);
+    };
+  }, [focusedAttachmentId, attachments, onClearFocus]);
   const workspaceMode = useWorkspaceMode();
   const { t } = useI18n();
 
@@ -259,10 +290,11 @@ function AttachmentsList({ attachments }: { attachments: DisplayAttachment[] }) 
       <ul className="mt-2 space-y-2 text-sm text-slate-600">
         {attachments.length === 0 ? <li>{t("metadata.noAttachments")}</li> : null}
         {attachments.map((attachment) => (
-          <li key={attachment.id} className="rounded border border-border px-2 py-2">
-            <Link className="font-medium underline" href={`${workspaceMode === "anonymous-trial-readonly" ? "/api/trial" : "/api"}/attachments/${attachment.id}`}>
+          <li key={attachment.id} ref={attachment.id === focusedAttachmentId ? focusedCard : undefined}
+            className={`rounded border px-2 py-2 ${attachment.id === focusedAttachmentId ? "border-green-600 ring-1 ring-green-600" : "border-border"}`}>
+            <a download={attachment.fileName} className="font-medium underline" href={`${workspaceMode === "anonymous-trial-readonly" ? "/api/trial" : "/api"}/attachments/${attachment.id}?download=1`}>
               {attachment.fileName}
-            </Link>
+            </a>
             <p className="mt-1 text-xs text-slate-500">
               {attachment.mimeType} · {formatBytes(attachment.size)}
             </p>

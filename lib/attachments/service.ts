@@ -58,7 +58,7 @@ export async function uploadDocumentAttachment(input: UploadDocumentAttachmentIn
   });
 
   const safeFileName = sanitizeFileName(input.fileName);
-  const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName}`;
+  const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName.replace(/[^A-Za-z0-9._-]/g, "-")}`;
   const absolutePath = attachmentPath(storageKey, document.workspaceId);
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, input.bytes);
@@ -165,7 +165,7 @@ export async function uploadPastedDocumentImageAttachment(input: UploadDocumentA
   });
 
   const safeFileName = sanitizePastedImageFileName(input.fileName, input.mimeType);
-  const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName}`;
+  const storageKey = `${document.workspaceId}/${randomUUID()}-${safeFileName.replace(/[^A-Za-z0-9._-]/g, "-")}`;
   const absolutePath = attachmentPath(storageKey, document.workspaceId);
   await mkdir(path.dirname(absolutePath), { recursive: true });
   await writeFile(absolutePath, input.bytes);
@@ -321,7 +321,7 @@ function isMissingAttachmentFileError(error: unknown) {
 }
 
 function sanitizeFileName(fileName: string) {
-  const baseName = path.basename(fileName).replace(/[^A-Za-z0-9._-]/g, "-");
+  const baseName = path.basename(fileName).normalize("NFC").replace(/[^\p{L}\p{N}._-]/gu, "-");
   return baseName || "attachment";
 }
 

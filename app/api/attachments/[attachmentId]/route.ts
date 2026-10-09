@@ -1,10 +1,11 @@
+import { attachmentContentDisposition } from "@/lib/attachments/content-disposition";
 import { NextResponse } from "next/server";
 import { requireCurrentUser } from "@/lib/auth/session";
 import { getReadableAttachment } from "@/lib/attachments/service";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ attachmentId: string }> },
 ) {
   const user = await requireCurrentUser();
@@ -34,7 +35,7 @@ export async function GET(
     headers: {
       "content-type": attachment.mimeType,
       "content-length": String(attachment.size),
-      "content-disposition": `inline; filename="${attachment.fileName.replace(/"/g, "")}"`,
+      "content-disposition": attachmentContentDisposition(attachment.fileName, new URL(request.url).searchParams.get("download") === "1" || !attachment.mimeType.startsWith("image/")),
     },
   });
 }
