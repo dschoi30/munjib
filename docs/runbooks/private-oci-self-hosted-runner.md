@@ -1,5 +1,9 @@
 # Private OCI Self-Hosted Runner 운영 가이드
 
+> Issue #234 이후의 전환 절차는 [비공개 운영 저장소 배포](private-operations-delivery.md)를 따른다.
+> 아래의 앱 저장소 runner 등록·workflow 설명은 과거 설치 근거다.
+> 앱 저장소에 새 운영 runner를 등록하지 않는다.
+
 이 문서는 공개 SSH를 다시 열지 않고, 현재 단일 OCI VM에서 GitHub Actions의 production 배포만 실행하는 MVP 절차다. GitHub-hosted runner는 계속 CI를 담당한다.
 
 ## 0. 시작 전 확인

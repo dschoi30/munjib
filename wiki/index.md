@@ -69,7 +69,7 @@ links:
 - [[Auth And Permissions Workflow]] - NextAuth session, dev credentials, workspace role과 document-level explicit permission 흐름.
 - [[Local Development Workflow]] - 로컬 실행, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 - [[RAG Process Workflow]] - Ask AI RAG의 saved-content-only request, provider/env, indexing, retrieval, LangChain answer, Langfuse/Sentry observability 흐름.
-- [[CI CD And Monitoring Workflow]] - GitHub-hosted PR/main CI, private OCI self-hosted deploy runner, native Compose deploy, Docker/Sentry monitoring 구성. 운영 절차는 `docs/runbooks/private-oci-self-hosted-runner.md`에 있다.
+- [[CI CD And Monitoring Workflow]] - GitHub-hosted PR/main CI, separate private operations delivery, native Compose deploy, Docker/Sentry monitoring 구성. 전환 절차는 `docs/runbooks/private-operations-delivery.md`에 있다.
 - [[Release Signer And Vault Workflow]] - 1인 운영에서 Vault Community를 local signer lab과 초기 same-OCI Docker Compose signer로 사용하고, #185 독립 attestation을 위해 dedicated signer VM으로 승격하는 workflow.
 - [[Production Observability Workflow]] - production-style Docker 로그 확인, Sentry error/tracing/runtime metrics/Replay, handled AI 503, low-cardinality app metrics 관측성 흐름.
 - [[Wiki Maintenance Automation]] - Feature Start, Ingest, Query, Lint, 커밋 전 sync plan/check 운영 방식.

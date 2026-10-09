@@ -28,13 +28,31 @@ links:
 
 이 page는 현재 repository의 자동 검증, production compose deploy, monitoring 구성을 한 곳에서 본다. 세부 production observability 원칙은 [[Production Observability Workflow]]에 있고, 이 page는 CI/CD와 monitoring이 어떻게 이어지는지 요약한다.
 
-## Public repository preparation
+## Private operations transition (Issue #234)
+
+Application CI now defines only GitHub-hosted validation. The source deploy job
+and runner-smoke workflow are removed; delivery and smoke belong to a separate
+private operations repository. Application commits stay here, without code
+duplication or per-release operations commits. Private operations admits the
+exact current source main SHA after both source CI and secret scan succeed,
+rechecks provenance on its private runner, and skips an already deployed SHA.
+See `docs/runbooks/private-operations-delivery.md`.
+
+This source change alone does not prove live cutover. Private runner smoke,
+source read access, an actual exact-SHA deployment, and removal of source runner
+access are independent gates. Keep the source private until they pass.
+
+The Issue #210 source-scoped deploy and smoke descriptions below are retained as
+historical bootstrap evidence. They are superseded by this transition; do not
+register a production runner with the application repository.
+
+## Previous public repository guard
 
 See [[Public Repository Release Workflow]] for Issue #234. A separate secret-scan
 workflow runs pinned Gitleaks on GitHub-hosted runners with read-only permissions.
 Checkout and Node setup actions in the application CI are pinned to full SHAs;
-checkout does not retain credentials. Production deploy and runner-smoke jobs
-also require `github.event.repository.private == true`. This conditional is an
+checkout does not retain credentials. The previous production deploy and runner-smoke jobs
+required `github.event.repository.private == true`. This conditional was an
 accidental-execution guard, not a guarantee against a modified fork workflow.
 Production runner access must be removed from this repository before publication.
 History rewrites change the deployed-SHA ancestry relation; review the commit map

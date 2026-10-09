@@ -41,10 +41,12 @@ and read-only token permissions. Reports remain redacted and are not uploaded.
 Two exact historical test-example fingerprints are classified in
 `.gitleaksignore`; this does not suppress whole rules or paths.
 
-Existing production jobs require the repository to remain private. This guard
-only prevents the unchanged jobs from running after a visibility change. A
-public fork may propose different workflow content, so removal of production
-runner access remains a mandatory publication gate.
+Application CI no longer defines production deploy or runner-smoke jobs. A
+separate private operations repository admits successful exact source main CI
+and secret scan without copying source or requiring per-release ops commits.
+Configuration alone does not prove host cutover: private runner smoke, source
+read access, actual deployment and source runner detachment remain gates. See
+`docs/runbooks/private-operations-delivery.md`.
 
 ## Remaining gates
 
@@ -63,7 +65,8 @@ its scope and limitations without publishing private findings.
 - Issue #234; owner decisions on MIT and existing-history cleanup.
 - `LICENSE`, `SECURITY.md`, `.gitignore`, `.gitleaksignore`.
 - `scripts/security/scan-secrets.sh` and `.github/workflows/secret-scan.yml`.
-- `.github/workflows/{ci-cd,runner-smoke}.yml` and `tests/github-actions/ci-cd.test.ts`.
+- `.github/workflows/ci-cd.yml` and `tests/github-actions/ci-cd.test.ts`.
+- `docs/runbooks/private-operations-delivery.md`.
 - `docs/runbooks/public-release-readiness.md`.
 - `scripts/deploy/munjib-deploy.sh`; `lib/security/production-seed-guard.ts`.
 - GitHub secure-use and sensitive-data-removal documentation linked in the runbook.

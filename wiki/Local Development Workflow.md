@@ -23,6 +23,13 @@ links:
 
 # Local Development Workflow
 
+> Issue #234: application CI is GitHub-hosted only. Delivery belongs to separate
+> private operations, which admits exact source main after successful CI and
+> secret scan. Older Issue #210 source-scoped runner descriptions below are
+> historical. Host cutover remains independently gated; see
+> [[CI CD And Monitoring Workflow]].
+
+
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.
 
 Issue #171 및 PR #215/#216의 2026-10-07 production dependency audit remediation은 `postcss` 8.5.23,
