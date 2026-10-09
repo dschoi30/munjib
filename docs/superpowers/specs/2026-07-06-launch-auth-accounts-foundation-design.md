@@ -16,8 +16,8 @@ change the production login UI or introduce a new public signup flow.
   seed accounts, and workspace membership bootstrap.
 - Represent global launch access through normal `WorkspaceMember` rows rather
   than a hidden superuser role.
-- Seed `legacy-account-1@example.invalid` as `ADMIN` on every workspace.
-- Seed `legacy-account-2@example.invalid` as `VIEWER` on every workspace.
+- Seed `admin@example.invalid` as `ADMIN` on every workspace.
+- Seed `trial@example.invalid` as `VIEWER` on every workspace.
 - Keep production password auth, Google OAuth UI, signup provisioning, trial
   button behavior, invitations, and workspace-management UI for follow-up
   branches.

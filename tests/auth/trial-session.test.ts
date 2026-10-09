@@ -66,7 +66,7 @@ describe("AI route actor isolation", () => {
       kstDate: "2026-08-25",
     });
     expect(actor.authorizationPrincipal).not.toHaveProperty("userId");
-    expect(JSON.stringify(actor)).not.toContain("legacy-account-2@example.invalid");
+    expect(JSON.stringify(actor)).not.toContain("trial@example.invalid");
   });
 
   it("does not fall back to an authenticated owner when explicit Trial evidence is invalid", async () => {

@@ -55,7 +55,7 @@ Do not add archive deletion. Archive is reversible at the data level but no rest
 Add `lib/workspaces/management-service.ts` with focused operations:
 
 - `listReadableWorkspacesForUser(actorId)` returns readable, non-archived workspaces ordered for the drawer.
-- `createWorkspace({ actorId, name, language })` creates an organization/workspace pair, gives the actor OWNER membership, and calls `ensureWorkspaceLaunchMemberships` so `legacy-account-1@example.invalid` is ADMIN and `legacy-account-2@example.invalid` is VIEWER.
+- `createWorkspace({ actorId, name, language })` creates an organization/workspace pair, gives the actor OWNER membership, and calls `ensureWorkspaceLaunchMemberships` so `admin@example.invalid` is ADMIN and `trial@example.invalid` is VIEWER.
 - `renameWorkspace({ workspaceSlug, actorId, name })` requires workspace manage permission and updates only `name`.
 - `archiveWorkspace({ workspaceSlug, actorId })` requires workspace manage permission, sets `archivedAt`, and returns a fallback active workspace slug.
 - `resolveAccessibleWorkspaceRedirect` and direct workspace page lookup must ignore archived workspaces.

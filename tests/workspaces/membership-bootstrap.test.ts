@@ -11,8 +11,8 @@ function createTxMock(
   return {
     user: {
       findMany: vi.fn().mockResolvedValue([
-        { id: "admin-user", email: "legacy-account-1@example.invalid" },
-        { id: "trial-user", email: "legacy-account-2@example.invalid" },
+        { id: "admin-user", email: "admin@example.invalid" },
+        { id: "trial-user", email: "trial@example.invalid" },
       ]),
     },
     workspace: {
@@ -39,12 +39,12 @@ describe("workspace membership bootstrap", () => {
   it("defines the launch accounts and their global workspace roles", () => {
     expect(launchAccountSeeds).toEqual([
       {
-        email: "legacy-account-1@example.invalid",
+        email: "admin@example.invalid",
         name: "Munjib Admin",
         workspaceRole: "ADMIN",
       },
       {
-        email: "legacy-account-2@example.invalid",
+        email: "trial@example.invalid",
         name: "Munjib Trial",
         workspaceRole: "VIEWER",
       },

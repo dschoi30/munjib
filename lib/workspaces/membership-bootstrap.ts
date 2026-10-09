@@ -1,6 +1,6 @@
 import type { WorkspaceRole } from "@prisma/client";
 
-import { launchAccountSeeds } from "@/lib/auth/launch-accounts";
+import { resolveLaunchAccountSeeds } from "@/lib/auth/launch-accounts";
 export { launchAccountSeeds } from "@/lib/auth/launch-accounts";
 
 type WorkspaceMembershipBootstrapTx = {
@@ -32,6 +32,7 @@ export async function ensureWorkspaceLaunchMemberships(
   ownerMembership?: { userId: string; role?: WorkspaceRole },
   prefetchedLaunchUsers?: Array<{ id: string; email: string }>,
 ) {
+  const launchAccountSeeds = resolveLaunchAccountSeeds();
   const launchUsers =
     prefetchedLaunchUsers ??
     (await tx.user.findMany({
@@ -79,6 +80,7 @@ export async function ensureWorkspaceLaunchMemberships(
 }
 
 export async function backfillLaunchMembershipsForAllWorkspaces(tx: WorkspaceMembershipBootstrapTx) {
+  const launchAccountSeeds = resolveLaunchAccountSeeds();
   const workspaces = await tx.workspace.findMany({ select: { id: true } });
   const launchUsers = await tx.user.findMany({
     where: { email: { in: launchAccountSeeds.map((account) => account.email) } },

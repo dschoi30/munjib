@@ -11,7 +11,7 @@
 - 본인 확인 없이 한 사람을 증명할 수 없으므로 UI에는 `이 기기에서 오늘 AI 체험 3회`라고 표시한다.
 - 세션 재생성, 로그아웃, 브라우저 재시작은 유효한 방문자 토큰이 남아 있는 한 사용량을 초기화하지 않는다.
 - 쿠키 삭제와 네트워크 변경을 함께 사용하는 우회는 완전히 막을 수 없다. 일일 네트워크 한도, CAPTCHA 승격, 동시 요청 제한, 전체 일일 한도로 우회 비용과 운영 비용을 제한한다.
-- 기존 공유 계정 `legacy-account-2@example.invalid`은 재활성화하지 않으며 Issue #156 Trial 격리 방향을 유지한다.
+- 기존 공유 계정 `trial@example.invalid`은 재활성화하지 않으며 Issue #156 Trial 격리 방향을 유지한다.
 
 ## 익명 방문자 식별
 
@@ -125,7 +125,7 @@ unique constraint는 `(visitorDigest, kstDate)`, `(networkDigest, kstDate)`, 전
 - `prisma/schema.prisma`와 migration 1개: 방문자·네트워크·전체 일일 counter와 lease
 - unit, route, concurrency, privacy, Playwright Trial 테스트
 
-admission module은 model provider, prompt builder, UI를 import하지 않는다. 각 AI service는 자체 counter를 만들지 않는다. Trial identity 코드는 `legacy-account-2@example.invalid`을 조회하거나 재활성화하지 않는다.
+admission module은 model provider, prompt builder, UI를 import하지 않는다. 각 AI service는 자체 counter를 만들지 않는다. Trial identity 코드는 `trial@example.invalid`을 조회하거나 재활성화하지 않는다.
 
 ## 검증과 rollout
 

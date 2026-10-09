@@ -19,6 +19,14 @@ links:
 
 # Wiki Log
 
+## 2026-10-09 - Private launch identity configuration (Issue #234)
+
+- Replaced operational identity literals in runtime, fixtures and project documentation with reserved examples. Runtime membership and signup checks resolve server-only identity configuration lazily; production/staging fail closed without a valid distinct pair.
+- Review follow-up: explicit deployment environment takes precedence over NODE_ENV, and Node instrumentation validates the same pair during startup.
+- Auth preflight validates the same pair before replacement. Compose passes runtime variables to web/preflight only; production seed remains forbidden and local seed uses local-only passwords.
+- Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]]. Source: `lib/auth/launch-accounts.ts`, membership/signup policy, auth preflight, Compose and seed. Preserve existing private values before rollout; no deployment is claimed by this source change.
+
+
 ## 2026-10-09 - Current MVP issue triage
 
 - Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code/branches remain. PR #188 closed without merging; #234 stays active.
@@ -101,7 +109,7 @@ links:
 ## 2026-08-25T00:00:00+09:00 - 익명 Trial AI 일일 제한 설계
 
 - 결과: 가입 없는 익명 Trial에 기기별 KST 하루 Ask AI/Workspace AI 합산 3회를 제공하고, 일일 HMAC network ceiling, CAPTCHA 승격, 동시 요청 1회, 운영 설정 전체 한도를 결합하는 설계를 승인했다.
-- 안전 경계: 본인 확인 없는 traffic은 유일한 사람을 증명할 수 없음을 명시하고, admission state에 raw network 주소나 AI 내용을 저장하지 않으며, 모델 호출 전 fail closed하고 기존 `legacy-account-2@example.invalid`을 재활성화하지 않는다.
+- 안전 경계: 본인 확인 없는 traffic은 유일한 사람을 증명할 수 없음을 명시하고, admission state에 raw network 주소나 AI 내용을 저장하지 않으며, 모델 호출 전 fail closed하고 기존 `trial@example.invalid`을 재활성화하지 않는다.
 - 페이지: [[index|Wiki Index]]. 설계: `docs/superpowers/specs/2026-08-25-anonymous-trial-ai-daily-limit-design.md`.
 - 근거: 현재 Ask AI와 Workspace AI route, auth session 경계, Issue #156 Trial 격리 기록, 사용자 승인 제품 제약.
 - 검증: 설계 검토만 완료했다. schema, route, auth provider, runtime 설정, production data, 배포 동작은 변경하지 않았다.
@@ -1166,7 +1174,7 @@ links:
 
 ## 2026-07-09T22:55:00+09:00 - stale attachment preview suppression
 
-- Result: Local `legacy-account-2@example.invalid` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.
+- Result: Local `trial@example.invalid` login no longer triggers repeated browser image requests for stale internal attachment URLs embedded in imported Markdown.
 - Coverage: DB inspection showed the `company-handbook` `/raw/ai-iclr` document referenced `/api/attachments/cmr5...` ids that no longer exist in `Attachment`. `WorkspacePage` now passes the selected document's attachment ids into `DocumentEditor`, and `DocumentEditor` also tracks attachment ids returned by successful image paste uploads until the next route refresh. `MarkdownPreview` renders `/api/attachments/<id>` images only when the id is in that combined allow-list. Stale internal image links preserve alt text without creating an `<img>` request, while valid attached images, freshly pasted images, and external image URLs keep rendering.
 - Pages: [[Document Editing Workflow]], [[Markdown Import And Clipboard Paste Workflow]], [[log|Wiki Log]].
 - Source evidence: user bug report, local read-only Prisma inspection, `app/workspaces/[workspaceSlug]/page.tsx`, `components/document-editor.tsx`, `components/document-editor/markdown-preview.tsx`, `components/document-editor/types.ts`, `tests/components/document-editor-preview.test.tsx`.
@@ -1239,7 +1247,7 @@ links:
 ## 2026-07-05T14:55:00+00:00 - maintenance
 
 - Result: Issue #145 launch-auth-accounts-foundation adds account-ready schema, password hashing helpers, seeded launch accounts, and idempotent global workspace membership bootstrap.
-- Coverage: `User.passwordHash`, NextAuth-compatible `User.emailVerified`, Prisma `User.image` mapped to the existing `avatarUrl` column, `Account`/`Session`/`VerificationToken` adapter tables, `scrypt` password verification, `legacy-account-1@example.invalid` ADMIN and `legacy-account-2@example.invalid` VIEWER seed/backfill behavior, owner-role preservation when the owner is also a launch account or already owns a workspace during backfill, launch-user prefetching during backfill, and focused tests for password and membership bootstrap logic.
+- Coverage: `User.passwordHash`, NextAuth-compatible `User.emailVerified`, Prisma `User.image` mapped to the existing `avatarUrl` column, `Account`/`Session`/`VerificationToken` adapter tables, `scrypt` password verification, `admin@example.invalid` ADMIN and `trial@example.invalid` VIEWER seed/backfill behavior, owner-role preservation when the owner is also a launch account or already owns a workspace during backfill, launch-user prefetching during backfill, and focused tests for password and membership bootstrap logic.
 - Pages: [[Document Knowledge Model]], [[Auth And Permissions Workflow]], [[index|Wiki Index]], [[log|Wiki Log]].
 - Source evidence: Issue #145 plan in `docs/superpowers/plans/2026-07-05-post-143-production-launch-auth-workspace.md`, `docs/superpowers/specs/2026-07-06-launch-auth-accounts-foundation-design.md`, `docs/superpowers/plans/2026-07-06-launch-auth-accounts-foundation-completion.md`, `prisma/schema.prisma`, `prisma/migrations/20260705090000_add_auth_accounts_foundation/migration.sql`, `lib/auth/passwords.ts`, `lib/workspaces/membership-bootstrap.ts`, `prisma/seed.ts`, `tests/auth/passwords.test.ts`, `tests/workspaces/membership-bootstrap.test.ts`.
 - Verification: local-binary `prisma validate`, `prisma generate`, `tsc --noEmit`, `vitest run tests/auth/passwords.test.ts tests/workspaces/membership-bootstrap.test.ts tests/auth/config.test.ts tests/permissions/workspace.test.ts`, `git diff --check`, and fresh migration/seed verification in a temporary local database. `pnpm` wrappers remain blocked by the ignored-builds guard, and `next lint` remains blocked by the noninteractive ESLint setup prompt.
@@ -1247,7 +1255,7 @@ links:
 ## 2026-07-05T00:00:00+0000 - post-issue-143 production launch planning
 
 - Coverage: Captured the follow-up plan after Issue #143 for production account entry and workspace management. The plan splits work into account foundation, signup/login, and workspace-management branches.
-- Result: Confirmed `legacy-account-1@example.invalid` / `local-only-fixture-1` as global workspace `ADMIN`, `legacy-account-2@example.invalid` / `local-only-fixture-2` as global workspace `VIEWER`, normal signup users as `OWNER` of their own default workspace, Google login without separate Munjib email verification, localized default workspace names, trial login, and soft archive workspace deletion.
+- Result: Confirmed `admin@example.invalid` / `local-only-fixture-1` as global workspace `ADMIN`, `trial@example.invalid` / `local-only-fixture-2` as global workspace `VIEWER`, normal signup users as `OWNER` of their own default workspace, Google login without separate Munjib email verification, localized default workspace names, trial login, and soft archive workspace deletion.
 - Updated pages: `wiki/index.md`, `wiki/log.md`.
 - Source evidence: Prior user decisions in the Issue #143 follow-up planning conversation and `docs/superpowers/plans/2026-07-05-post-143-production-launch-auth-workspace.md`.
 
@@ -3887,7 +3895,7 @@ links:
 
 - Result: Issue #212 Task 3 adds a production-default-closed anonymous capability, opaque secure visitor cookie, privacy-safe entitlement projection, and a discriminated AI route actor. Authenticated users retain their normal `User.id`; anonymous visitors receive no user id and can project only to `VIEWER` on the exact server-owned demo workspace without explicit USER grants.
 - Challenge boundary: New-token issuance after prior network Trial traffic uses a one-attempt Turnstile verifier with a one-second timeout, exact canonical hostname and `trial_entitlement` action, fixed-path production secret loading, and no challenge-token logging. Valid existing visitor tokens do not depend on Turnstile availability.
-- Integration ruling: The legacy `legacy-account-2@example.invalid` identity is neither queried nor reactivated. Task 5 must use a visitor-keyed non-shared conversation path or an explicitly stateless path; mapping every anonymous visitor to one `AiChatThread.userId` is forbidden.
+- Integration ruling: The legacy `trial@example.invalid` identity is neither queried nor reactivated. Task 5 must use a visitor-keyed non-shared conversation path or an explicitly stateless path; mapping every anonymous visitor to one `AiChatThread.userId` is forbidden.
 - Source evidence: approved Issue #212 design, Task 3 implementation ruling, `lib/auth/trial-visitor.ts`, `lib/auth/trial-entitlement.ts`, `lib/auth/session.ts`, `app/api/trial/entitlement/route.ts`, and focused auth tests.
 - Verification: strict RED/GREEN cycles for missing actor/entitlement modules, exact workspace authorization, global-cap configuration, canonical Turnstile binding, malformed challenge rejection, and bounded timeout; focused auth suites and TypeScript compilation passed.
 

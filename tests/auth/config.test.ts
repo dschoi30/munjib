@@ -309,7 +309,7 @@ describe("authOptions", () => {
 
     expect(options.providers.map((provider) => provider.id)).not.toContain("trial");
     expect(prismaMock.user.findUnique).not.toHaveBeenCalledWith(
-      expect.objectContaining({ where: { email: "legacy-account-2@example.invalid" } }),
+      expect.objectContaining({ where: { email: "trial@example.invalid" } }),
     );
   });
 
