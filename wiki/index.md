@@ -6,7 +6,7 @@ status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 181
+source_count: 182
 tags:
   - index
   - munjib
@@ -30,6 +30,7 @@ links:
   - "[[Wiki Schema]]"
   - "[[Wiki Maintenance Automation]]"
   - "[[Security Hardening Public Status]]"
+  - "[[Public Repository Release Workflow]]"
   - "[[Honen Design System]]"
   - "[[designs/index|UI Design Excalidraw Index]]"
   - "[[log|Wiki Log]]"
@@ -58,6 +59,8 @@ links:
 - [[Wiki Schema]] - wiki page frontmatter, link, manifest 유지 규칙.
 
 ## 워크플로우
+
+- [[Public Repository Release Workflow]] - MIT licensing, secret scanning, private delivery and existing-history publication gates; preparation only.
 
 - [[Project Structure Onboarding]] - 신규 개발자가 첫 1시간 안에 제품 구조, repository 책임, 주요 runtime flow, 검증 명령을 파악하기 위한 진입 지도.
 - [[Document Editing Workflow]] - 문서 생성, 수정, properties, attachment, comment, version restore, 감사 로그, link/metadata reconciliation 흐름.
