@@ -134,7 +134,8 @@ leaf after the database and broker gates are live.
 - key rotation, signed manifest custody, and production scheduling.
 
 Until those questions have an attested owner and candidate evidence, Issue #165
-remains open and the implementation remains preparation-only.
+is closed as `not_planned` for the current MVP; implementation remains
+preparation-only, and remaining scope is deferred rather than completed.
 
 ## Verification
 

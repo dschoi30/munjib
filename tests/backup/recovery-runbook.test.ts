@@ -17,7 +17,7 @@ describe("encrypted recovery readiness runbook", () => {
     expect(runbook).toContain("Leaf 2");
     expect(runbook).toContain("Leaf 9");
     expect(runbook).toContain("Leaf 11");
-    expect(runbook).toMatch(/Issue #168 remains open/i);
+    expect(runbook).toMatch(/Issue #168 is closed as `not_planned`/i);
     expect(runbook).toMatch(/does not perform a snapshot, restore, destructive purge/i);
   });
 

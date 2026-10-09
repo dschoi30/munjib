@@ -3,10 +3,10 @@ id: security-hardening-public-status
 title: Security Hardening Public Status
 type: workflow
 status: active
-summary: Issues #154/#167의 public-safe child status, open readiness PR, dependency gate, and non-claim navigation.
+summary: Current MVP에서 보류 종료한 hardening 과제와 보존된 준비 코드, 공개 준비 추적 상태.
 created: 2026-07-13
-updated: 2026-07-20
-source_count: 1
+updated: 2026-10-09
+source_count: 3
 tags:
   - security
   - deployment
@@ -18,43 +18,34 @@ links:
 
 # Security Hardening Public Status
 
-Issues #154 and #167의 공개 상태를 GitHub-visible issue/branch/PR handle과
-dependency gate 중심으로 유지한다. 상세 위협 모델, host topology, account
-state, secret, operator evidence는 이 wiki와 GitHub-visible history에 기록하지
-않는다.
+## Current MVP decision — 2026-10-09
 
-## Current snapshot
+The owner chose to close long-term work that is not adopted for the current MVP.
+Issues #139, #154, #159, #160, #162, #163, #164, #165, #166, #167, #168, #180,
+#184 and #185 are closed as `not_planned`, labelled `deferred-mvp`. They are not
+closed as completed. Their original scope, source branches and evidence remain;
+reopen or re-scope them when adopted again. PR #188 is closed without merging,
+and its branch remains available.
 
-- Audit base: `origin/main` `c742a62` (merged PR #207).
-- Merged and production-verified P0 chain: #155 and #157. PR #178/#158 is
-  merged/closed by the media-egress release, but this status map does not claim
-  a separate production deployment check for it.
-- Delivery substrate code is merged in PR #170 and bundle packaging is merged in
-  PR #186; host broker installation, trust enrollment, and independent
-  attestation remain a separate open gate in #185.
-- Database-authority contracts are merged in PR #181; exact-digest runtime
-  continuation is open PR #188 and remains fail-closed on the #185 gate.
-- Implementation PRs #199–#207 are merged into main as preparation contracts;
-  they do not by themselves close the parent issues or certify deployment.
-- Readiness/document PRs #187, #189, #191, #192, #193, #194, #195, #196,
-  #198, and signup-gate PR #161 remain open. Their fresh Actions runs are
-  blocked before runner start by the repository billing/spending-limit gate.
-- PR #190 is closed as a duplicate of the stronger recovery contract in #206.
-- Current external blocker: GitHub Actions reports an account-payment failure
-  or spending-limit issue for the open readiness PRs. Resolve `Billing & plans`
-  before treating a new CI result as merge/deploy evidence.
+Public-release preparation remains active in Issue #234. Closing deferred
+tracking is not evidence that a security control was activated, a vulnerability
+was fixed, or a release gate was passed. Existing dependency and acceptance
+contracts remain relevant if that future program is resumed.
 
-## Authoritative status map
+## Verified GitHub state
 
-The full public-safe table, including every child implementation dependency and explicit
-non-claim, is in
-`docs/runbooks/security-hardening-status.md`. Keep that runbook and this page
-aligned when a PR/branch changes. A draft or branch head is a preparation
-handoff, not evidence of production deployment, host broker attestation,
-snapshot/restore, purge, key rotation, or account mutation.
+Readiness PRs #161, #187, #189, #191–#198 are merged. PR #190 was already closed
+as a duplicate; PR #188 is now deferred/closed. The old July snapshot's open-PR
+and billing-blocked claims are superseded; October CI has run successfully.
+Merged preparation code remains preparation evidence, not proof of operational
+activation. Detailed status and remaining scope are in
+`docs/runbooks/security-hardening-status.md`.
 
-## Parent closure rule
+## Evidence and privacy
 
-Do not close #154 or #167 until every child has an accepted implementation,
-public-safe verification, and deployment evidence. Restricted operational proof
-must remain outside the repository and issue/PR comments.
+- Owner's explicit MVP deferral decision on 2026-10-09.
+- Current issue states/reasons/labels, PR states and retained branches on GitHub.
+- `docs/runbooks/security-hardening-status.md` and [[Public Repository Release Workflow]].
+
+Keep credentials, operator identities, host state and restricted evidence out
+of issue bodies, comments and this status map.

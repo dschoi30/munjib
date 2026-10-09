@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-10-07
-source_count: 127
+updated: 2026-10-09
+source_count: 128
 tags:
   - munjib
   - auth
@@ -20,6 +20,12 @@ links:
 ---
 
 # Auth And Permissions Workflow
+
+> MVP scope update (2026-10-09): the owner deferred the remaining long-term
+> hardening/runtime program. Its issues are closed as `not_planned`, not completed.
+> Readiness/dependency sections below preserve future activation criteria; they
+> are not the current MVP execution plan. See [[Security Hardening Public Status]].
+
 
 Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 개발 환경 전용이며 production에서는 항상 닫혀 있다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
 

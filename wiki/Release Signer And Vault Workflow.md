@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: 1인 사이드 프로젝트의 release signer를 Vault Community로 운영한다. 초기 production은 Munjib production과 같은 OCI VM의 Docker Compose 단일 노드로 시작하되, 독립 attestation을 위한 별도 signer VM 승격 게이트를 명시한다.
 created: 2026-07-17
-updated: 2026-08-17
-source_count: 19
+updated: 2026-10-09
+source_count: 20
 tags:
   - munjib
   - security
@@ -23,6 +23,12 @@ links:
 ---
 
 # Release Signer And Vault Workflow
+
+> MVP scope update (2026-10-09): the owner deferred the remaining long-term
+> hardening/runtime program. Its issues are closed as `not_planned`, not completed.
+> Readiness/dependency sections below preserve future activation criteria; they
+> are not the current MVP execution plan. See [[Security Hardening Public Status]].
+
 
 이 page는 Issue #185 delivery broker gate를 위해 bundle signer를 분리하고, signed artifact와 host `VERIFY_ONLY` attestation을 남기는 방법을 기록한다. 현재 Munjib은 1인 메인테이너 사이드 프로젝트이므로 Vault를 도입해도 두 사람 승인이나 인간 수준의 독립성이 자동으로 생기지는 않는다.
 
