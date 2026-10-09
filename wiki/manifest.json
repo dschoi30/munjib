@@ -70,9 +70,10 @@
         "[[Production Observability Workflow]]",
         "[[Project PRD]]",
         "[[Release Signer And Vault Workflow]]",
-        "[[Wiki Maintenance Automation]]"
+        "[[Wiki Maintenance Automation]]",
+        "[[Public Repository Release Workflow]]"
       ],
-      "source_count": 70,
+      "source_count": 74,
       "searchPriority": 50
     },
     {
@@ -255,11 +256,12 @@
         "[[Wiki Schema]]",
         "[[Wiki Maintenance Automation]]",
         "[[Security Hardening Public Status]]",
+        "[[Public Repository Release Workflow]]",
         "[[Honen Design System]]",
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 181,
+      "source_count": 182,
       "searchPriority": 5
     },
     {
@@ -280,9 +282,10 @@
         "[[Document Editing Workflow]]",
         "[[CI CD And Monitoring Workflow]]",
         "[[Wiki Schema]]",
-        "[[Wiki Maintenance Automation]]"
+        "[[Wiki Maintenance Automation]]",
+        "[[Public Repository Release Workflow]]"
       ],
-      "source_count": 72,
+      "source_count": 73,
       "searchPriority": 50
     },
     {
@@ -302,7 +305,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 369,
+      "source_count": 370,
       "searchPriority": 1
     },
     {
@@ -451,6 +454,28 @@
         "[[Wiki Maintenance Automation]]"
       ],
       "source_count": 21,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-public-repository-release",
+      "path": "wiki/Public Repository Release Workflow.md",
+      "title": "Public Repository Release Workflow",
+      "type": "workflow",
+      "status": "draft",
+      "summary": "Existing-repository publication gates for credential revocation, private delivery, history and metadata cleanup, licensing, and public CI.",
+      "tags": [
+        "munjib",
+        "security",
+        "workflow"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[CI CD And Monitoring Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Security Hardening Public Status]]",
+        "[[Wiki Maintenance Automation]]"
+      ],
+      "source_count": 8,
       "searchPriority": 50
     },
     {

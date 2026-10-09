@@ -151,3 +151,9 @@ raw/sources/  보존 대상 원본 근거
 프로젝트 규칙은 [AGENTS.md](AGENTS.md)를 따릅니다. 코드 검색 전에는 [Wiki 인덱스](wiki/index.md) 또는 `pnpm wiki:find "<topic>"`에서 관련 문서를 먼저 확인합니다.
 
 새 기능을 시작할 때는 `pnpm wiki:feature-start "<feature title>"`로 이슈를 만들고, 변경으로 생긴 지식은 관련 Wiki에 반영합니다. 커밋 전 Wiki 동기화와 PR 리뷰 절차는 [Wiki 유지보수 가이드](wiki/Wiki%20Maintenance%20Automation.md)에 정리되어 있습니다.
+
+## 라이선스와 보안
+
+프로젝트 코드는 [MIT License](LICENSE)를 따릅니다. 별도 출처나 라이선스가 명시된 외부 자료와 의존성에는 각자의 조건이 적용됩니다.
+
+취약점 신고와 비밀정보 검사 방법은 [보안 정책](SECURITY.md)에 있습니다. 개발용 seed 계정과 예제 secret은 운영 환경에 사용하지 않습니다.

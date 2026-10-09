@@ -1,0 +1,5 @@
+# Two historical generic-api-key false positives: synthetic attachment storageKey
+# literals in a test example. Exact commit/path/rule/line fingerprints only.
+# No rule, directory, or live credential is excluded.
+d7e95e53f1fd1771577d44a5860012b90bd40c36:wiki/raw/2026-07-11-security-document-acl.md:generic-api-key:1176
+27c99ad0d9bfcf8ccaf9ed70feaad76bc0748df0:docs/superpowers/plans/2026-07-11-security-document-acl.md:generic-api-key:1174

@@ -15,3 +15,14 @@ test-results
 .worktrees/
 wiki/.obsidian/
 storage/attachments/
+
+# Local tooling and private working material
+.lazyweb/
+.pnpm-store/
+work/
+security-reports/
+
+# Environment variants are private unless explicitly provided as examples
+.env.*
+!.env.example
+!.env.docker.example
