@@ -23,6 +23,7 @@ links:
 
 - Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code/branches remain. PR #188 closed without merging; #234 stays active.
 - Refreshed [[Security Hardening Public Status]] and `docs/runbooks/security-hardening-status.md` from live GitHub state; removed obsolete open-readiness-PR/billing-blocked claims. Added scope notes to affected workflow pages and [[index|Wiki Index]].
+- Review follow-up: reconciled recovery, invite-signup and attachment runbook status fields; updated the existing recovery documentation assertion to require the actual deferred state.
 - Evidence: owner's 2026-10-09 scope choice, issue states/reasons/labels and current PR API results. Closure is not implementation, deployment or security acceptance evidence.
 
 ## 2026-10-09 - Private operations delivery preparation (Issue #234)

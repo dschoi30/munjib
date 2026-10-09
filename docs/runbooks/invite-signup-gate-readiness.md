@@ -35,11 +35,14 @@ implementation can start:
 | --- | --- | --- | --- |
 | Leaf 1 auth runtime | merged Leaf 1 release (`auth-runtime-fail-closed@1`) | Exact linked-account login and closed password/unlinked-provider signup contract is deployed and attested | prerequisite; recheck on target release |
 | Leaf 2 journal/auth tombstones | Leaf 2 owner assignment in the hardening program | DB-time membership authority and deny-only journal append/replay contract | not available on `origin/main` |
-| Leaf 8 abuse/session controls | [#162](https://github.com/dschoi30/munjib/issues/162), `issue-162-security-auth-abuse-sessions` | Shared bounded guards, registry/session validator, and signed capability | open |
-| Leaf 13B private runtime | [#180](https://github.com/dschoi30/munjib/issues/180) / [#184](https://github.com/dschoi30/munjib/issues/184), `issue-184-security-immutable-runtime-gate` | Exact-digest candidate, database-role admission, and promotion/rollback gate | open; draft PR |
-| Leaf 13A delivery broker | [#185](https://github.com/dschoi30/munjib/issues/185), `issue-185-delivery-substrate-install` | Root-installed broker, trust bootstrap, and independent socket/policy attestation | open; host installation blocked |
+| Leaf 8 abuse/session controls | [#162](https://github.com/dschoi30/munjib/issues/162), `issue-162-security-auth-abuse-sessions` | Shared bounded guards, registry/session validator, and signed capability | deferred; #162 closed as not planned |
+| Leaf 13B private runtime | [#180](https://github.com/dschoi30/munjib/issues/180) / [#184](https://github.com/dschoi30/munjib/issues/184), `issue-184-security-immutable-runtime-gate` | Exact-digest candidate, database-role admission, and promotion/rollback gate | deferred; #180/#184 closed as not planned; PR #188 closed unmerged |
+| Leaf 13A delivery broker | [#185](https://github.com/dschoi30/munjib/issues/185), `issue-185-delivery-substrate-install` | Root-installed broker, trust bootstrap, and independent socket/policy attestation | deferred; #185 closed as not planned; acceptance unverified |
 
-Issue #161 remains open until those gates are satisfied. A green contract test
+Readiness PR #161 is merged. Remaining invite-first activation belongs to the
+program deferred in #154, and would still require these gates if re-adopted.
+This future contract does not describe current public-signup configuration.
+A green contract test
 does not prove that signup is enabled, a capability is valid, an invitation was
 issued, or production is ready.
 
