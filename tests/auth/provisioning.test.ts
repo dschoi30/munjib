@@ -10,8 +10,8 @@ function createProvisioningTxMock() {
   return {
     user: {
       findMany: vi.fn().mockResolvedValue([
-        { id: "admin-user", email: "mjadmin@munjib.com" },
-        { id: "trial-user", email: "mjtrial@munjib.com" },
+        { id: "admin-user", email: "admin@example.invalid" },
+        { id: "trial-user", email: "trial@example.invalid" },
       ]),
     },
     organization: {

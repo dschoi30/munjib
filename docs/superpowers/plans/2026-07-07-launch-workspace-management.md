@@ -126,7 +126,7 @@ it("rejects archiving the only readable active workspace", async () => {});
 it("archives a workspace and returns a fallback workspace slug", async () => {});
 ```
 
-The creation test must assert the actor is `OWNER`, `mjadmin@munjib.com` is `ADMIN`, and `mjtrial@munjib.com` is `VIEWER` on the new workspace.
+The creation test must assert the actor is `OWNER`, `admin@example.invalid` is `ADMIN`, and `trial@example.invalid` is `VIEWER` on the new workspace.
 
 - [ ] **Step 2: Run the red service test**
 

@@ -54,7 +54,7 @@ Use separate provider ids:
 - `development-login`: credentials provider that keeps the existing email-only
   seed-user shortcut behind `MUNJIB_ENABLE_DEV_LOGIN`.
 - `trial`: credentials provider with no browser secret. It signs in
-  `mjtrial@munjib.com` when the seeded user exists.
+  `trial@example.invalid` when the seeded user exists.
 - `google`: NextAuth Google provider, enabled only when
   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present.
 

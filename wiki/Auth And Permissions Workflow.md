@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 128
+source_count: 129
 tags:
   - munjib
   - auth
@@ -28,6 +28,22 @@ links:
 
 
 Munjib의 현재 인증은 NextAuth 기반이며, launch login surface는 Google OAuth, email/password, read-only trial entry, 그리고 개발 환경 전용 shortcut을 분리한다. Issue #143의 email-only development login은 개발 환경 전용이며 production에서는 항상 닫혀 있다. SSO/SAML, invitation lifecycle, password reset은 아직 follow-up이다.
+
+## Server-owned launch identities (public-release preparation)
+
+Runtime membership bootstrap and reserved-signup checks resolve the two identities
+from server-only `MUNJIB_LAUNCH_ADMIN_EMAIL` and `MUNJIB_LAUNCH_VIEWER_EMAIL`.
+Production/staging require both valid, distinct email addresses; missing, partial
+or malformed configuration fails with a generic error that contains no identity.
+Resolution is lazy, so a production build does not need these runtime values.
+Deployment auth preflight validates the same configuration before service replacement.
+The variables are passed only into web/auth-preflight runtime, never browser config
+or image build arguments. Preserve the exact existing private identities before
+rolling out; this refactor is not an account or role migration.
+
+Local fixtures use reserved `example.invalid` addresses and local-only seed
+passwords. Production seed remains forbidden. Existing users and owner roles are
+preserved; the source change alone does not prove production configuration or rollout.
 
 ## Login entry copy and password reset
 
@@ -130,7 +146,7 @@ Only development may opt into the explicit raw-header resolver, and that mode
 remains closed unless separately enabled.
 The signing, visitor-digest, network-bucket, and Turnstile secret bytes are
 never returned to the browser. The legacy development-only
-`mjtrial@munjib.com` Credentials provider is not queried, reactivated, or used
+`trial@example.invalid` Credentials provider is not queried, reactivated, or used
 as the anonymous authorization principal.
 
 Issue #212 Task 7 removes that legacy provider even from development registration.
@@ -474,7 +490,7 @@ and Korean strings live in `lib/i18n/messages.ts`.
 `lib/auth/config.ts` now exposes distinct NextAuth providers:
 
 - `password`: credentials provider that finds `User.passwordHash` by normalized email and delegates to `authorizePasswordCredential()` for bounded dummy work, fixed verification, and legacy compare-and-swap migration.
-- `trial`: credentials provider with no browser-visible secret; it signs in the seeded `mjtrial@munjib.com` account.
+- `trial`: credentials provider with no browser-visible secret; it signs in the seeded `trial@example.invalid` account.
 - `development-login`: gated seed-user shortcut controlled by `MUNJIB_ENABLE_DEV_LOGIN`.
 - `google`: OAuth provider added only when both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are present. The `signIn` callback rejects Google profiles whose email is not verified.
 
@@ -485,8 +501,8 @@ organization plus default workspace. The public `/api/auth/signup` route default
 closed with `403 SIGNUP_NOT_ALLOWED` and opens only via the Issue #214 opt-in. The
 workspace name is localized from the hydrated UI language: `My Workspace` for
 English and `내 워크스페이스` for Korean. Workspace creation also calls the
-launch membership bootstrap so the new user is `OWNER`, `mjadmin@munjib.com`
-is `ADMIN`, and `mjtrial@munjib.com` is `VIEWER`.
+launch membership bootstrap so the new user is `OWNER`, `admin@example.invalid`
+is `ADMIN`, and `trial@example.invalid` is `VIEWER`.
 For returning users whose only memberships are archived, default provisioning
 ignores archived memberships and reactivates the deterministic personal default
 workspace row by clearing `archivedAt` when that row already exists.
@@ -534,8 +550,8 @@ AI creates/persists chat threads and messages.
 `lib/workspaces/management-service.ts` owns the focused workspace operations.
 Workspace creation requires writer-or-better permission on the current
 workspace, creates a new organization/workspace pair, makes the actor `OWNER`,
-and reuses the launch membership bootstrap for `mjadmin@munjib.com` as `ADMIN`
-and `mjtrial@munjib.com` as `VIEWER`. Workspace rename/archive require
+and reuses the launch membership bootstrap for `admin@example.invalid` as `ADMIN`
+and `trial@example.invalid` as `VIEWER`. Workspace rename/archive require
 `OWNER` or `ADMIN` via `assertCanManageWorkspace()`.
 
 ## Workspace role
@@ -595,14 +611,14 @@ Issue #145 added durable account columns and OAuth-ready NextAuth adapter tables
 
 `lib/auth/passwords.ts` owns the canonical parser, fixed-cost hashing, and constant-time verification. It generates a random salt for each hash, uses Node `scrypt` with explicit options, and compares derived keys with `timingSafeEqual`; plaintext launch passwords remain only seed constants used to generate v1 rows.
 
-`lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper also upserts `mjadmin@munjib.com` as `ADMIN` plus `mjtrial@munjib.com` as `VIEWER` whenever those launch users exist. If the owner is also a launch account, the explicit owner role wins. Existing launch-account `OWNER` rows also stay `OWNER` during backfill. The backfill helper fetches launch users once and applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
+`lib/workspaces/membership-bootstrap.ts` defines the launch global accounts and idempotent membership bootstrap helper. Workspace creation code can pass an owner membership, and the helper resolves the privately configured admin/viewer identities (reserved fixture addresses in local development) and upserts their `ADMIN`/`VIEWER` memberships when those users exist. If the owner is also a launch account, the explicit owner role wins. Existing launch-account `OWNER` rows also stay `OWNER` during backfill. The backfill helper fetches launch users once and applies the same launch memberships to every existing workspace, so permission helpers continue to reason only about `WorkspaceMember.role` rows rather than hard-coded superusers.
 
 ## Seed 사용자
 
 `prisma/seed.ts`는 다음 사용자와 workspace를 만든다.
 
-- `mjadmin@munjib.com` / password seed constant `mjadmin` / global `ADMIN` membership
-- `mjtrial@munjib.com` / password seed constant `mjtrial` / global `VIEWER` membership
+- `admin@example.invalid` / password seed constant `local-only-admin` / global `ADMIN` membership
+- `trial@example.invalid` / password seed constant `local-only-trial` / global `VIEWER` membership
 - `owner@example.com`
 - `editor@example.com`
 - `viewer@example.com`

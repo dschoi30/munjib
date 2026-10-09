@@ -70,7 +70,7 @@ Expected: password hashes use the `scrypt:` prefix, omit plaintext, verify the c
 
 Run: `pnpm exec vitest run tests/workspaces/membership-bootstrap.test.ts`
 
-Expected: launch account constants encode `mjadmin@munjib.com` as `ADMIN` and `mjtrial@munjib.com` as `VIEWER`, workspace upserts are idempotent, and backfill loops through every workspace.
+Expected: launch account constants encode `admin@example.invalid` as `ADMIN` and `trial@example.invalid` as `VIEWER`, workspace upserts are idempotent, and backfill loops through every workspace.
 
 - [ ] **Step 2: Run seed if a database is available**
 

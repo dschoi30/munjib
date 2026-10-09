@@ -10,6 +10,8 @@ describe("auth preflight", () => {
     runAuthPreflight({
       env: {
         MUNJIB_DEPLOYMENT_ENV: "production",
+        MUNJIB_LAUNCH_ADMIN_EMAIL: "admin@example.invalid",
+        MUNJIB_LAUNCH_VIEWER_EMAIL: "trial@example.invalid",
         NEXTAUTH_SECRET_FILE: "/run/secrets/munjib_nextauth_secret",
         NEXTAUTH_URL: "https://munjib.example",
         NEXTAUTH_COOKIE_SECURE: "true",

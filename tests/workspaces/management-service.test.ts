@@ -47,8 +47,8 @@ describe("workspace management service", () => {
 
   it("creates a workspace for writer-or-better users and bootstraps launch memberships", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
-    await upsertLaunchUser("mjadmin@munjib.com", "Munjib Admin");
-    await upsertLaunchUser("mjtrial@munjib.com", "Munjib Trial");
+    await upsertLaunchUser("admin@example.invalid", "Munjib Admin");
+    await upsertLaunchUser("trial@example.invalid", "Munjib Trial");
 
     const workspace = await createWorkspace({
       actorId: fixture.user.id,
@@ -68,8 +68,8 @@ describe("workspace management service", () => {
     ).resolves.toEqual(
       expect.arrayContaining([
         { user: { email: fixture.user.email }, role: WorkspaceRole.OWNER },
-        { user: { email: "mjadmin@munjib.com" }, role: WorkspaceRole.ADMIN },
-        { user: { email: "mjtrial@munjib.com" }, role: WorkspaceRole.VIEWER },
+        { user: { email: "admin@example.invalid" }, role: WorkspaceRole.ADMIN },
+        { user: { email: "trial@example.invalid" }, role: WorkspaceRole.VIEWER },
       ]),
     );
   });
