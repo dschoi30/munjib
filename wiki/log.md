@@ -5,7 +5,7 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-07
+updated: 2026-10-09
 source_count: 369
 tags:
   - log
@@ -18,6 +18,10 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-10-09 - AI settings model connection status (Issue #229)
+
+- Updated [[RAG Process Workflow]] and [[index|Wiki Index]] for authenticated, model-specific probes, bounded requests and stale-result protection. Evidence: `lib/rag/check-model-connection.ts`, `app/api/workspaces/[workspaceSlug]/ai/connection/route.ts`, `components/ai/model-connection-status.tsx` and their tests.
 
 ## 2026-10-06 - Follow-up production dependency audit
 

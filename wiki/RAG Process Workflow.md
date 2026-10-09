@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib Ask AI direct-context와 workspace chatbot RAG의 saved-content-only request, retrieval, provider, observability 흐름.
 created: 2026-06-13
-updated: 2026-10-07
+updated: 2026-10-09
 source_count: 138
 tags:
   - munjib
@@ -333,6 +333,27 @@ Legacy/vector maintenance phases still exist for saved document indexing and fut
 | Chunk embedding | `indexSavedDocument()`, `embedText()` | Each saved chunk | Sequential 1024-dimension embeddings |
 | Chunk store | `replaceDocumentChunks()` | Embedded chunks, source `updatedAt` | Fresh `DocumentChunk` rows; stale writes are guarded |
 | Graph-aware scope building | `buildRetrievalScopes()` | Readable docs and persisted links | Current, linked, backlink, same-tag, fallback document ids for future expanded-scope flows |
+
+## AI settings connection status
+
+Issue #229 adds a model-specific connection indicator to the AI settings summary.
+Opening the AI tab or changing the saved provider/model sends an authenticated
+POST to `/api/workspaces/[workspaceSlug]/ai/connection`. The server verifies active
+workspace membership, validates the model pair and uses server-only credentials.
+A short fixed prompt checks actual model inference with at most 16 completion
+tokens (Ollama: 1), without document content, retrieval, conversation persistence
+or Langfuse callbacks. Each check can incur a small provider usage charge.
+The provider request is aborted after 15 seconds; the browser bounds its wait at
+20 seconds. Connected is shown with a green dot only after a valid successful
+completion; pending and failure have separate localized labels. Leaving the tab
+or changing models aborts the old request and ignores late results. Reopening
+checks again; status is not a persistent guarantee of future availability.
+The endpoint requires an authenticated user and does not admit anonymous Trial.
+
+Evidence: `components/ai/model-connection-status.tsx`,
+`app/api/workspaces/[workspaceSlug]/ai/connection/route.ts`,
+`lib/rag/check-model-connection.ts`, `tests/components/model-connection-status.test.tsx`,
+`tests/rag/model-connection-route.test.ts`, `tests/rag/check-model-connection.test.ts`.
 
 ## Entry points
 

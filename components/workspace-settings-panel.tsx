@@ -13,6 +13,7 @@ import {
 } from "react";
 import { Archive, Bot, Building2, Clock3, FileText, Languages, Upload, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { ModelConnectionStatus } from "@/components/ai/model-connection-status";
 import { Button } from "@/components/ui/button";
 import { LANGUAGE_OPTIONS, languageLabel } from "@/lib/i18n/language";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -782,6 +783,11 @@ export function WorkspaceSettingsPanel({
                 <p className="mt-2 break-all text-sm font-semibold text-ink">
                   {effectiveChatModel}
                 </p>
+                <ModelConnectionStatus
+                  workspaceSlug={workspaceSlug}
+                  chatProvider={effectiveChatProvider}
+                  chatModel={effectiveChatModel}
+                />
               </div>
 
               <div>

@@ -14,12 +14,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ connected: false }) }));
   router.refresh.mockReset();
   window.localStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 function renderSettingsPanel(
@@ -75,6 +77,22 @@ function renderSettingsPanel(
 }
 
 describe("WorkspaceSettingsPanel", () => {
+  it("checks only in the AI tab, then rechecks a saved model and tab reopen", async () => {
+    renderSettingsPanel();
+    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await screen.findByText("Could not connect");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Use OpenRouter Fusion" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string)).toEqual({
+      chatProvider: "openai-compatible", chatModel: "openrouter/fusion",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+  });
+
   it("opens to workspace management before import settings", () => {
     renderSettingsPanel();
 
