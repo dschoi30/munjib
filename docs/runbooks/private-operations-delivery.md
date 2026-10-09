@@ -39,8 +39,10 @@ Keep the old runner configuration available for recovery until private delivery
 succeeds. Do not enable both delivery paths. Disabling private delivery stops
 new polls; an active migration requires separate operator inspection.
 
-After source publication, verify access using the private workflow's temporary
-repository token, then delete and revoke the source-read PAT. History replacement
+Keep the scoped source-read credential after source publication; the private
+operations repository token is not a replacement for cross-repository access.
+Renew the PAT before expiry, or replace it with an independently verified
+source-read GitHub App installation token before revocation. History replacement
 requires another delivery freeze and independent old/new commit-map reconciliation;
 never disable ancestry checks or guess a replacement deployment SHA.
 

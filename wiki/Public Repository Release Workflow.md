@@ -45,7 +45,9 @@ Application CI no longer defines production deploy or runner-smoke jobs. A
 separate private operations repository admits successful exact source main CI
 and secret scan without copying source or requiring per-release ops commits.
 Configuration alone does not prove host cutover: private runner smoke, source
-read access, actual deployment and source runner detachment remain gates. See
+read access, actual deployment and source runner detachment remain gates. Keep
+a source-only read credential in private operations and renew it before expiry;
+revoke it only after a replacement credential is independently verified. See
 `docs/runbooks/private-operations-delivery.md`.
 
 ## Remaining gates
