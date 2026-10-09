@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Feature Start, Ingest, Query, Lint, commit-time sync를 통해 LLM이 Munjib wiki를 영속 지식층으로 유지하는 운영 흐름.
 created: 2026-05-03
-updated: 2026-05-17
-source_count: 14
+updated: 2026-10-10
+source_count: 15
 tags:
   - munjib
   - wiki
@@ -24,6 +24,16 @@ links:
 Munjib wiki는 `llm-wiki.md`의 의도처럼 source change와 질문이 쌓일 때마다 durable knowledge를 wiki에 반영하는 운영 방식을 따른다. 목표는 질문할 때마다 원문을 다시 조합하는 것이 아니라, source evidence를 구조화된 markdown page network로 컴파일해 계속 갱신하는 것이다.
 
 현재 자동화는 완전 자동 작성이 아니라 LLM 작업자가 사용할 guardrail이다. 커밋 전 변경 파일을 분석해 검토해야 할 후보 page를 제안하고, wiki maintenance 누락을 감지한다. 그 위에 Ingest, Query, Lint 루프를 운영 규칙으로 둔다.
+
+## 외부 자료의 공개 처리
+
+`llm-wiki.md`는 Andrej Karpathy의 원 아이디어에 대한 출처 링크와 Munjib의
+자체 요약이다. `raw/sources/llm-wiki.md`도 원문이 아닌 출처 참조 문서다.
+2026-10-09 소유자가 공개 준비를 위해 원문 사본을 비공개 백업하고 두 파일을
+교체하도록 명시 승인했다. 일반 Ingest 작업의 원자료 불변 규칙은 계속 적용한다.
+원본 바이트가 필요한 재검토는 비공개 보존본을 확인하거나 확인 불가를 명시한다.
+외부 URL의 현재 내용이 보존 원본과 같다고 추정하지 않는다. 이 예외는 `AGENTS.md`에도 기록한다.
+기존 Git 이력의 원문 제거는 [[Public Repository Release Workflow]]의 별도 gate다.
 
 ## 명령
 

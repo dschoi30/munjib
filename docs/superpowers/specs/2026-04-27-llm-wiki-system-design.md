@@ -1,5 +1,7 @@
 # LLM Wiki System Design
 
+> Publication update (2026-10-09): historical full-text retention instructions below are superseded by the owner-approved private archival and public source-link/summary policy in `docs/runbooks/public-release-readiness.md`. The raw source path now contains a reference note.
+
 Date: 2026-04-27
 
 ## Context

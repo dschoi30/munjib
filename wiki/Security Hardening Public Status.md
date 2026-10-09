@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Current MVP에서 보류 종료한 hardening 과제와 보존된 준비 코드, 공개 준비 추적 상태.
 created: 2026-07-13
-updated: 2026-10-09
-source_count: 3
+updated: 2026-10-10
+source_count: 4
 tags:
   - security
   - deployment
@@ -23,9 +23,12 @@ links:
 The owner chose to close long-term work that is not adopted for the current MVP.
 Issues #139, #154, #159, #160, #162, #163, #164, #165, #166, #167, #168, #180,
 #184 and #185 are closed as `not_planned`, labelled `deferred-mvp`. They are not
-closed as completed. Their original scope, source branches and evidence remain;
-reopen or re-scope them when adopted again. PR #188 is closed without merging,
-and its branch remains available.
+closed as completed. Original scope and preparation commits remain recoverable
+from private recovery backups; reopen or re-scope when adopted again. PR #188 is
+closed without merging. Its obsolete GitHub branch was subsequently deleted by
+owner-approved branch cleanup, so do not assume a remote recovery branch exists.
+Checked-out local worktree branches were preserved. Main and branches needed for
+currently open PRs were retained during cleanup; query current refs before recovery.
 
 Public-release preparation remains active in Issue #234. Closing deferred
 tracking is not evidence that a security control was activated, a vulnerability
@@ -44,7 +47,7 @@ activation. Detailed status and remaining scope are in
 ## Evidence and privacy
 
 - Owner's explicit MVP deferral decision on 2026-10-09.
-- Current issue states/reasons/labels, PR states and retained branches on GitHub.
+- Current issue states/reasons/labels and PR states on GitHub; owner-authorized branch deletion inventory and verified private recovery backups.
 - `docs/runbooks/security-hardening-status.md` and [[Public Repository Release Workflow]].
 
 Keep credentials, operator identities, host state and restricted evidence out

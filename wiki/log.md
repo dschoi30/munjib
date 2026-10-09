@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-09
-source_count: 372
+updated: 2026-10-10
+source_count: 374
 tags:
   - log
   - munjib
@@ -19,6 +19,21 @@ links:
 
 # Wiki Log
 
+## 2026-10-09 - Verified private delivery and branch cleanup (Issue #234)
+
+- Private delivery run `37945673261` succeeded. Independent host verification matched state, checkout and image to `f94359945f118f86f68607f69f085fc5c5687c56`, with local/public HTTP 200. Disabled the old source runner service and removed its GitHub registration; source has zero runners and private operations has one online runner. Ops issue #1 is completed.
+- Review follow-up: hardening status and resume guidance now recover deleted remote branches from private backups; after history cleanup, port reviewed changes onto clean main instead of reintroducing archived history.
+- Owner-authorized branch cleanup removed sixteen obsolete source remote branches, one operations branch and thirteen unused local branches after private recovery backups; checked-out worktree branches and dirty files remain. PR #237 merged after review/CI, and its remote branch was removed.
+- Review follow-up: reconciled the public-release checklist and prior runner-guard section with the completed cutover for the verified SHA; recorded log-audit limitations and sanitized historical issue bodies.
+- Updated [[Public Repository Release Workflow]], [[CI CD And Monitoring Workflow]], [[Local Development Workflow]], [[Project PRD]], [[index|Wiki Index]] and `docs/runbooks/private-operations-delivery.md`; review follow-up reconciles the same verified-SHA cutover status across wiki entry points. These observations do not attest later commits or history replacement.
+
+## 2026-10-09 - External LLM Wiki publication reference (Issue #234)
+
+- Owner authorized private archival of both full-text copies and publication of source attribution plus a project-written summary. Verified original bytes against private backup before replacement; ordinary raw-source immutability still applies.
+- Updated `llm-wiki.md`, `raw/sources/llm-wiki.md`, historical design/implementation notices, [[Wiki Maintenance Automation]], [[Public Repository Release Workflow]] and the public-release runbook.
+- Review follow-up: recorded the narrowly scoped owner-approved migration in `AGENTS.md`; audits requiring original bytes must consult the private archive or disclose unavailable evidence, not assume a live URL is unchanged.
+- Existing Git history still contains the full text. A reviewed history rewrite and object scan remain required; this change does not claim redistribution permission or completed publication.
+
 ## 2026-10-09 - Private launch identity configuration (Issue #234)
 
 - Replaced operational identity literals in runtime, fixtures and project documentation with reserved examples. Runtime membership and signup checks resolve server-only identity configuration lazily; production/staging fail closed without a valid distinct pair.
@@ -26,10 +41,9 @@ links:
 - Auth preflight validates the same pair before replacement. Compose passes runtime variables to web/preflight only; production seed remains forbidden and local seed uses local-only passwords.
 - Pages: [[Auth And Permissions Workflow]], [[index|Wiki Index]]. Source: `lib/auth/launch-accounts.ts`, membership/signup policy, auth preflight, Compose and seed. Preserve existing private values before rollout; no deployment is claimed by this source change.
 
-
 ## 2026-10-09 - Current MVP issue triage
 
-- Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code/branches remain. PR #188 closed without merging; #234 stays active.
+- Owner chose to defer long-term work not adopted for current MVP. Fourteen issues (#139/#154/#159/#160/#162/#163/#164/#165/#166/#167/#168/#180/#184/#185) closed as `not_planned` with `deferred-mvp`; original scope and code remain recoverable (obsolete remote branches subsequently removed after private backup). PR #188 closed without merging; #234 stays active.
 - Refreshed [[Security Hardening Public Status]] and `docs/runbooks/security-hardening-status.md` from live GitHub state; removed obsolete open-readiness-PR/billing-blocked claims. Added scope notes to affected workflow pages and [[index|Wiki Index]].
 - Review follow-up: reconciled recovery, invite-signup and attachment runbook status fields; updated the existing recovery documentation assertion to require the actual deferred state.
 - Evidence: owner's 2026-10-09 scope choice, issue states/reasons/labels and current PR API results. Closure is not implementation, deployment or security acceptance evidence.

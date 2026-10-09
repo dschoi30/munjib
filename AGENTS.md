@@ -26,6 +26,20 @@ When durable knowledge is discovered, update the relevant wiki page, `wiki/index
 
 Do not modify files under `raw/sources/` as part of wiki maintenance. Treat them as immutable source evidence.
 
+### Owner-approved external-source publication exception (2026-10-09)
+
+The owner explicitly authorized replacing the external full-text copies at
+`llm-wiki.md` and `raw/sources/llm-wiki.md` with author/source attribution and a
+project-written summary/reference before publication. Preserve the exact original
+bytes and SHA-256 provenance in private archival storage before replacement.
+The public reference is not the original evidence: future audits that need the
+captured bytes must consult the private archive or state that verification is
+unavailable, rather than infer source equality from a mutable external URL.
+Historical copies still require a separately reviewed history cleanup. This
+exception is limited to these two owner-approved files; ordinary wiki maintenance
+must leave all other `raw/sources/` evidence unchanged.
+
+
 ## LLM Wiki Operating Loop
 
 Treat the wiki as a persistent compiled knowledge layer, not as a scratchpad or search cache.

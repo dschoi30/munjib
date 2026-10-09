@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-09
+updated: 2026-10-10
 source_count: 76
 tags:
   - munjib
@@ -44,9 +44,13 @@ exact current source main SHA after both source CI and secret scan succeed,
 rechecks provenance on its private runner, and skips an already deployed SHA.
 See `docs/runbooks/private-operations-delivery.md`.
 
-This source change alone does not prove live cutover. Private runner smoke,
-source read access, an actual exact-SHA deployment, and removal of source runner
-access are independent gates. Keep the source private until they pass.
+The live cutover gate passed on 2026-10-09 for source SHA
+`f94359945f118f86f68607f69f085fc5c5687c56`: private smoke/source access and
+actual delivery succeeded; independent host state/checkout/image verification
+matched that SHA with local/public HTTP 200. The old source runner is disabled
+and unregistered, leaving zero source runners and one online private runner.
+This evidence does not verify later main commits or a rewritten history.
+Other publication gates remain; keep the source private until those pass.
 
 The Issue #210 source-scoped deploy and smoke descriptions below are retained as
 historical bootstrap evidence. They are superseded by this transition; do not
@@ -60,7 +64,8 @@ Checkout and Node setup actions in the application CI are pinned to full SHAs;
 checkout does not retain credentials. The previous production deploy and runner-smoke jobs
 required `github.event.repository.private == true`. This conditional was an
 accidental-execution guard, not a guarantee against a modified fork workflow.
-Production runner access must be removed from this repository before publication.
+Production runner access was removed on 2026-10-09 after independent verification
+of `f94359945f118f86f68607f69f085fc5c5687c56`; do not re-register it here.
 History rewrites change the deployed-SHA ancestry relation; review the commit map
 and host transition before resuming deployment.
 

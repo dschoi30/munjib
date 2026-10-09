@@ -1,5 +1,7 @@
 # LLM Wiki System Implementation Plan
 
+> Publication update (2026-10-09): historical full-text retention instructions below are superseded by the owner-approved private archival and public source-link/summary policy in `docs/runbooks/public-release-readiness.md`. The raw source path now contains a reference note.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a markdown-first LLM wiki system that agents consult before broad repository search.
