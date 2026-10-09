@@ -26,8 +26,10 @@ links:
 > Issue #234: application CI is GitHub-hosted only. Delivery belongs to separate
 > private operations, which admits exact source main after successful CI and
 > secret scan. Older Issue #210 source-scoped runner descriptions below are
-> historical. Host cutover remains independently gated; see
-> [[CI CD And Monitoring Workflow]].
+> historical. Host cutover was independently verified on 2026-10-09 for
+> `f94359945f118f86f68607f69f085fc5c5687c56`, and the source runner registration
+> was removed. Later commits and history replacement still need their own
+> verification; see [[CI CD And Monitoring Workflow]].
 
 
 이 repository는 pnpm 기반 Next.js 애플리케이션이다. package manager는 `package.json`의 `packageManager` 필드 기준 `pnpm@10.28.1`이다.

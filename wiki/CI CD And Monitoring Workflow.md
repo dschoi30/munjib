@@ -44,9 +44,13 @@ exact current source main SHA after both source CI and secret scan succeed,
 rechecks provenance on its private runner, and skips an already deployed SHA.
 See `docs/runbooks/private-operations-delivery.md`.
 
-This source change alone does not prove live cutover. Private runner smoke,
-source read access, an actual exact-SHA deployment, and removal of source runner
-access are independent gates. Keep the source private until they pass.
+The live cutover gate passed on 2026-10-09 for source SHA
+`f94359945f118f86f68607f69f085fc5c5687c56`: private smoke/source access and
+actual delivery succeeded; independent host state/checkout/image verification
+matched that SHA with local/public HTTP 200. The old source runner is disabled
+and unregistered, leaving zero source runners and one online private runner.
+This evidence does not verify later main commits or a rewritten history.
+Other publication gates remain; keep the source private until those pass.
 
 The Issue #210 source-scoped deploy and smoke descriptions below are retained as
 historical bootstrap evidence. They are superseded by this transition; do not
