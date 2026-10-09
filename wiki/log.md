@@ -4067,3 +4067,5 @@ links:
 - Updated [[Document Editing Workflow]] and [[index]] with guarded upload submission, transient attachment-card focus, Unicode display names and native downloads.
 - Source evidence: attachment upload component/action, AppShell/MetadataPanel, attachment service and response headers, targeted component/route/action tests.
 - Existing ASCII storage-key validation remains unchanged; original names lost by earlier sanitization cannot be recovered.
+
+- CI follow-up: kept the protected Markdown renderer byte-identical; attachment document links download through the response disposition. The Leaf 11 renderer integrity check remains enforced.
