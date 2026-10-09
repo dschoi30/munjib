@@ -13,6 +13,7 @@ import {
 } from "react";
 import { Archive, Bot, Building2, Clock3, FileText, Languages, Upload, X } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
+import { ModelConnectionStatus } from "@/components/ai/model-connection-status";
 import { Button } from "@/components/ui/button";
 import { LANGUAGE_OPTIONS, languageLabel } from "@/lib/i18n/language";
 import type { MessageKey } from "@/lib/i18n/messages";
@@ -31,6 +32,7 @@ import {
   addStoredCustomChatModel,
   availableChatModelSetting,
   firstAvailableChatProvider,
+  effectiveChatModelSetting,
   getRagChatModelPresets,
   getRagChatProviderResetDefault,
   readStoredChatModelSetting,
@@ -197,8 +199,11 @@ export function WorkspaceSettingsPanel({
       customChatModels.filter((setting) => setting.chatProvider === selectedChatProvider),
     [customChatModels, selectedChatProvider],
   );
-  const effectiveChatProvider = storedChatModel?.chatProvider ?? fallbackChatProvider;
-  const effectiveChatModel = storedChatModel?.chatModel ?? defaultChatModel;
+  const effectiveSetting = effectiveChatModelSetting(
+    storedChatModel, defaultChatProvider, availableChatProviders,
+  );
+  const effectiveChatProvider = effectiveSetting?.chatProvider ?? defaultChatProvider;
+  const effectiveChatModel = effectiveSetting?.chatModel ?? defaultChatModel;
 
   useEffect(() => {
     if (!availableChatProviders[selectedChatProvider]) {
@@ -782,6 +787,11 @@ export function WorkspaceSettingsPanel({
                 <p className="mt-2 break-all text-sm font-semibold text-ink">
                   {effectiveChatModel}
                 </p>
+                <ModelConnectionStatus
+                  workspaceSlug={workspaceSlug}
+                  chatProvider={effectiveChatProvider}
+                  chatModel={effectiveChatModel}
+                />
               </div>
 
               <div>

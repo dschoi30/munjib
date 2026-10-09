@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-07
+updated: 2026-10-09
 source_count: 70
 tags:
   - munjib
@@ -137,7 +137,7 @@ static installation manifest v1과 schema 및 trust-key 의미가 충돌하지 �
 ## Security-critical runtime gate
 
 Leaf 3 keeps Next.js on the reviewed 15.x line with exact matching `next` and
-`eslint-config-next` 15.5.24 specifications. The repository contract checks the
+`eslint-config-next` 15.5.27 specifications. The repository contract checks the
 resolved pnpm graph, a deterministic projection of the Next.js/React runtime
 roots, and a paginated advisory gate without persisting advisory response bodies.
 Production runtime smoke fixtures read passwords only from a file and emit no
@@ -160,7 +160,7 @@ Issue #171 adds a production dependency audit gate for the same runtime graph.
 `protobufjs` 7.6.5, and `sharp` 0.35.5.
 The scoped brace override preserves the callable `minimatch@3` development
 path while patching the production/Sentry `minimatch@10` path. The lockfile must resolve those patched versions on production paths.
-Next.js 15.5.24 and NextAuth 4.24.15 are the current patched floors. Compatibility contracts cover NextAuth JWT UUID
+Next.js 15.5.27 and NextAuth 4.24.15 are the current patched floors. Compatibility contracts cover NextAuth JWT UUID
 generation, minimatch major compatibility, and Sentry/OpenTelemetry module
 loading; CI runs the unfiltered `pnpm audit --prod` command followed by the
 paginated Next.js advisory checker, both immediately after the frozen install.
