@@ -1,3 +1,4 @@
+import { attachmentContentDisposition } from "@/lib/attachments/content-disposition";
 import { NextResponse } from "next/server";
 import { resolveAnonymousTrialActor, resolveAnonymousTrialCapability } from "@/lib/auth/trial-entitlement";
 import { readTrialAttachment } from "@/lib/workspaces/trial-attachments";
@@ -11,7 +12,7 @@ export async function GET(request:Request,{params}:{params:Promise<{attachmentId
     if(!result)return deny();
     return new NextResponse(new Uint8Array(result.bytes),{headers:{
       "content-type":result.mimeType,"content-length":String(result.bytes.length),
-      "content-disposition": `inline; filename="attachment"; filename*=UTF-8''${encodeURIComponent(result.fileName).replace(/['()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`,
+      "content-disposition": attachmentContentDisposition(result.fileName, new URL(request.url).searchParams.get("download") === "1" || !result.mimeType.startsWith("image/")),
       "cache-control":"private, no-store","x-content-type-options":"nosniff",
       "content-security-policy":"sandbox; default-src 'none'",
     }});

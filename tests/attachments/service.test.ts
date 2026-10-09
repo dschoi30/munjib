@@ -25,7 +25,7 @@ describe("attachment service", () => {
     await resetTestData();
   });
 
-  it("uploads an attachment and appends a markdown link", async () => {
+  it.each(["notes.txt", "한글문서.txt", "한글문서.txt".normalize("NFD")])("uploads %s preserving its Unicode name and bytes", async (fileName) => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const document = await createDocument({
       workspaceSlug: fixture.workspace.slug,
@@ -38,14 +38,16 @@ describe("attachment service", () => {
     const attachment = await uploadDocumentAttachment({
       documentId: document.id,
       actorId: fixture.user.id,
-      fileName: "notes.txt",
+      fileName,
       mimeType: "text/plain",
       bytes: new TextEncoder().encode("hello"),
     });
 
-    expect(attachment.fileName).toBe("notes.txt");
+    expect(attachment.fileName).toBe(fileName.normalize("NFC"));
+    const readable = await getReadableAttachment(attachment.id, fixture.user.id);
+    expect(readable.bytes).toEqual(Buffer.from("hello"));
     const updated = await prisma.document.findUniqueOrThrow({ where: { id: document.id } });
-    expect(updated.contentMarkdown).toContain(`[notes.txt](/api/attachments/${attachment.id})`);
+    expect(updated.contentMarkdown).toContain(`[${fileName.normalize("NFC")}](/api/attachments/${attachment.id})`);
     const auditLogs = await prisma.auditLog.findMany({
       where: { resourceType: "attachment", resourceId: attachment.id },
     });

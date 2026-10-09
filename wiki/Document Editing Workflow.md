@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-07-20
+updated: 2026-10-09
 source_count: 105
 tags:
   - munjib
@@ -321,3 +321,11 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - GitHub issue #137
 - `docs/superpowers/specs/2026-06-27-document-list-sidebar-ux-design.md`
 - `docs/superpowers/plans/2026-06-27-document-list-sidebar-ux.md`
+
+## Issue #231 attachment upload and download
+
+- `AttachmentUpload` disables submission without a nonempty selected file, while pending, and for read-only viewers. The server action returns a stable missing-file result instead of throwing for missing/empty input. Failed uploads show a localized toast and retain the selection for retry.
+- Starting an upload opens the right metadata panel at Attachments. Success returns the exact attachment ID, refreshes server data, scrolls its card into view and marks it with a green border. Pointer/focus outside the card, Escape, panel closure or document navigation clears the highlight. Duplicate filenames do not affect selection.
+- Display names retain NFC-normalized Unicode letters/numbers; storage keys continue using the existing ASCII-safe filename contract. Existing sanitized filenames cannot be reconstructed.
+- Attachment list links use native download anchors; Markdown document attachment links receive download responses from the server without changing the protected renderer. Authenticated and Trial routes return RFC 5987 UTF-8 filenames and attachment disposition for non-images or explicit `?download=1`. Inline image requests remain renderable. Downloaded bytes are unchanged, including legacy Korean text encodings; this avoids browser text rendering rather than transcoding content.
+- Evidence: `components/attachment-upload.tsx`, `components/app-shell.tsx`, `components/metadata-panel.tsx`, `lib/attachments/service.ts`, `lib/attachments/content-disposition.ts`, both attachment routes, and attachment/action/component tests.

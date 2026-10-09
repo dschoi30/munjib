@@ -4070,3 +4070,11 @@ links:
 - Issue #227 PR review follow-up: Ask preparation failures now share the request trace; model attribution follows the 160-character application validation contract; removed the obsolete metadata-export-disabled claim. Regression evidence: Ask preparation failure and model-ID boundary tests.
 - Live development export verified successful generation with reported token usage and no input/output. Fixed the private provider resource to `service.name=munjib-ai` so the SDK default cannot expose the local Node executable path.
 - PR #228 lease-finalization review: routes retain the Ask/Workspace request observation until the final heartbeat result is validated, so a lost Trial lease records an error instead of a premature successful root. Added service deferral and both route race regressions.
+
+## 2026-10-09 — Issue #231 attachment upload and downloads
+
+- Updated [[Document Editing Workflow]] and [[index]] with guarded upload submission, transient attachment-card focus, Unicode display names and native downloads.
+- Source evidence: attachment upload component/action, AppShell/MetadataPanel, attachment service and response headers, targeted component/route/action tests.
+- Existing ASCII storage-key validation remains unchanged; original names lost by earlier sanitization cannot be recovered.
+
+- CI follow-up: kept the protected Markdown renderer byte-identical; attachment document links download through the response disposition. The Leaf 11 renderer integrity check remains enforced.
