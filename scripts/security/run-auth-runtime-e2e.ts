@@ -159,6 +159,8 @@ async function main() {
         "--mount", `type=bind,src=${secretPath},dst=/run/secrets/munjib_nextauth_secret,readonly`,
         "--env", "NODE_ENV=production",
         "--env", "MUNJIB_DEPLOYMENT_ENV=production",
+        "--env", "MUNJIB_LAUNCH_ADMIN_EMAIL=admin@example.invalid",
+        "--env", "MUNJIB_LAUNCH_VIEWER_EMAIL=trial@example.invalid",
         "--env", "HOME=/tmp",
         "--env", "COREPACK_HOME=/tmp/corepack",
         "--env", "NEXTAUTH_SECRET_FILE=/run/secrets/munjib_nextauth_secret",

@@ -28,7 +28,7 @@ describe("password signup gate", () => {
   it("rejects reserved launch account emails before public provisioning", async () => {
     vi.stubEnv("MUNJIB_PUBLIC_SIGNUP_ENABLED", "true");
     vi.stubEnv("NEXTAUTH_URL", "https://munjib.example");
-    for (const email of ["mjadmin@munjib.com", " MJTRIAL@MUNJIB.COM "]) {
+    for (const email of ["admin@example.invalid", " trial@example.invalid "]) {
       expect((await POST(request(JSON.stringify({ email, password: "test-password" })))).status).toBe(400);
     }
     expect(provision).not.toHaveBeenCalled();

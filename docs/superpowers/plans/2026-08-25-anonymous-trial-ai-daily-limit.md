@@ -12,7 +12,7 @@
 
 ## 전역 제약
 
-- 기존 `mjtrial@munjib.com` 계정, production seed, 기존 Trial provider를 재활성화하지 않는다.
+- 기존 `trial@example.invalid` 계정, production seed, 기존 Trial provider를 재활성화하지 않는다.
 - 일반 로그인 사용자의 AI 동작과 quota는 변경하지 않는다.
 - visitor/network 원문, IP, 질문, prompt, context, 답변, challenge token을 DB·log·telemetry에 저장하지 않는다.
 - 모든 limit/config/storage 오류는 모델 호출 전에 fail closed한다.
@@ -253,7 +253,7 @@ git commit -m "feat(ui): show anonymous trial ai allowance"
 
 - [ ] **Step 0: 실제 가입 없는 Trial 진입 연결**
 
-기존 development-only `signIn("trial")`/`mjtrial@munjib.com` provider를 제거하고, 로그인 버튼을 익명 entitlement 발급과 정확한 demo workspace 이동에 연결한다. workspace 화면은 별도 anonymous viewer projection으로 exact workspace ID/slug, active document, explicit-permission exclusion을 적용하며 `WorkspaceMember`, USER grant, shared `User`, mutation/account UI를 사용하지 않는다. capability가 없으면 UI와 API가 모두 fail closed한다.
+기존 development-only `signIn("trial")`/`trial@example.invalid` provider를 제거하고, 로그인 버튼을 익명 entitlement 발급과 정확한 demo workspace 이동에 연결한다. workspace 화면은 별도 anonymous viewer projection으로 exact workspace ID/slug, active document, explicit-permission exclusion을 적용하며 `WorkspaceMember`, USER grant, shared `User`, mutation/account UI를 사용하지 않는다. capability가 없으면 UI와 API가 모두 fail closed한다.
 
 - [ ] **Step 1: production-like E2E와 source-contract 테스트 작성**
 

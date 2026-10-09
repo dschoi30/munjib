@@ -6,17 +6,17 @@
 
 **Confirmed product decisions:**
 
-- Seed `mjadmin@munjib.com` with password `mjadmin`.
-- Seed `mjtrial@munjib.com` with password `mjtrial`.
-- `mjadmin@munjib.com` must receive `ADMIN` membership on every existing and newly created workspace.
-- `mjtrial@munjib.com` must receive `VIEWER` membership on every existing and newly created workspace.
+- Seed `admin@example.invalid` with password `mjadmin`.
+- Seed `trial@example.invalid` with password `mjtrial`.
+- `admin@example.invalid` must receive `ADMIN` membership on every existing and newly created workspace.
+- `trial@example.invalid` must receive `VIEWER` membership on every existing and newly created workspace.
 - Every normal signup creates a user-owned default workspace where the signing-up user is `OWNER`.
 - Other users do not gain access to a workspace until a later sharing/collaboration feature grants `VIEWER` or `EDITOR` membership.
 - Google signup/login trusts Google's verified identity and does not require a separate Munjib email verification step.
 - Email/password signup is allowed to use the product immediately in the first launch slice; email verification and password reset are follow-up hardening work.
 - Default workspace names follow the signup UI language: `My Workspace` for English and `내 워크스페이스` for Korean.
 - Workspace deletion is soft archive, not hard delete, for the launch slice.
-- The `Start trial` button signs in `mjtrial@munjib.com` and lands in a readable demo workspace.
+- The `Start trial` button signs in `trial@example.invalid` and lands in a readable demo workspace.
 
 ## Branch 1: `launch-auth-accounts-foundation`
 
@@ -32,8 +32,8 @@
    - Use a server-only helper such as `lib/auth/passwords.ts`.
    - Never store plain-text passwords outside seed constants used to generate hashes.
 3. Update seed/bootstrap behavior.
-   - Create or update `mjadmin@munjib.com` / `mjadmin`.
-   - Create or update `mjtrial@munjib.com` / `mjtrial`.
+   - Create or update `admin@example.invalid` / `mjadmin`.
+   - Create or update `trial@example.invalid` / `mjtrial`.
    - Backfill `mjadmin=ADMIN` and `mjtrial=VIEWER` on all existing workspaces.
    - Keep existing development users only as local/dev fixtures if still needed by tests.
 4. Add reusable workspace membership bootstrap helper.
@@ -82,7 +82,7 @@ pnpm lint
    - On first Google login, run the same provisioning flow.
    - Resolve default workspace name from the signup UI language: English `My Workspace`, Korean `내 워크스페이스`.
 5. Add trial login.
-   - `Start trial` signs in `mjtrial@munjib.com` using the seeded password path or a server action that does not expose secrets to the browser.
+   - `Start trial` signs in `trial@example.invalid` using the seeded password path or a server action that does not expose secrets to the browser.
    - Redirect to the demo/readable workspace.
 6. Redirect users to the first accessible non-archived workspace after login.
 

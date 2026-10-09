@@ -4,20 +4,17 @@ import { assertProductionSeedForbidden } from "../lib/security/production-seed-g
 import {
   backfillLaunchMembershipsForAllWorkspaces,
   ensureWorkspaceLaunchMemberships,
-  launchAccountSeeds,
 } from "../lib/workspaces/membership-bootstrap";
+import { resolveLaunchAccountSeeds } from "../lib/auth/launch-accounts";
 import { reconcileDocumentLinks } from "../lib/wiki-links/reconcile";
 
 assertProductionSeedForbidden(process.env);
 const prisma = new PrismaClient();
 
-const launchAccountPasswords = {
-  "mjadmin@munjib.com": "mjadmin",
-  "mjtrial@munjib.com": "mjtrial",
-} as const satisfies Record<(typeof launchAccountSeeds)[number]["email"], string>;
+const launchAccountPasswords = { ADMIN: "local-only-admin", VIEWER: "local-only-trial" } as const;
 
 async function main() {
-  for (const account of launchAccountSeeds) {
+  for (const account of resolveLaunchAccountSeeds()) {
     const existingUser = await prisma.user.findUnique({
       where: { email: account.email },
       select: { passwordHash: true, emailVerified: true },
@@ -28,7 +25,7 @@ async function main() {
     const passwordHash =
       existingCurrentHash?.format === "v1"
         ? existingUser!.passwordHash!
-        : await hashPassword(launchAccountPasswords[account.email]);
+        : await hashPassword(launchAccountPasswords[account.workspaceRole]);
     const emailVerified = existingUser?.emailVerified ?? new Date();
 
     await prisma.user.upsert({

@@ -1,4 +1,4 @@
-import { launchAccountSeeds } from "@/lib/auth/launch-accounts";
+import { resolveLaunchAccountSeeds } from "@/lib/auth/launch-accounts";
 
 /** Explicit opt-in; unset or malformed values keep public account creation closed. */
 export function resolvePublicSignupEnabled(
@@ -9,7 +9,7 @@ export function resolvePublicSignupEnabled(
 
 /** Public registration must not claim the legacy automatically privileged identities. */
 export function isReservedSignupEmail(value: unknown): boolean {
-  return typeof value === "string" && launchAccountSeeds.some(
+  return typeof value === "string" && resolveLaunchAccountSeeds().some(
     account => account.email === value.trim().toLowerCase(),
   );
 }
