@@ -14,12 +14,14 @@ vi.mock("next/navigation", () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ connected: false }) }));
   router.refresh.mockReset();
   window.localStorage.clear();
 });
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
 });
 
 function renderSettingsPanel(
@@ -75,6 +77,30 @@ function renderSettingsPanel(
 }
 
 describe("WorkspaceSettingsPanel", () => {
+  it("checks only in the AI tab, then rechecks a saved model and tab reopen", async () => {
+    renderSettingsPanel();
+    expect(fetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await screen.findByText("Could not connect");
+    expect(fetch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("button", { name: "Use OpenRouter Fusion" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[1][1]?.body as string)).toEqual({
+      chatProvider: "openai-compatible", chatModel: "openrouter/fusion",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(3));
+  });
+
+  it("checks the matching fallback model when the default provider becomes unavailable", async () => {
+    renderSettingsPanel({ defaultChatProvider: "openai", defaultChatModel: "gpt-5.4-mini",
+      availableChatProviders: { ollama: true, openai: false, "openai-compatible": false } });
+    fireEvent.click(screen.getByRole("button", { name: "AI" }));
+    await screen.findByText("Could not connect");
+    expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toEqual({ chatProvider: "ollama", chatModel: "gemma4:e4b" });
+  });
+
   it("opens to workspace management before import settings", () => {
     renderSettingsPanel();
 
