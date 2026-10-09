@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
 updated: 2026-10-09
-source_count: 70
+source_count: 74
 tags:
   - munjib
   - workflow
@@ -21,11 +21,24 @@ links:
   - "[[Project PRD]]"
   - "[[Release Signer And Vault Workflow]]"
   - "[[Wiki Maintenance Automation]]"
+  - "[[Public Repository Release Workflow]]"
 ---
 
 # CI CD And Monitoring Workflow
 
 이 page는 현재 repository의 자동 검증, production compose deploy, monitoring 구성을 한 곳에서 본다. 세부 production observability 원칙은 [[Production Observability Workflow]]에 있고, 이 page는 CI/CD와 monitoring이 어떻게 이어지는지 요약한다.
+
+## Public repository preparation
+
+See [[Public Repository Release Workflow]] for Issue #234. A separate secret-scan
+workflow runs pinned Gitleaks on GitHub-hosted runners with read-only permissions.
+Checkout and Node setup actions in the application CI are pinned to full SHAs;
+checkout does not retain credentials. Production deploy and runner-smoke jobs
+also require `github.event.repository.private == true`. This conditional is an
+accidental-execution guard, not a guarantee against a modified fork workflow.
+Production runner access must be removed from this repository before publication.
+History rewrites change the deployed-SHA ancestry relation; review the commit map
+and host transition before resuming deployment.
 
 ## Entry points
 

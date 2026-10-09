@@ -6,7 +6,7 @@ status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 72
+source_count: 73
 tags:
   - munjib
   - workflow
@@ -18,6 +18,7 @@ links:
   - "[[CI CD And Monitoring Workflow]]"
   - "[[Wiki Schema]]"
   - "[[Wiki Maintenance Automation]]"
+  - "[[Public Repository Release Workflow]]"
 ---
 
 # Local Development Workflow
@@ -44,6 +45,18 @@ Issue #174는 production `tsx` auth-preflight 경로에만
 `tsx>esbuild: 0.28.1` exact override를 적용한다. 따라서 production
 audit은 patched esbuild를 사용하고, dev-only Vite는 기존 0.21.5
 resolution을 유지한다.
+
+## Secret scanning
+
+Issue #234 adds reproducible Gitleaks 8.30.1 scans. Install the scanner or set
+`GITLEAKS_BIN` to its executable, then run
+`bash scripts/security/scan-secrets.sh history` for all locally available refs
+or `bash scripts/security/scan-secrets.sh staged` before a commit. Reports use
+full redaction in a private temporary directory. `.gitleaksignore` contains only
+two manually reviewed historical fixture fingerprints. The CI workflow scans
+full fetched history on a GitHub-hosted runner; it cannot establish that a live
+credential is revoked. See [[Public Repository Release Workflow]] and
+`SECURITY.md` for the publication gates and reporting policy.
 
 ## 주요 명령
 

@@ -6,7 +6,7 @@ status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
 updated: 2026-10-09
-source_count: 369
+source_count: 370
 tags:
   - log
   - munjib
@@ -18,6 +18,13 @@ links:
 ---
 
 # Wiki Log
+
+## 2026-10-09 - Existing repository public-release preparation (Issue #234)
+
+- Result: owner selected MIT and cleanup of existing history; publication remains gated. Added license, security policy, redacted Gitleaks scan and precise fixture exclusions, local-material ignores, pinned CI actions, and private-repository guards for production jobs.
+- Affected pages: [[Public Repository Release Workflow]], [[CI CD And Monitoring Workflow]], [[index|Wiki Index]].
+- Source evidence: `LICENSE`, `SECURITY.md`, `.gitleaksignore`, `scripts/security/scan-secrets.sh`, `.github/workflows/{secret-scan,ci-cd,runner-smoke}.yml`, `docs/runbooks/public-release-readiness.md`, Issue #234, and the official GitHub documentation linked in the runbook.
+- Open gates: live credential revocation, private runner/delivery cutover, identity configuration, deployed-SHA rebinding after a reviewed rewrite, GitHub metadata/log cleanup, and final visibility review. Private findings and replacement specifications remain outside Git.
 
 ## 2026-10-09 - PR #230 review and CI follow-up
 

@@ -129,7 +129,7 @@ describe("GitHub Actions CI/CD workflow", () => {
 
     expect(workflowText).not.toContain("appleboy/ssh-action");
     expect(deploy.needs).toBe("ci");
-    expect(deploy.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'");
+    expect(deploy.if).toBe("github.event.repository.private == true && github.event_name == 'push' && github.ref == 'refs/heads/main'");
     expect(deploy["runs-on"]).toEqual([
       "self-hosted",
       "linux",
@@ -159,6 +159,7 @@ describe("GitHub Actions CI/CD workflow", () => {
     });
     expect(smokeText).not.toContain("workflow_dispatch");
     expect(smoke.permissions).toEqual({ contents: "read" });
+    expect(smoke.jobs.smoke.if).toBe("github.event.repository.private == true");
     expect(smoke.jobs.smoke["runs-on"]).toEqual([
       "self-hosted",
       "linux",
