@@ -332,7 +332,7 @@ export async function restoreDocumentVersionAction(
     versionId: String(formData.get("versionId")),
   });
   revalidatePath(`/workspaces/${workspaceSlug}`);
-  redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
+  if (formData.get("redirect") !== "false") redirect(`/workspaces/${workspaceSlug}?document=${document.id}`);
 }
 
 export async function uploadDocumentAttachmentAction(

@@ -15,6 +15,7 @@ tags:
   - 편집
 links:
   - "[[Munjib]]"
+  - "[[Workspace Split Layout]]"
   - "[[Document Knowledge Model]]"
   - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
@@ -343,3 +344,7 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - `MetadataPanel` accepts visible-document bundles in pane order and keeps the shared Outline, Attachments, Versions and Audit log category toolbar. Each document title is a native disclosure button with an independent document-ID/category expansion value, defaulting open; the parent persists the supplied expansion map. Disclosure toggling does not select a document or navigate.
 - Group content, load/error state, retry, attachment highlights and version permissions belong to the matching document. Heading actions carry the document ID, and version forms submit their own version ID. The active document is highlighted and document paths appear on title hover for disambiguation.
 - The original single-document props remain supported for the anonymous read-only Trial, including protected Trial download URLs. Evidence: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
+
+## Issue #240 nested document workspace
+
+Authenticated workspaces now use [[Workspace Split Layout]] for document tabs. Multiple panes share document-scoped authorization and metadata, retain independent editor sessions and restore the same account/browser layout. The old single-selected-document chrome description above continues to describe Trial and pre-split behavior; see the linked workflow for current authenticated navigation.

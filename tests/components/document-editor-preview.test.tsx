@@ -2165,3 +2165,16 @@ it("accepts clean server changes and reports dirty state only for the edited doc
   expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", false);
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("treats native form CRLF normalization as a clean saved draft", async () => {
+  const onDirtyChange = vi.fn();
+  const ui = (contentMarkdown: string) => <DocumentViewModeProvider mode="edit" onModeChange={() => {}}><DocumentEditor {...baseProps}
+    document={{ id: "doc-1", title: "Original", contentMarkdown }} onDirtyChange={onDirtyChange} /></DocumentViewModeProvider>;
+  const { rerender } = render(ui("Original"));
+  await screen.findByLabelText("Markdown editor");
+  act(() => codeMirrorHarness.changeHandlers[0]("Saved\n\nDraft", { state: { selection: { main: { head: 12 } } } }));
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", true);
+  rerender(ui("Saved\r\n\r\nDraft"));
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", false);
+  expect(screen.queryByRole("alert")).toBeNull();
+});

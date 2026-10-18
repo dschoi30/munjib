@@ -5,7 +5,7 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-10-10
+updated: 2026-10-18
 source_count: 183
 tags:
   - index
@@ -18,6 +18,7 @@ links:
   - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
   - "[[Document Editing Workflow]]"
+  - "[[Workspace Split Layout]]"
   - "[[Markdown Import And Clipboard Paste Workflow]]"
   - "[[Attachment Lifecycle Readiness]]"
   - "[[Auth And Permissions Workflow]]"
@@ -63,6 +64,8 @@ links:
 - [[Wiki Schema]] - wiki page frontmatter, link, manifest 유지 규칙.
 
 ## 워크플로우
+
+- [[Workspace Split Layout]] - 중첩 탭 분할, 문서별 우측 사이드바, 같은 계정·브라우저의 레이아웃 복원.
 
 - [[Public Repository Release Workflow]] - MIT licensing, secret scanning, private delivery and existing-history publication gates; preparation only.
 

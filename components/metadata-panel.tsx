@@ -177,6 +177,7 @@ export function MetadataPanel({
       </TooltipProvider>
       {documents ? documents.map((bundle) => (
         <DocumentMetadataGroup key={bundle.document.id} bundle={bundle} category={activeTab}
+          showPath={documents.filter(item => item.document.title === bundle.document.title).length > 1}
           expanded={(expanded ?? localExpanded)[bundle.document.id]?.[activeTab] ?? true}
           onToggle={() => changeExpanded(bundle.document.id, activeTab, !((expanded ?? localExpanded)[bundle.document.id]?.[activeTab] ?? true))}
           focusedAttachmentId={attachmentFocus?.documentId === bundle.document.id ? attachmentFocus.attachmentId : null}
@@ -204,7 +205,8 @@ export function MetadataPanel({
   );
 }
 
-function DocumentMetadataGroup({ bundle, category, expanded, onToggle, active, restoreVersionAction, onNavigateToHeading, onRetry, focusedAttachmentId, onClearFocus }: {
+function DocumentMetadataGroup({ bundle, category, showPath, expanded, onToggle, active, restoreVersionAction, onNavigateToHeading, onRetry, focusedAttachmentId, onClearFocus }: {
+  showPath?: boolean;
   focusedAttachmentId?: string | null;
   onClearFocus?: () => void;
   onRetry?: () => void;
@@ -222,11 +224,12 @@ function DocumentMetadataGroup({ bundle, category, expanded, onToggle, active, r
   const outline = useMemo(() => buildMarkdownOutline(bundle.document.contentMarkdown), [bundle.document.contentMarkdown]);
   return <section className="border-b border-border pb-3">
     <h2><button type="button" aria-expanded={expanded} aria-controls={contentId}
+      aria-label={showPath ? `${bundle.document.title} ${bundle.document.path}` : undefined}
       title={bundle.document.path ?? bundle.document.title}
       onClick={onToggle}
       className={`flex w-full min-w-0 items-center gap-2 rounded px-2 py-2 text-left text-sm font-semibold hover:bg-slate-200 ${active ? "bg-slate-200 text-ink" : "text-slate-600"}`}>
       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
-      <span className="truncate">{bundle.document.title}</span>
+      <span className="min-w-0"><span className="block truncate">{bundle.document.title}</span>{showPath ? <span className="block truncate text-xs font-normal">{bundle.document.path}</span> : null}</span>
     </button></h2>
     <div id={contentId} hidden={!expanded} className="px-2 pt-2">
       {bundle.loading ? <p role="status" className="text-sm text-slate-600">{statusMessages.loading}</p> : bundle.error ? <div role="alert" className="text-sm text-slate-600">

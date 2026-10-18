@@ -130,6 +130,7 @@
       ],
       "links": [
         "[[Munjib]]",
+        "[[Workspace Split Layout]]",
         "[[Document Knowledge Model]]",
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
@@ -244,6 +245,7 @@
         "[[Folder Hierarchy Model]]",
         "[[Wiki Links And Backlinks]]",
         "[[Document Editing Workflow]]",
+        "[[Workspace Split Layout]]",
         "[[Markdown Import And Clipboard Paste Workflow]]",
         "[[Attachment Lifecycle Readiness]]",
         "[[Auth And Permissions Workflow]]",
@@ -611,6 +613,27 @@
         "[[log|Wiki Log]]"
       ],
       "source_count": 4,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-workspace-split-layout",
+      "path": "wiki/Workspace Split Layout.md",
+      "title": "Workspace Split Layout",
+      "type": "workflow",
+      "status": "active",
+      "summary": "인증 workspace의 중첩 탭 분할, 편집 세션 유지, 문서별 우측 사이드바와 브라우저 복원 계약.",
+      "tags": [
+        "munjib",
+        "workflow",
+        "navigation"
+      ],
+      "links": [
+        "[[Document Editing Workflow]]",
+        "[[Auth And Permissions Workflow]]",
+        "[[Project Structure Onboarding]]",
+        "[[index|Wiki Index]]"
+      ],
+      "source_count": 8,
       "searchPriority": 50
     }
   ]

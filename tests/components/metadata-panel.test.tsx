@@ -362,6 +362,12 @@ describe("MetadataPanel document groups", () => {
     expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
   });
 
+  it("disambiguates matching document titles with their visible paths", () => {
+    renderPanel({ documents: documents.map(bundle => ({ ...bundle, document: { ...bundle.document, title: "Same title" } })) });
+    expect(screen.getByRole("button", { name: "Same title folder/a" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Same title folder/b" })).toBeTruthy();
+  });
+
   it("targets heading navigation by document even when headings match", () => {
     const onNavigateToDocumentHeading = vi.fn();
     renderPanel({ documents: documents.map((bundle) => ({ ...bundle, document: { ...bundle.document, contentMarkdown: "# Same" } })), onNavigateToDocumentHeading });

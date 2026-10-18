@@ -94,3 +94,18 @@ it("moves into an existing pane without losing tabs and excludes saved document 
   expect(layout.readLayout({ getItem: () => { throw Error("blocked"); } }, "a", "w", ["a"])).toBeNull();
   expect(layout.writeLayout({ setItem: () => { throw Error("quota"); } }, "a", "w", state)).toBe(false);
 });
+
+it("changes only the chosen split axis while preserving its tabs and ratios", () => {
+  let state = layout.createLayout("a");
+  state = layout.openDocument(state, "b");
+  state = layout.moveTab(state, layout.getPanes(state)[0].activeTabId!, state.activePaneId, "right");
+  state = layout.openDocument(state, "c");
+  state = layout.moveTab(state, layout.getPanes(state)[1].activeTabId!, state.activePaneId, "bottom");
+  if (state.root.type !== "split" || state.root.children[1].type !== "split") throw new Error("Expected nested split");
+  const nested = state.root.children[1];
+  const changed = layout.setSplitDirection(state, nested.id, "horizontal");
+  expect(changed.root.type === "split" && changed.root.direction).toBe("horizontal");
+  expect(changed.root.type === "split" && changed.root.children[1]).toEqual({ ...nested, direction: "horizontal" });
+  expect(layout.getPanes(changed)).toEqual(layout.getPanes(state));
+  expect(changed.activePaneId).toBe(state.activePaneId);
+});

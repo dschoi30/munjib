@@ -226,6 +226,11 @@ function withImageExtension(fileName: string, mimeType: string) {
   return fileName.toLowerCase().endsWith(`.${extension}`) ? fileName : `${fileName}.${extension}`;
 }
 
+// Native multipart form serialization uses CRLF; CodeMirror keeps LF internally.
+function sameMarkdown(left: string, right: string) {
+  return left.replace(/\r\n?/g, "\n") === right.replace(/\r\n?/g, "\n");
+}
+
 export function DocumentEditor({
   isActive = true,
   resetVersion = 0,
@@ -483,11 +488,11 @@ export function DocumentEditor({
     const previous = serverSnapshotRef.current;
     serverSnapshotRef.current = document;
     if (!forcedReset && document && previous?.id === document.id) {
-      const changed = previous.title !== document.title || previous.contentMarkdown !== document.contentMarkdown;
-      const dirty = title !== previous.title || contentMarkdown !== previous.contentMarkdown || hasPendingImagePaste;
-      if (dirty && changed && (title !== document.title || contentMarkdown !== document.contentMarkdown)) {
+      const changed = previous.title !== document.title || !sameMarkdown(previous.contentMarkdown, document.contentMarkdown);
+      const dirty = title !== previous.title || !sameMarkdown(contentMarkdown, previous.contentMarkdown) || hasPendingImagePaste;
+      if (dirty && changed && (title !== document.title || !sameMarkdown(contentMarkdown, document.contentMarkdown))) {
         const submitted = submittedSnapshotRef.current;
-        const ownSave = submitted?.title === document.title && submitted?.contentMarkdown === document.contentMarkdown;
+        const ownSave = submitted?.title === document.title && submitted && sameMarkdown(submitted.contentMarkdown, document.contentMarkdown);
         setHasServerConflict(!ownSave);
         if (ownSave) submittedSnapshotRef.current = null;
         return;
@@ -647,7 +652,7 @@ export function DocumentEditor({
   }, [document?.id, title, contentMarkdown, isActive, setDocumentOutline]);
   const editorMarkdownReady = contentDocumentId === document?.id;
   const hasUnsavedChanges = document
-    ? title !== document.title || contentMarkdown !== document.contentMarkdown || hasPendingImagePaste
+    ? title !== document.title || !sameMarkdown(contentMarkdown, document.contentMarkdown) || hasPendingImagePaste
     : false;
   useEffect(() => {
     if (document?.id) onDirtyChange?.(document.id, hasUnsavedChanges);

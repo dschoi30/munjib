@@ -4138,3 +4138,10 @@ links:
 ## 2026-10-18 - Grouped metadata sidebar (Issue #240)
 
 - Updated [[Document Editing Workflow]] with document/category disclosures, document-targeted actions and Trial compatibility. Source: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
+
+## 2026-10-18 — Issue #240 integrated nested workspace
+
+- Added [[Workspace Split Layout]], linked it from [[index|Wiki Index]] and [[Document Editing Workflow]].
+- Evidence: confirmed split plan, layout reducer, authorized document-detail loader/route, split session/center, grouped sidebar and browser regression test. Same-browser/account persistence excludes document bodies and cross-device sync.
+
+- Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.

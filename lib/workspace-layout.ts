@@ -73,6 +73,13 @@ export function resizeSplit(state: WorkspaceLayout, splitId: string, ratio: numb
   const visit = (node: LayoutNode): LayoutNode => node.type === "pane" ? node : { ...node, ratio: node.id === splitId ? clampRatio(ratio) : node.ratio, children: [visit(node.children[0]), visit(node.children[1])] };
   return { ...state, root: visit(state.root) };
 }
+export function setSplitDirection(state: WorkspaceLayout, splitId: string, direction: LayoutSplit["direction"]): WorkspaceLayout {
+  const visit = (node: LayoutNode): LayoutNode => node.type === "pane" ? node : {
+    ...node, direction: node.id === splitId ? direction : node.direction,
+    children: [visit(node.children[0]), visit(node.children[1])],
+  };
+  return { ...state, root: visit(state.root) };
+}
 export function setSidebarExpanded(state: WorkspaceLayout, documentId: string, category: SidebarCategory, expanded: boolean): WorkspaceLayout {
   return { ...state, rightSidebar: { expandedByDocument: { ...state.rightSidebar.expandedByDocument, [documentId]: { ...state.rightSidebar.expandedByDocument[documentId], [category]: expanded } } } };
 }
