@@ -22,6 +22,11 @@ export type CommentItem = {
 };
 
 export type DocumentEditorProps = {
+  /** Whether this tab is visible in its pane, independent of keyboard focus. */
+  isActive?: boolean;
+  /** Increment only after a confirmed restore and the refreshed snapshot arrive. */
+  resetVersion?: number;
+  onDirtyChange?: (documentId: string, dirty: boolean) => void;
   initialTrialAiAllowance?: import("@/lib/auth/trial-entitlement").TrialAiAllowanceProjection | null;
   workspaceSlug: string;
   defaultChatModel: string;

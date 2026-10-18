@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-10-09
+updated: 2026-10-18
 source_count: 105
 tags:
   - munjib
@@ -26,6 +26,14 @@ links:
 # Document Editing Workflow
 
 문서 편집 흐름은 Next.js server action에서 시작해 `lib/documents/service.ts`의 service function으로 내려간다. 권한 확인, DB mutation, version 생성, link reconciliation, audit log 작성이 같은 transaction 안에서 처리된다.
+
+## 문서별 편집 세션과 개요 (#240)
+
+`DocumentEditor`는 같은 문서의 서버 snapshot이 바뀌어도 미저장 title/markdown과 진행 중인 이미지 붙여넣기를 보존한다. 다른 서버 내용과 충돌하면 경고를 표시하고, 사용자가 확인한 버전 복원은 새 snapshot과 함께 `resetVersion`을 증가시켜 해당 세션만 교체한다. `onDirtyChange(documentId, dirty)`와 `beforeunload`는 닫기 확인과 브라우저 이탈 경고를 연결한다. 미저장 본문은 localStorage에 저장하지 않는다.
+
+`AppShell`의 `outlineDocuments`와 `navigateToDocumentHeading(documentId, target)`는 현재 각 pane에서 표시 중인 문서의 실시간 제목/본문 및 개요 이동을 분리한다. `isActive`는 전역 포커스가 아니라 각 pane의 표시 여부다. heading DOM 검색은 editor root 안으로 제한한다. 편집 모드를 한 번 열면 CodeMirror는 preview 전환에서도 mounted 상태를 유지해 selection/undo session을 보존하며, 실제 브라우저 배치 이동 검증은 통합 테스트에서 수행한다.
+
+근거: `components/document-editor.tsx`, `components/app-shell.tsx`, `lib/outline-targets.ts`, `tests/components/document-editor-preview.test.tsx`.
 
 ## 화면 진입
 
