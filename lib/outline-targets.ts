@@ -1,11 +1,11 @@
-export function getOutlineHeadingTarget(id: string) {
+export function getOutlineHeadingTarget(id: string, root?: ParentNode | null) {
   if (typeof window === "undefined") {
     return null;
   }
 
-  return window.document.querySelector<HTMLElement>(
+  return (root === undefined ? window.document : root)?.querySelector<HTMLElement>(
     `[data-outline-heading-id="${escapeAttributeSelectorValue(id)}"]`,
-  );
+  ) ?? null;
 }
 
 export function scrollToOutlineHeading(id: string) {

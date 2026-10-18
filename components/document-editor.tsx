@@ -227,6 +227,9 @@ function withImageExtension(fileName: string, mimeType: string) {
 }
 
 export function DocumentEditor({
+  isActive = true,
+  resetVersion = 0,
+  onDirtyChange,
   initialTrialAiAllowance,
   workspaceSlug,
   defaultChatModel,
@@ -249,9 +252,16 @@ export function DocumentEditor({
   const { t } = useI18n();
   const workspaceMode = useWorkspaceMode();
   const { mode } = useDocumentViewMode();
+  const editorRootRef = useRef<HTMLDivElement>(null);
+  const serverSnapshotRef = useRef(document);
+  const acceptedResetVersionRef = useRef(resetVersion);
+  const submittedSnapshotRef = useRef<{ title: string; contentMarkdown: string } | null>(null);
+  const [hasServerConflict, setHasServerConflict] = useState(false);
   const [title, setTitle] = useState(document?.title ?? "");
   const [contentMarkdown, setContentMarkdown] = useState(document?.contentMarkdown ?? "");
   const [contentDocumentId, setContentDocumentId] = useState(document?.id ?? null);
+  const [hasOpenedEditor, setHasOpenedEditor] = useState(mode === "edit");
+  useEffect(() => { if (mode === "edit") setHasOpenedEditor(true); }, [mode]);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [activeCompletion, setActiveCompletion] = useState<ActiveWikiLinkCompletion | null>(null);
   const editorFoldStorageKey = document?.id ? `munjib:heading-folds:${workspaceMode === "anonymous-trial-readonly" ? `${workspaceStorageScope(workspaceSlug, workspaceMode)}:` : ""}${document.id}` : null;
@@ -267,6 +277,8 @@ export function DocumentEditor({
   const headingNavigation = useHeadingNavigation();
   const registerHeadingNavigator = headingNavigation?.setHeadingNavigator;
   const setOutlineDocument = headingNavigation?.setOutlineDocument;
+  const setDocumentOutline = headingNavigation?.setDocumentOutline;
+  const setDocumentHeadingNavigator = headingNavigation?.setDocumentHeadingNavigator;
   editorFoldContextRef.current = editorFoldStorageKey ? { storageKey: editorFoldStorageKey } : null;
   const [pendingImagePasteCounts, setPendingImagePasteCounts] = useState<Record<string, number>>({});
   const [localAttachmentIdsByDocumentId, setLocalAttachmentIdsByDocumentId] = useState<Record<string, string[]>>({});
@@ -466,6 +478,23 @@ export function DocumentEditor({
   }, [activeCompletion, document?.id, linkCandidates]);
 
   useEffect(() => {
+    const forcedReset = acceptedResetVersionRef.current !== resetVersion;
+    acceptedResetVersionRef.current = resetVersion;
+    const previous = serverSnapshotRef.current;
+    serverSnapshotRef.current = document;
+    if (!forcedReset && document && previous?.id === document.id) {
+      const changed = previous.title !== document.title || previous.contentMarkdown !== document.contentMarkdown;
+      const dirty = title !== previous.title || contentMarkdown !== previous.contentMarkdown || hasPendingImagePaste;
+      if (dirty && changed && (title !== document.title || contentMarkdown !== document.contentMarkdown)) {
+        const submitted = submittedSnapshotRef.current;
+        const ownSave = submitted?.title === document.title && submitted?.contentMarkdown === document.contentMarkdown;
+        setHasServerConflict(!ownSave);
+        if (ownSave) submittedSnapshotRef.current = null;
+        return;
+      }
+      if (dirty && !changed) return;
+    }
+    setHasServerConflict(false);
     const pendingDraft = document?.id ? pendingImagePasteDraftsRef.current[document.id] : undefined;
     setTitle(document?.title ?? "");
     setContentMarkdown(document?.id ? (pendingDraft ?? document.contentMarkdown) : "");
@@ -478,7 +507,7 @@ export function DocumentEditor({
     }
     setContentDocumentId(document?.id ?? null);
     setActiveCompletion(null);
-  }, [document?.id, document?.title, document?.contentMarkdown]);
+  }, [document?.id, document?.title, document?.contentMarkdown, resetVersion]);
 
   function updateMarkdown(value: string, cursorPosition?: number) {
     setContentMarkdown(value);
@@ -543,12 +572,12 @@ export function DocumentEditor({
   }, [document?.id]);
 
   useEffect(() => {
-    if (!document?.id || !registerHeadingNavigator) {
+    if (!isActive || !document?.id || !registerHeadingNavigator) {
       return;
     }
 
     const navigateToHeading = (target: HeadingNavigationTarget) => {
-      let previewTarget = getOutlineHeadingTarget(target.id);
+      let previewTarget = getOutlineHeadingTarget(target.id, editorRootRef.current);
 
       if (previewTarget) {
         previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -557,7 +586,7 @@ export function DocumentEditor({
 
       if (mode === "preview" && previewHeadingExpanderRef.current) {
         flushSync(() => previewHeadingExpanderRef.current?.(target.id));
-        previewTarget = getOutlineHeadingTarget(target.id);
+        previewTarget = getOutlineHeadingTarget(target.id, editorRootRef.current);
 
         if (previewTarget) {
           previewTarget.scrollIntoView({ block: "start", behavior: "smooth" });
@@ -585,9 +614,14 @@ export function DocumentEditor({
       }
     };
 
+    const id = document.id;
+    setDocumentHeadingNavigator?.(id, navigateToHeading);
     registerHeadingNavigator(navigateToHeading);
-    return () => registerHeadingNavigator(null);
-  }, [document?.id, mode, registerHeadingNavigator]);
+    return () => {
+      setDocumentHeadingNavigator?.(id, null);
+      registerHeadingNavigator(null);
+    };
+  }, [document?.id, mode, isActive, registerHeadingNavigator, setDocumentHeadingNavigator]);
 
   useEffect(() => {
     if (!setOutlineDocument) {
@@ -595,9 +629,9 @@ export function DocumentEditor({
     }
 
     setOutlineDocument(
-      document?.id ? { id: document.id, contentMarkdown } : null,
+      document?.id && isActive ? { id: document.id, title, contentMarkdown } : null,
     );
-  }, [contentMarkdown, document?.id, setOutlineDocument]);
+  }, [contentMarkdown, document?.id, title, isActive, setOutlineDocument]);
 
   useEffect(() => {
     if (!setOutlineDocument) {
@@ -606,10 +640,27 @@ export function DocumentEditor({
 
     return () => setOutlineDocument(null);
   }, [document?.id, setOutlineDocument]);
+  useEffect(() => {
+    if (!document?.id || !isActive) return;
+    setDocumentOutline?.(document.id, { id: document.id, title, contentMarkdown });
+    return () => setDocumentOutline?.(document.id, null);
+  }, [document?.id, title, contentMarkdown, isActive, setDocumentOutline]);
   const editorMarkdownReady = contentDocumentId === document?.id;
   const hasUnsavedChanges = document
     ? title !== document.title || contentMarkdown !== document.contentMarkdown || hasPendingImagePaste
     : false;
+  useEffect(() => {
+    if (document?.id) onDirtyChange?.(document.id, hasUnsavedChanges);
+  }, [document?.id, hasUnsavedChanges, onDirtyChange]);
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const preventLeave = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", preventLeave);
+    return () => window.removeEventListener("beforeunload", preventLeave);
+  }, [hasUnsavedChanges]);
   const previewAttachmentIds = useMemo(() => {
     const localAttachmentIds = document?.id ? (localAttachmentIdsByDocumentId[document.id] ?? []) : [];
 
@@ -627,10 +678,23 @@ export function DocumentEditor({
   }
 
   return (
-    <div key={document.id} className="mx-auto max-w-4xl space-y-4">
+    <div ref={editorRootRef} key={document.id} className="mx-auto max-w-4xl space-y-4">
+      {hasServerConflict ? <p role="alert" className="text-sm text-amber-700">{t("editor.serverConflict")}</p> : null}
       <form
         id={`document-save-${document.id}`}
-        action={action}
+        action={async (formData) => {
+          const submitted = {
+            title: String(formData.get("title") ?? ""),
+            contentMarkdown: String(formData.get("contentMarkdown") ?? ""),
+          };
+          submittedSnapshotRef.current = submitted;
+          try {
+            await action(formData);
+          } catch (error) {
+            if (submittedSnapshotRef.current === submitted) submittedSnapshotRef.current = null;
+            throw error;
+          }
+        }}
         onSubmit={(event) => {
           if (!hasPendingImagePaste) {
             return;
@@ -689,8 +753,8 @@ export function DocumentEditor({
       />
       <AttachmentUpload key={`attachment-upload-${document.id}`} documentId={document.id} canWrite={canWrite} action={uploadAttachmentAction} />
       <div className="overflow-hidden rounded-md border border-border bg-surface-editor">
-        {mode === "edit" && editorMarkdownReady ? (
-          <div className="relative min-w-0">
+        {(mode === "edit" || hasOpenedEditor) && editorMarkdownReady ? (
+          <div hidden={mode !== "edit"} className="relative min-w-0">
             <CodeMirror
               value={contentMarkdown}
               basicSetup={{

@@ -52,12 +52,17 @@ export type HeadingNavigationTarget = {
 
 export type HeadingNavigationDocument = {
   id: string;
+  title?: string;
   contentMarkdown: string;
 };
 
 type HeadingNavigator = ((target: HeadingNavigationTarget) => boolean) | null;
 
 type HeadingNavigationControls = {
+  outlineDocuments: Record<string, HeadingNavigationDocument>;
+  navigateToDocumentHeading: (documentId: string, target: HeadingNavigationTarget) => boolean;
+  setDocumentOutline: (documentId: string, document: HeadingNavigationDocument | null) => void;
+  setDocumentHeadingNavigator: (documentId: string, navigator: HeadingNavigator) => void;
   outlineDocument: HeadingNavigationDocument | null;
   navigateToHeading: (target: HeadingNavigationTarget) => boolean;
   setOutlineDocument: (document: HeadingNavigationDocument | null) => void;
@@ -112,7 +117,25 @@ export function AppShell({
   const [outlineDocument, setOutlineDocument] = useState<HeadingNavigationDocument | null>(null);
   const [latestTagSearchRequest, setLatestTagSearchRequest] =
     useState<TagSearchRequest | null>(null);
+  const [outlineDocuments, setOutlineDocuments] = useState<Record<string, HeadingNavigationDocument>>({});
+  const documentNavigatorsRef = useRef(new Map<string, HeadingNavigator>());
+  const setDocumentOutline = useCallback((documentId: string, document: HeadingNavigationDocument | null) => {
+    setOutlineDocuments((current) => {
+      if (!document && !current[documentId]) return current;
+      const next = { ...current };
+      if (document) next[documentId] = document;
+      else delete next[documentId];
+      return next;
+    });
+  }, []);
+  const setDocumentHeadingNavigator = useCallback((documentId: string, navigator: HeadingNavigator) => {
+    if (navigator) documentNavigatorsRef.current.set(documentId, navigator);
+    else documentNavigatorsRef.current.delete(documentId);
+  }, []);
   const headingNavigatorRef = useRef<HeadingNavigator>(null);
+  const setHeadingNavigator = useCallback((navigator: HeadingNavigator) => {
+    headingNavigatorRef.current = navigator;
+  }, []);
   const nextTagSearchTokenRef = useRef(0);
   useEffect(() => {
     if (!workspaceSlug) {
@@ -165,6 +188,10 @@ export function AppShell({
   );
   const headingNavigationControls = useMemo<HeadingNavigationControls>(
     () => ({
+      outlineDocuments,
+      setDocumentOutline,
+      setDocumentHeadingNavigator,
+      navigateToDocumentHeading: (documentId, target) => documentNavigatorsRef.current.get(documentId)?.(target) ?? false,
       navigateToHeading: (target) => {
         if (!headingNavigatorRef.current) {
           return false;
@@ -172,13 +199,11 @@ export function AppShell({
 
         return headingNavigatorRef.current(target);
       },
-      setHeadingNavigator: (navigator) => {
-        headingNavigatorRef.current = navigator;
-      },
+      setHeadingNavigator,
       setOutlineDocument,
       outlineDocument,
     }),
-    [outlineDocument],
+    [outlineDocument, outlineDocuments, setDocumentOutline, setDocumentHeadingNavigator, setHeadingNavigator],
   );
   const tagSearchControls = useMemo<TagSearchControls>(
     () => ({

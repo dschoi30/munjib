@@ -4124,6 +4124,11 @@ links:
 
 - CI follow-up: kept the protected Markdown renderer byte-identical; attachment document links download through the response disposition. The Leaf 11 renderer integrity check remains enforced.
 
+
+## 2026-10-18 — Issue #240 document editor sessions
+
+- Updated [[Document Editing Workflow]] with dirty-aware snapshot reconciliation, explicit confirmed restore, per-document live outline navigation and mounted editor identity.
+- Evidence: `components/document-editor.tsx`, `components/app-shell.tsx`, `lib/outline-targets.ts`, `tests/components/document-editor-preview.test.tsx`.
 ## 2026-10-18 — Issue #240 nested layout model
 
 - Added `lib/workspace-layout.ts` and `tests/workspace-layout.test.ts`: recursive target-pane splits, stable tab identity, collapse/merge transitions, minimum-size flat geometry, and account/workspace-scoped versioned browser storage.
