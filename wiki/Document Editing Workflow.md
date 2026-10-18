@@ -329,3 +329,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - Display names retain NFC-normalized Unicode letters/numbers; storage keys continue using the existing ASCII-safe filename contract. Existing sanitized filenames cannot be reconstructed.
 - Attachment list links use native download anchors; Markdown document attachment links receive download responses from the server without changing the protected renderer. Authenticated and Trial routes return RFC 5987 UTF-8 filenames and attachment disposition for non-images or explicit `?download=1`. Inline image requests remain renderable. Downloaded bytes are unchanged, including legacy Korean text encodings; this avoids browser text rendering rather than transcoding content.
 - Evidence: `components/attachment-upload.tsx`, `components/app-shell.tsx`, `components/metadata-panel.tsx`, `lib/attachments/service.ts`, `lib/attachments/content-disposition.ts`, both attachment routes, and attachment/action/component tests.
+
+## Issue #240 grouped metadata sidebar
+
+- `MetadataPanel` accepts visible-document bundles in pane order and keeps the shared Outline, Attachments, Versions and Audit log category toolbar. Each document title is a native disclosure button with an independent document-ID/category expansion value, defaulting open; the parent persists the supplied expansion map. Disclosure toggling does not select a document or navigate.
+- Group content, load/error state, retry, attachment highlights and version permissions belong to the matching document. Heading actions carry the document ID, and version forms submit their own version ID. The active document is highlighted and document paths appear on title hover for disambiguation.
+- The original single-document props remain supported for the anonymous read-only Trial, including protected Trial download URLs. Evidence: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.

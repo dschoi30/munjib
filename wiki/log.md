@@ -4129,3 +4129,7 @@ links:
 - Added `lib/workspace-layout.ts` and `tests/workspace-layout.test.ts`: recursive target-pane splits, stable tab identity, collapse/merge transitions, minimum-size flat geometry, and account/workspace-scoped versioned browser storage.
 - Storage projects only IDs and layout/sidebar flags, filters unreadable documents, bounds untrusted input, and handles blocked storage. UI hydration and authorized document loading remain integration work.
 - Evidence: Issue #240; `docs/superpowers/plans/2026-10-18-workspace-split-tabs.md`; five public-interface tests and TypeScript validation.
+
+## 2026-10-18 - Grouped metadata sidebar (Issue #240)
+
+- Updated [[Document Editing Workflow]] with document/category disclosures, document-targeted actions and Trial compatibility. Source: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
