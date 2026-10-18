@@ -2144,11 +2144,11 @@ it("accepts an explicit confirmed restore without remounting sibling editor sess
 
 it("keeps the editor instance mounted across view mode changes", async () => {
   render(<DocumentViewModeProvider><TestModeControls /><DocumentEditor {...baseProps} document={{ id: "doc-1", title: "Draft", contentMarkdown: "Text" }} /></DocumentViewModeProvider>);
-  fireEvent.click(screen.getByRole("button", { name: "Edit", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
   const editor = await screen.findByLabelText("Markdown editor");
-  fireEvent.click(screen.getByRole("button", { name: "Preview", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
   expect(editor.isConnected).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: "Edit", exact: true }));
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
   expect(screen.getByLabelText("Markdown editor")).toBe(editor);
 });
 
