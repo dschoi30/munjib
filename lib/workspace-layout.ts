@@ -66,7 +66,7 @@ export function addTab(state: WorkspaceLayout, paneId = state.activePaneId): Wor
 }
 export function mergeAll(state: WorkspaceLayout): WorkspaceLayout {
   const panes = getPanes(state), active = panes.find(p => p.id === state.activePaneId)!;
-  return finish(state, { ...active, tabs: panes.flatMap(p => p.tabs) }, active.id);
+  return finish(state, { ...active, tabs: [...active.tabs, ...panes.filter(p => p.id !== active.id).flatMap(p => p.tabs)] }, active.id);
 }
 const clampRatio = (ratio: number) => Number.isFinite(ratio) ? Math.max(0.05, Math.min(0.95, ratio)) : 0.5;
 export function resizeSplit(state: WorkspaceLayout, splitId: string, ratio: number): WorkspaceLayout {

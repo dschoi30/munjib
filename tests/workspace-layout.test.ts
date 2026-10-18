@@ -37,6 +37,7 @@ it("keeps tab identity across selection, movement, resize and merge", () => {
   state = layout.mergeAll(state);
   expect(layout.getPanes(state)).toHaveLength(1);
   expect(layout.getPanes(state)[0].activeTabId).toBe(a);
+  expect(layout.getPanes(state)[0].tabs.map(tab => tab.documentId)).toEqual(["a", "b"]);
   state = layout.addTab(state);
   expect(layout.getPanes(state)[0].tabs.at(-1)?.documentId).toBeNull();
 });

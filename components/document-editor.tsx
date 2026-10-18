@@ -655,7 +655,10 @@ export function DocumentEditor({
     ? title !== document.title || !sameMarkdown(contentMarkdown, document.contentMarkdown) || hasPendingImagePaste
     : false;
   useEffect(() => {
-    if (document?.id) onDirtyChange?.(document.id, hasUnsavedChanges);
+    if (!document?.id) return;
+    const id = document.id;
+    onDirtyChange?.(id, hasUnsavedChanges);
+    return () => onDirtyChange?.(id, false);
   }, [document?.id, hasUnsavedChanges, onDirtyChange]);
   useEffect(() => {
     if (!hasUnsavedChanges) return;

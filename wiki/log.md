@@ -4145,3 +4145,5 @@ links:
 - Evidence: confirmed split plan, layout reducer, authorized document-detail loader/route, split session/center, grouped sidebar and browser regression test. Same-browser/account persistence excludes document bodies and cross-device sync.
 
 - Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.
+
+- Issue #240 review corrections: merge keeps active-pane tabs first and appends other panes in tree order; editor disposal releases dirty registration before later sign-out; split drop preview uses emitted semantic `bg-primary-muted`. Source: layout transition, editor lifecycle and split component regressions (100 affected tests).

@@ -2178,3 +2178,14 @@ it("treats native form CRLF normalization as a clean saved draft", async () => {
   expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", false);
   expect(screen.queryByRole("alert")).toBeNull();
 });
+
+it("releases a dirty document session when its editor is disposed", () => {
+  const dirty = new Set<string>();
+  const onDirtyChange = (id: string, changed: boolean) => { if (changed) dirty.add(id); else dirty.delete(id); };
+  const { unmount } = render(<DocumentViewModeProvider><DocumentEditor {...baseProps}
+    document={{ id: "doc-1", title: "Original", contentMarkdown: "Body" }} onDirtyChange={onDirtyChange} /></DocumentViewModeProvider>);
+  fireEvent.change(screen.getByDisplayValue("Original"), { target: { value: "Dirty title" } });
+  expect(dirty.has("doc-1")).toBe(true);
+  unmount();
+  expect(dirty.size).toBe(0);
+});

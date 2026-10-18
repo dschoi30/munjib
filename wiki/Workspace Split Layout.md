@@ -24,7 +24,7 @@ Issue #240 replaces the authenticated workspace's single center selection with a
 
 ## Layout and navigation
 
-Each pane owns an ordered tab group and active tab. A split owns a horizontal/vertical axis and ratio. Dropping a document tab on the left, right or bottom edge replaces only the target pane with a split; dropping in another pane's center moves the tab into that group. Left-edge drop places the moved tab left and preserves the target document right. Empty branches collapse into their sibling, and merging gathers all tabs into the active pane. Duplicate documents focus their existing tab.
+Each pane owns an ordered tab group and active tab. A split owns a horizontal/vertical axis and ratio. Dropping a document tab on the left, right or bottom edge replaces only the target pane with a split; dropping in another pane's center moves the tab into that group. Left-edge drop places the moved tab left and preserves the target document right. Empty branches collapse into their sibling, and merging retains the active pane's ordered tabs first, then appends other panes in tree order. Duplicate documents focus their existing tab.
 
 Each pane has a 320×240 minimum; the workspace scrolls when the recursive minimum exceeds available space. Splitter keyboard arrows and pointer dragging resize individual splits. Each pane menu can switch its nearest parent split between horizontal and vertical without changing tab identity. Editors are rendered in a flat keyed host with geometry calculated from the tree, preserving mounted sessions while tabs move between panes. Graph/Folder temporarily cover the document workspace without discarding its state.
 
@@ -38,7 +38,7 @@ Restoration filters document IDs against the current readable index. The shared 
 
 Outline, Attachments, Versions and Audit retain one category toolbar and list currently displayed documents in leaf order. Each title independently expands/collapses its category content, default open. Focus changes do not remove other visible documents. Matching document titles show their paths to disambiguate groups. Live outline/title state is document-scoped. Heading navigation targets that document's editor container even when headings have identical IDs in other documents.
 
-Version restoration confirms its document target and resets only that editor after successful server reload. Closing a dirty tab and signing out with dirty documents ask before discarding; canceling sign-out occurs before the authentication mutation. An editor preserves dirty text when a newer server snapshot arrives and displays a conflict warning for external changes. Native form CRLF and editor LF line endings compare equally, so a successful save clears dirty state. Reload protection uses beforeunload; layout persistence is distinct from draft persistence.
+Version restoration confirms its document target and resets only that editor after successful server reload. Disposing an editor removes its dirty registration so closing a confirmed dirty tab cannot affect a later clean sign-out. Closing a dirty tab and signing out with dirty documents ask before discarding; canceling sign-out occurs before the authentication mutation. An editor preserves dirty text when a newer server snapshot arrives and displays a conflict warning for external changes. Native form CRLF and editor LF line endings compare equally, so a successful save clears dirty state. Reload protection uses beforeunload; layout persistence is distinct from draft persistence.
 
 ## Evidence
 

@@ -180,7 +180,7 @@ export function SplitWorkspaceCenter({ fallback }: { fallback?: ReactNode }) {
         const rect = geometry.panes.find(p => p.paneId === drop.paneId)!;
         const width = drop.edge === "left" || drop.edge === "right" ? rect.width / 2 : rect.width;
         const height = drop.edge === "bottom" ? (rect.height - HEADER_HEIGHT) / 2 : rect.height - HEADER_HEIGHT;
-        return <div className="pointer-events-none absolute z-30 flex items-center justify-center border-2 border-primary bg-primary/15 text-sm"
+        return <div className="pointer-events-none absolute z-30 flex items-center justify-center border-2 border-primary bg-primary-muted text-sm"
           style={{ left: rect.x + (drop.edge === "right" ? rect.width / 2 : 0), top: rect.y + HEADER_HEIGHT + (drop.edge === "bottom" ? height : 0), width, height }}>{copy.drop}</div>;
       })() : null}
     </div>

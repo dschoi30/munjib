@@ -46,7 +46,7 @@ it("restores nested panes and merges their tabs without dropping a document", as
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
     const id = url.split("/").at(-2)!;
     return { ok: true, status: 200, json: async () => ({ document: { id, title: id.toUpperCase(), path: `/${id}`, contentMarkdown: "" },
-      canWrite: false, versions: [], attachments: [], auditLogs: [], tags: [], properties: [], comments: [],
+      canWrite: true, versions: [], attachments: [], auditLogs: [], tags: [], properties: [], comments: [],
       linkPanels: { outgoing: [], backlinks: [], brokenLinks: [], ambiguousLinks: [] } }) };
   }));
   render(<I18nProvider><SplitWorkspaceProvider userId="nested-user" workspaceId="workspace" workspaceSlug="wiki"
@@ -64,5 +64,12 @@ it("restores nested panes and merges their tabs without dropping a document", as
   fireEvent.click(screen.getByRole("menuitem", { name: "Merge all panes" }));
   expect(screen.getAllByRole("button", { name: "Pane actions" })).toHaveLength(1);
   for (const title of ["A", "B", "C"]) expect(screen.getByRole("button", { name: title })).toBeTruthy();
+  const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  fireEvent.change(await screen.findByDisplayValue("A"), { target: { value: "Dirty A" } });
+  fireEvent.click(screen.getByRole("button", { name: "Close A" }));
+  expect(confirm).toHaveBeenCalledOnce();
+  expect(window.dispatchEvent(new Event("munjib:before-sign-out", { cancelable: true }))).toBe(true);
+  expect(confirm).toHaveBeenCalledOnce();
+  confirm.mockRestore();
   vi.unstubAllGlobals();
 });
