@@ -4123,3 +4123,27 @@ links:
 - Existing ASCII storage-key validation remains unchanged; original names lost by earlier sanitization cannot be recovered.
 
 - CI follow-up: kept the protected Markdown renderer byte-identical; attachment document links download through the response disposition. The Leaf 11 renderer integrity check remains enforced.
+
+
+## 2026-10-18 — Issue #240 document editor sessions
+
+- Updated [[Document Editing Workflow]] with dirty-aware snapshot reconciliation, explicit confirmed restore, per-document live outline navigation and mounted editor identity.
+- Evidence: `components/document-editor.tsx`, `components/app-shell.tsx`, `lib/outline-targets.ts`, `tests/components/document-editor-preview.test.tsx`.
+## 2026-10-18 — Issue #240 nested layout model
+
+- Added `lib/workspace-layout.ts` and `tests/workspace-layout.test.ts`: recursive target-pane splits, stable tab identity, collapse/merge transitions, minimum-size flat geometry, and account/workspace-scoped versioned browser storage.
+- Storage projects only IDs and layout/sidebar flags, filters unreadable documents, bounds untrusted input, and handles blocked storage. UI hydration and authorized document loading remain integration work.
+- Evidence: Issue #240; `docs/superpowers/plans/2026-10-18-workspace-split-tabs.md`; five public-interface tests and TypeScript validation.
+
+## 2026-10-18 - Grouped metadata sidebar (Issue #240)
+
+- Updated [[Document Editing Workflow]] with document/category disclosures, document-targeted actions and Trial compatibility. Source: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
+
+## 2026-10-18 — Issue #240 integrated nested workspace
+
+- Added [[Workspace Split Layout]], linked it from [[index|Wiki Index]] and [[Document Editing Workflow]].
+- Evidence: confirmed split plan, layout reducer, authorized document-detail loader/route, split session/center, grouped sidebar and browser regression test. Same-browser/account persistence excludes document bodies and cross-device sync.
+
+- Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.
+
+- Issue #240 review corrections: merge keeps active-pane tabs first and appends other panes in tree order; editor disposal releases dirty registration before later sign-out; split drop preview uses emitted semantic `bg-primary-muted`. Source: layout transition, editor lifecycle and split component regressions (100 affected tests).

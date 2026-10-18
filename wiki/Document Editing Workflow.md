@@ -5,7 +5,7 @@ type: workflow
 status: active
 summary: Munjib에서 문서 편집, 생성, 수정, 버전 저장, 링크 reconciliation, 감사 로그가 이어지는 흐름.
 created: 2026-04-29
-updated: 2026-10-09
+updated: 2026-10-18
 source_count: 105
 tags:
   - munjib
@@ -15,6 +15,7 @@ tags:
   - 편집
 links:
   - "[[Munjib]]"
+  - "[[Workspace Split Layout]]"
   - "[[Document Knowledge Model]]"
   - "[[Folder Hierarchy Model]]"
   - "[[Wiki Links And Backlinks]]"
@@ -26,6 +27,14 @@ links:
 # Document Editing Workflow
 
 문서 편집 흐름은 Next.js server action에서 시작해 `lib/documents/service.ts`의 service function으로 내려간다. 권한 확인, DB mutation, version 생성, link reconciliation, audit log 작성이 같은 transaction 안에서 처리된다.
+
+## 문서별 편집 세션과 개요 (#240)
+
+`DocumentEditor`는 같은 문서의 서버 snapshot이 바뀌어도 미저장 title/markdown과 진행 중인 이미지 붙여넣기를 보존한다. 다른 서버 내용과 충돌하면 경고를 표시하고, 사용자가 확인한 버전 복원은 새 snapshot과 함께 `resetVersion`을 증가시켜 해당 세션만 교체한다. `onDirtyChange(documentId, dirty)`와 `beforeunload`는 닫기 확인과 브라우저 이탈 경고를 연결한다. 미저장 본문은 localStorage에 저장하지 않는다.
+
+`AppShell`의 `outlineDocuments`와 `navigateToDocumentHeading(documentId, target)`는 현재 각 pane에서 표시 중인 문서의 실시간 제목/본문 및 개요 이동을 분리한다. `isActive`는 전역 포커스가 아니라 각 pane의 표시 여부다. heading DOM 검색은 editor root 안으로 제한한다. 편집 모드를 한 번 열면 CodeMirror는 preview 전환에서도 mounted 상태를 유지해 selection/undo session을 보존하며, 실제 브라우저 배치 이동 검증은 통합 테스트에서 수행한다.
+
+근거: `components/document-editor.tsx`, `components/app-shell.tsx`, `lib/outline-targets.ts`, `tests/components/document-editor-preview.test.tsx`.
 
 ## 화면 진입
 
@@ -329,3 +338,13 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 - Display names retain NFC-normalized Unicode letters/numbers; storage keys continue using the existing ASCII-safe filename contract. Existing sanitized filenames cannot be reconstructed.
 - Attachment list links use native download anchors; Markdown document attachment links receive download responses from the server without changing the protected renderer. Authenticated and Trial routes return RFC 5987 UTF-8 filenames and attachment disposition for non-images or explicit `?download=1`. Inline image requests remain renderable. Downloaded bytes are unchanged, including legacy Korean text encodings; this avoids browser text rendering rather than transcoding content.
 - Evidence: `components/attachment-upload.tsx`, `components/app-shell.tsx`, `components/metadata-panel.tsx`, `lib/attachments/service.ts`, `lib/attachments/content-disposition.ts`, both attachment routes, and attachment/action/component tests.
+
+## Issue #240 grouped metadata sidebar
+
+- `MetadataPanel` accepts visible-document bundles in pane order and keeps the shared Outline, Attachments, Versions and Audit log category toolbar. Each document title is a native disclosure button with an independent document-ID/category expansion value, defaulting open; the parent persists the supplied expansion map. Disclosure toggling does not select a document or navigate.
+- Group content, load/error state, retry, attachment highlights and version permissions belong to the matching document. Heading actions carry the document ID, and version forms submit their own version ID. The active document is highlighted and document paths appear on title hover for disambiguation.
+- The original single-document props remain supported for the anonymous read-only Trial, including protected Trial download URLs. Evidence: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
+
+## Issue #240 nested document workspace
+
+Authenticated workspaces now use [[Workspace Split Layout]] for document tabs. Multiple panes share document-scoped authorization and metadata, retain independent editor sessions and restore the same account/browser layout. The old single-selected-document chrome description above continues to describe Trial and pre-split behavior; see the linked workflow for current authenticated navigation.

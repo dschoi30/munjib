@@ -1,13 +1,9 @@
 import { resolvePublicSignupEnabled } from "@/lib/auth/signup-policy";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { DocumentEditor } from "@/components/document-editor";
 import { DocumentList } from "@/components/document-list";
 import { FolderDetail } from "@/components/folder-detail";
 import { KnowledgeGraphView } from "@/components/knowledge-graph-view";
-import { MetadataPanel } from "@/components/metadata-panel";
-import { WorkspaceCenterShell } from "@/components/workspace-center-shell";
-import { WorkspaceChatbot } from "@/components/workspace-chatbot";
 import { LoginForm } from "@/app/login/login-form";
 import {
   resolveDevLoginEnabled,
@@ -38,7 +34,8 @@ import {
   filterReadableDocuments,
   folderDisplayPath,
 } from "@/lib/workspace-tree";
-import { getDocumentLinkPanels } from "@/lib/wiki-links/service";
+import { loadWorkspaceDocument } from "@/lib/documents/workspace-detail";
+import { SplitWorkspaceProvider, SplitWorkspaceCenter, SplitWorkspaceMetadata, SplitWorkspaceChatbot } from "@/components/split-workspace";
 import {
   archiveWorkspaceAction,
   createFolderAction,
@@ -93,8 +90,6 @@ export default async function WorkspacePage({
     graph,
   } = await searchParams;
   const isGraphView = graph === "1";
-  const hasRequestedDocument = typeof selectedDocumentId === "string";
-  const hasRequestedFolder = typeof selectedFolderIdParam === "string";
 
   const workspace = await prisma.workspace.findFirst({
     where: buildWorkspacePageWhere({ workspaceSlug, actorId: user.id }),
@@ -224,59 +219,8 @@ export default async function WorkspacePage({
       })
     : { nodes: [], links: [] };
 
-  const versions = selectedDocument
-    ? await prisma.documentVersion.findMany({
-        where: { documentId: selectedDocument.id },
-        orderBy: { versionNumber: "desc" },
-      })
-    : [];
-
-  const auditLogs = selectedDocument
-    ? await prisma.auditLog.findMany({
-        where: { resourceType: "document", resourceId: selectedDocument.id },
-        orderBy: { createdAt: "desc" },
-        take: 10,
-      })
-    : [];
-  const documentTags = selectedDocument && !isGraphView
-    ? await prisma.documentTag.findMany({
-        where: { documentId: selectedDocument.id },
-        include: { tag: true },
-        orderBy: { tag: { name: "asc" } },
-      })
-    : [];
-  const documentProperties = selectedDocument && !isGraphView
-    ? await prisma.documentProperty.findMany({
-        where: { documentId: selectedDocument.id },
-        orderBy: [{ sortOrder: "asc" }, { key: "asc" }],
-      })
-    : [];
-  const attachments = selectedDocument
-    ? await prisma.attachment.findMany({
-        where: { documentId: selectedDocument.id },
-        orderBy: { createdAt: "desc" },
-      })
-    : [];
-  const comments = selectedDocument && !isGraphView
-    ? await prisma.comment.findMany({
-        where: { documentId: selectedDocument.id },
-        orderBy: { createdAt: "asc" },
-        include: { user: { select: { name: true, email: true } } },
-      })
-    : [];
-
-  const linkPanels = selectedDocument
-    ? await getDocumentLinkPanels(selectedDocument.id, user.id)
-    : { outgoing: [], backlinks: [], brokenLinks: [], ambiguousLinks: [] };
-
+  const initialDetail = selectedDocument ? await loadWorkspaceDocument(workspaceSlug, selectedDocument.id, user.id) : null;
   const canWrite = canWriteWorkspace(role);
-  const canWriteSelectedDocument = selectedDocument
-    ? canWriteDocument({
-        workspaceRole: role,
-        explicitPermissionCount: explicitDocumentIds.has(selectedDocument.id) ? 1 : 0,
-        userPermission: userPermissionByDocumentId.get(selectedDocument.id),
-      })
-    : canWrite;
   const createAction = createDocumentAction.bind(null, workspaceSlug);
   const createFolder = createFolderAction.bind(null, workspaceSlug);
   const importMarkdown = importMarkdownDocumentAction.bind(null, workspaceSlug);
@@ -322,7 +266,16 @@ export default async function WorkspacePage({
     : null;
 
   return (
-    <>
+    <SplitWorkspaceProvider key={`${user.id}:${workspace.id}`} userId={user.id} workspaceId={workspace.id}
+      workspaceSlug={workspaceSlug} selectedDocumentId={selectedDocument?.id ?? null}
+      initialDetail={initialDetail} specialView={isGraphView || Boolean(selectedFolder)}
+      documents={readableDocuments.map(document => ({ id: document.id, title: document.title, path: document.path, ...documentDisplayPathProps(document) }))}
+      restoreVersionAction={restoreVersionAction}
+      editorProps={{ workspaceSlug, defaultChatModel, defaultChatProvider, availableChatProviders,
+        action: updateAction, uploadAttachmentAction, pasteImageAttachmentAction,
+        createFromBrokenLinkAction, createCommentAction: commentAction,
+        linkCandidates: readableDocuments.map(document => ({ id: document.id, slug: document.slug, title: document.title, path: document.path })),
+      }}>
       <AppShell
         workspaceSlug={workspaceSlug}
         left={
@@ -375,103 +328,13 @@ export default async function WorkspacePage({
             isGraphView={isGraphView}
           />
         }
-        center={
-          <WorkspaceCenterShell
-            workspaceSlug={workspaceSlug}
-            documents={readableDocuments.map((document) => ({
-              id: document.id,
-              title: document.title,
-              path: document.path,
-              ...documentDisplayPathProps(document),
-            }))}
-            selectedDocument={
-              selectedDocument
-                ? {
-                    id: selectedDocument.id,
-                    title: selectedDocument.title,
-                    path: selectedDocument.path,
-                    ...documentDisplayPathProps(selectedDocument),
-                  }
-                : null
-            }
-            selectedFolder={selectedCenterFolder}
-            isGraphView={isGraphView}
-            restoreStoredActiveTab={!hasRequestedDocument && !hasRequestedFolder && !isGraphView}
-          >
-            {isGraphView ? (
-              <KnowledgeGraphView
-                workspaceSlug={workspaceSlug}
-                graph={graphData}
-                selectedDocumentId={selectedDocument?.id ?? null}
-              />
-            ) : selectedFolder ? (
-              <FolderDetail
-                folder={selectedCenterFolder}
-                canWrite={canWrite}
-              />
-            ) : (
-              <DocumentEditor
-                workspaceSlug={workspaceSlug}
-                document={
-                  selectedDocument
-                    ? {
-                        id: selectedDocument.id,
-                        title: selectedDocument.title,
-                        contentMarkdown: selectedDocument.contentMarkdown,
-                      }
-                    : null
-                }
-                canWrite={canWriteSelectedDocument}
-                action={updateAction}
-                uploadAttachmentAction={uploadAttachmentAction}
-                pasteImageAttachmentAction={pasteImageAttachmentAction}
-                attachmentIds={attachments.map((attachment) => attachment.id)}
-                linkCandidates={readableDocuments.map((document) => ({
-                  id: document.id,
-                  slug: document.slug,
-                  title: document.title,
-                  path: document.path,
-                }))}
-                tags={documentTags.map((documentTag) => documentTag.tag)}
-                properties={documentProperties}
-                comments={comments.map((comment) => ({
-                  id: comment.id,
-                  body: comment.body,
-                  user: comment.user,
-                }))}
-                linkPanels={linkPanels}
-                createFromBrokenLinkAction={createFromBrokenLinkAction}
-                createCommentAction={commentAction}
-                defaultChatModel={defaultChatModel}
-                defaultChatProvider={defaultChatProvider}
-                availableChatProviders={availableChatProviders}
-              />
-            )}
-          </WorkspaceCenterShell>
-        }
-        right={
-          <MetadataPanel
-            document={
-              selectedDocument
-                ? { id: selectedDocument.id, contentMarkdown: selectedDocument.contentMarkdown }
-                : null
-            }
-            versions={versions}
-            auditLogs={auditLogs}
-            attachments={attachments}
-            canWrite={canWriteSelectedDocument}
-            restoreVersionAction={restoreVersionAction}
-          />
-        }
+        center={<SplitWorkspaceCenter fallback={isGraphView ? (
+          <KnowledgeGraphView workspaceSlug={workspaceSlug} graph={graphData} selectedDocumentId={null} />
+        ) : selectedFolder ? <FolderDetail folder={selectedCenterFolder} canWrite={canWrite} /> : null} />}
+        right={<SplitWorkspaceMetadata />}
+
       />
-      <WorkspaceChatbot
-        key={workspaceSlug}
-        workspaceSlug={workspaceSlug}
-        selectedDocumentId={selectedDocument?.id ?? null}
-        defaultChatProvider={defaultChatProvider}
-        defaultChatModel={defaultChatModel}
-        availableChatProviders={availableChatProviders}
-      />
-    </>
+      <SplitWorkspaceChatbot />
+    </SplitWorkspaceProvider>
   );
 }

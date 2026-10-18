@@ -409,6 +409,7 @@ export function DocumentList({
   }, [canWrite, createWorkspaceAction, language, startTopLevelCreateTransition, t]);
 
   const logOut = useCallback(() => {
+    if (!window.dispatchEvent(new Event("munjib:before-sign-out", { cancelable: true }))) return;
     setAccountDrawerOpen(false);
     if (workspaceMode === "anonymous-trial-readonly") {
       window.location.assign("/login");

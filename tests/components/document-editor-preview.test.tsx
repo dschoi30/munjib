@@ -1536,7 +1536,7 @@ describe("DocumentEditor heading preview folding", () => {
 
     await vi.waitFor(() => {
       expect((screen.getByLabelText("Markdown editor") as HTMLTextAreaElement).value).toBe(
-        "First server refresh",
+        "First ![first.png](/api/attachments/attachment-1)",
       );
     });
   });
@@ -2090,4 +2090,102 @@ it("keeps Trial heading folds separate from the same authenticated document", ()
  fireEvent.click(screen.getByRole("button", {name:"Collapse section A"}));
  expect(localStorage.getItem("munjib:heading-folds:trial:company-handbook:doc-1")).toBe('["1-a-0"]');
  expect(localStorage.getItem("munjib:heading-folds:doc-1")).toBe('["1-a-0"]');
+});
+
+
+describe("DocumentEditor independent sessions", () => {
+  it("preserves a dirty draft when a server snapshot changes and warns before leaving", () => {
+    const doc = { id: "doc-1", title: "Original", contentMarkdown: "# Original" };
+    const ui = (document: typeof doc) => <DocumentViewModeProvider><DocumentEditor {...baseProps} document={document} /></DocumentViewModeProvider>;
+    const { rerender } = render(ui(doc));
+    fireEvent.change(screen.getByDisplayValue("Original"), { target: { value: "My draft" } });
+    rerender(ui({ ...doc, title: "External change" }));
+    expect(screen.getByDisplayValue("My draft")).toBeTruthy();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+  });
+});
+
+
+it("navigates matching headings in the requested document and retains the other registration on unmount", () => {
+  function Navigation() {
+    const headings = useHeadingNavigation();
+    return <button onClick={() => headings?.navigateToDocumentHeading("second", { id: "1-shared-0", lineNumber: 1 })}>Second heading</button>;
+  }
+  const ui = (first: boolean) => <AppShell left={null} right={<Navigation />} center={<>
+    {first && <DocumentViewModeProvider><DocumentEditor {...baseProps} document={{ id: "first", title: "First", contentMarkdown: "# Shared" }} /></DocumentViewModeProvider>}
+    <DocumentViewModeProvider><DocumentEditor {...baseProps} document={{ id: "second", title: "Second", contentMarkdown: "# Shared" }} /></DocumentViewModeProvider>
+  </>} />;
+  const { rerender } = render(ui(true));
+  const headings = document.querySelectorAll<HTMLElement>('[data-outline-heading-id="1-shared-0"]');
+  const firstScroll = vi.fn(); const secondScroll = vi.fn();
+  Object.defineProperty(headings[0], "scrollIntoView", { value: firstScroll });
+  Object.defineProperty(headings[1], "scrollIntoView", { value: secondScroll });
+  fireEvent.click(screen.getByText("Second heading"));
+  expect(firstScroll).not.toHaveBeenCalled();
+  expect(secondScroll).toHaveBeenCalledOnce();
+  rerender(ui(false));
+  fireEvent.click(screen.getByText("Second heading"));
+  expect(secondScroll).toHaveBeenCalledTimes(2);
+});
+
+
+it("accepts an explicit confirmed restore without remounting sibling editor sessions", () => {
+  const doc = { id: "doc-1", title: "Original", contentMarkdown: "# Original" };
+  const ui = (resetVersion: number) => <DocumentViewModeProvider><DocumentEditor {...baseProps} document={doc} resetVersion={resetVersion} /></DocumentViewModeProvider>;
+  const { rerender } = render(ui(0));
+  fireEvent.change(screen.getByDisplayValue("Original"), { target: { value: "My draft" } });
+  rerender(ui(1));
+  expect(screen.getByDisplayValue("Original")).toBeTruthy();
+});
+
+
+it("keeps the editor instance mounted across view mode changes", async () => {
+  render(<DocumentViewModeProvider><TestModeControls /><DocumentEditor {...baseProps} document={{ id: "doc-1", title: "Draft", contentMarkdown: "Text" }} /></DocumentViewModeProvider>);
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+  const editor = await screen.findByLabelText("Markdown editor");
+  fireEvent.click(screen.getByRole("button", { name: "Preview" }));
+  expect(editor.isConnected).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Edit" }));
+  expect(screen.getByLabelText("Markdown editor")).toBe(editor);
+});
+
+it("accepts clean server changes and reports dirty state only for the edited document", () => {
+  const onDirtyChange = vi.fn();
+  const doc = { id: "doc-1", title: "Original", contentMarkdown: "# Original" };
+  const ui = (title: string) => <DocumentViewModeProvider><DocumentEditor {...baseProps} document={{ ...doc, title }} onDirtyChange={onDirtyChange} /></DocumentViewModeProvider>;
+  const { rerender } = render(ui("Original"));
+  rerender(ui("Server title"));
+  expect(screen.getByDisplayValue("Server title")).toBeTruthy();
+  fireEvent.change(screen.getByDisplayValue("Server title"), { target: { value: "My draft" } });
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", true);
+  rerender(ui("My draft"));
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", false);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("treats native form CRLF normalization as a clean saved draft", async () => {
+  const onDirtyChange = vi.fn();
+  const ui = (contentMarkdown: string) => <DocumentViewModeProvider mode="edit" onModeChange={() => {}}><DocumentEditor {...baseProps}
+    document={{ id: "doc-1", title: "Original", contentMarkdown }} onDirtyChange={onDirtyChange} /></DocumentViewModeProvider>;
+  const { rerender } = render(ui("Original"));
+  await screen.findByLabelText("Markdown editor");
+  act(() => codeMirrorHarness.changeHandlers[0]("Saved\n\nDraft", { state: { selection: { main: { head: 12 } } } }));
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", true);
+  rerender(ui("Saved\r\n\r\nDraft"));
+  expect(onDirtyChange).toHaveBeenLastCalledWith("doc-1", false);
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
+it("releases a dirty document session when its editor is disposed", () => {
+  const dirty = new Set<string>();
+  const onDirtyChange = (id: string, changed: boolean) => { if (changed) dirty.add(id); else dirty.delete(id); };
+  const { unmount } = render(<DocumentViewModeProvider><DocumentEditor {...baseProps}
+    document={{ id: "doc-1", title: "Original", contentMarkdown: "Body" }} onDirtyChange={onDirtyChange} /></DocumentViewModeProvider>);
+  fireEvent.change(screen.getByDisplayValue("Original"), { target: { value: "Dirty title" } });
+  expect(dirty.has("doc-1")).toBe(true);
+  unmount();
+  expect(dirty.size).toBe(0);
 });

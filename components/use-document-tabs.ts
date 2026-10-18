@@ -101,6 +101,8 @@ export function useDocumentTabs({
 }
 
 export function openDocumentInNewTab(workspaceSlug: string, document: DocumentTabDocument) {
+  const request = new CustomEvent("munjib:open-document-tab", { detail: { workspaceSlug, document }, cancelable: true });
+  if (!window.dispatchEvent(request)) return;
   const storageKey = documentTabsStorageKey(workspaceSlug);
   const activeStorageKey = documentTabsActiveStorageKey(workspaceSlug);
   const tabs = parseStoredDocumentTabs(window.localStorage.getItem(storageKey));

@@ -13,6 +13,8 @@ type DocumentTabsProps = {
   onClose: (tabId: string) => void;
   onAdd: () => void;
   reserveLeadingSlot?: boolean;
+  onDragTab?: (tabId: string, event: React.DragEvent<HTMLButtonElement>) => void;
+  onDragEnd?: () => void;
 };
 
 const ADD_BUTTON_WIDTH = 44;
@@ -48,6 +50,8 @@ export function DocumentTabs({
   onClose,
   onAdd,
   reserveLeadingSlot = false,
+  onDragTab,
+  onDragEnd,
 }: DocumentTabsProps) {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +110,9 @@ export function DocumentTabs({
                   aria-current={selected ? "page" : undefined}
                   className="h-full min-w-0 flex-1 truncate px-3 text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-visible)]"
                   onClick={() => onSelect(tab.id)}
+                  draggable={Boolean(onDragTab && tab.documentId)}
+                  onDragStart={(event) => onDragTab?.(tab.id, event)}
+                  onDragEnd={onDragEnd}
                 >
                   {title}
                 </button>
