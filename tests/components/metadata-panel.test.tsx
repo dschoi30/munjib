@@ -364,21 +364,23 @@ describe("MetadataPanel document groups", () => {
     expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("identifies matching-title arrow disclosures by accessible paths without visible titles", () => {
-    renderPanel({ documents: documents.map(bundle => ({ ...bundle, document: { ...bundle.document, title: "Same title", contentMarkdown: "# Same title" } })) });
+  it("shows document names once beside disclosures and promotes children of a matching first H1", () => {
+    renderPanel({ documents: documents.map(bundle => ({ ...bundle, document: { ...bundle.document, title: "Same title", contentMarkdown: "# Same title\n## Child section" } })) });
     expect(screen.getByRole("button", { name: "Same title folder/a" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Same title folder/b" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Same title folder/a" }).textContent).toBe("");
-    expect(screen.getAllByRole("button", { name: "Go to heading Same title" })).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Same title folder/a" }).textContent).toBe("Same title");
+    expect(screen.getAllByText("Same title")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Go to heading Same title" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Go to heading Child section" })).toHaveLength(2);
     expect(screen.queryByText("folder/a")).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
   });
 
   it("targets heading navigation by document even when headings match", () => {
     const onNavigateToDocumentHeading = vi.fn();
-    renderPanel({ documents: documents.map((bundle) => ({ ...bundle, document: { ...bundle.document, contentMarkdown: "# Same" } })), onNavigateToDocumentHeading });
+    renderPanel({ documents: documents.map((bundle) => ({ ...bundle, document: { ...bundle.document, contentMarkdown: `# ${bundle.document.title}\n# Same` } })), onNavigateToDocumentHeading });
     fireEvent.click(screen.getAllByRole("button", { name: "Go to heading Same" })[1]);
-    expect(onNavigateToDocumentHeading).toHaveBeenCalledWith("b", { id: "1-same-0", lineNumber: 1 });
+    expect(onNavigateToDocumentHeading).toHaveBeenCalledWith("b", { id: "1-same-0", lineNumber: 2 });
   });
 
   it("submits the selected document version and respects each document write permission", async () => {
@@ -422,13 +424,13 @@ describe("MetadataPanel document groups", () => {
     expect((screen.getByRole("button", { name: "Restore" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("shows one category heading and independently collapses document content with arrow controls", () => {
+  it("shows one category heading and independently collapses document content with named arrow controls", () => {
     const onNavigateToDocumentHeading = vi.fn();
     renderPanel({ documents, onNavigateToDocumentHeading });
     expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
     expect(screen.getByRole("heading", { name: "Outline" })).toBeTruthy();
-    expect(screen.queryByText("Document A")).toBeNull();
-    expect(screen.queryByText("Document B")).toBeNull();
+    expect(screen.getAllByText("Document A")).toHaveLength(1);
+    expect(screen.getAllByText("Document B")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Document A" }));
     expect(screen.queryByRole("button", { name: "Go to heading Alpha" })).toBeNull();

@@ -4152,3 +4152,8 @@ links:
 
 - Updated [[Workspace Split Layout]] and [[Document Editing Workflow]]: one selected category heading below the toolbar across grouped and legacy/Trial metadata, compact arrow-only document disclosures, and document/path identity retained in accessible labels/tooltips. Actual Markdown outline headings and document-scoped actions remain unchanged.
 - Evidence: `components/metadata-panel.tsx`, existing metadata/group/Trial component regressions; Issue #242.
+
+### Issue #242 clarification
+
+- The owner clarified that document names remain once beside the disclosure arrow. Restored full-width named document rows; kept a single top category heading. Only a grouped outline's first root H1 matching the document title is omitted, with children promoted; other headings and legacy/Trial outlines retain their navigation. This supersedes the earlier arrow-only presentation description.
+- Evidence: corrected issue #242 scope, `components/metadata-panel.tsx`, existing metadata navigation/disclosure/Trial regressions.

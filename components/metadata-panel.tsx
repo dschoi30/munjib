@@ -226,14 +226,20 @@ function DocumentMetadataGroup({ bundle, category, showPath, expanded, onToggle,
   const { language } = useI18n();
   const statusMessages = metadataStatusMessages[language];
   const contentId = useId();
-  const outline = useMemo(() => buildMarkdownOutline(bundle.document.contentMarkdown), [bundle.document.contentMarkdown]);
+  const outline = useMemo(() => {
+    const items = buildMarkdownOutline(bundle.document.contentMarkdown);
+    const first = items[0];
+    return first?.level === 1 && first.title.trim() === bundle.document.title.trim()
+      ? [...first.children, ...items.slice(1)] : items;
+  }, [bundle.document.contentMarkdown, bundle.document.title]);
   return <section className="border-b border-border pb-3">
     <button type="button" aria-expanded={expanded} aria-controls={contentId}
       aria-label={showPath ? `${bundle.document.title} ${bundle.document.path}` : bundle.document.title}
       title={bundle.document.path ? `${bundle.document.title} (${bundle.document.path})` : bundle.document.title}
       onClick={onToggle}
-      className={`inline-flex h-6 w-6 items-center justify-center rounded hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)] ${active ? "bg-slate-200 text-ink" : "text-slate-600"}`}>
+      className={`flex w-full min-w-0 items-center gap-2 rounded px-2 py-2 text-left text-sm font-semibold hover:bg-slate-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-visible)] ${active ? "bg-slate-200 text-ink" : "text-slate-600"}`}>
       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      <span className="truncate">{bundle.document.title}</span>
     </button>
     <div id={contentId} hidden={!expanded} className="px-2 pt-2">
       {bundle.loading ? <p role="status" className="text-sm text-slate-600">{statusMessages.loading}</p> : bundle.error ? <div role="alert" className="text-sm text-slate-600">
