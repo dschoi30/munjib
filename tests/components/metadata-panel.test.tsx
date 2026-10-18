@@ -135,6 +135,8 @@ describe("MetadataPanel", () => {
     expect(screen.getByRole("button", { name: "Outline" }).getAttribute("aria-pressed")).toBe(
       "true",
     );
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Outline" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go to heading Welcome" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Go to heading Setup" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Go to heading Hidden" })).toBeNull();
@@ -362,10 +364,14 @@ describe("MetadataPanel document groups", () => {
     expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("disambiguates matching document titles with their visible paths", () => {
-    renderPanel({ documents: documents.map(bundle => ({ ...bundle, document: { ...bundle.document, title: "Same title" } })) });
+  it("identifies matching-title arrow disclosures by accessible paths without visible titles", () => {
+    renderPanel({ documents: documents.map(bundle => ({ ...bundle, document: { ...bundle.document, title: "Same title", contentMarkdown: "# Same title" } })) });
     expect(screen.getByRole("button", { name: "Same title folder/a" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Same title folder/b" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Same title folder/a" }).textContent).toBe("");
+    expect(screen.getAllByRole("button", { name: "Go to heading Same title" })).toHaveLength(2);
+    expect(screen.queryByText("folder/a")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
   });
 
   it("targets heading navigation by document even when headings match", () => {
@@ -410,13 +416,19 @@ describe("MetadataPanel document groups", () => {
     renderWithI18n(<WorkspaceModeProvider mode="anonymous-trial-readonly"><MetadataPanel document={outlineDocument} attachments={attachments} versions={versions} canWrite={false} restoreVersionAction={async () => {}} /></WorkspaceModeProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
     expect(screen.getByRole("link", { name: "notes.txt" }).getAttribute("href")).toBe("/api/trial/attachments/attachment-1?download=1");
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Attachments" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Versions" }));
     expect((screen.getByRole("button", { name: "Restore" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("shows each visible document and independently collapses its selected category", () => {
+  it("shows one category heading and independently collapses document content with arrow controls", () => {
     const onNavigateToDocumentHeading = vi.fn();
     renderPanel({ documents, onNavigateToDocumentHeading });
+    expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+    expect(screen.getByRole("heading", { name: "Outline" })).toBeTruthy();
+    expect(screen.queryByText("Document A")).toBeNull();
+    expect(screen.queryByText("Document B")).toBeNull();
     expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: "Document A" }));
     expect(screen.queryByRole("button", { name: "Go to heading Alpha" })).toBeNull();
@@ -424,6 +436,8 @@ describe("MetadataPanel document groups", () => {
     expect(onNavigateToDocumentHeading).not.toHaveBeenCalled();
     for (const category of ["Attachments", "Versions", "Audit log"]) {
       fireEvent.click(screen.getByRole("button", { name: category }));
+      expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(1);
+      expect(screen.getByRole("heading", { name: category })).toBeTruthy();
       expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("true");
       expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
     }

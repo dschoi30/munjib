@@ -4147,3 +4147,8 @@ links:
 - Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.
 
 - Issue #240 review corrections: merge keeps active-pane tabs first and appends other panes in tree order; editor disposal releases dirty registration before later sign-out; split drop preview uses emitted semantic `bg-primary-muted`. Source: layout transition, editor lifecycle and split component regressions (100 affected tests).
+
+## 2026-10-18 - Issue #242 metadata heading cleanup
+
+- Updated [[Workspace Split Layout]] and [[Document Editing Workflow]]: one selected category heading below the toolbar across grouped and legacy/Trial metadata, compact arrow-only document disclosures, and document/path identity retained in accessible labels/tooltips. Actual Markdown outline headings and document-scoped actions remain unchanged.
+- Evidence: `components/metadata-panel.tsx`, existing metadata/group/Trial component regressions; Issue #242.

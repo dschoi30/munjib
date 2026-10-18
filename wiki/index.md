@@ -65,7 +65,7 @@ links:
 
 ## 워크플로우
 
-- [[Workspace Split Layout]] - 중첩 탭 분할, 문서별 우측 사이드바, 같은 계정·브라우저의 레이아웃 복원.
+- [[Workspace Split Layout]] - Issue #242 metadata category heading and compact document disclosures; 중첩 탭 분할, 문서별 우측 사이드바, 같은 계정·브라우저의 레이아웃 복원.
 
 - [[Public Repository Release Workflow]] - MIT licensing, secret scanning, private delivery and existing-history publication gates; preparation only.
 
