@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import React, { useEffect } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within, waitFor } from "@testing-library/react";
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppShell, useHeadingNavigation } from "@/components/app-shell";
+import { AppShell, useHeadingNavigation, useRightPanel } from "@/components/app-shell";
 import { I18nProvider } from "@/components/i18n-provider";
+import { WorkspaceModeProvider } from "@/components/workspace-mode";
 import { MetadataPanel } from "@/components/metadata-panel";
 
 afterEach(() => {
@@ -323,5 +324,104 @@ describe("MetadataPanel", () => {
     fireEvent.pointerMove(screen.getByRole("button", { name: "Versions" }));
 
     expect(await screen.findByRole("tooltip", { name: "Versions" })).toBeTruthy();
+  });
+});
+
+
+describe("MetadataPanel document groups", () => {
+  const documents = [
+    { document: { id: "a", title: "Document A", path: "folder/a", contentMarkdown: "# Alpha" }, versions: [], auditLogs: [], attachments: [], canWrite: true },
+    { document: { id: "b", title: "Document B", path: "folder/b", contentMarkdown: "# Beta" }, versions: [], auditLogs: [], attachments: [], canWrite: false },
+  ];
+
+  it("opens and highlights an uploaded attachment in its own collapsed document group", () => {
+    function UploadResult() {
+      const panel = useRightPanel();
+      return <button onClick={() => panel?.showAttachments("b", "attachment-1")}>Upload result</button>;
+    }
+    renderWithI18n(<AppShell left={<div />} center={<UploadResult />} right={
+      <MetadataPanel documents={[documents[0], { ...documents[1], attachments }]} restoreVersionAction={async () => {}} />
+    } />);
+    fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
+    fireEvent.click(screen.getByRole("button", { name: "Document B" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload result" }));
+    const attachment = screen.getByRole("link", { name: "notes.txt" });
+    expect(attachment.closest("li")?.className).toContain("border-green-600");
+    expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("restores disclosure state by document ID across reordering without changing focused document", () => {
+    const onExpandedChange = vi.fn();
+    const onNavigateToDocumentHeading = vi.fn();
+    const { rerender } = renderPanel({ documents, expanded: { a: { outline: false } }, onExpandedChange, onNavigateToDocumentHeading });
+    fireEvent.click(screen.getByRole("button", { name: "Document A" }));
+    expect(onExpandedChange).toHaveBeenCalledWith("a", "outline", true);
+    expect(onNavigateToDocumentHeading).not.toHaveBeenCalled();
+    rerender(<I18nProvider><MetadataPanel documents={[documents[1], documents[0]]} expanded={{ a: { outline: false } }} restoreVersionAction={async () => {}} /></I18nProvider>);
+    expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("targets heading navigation by document even when headings match", () => {
+    const onNavigateToDocumentHeading = vi.fn();
+    renderPanel({ documents: documents.map((bundle) => ({ ...bundle, document: { ...bundle.document, contentMarkdown: "# Same" } })), onNavigateToDocumentHeading });
+    fireEvent.click(screen.getAllByRole("button", { name: "Go to heading Same" })[1]);
+    expect(onNavigateToDocumentHeading).toHaveBeenCalledWith("b", { id: "1-same-0", lineNumber: 1 });
+  });
+
+  it("submits the selected document version and respects each document write permission", async () => {
+    const restoreVersionAction = vi.fn(async (_data: FormData) => {});
+    renderPanel({ documents: documents.map((bundle, index) => ({ ...bundle, versions: [{ ...versions[0], id: `version-${bundle.document.id}`, versionNumber: index + 1 }] })), restoreVersionAction });
+    fireEvent.click(screen.getByRole("button", { name: "Versions" }));
+    const buttons = screen.getAllByRole("button", { name: "Restore" });
+    expect((buttons[1] as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(buttons[0]);
+    await waitFor(() => expect(restoreVersionAction).toHaveBeenCalled());
+    expect(restoreVersionAction.mock.calls[0][0].get("versionId")).toBe("version-a");
+  });
+
+  it("keeps each document's empty result and attachment list in the matching group", () => {
+    renderPanel({ documents: [documents[0], { ...documents[1], attachments }] });
+    fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
+    const groupA = screen.getByRole("button", { name: "Document A" }).closest("section")!;
+    const groupB = screen.getByRole("button", { name: "Document B" }).closest("section")!;
+    expect(within(groupA).getByText("No attachments")).toBeTruthy();
+    expect(within(groupA).queryByRole("link")).toBeNull();
+    expect(within(groupB).getByRole("link", { name: "notes.txt" }).getAttribute("href")).toBe("/api/attachments/attachment-1?download=1");
+  });
+
+  it("keeps loading and errors inside their own document groups", () => {
+    const onRetryDocument = vi.fn();
+    renderPanel({ documents: [{ ...documents[0], loading: true }, { ...documents[1], error: "Could not load document" }], onRetryDocument });
+    expect(screen.getByRole("status").textContent).toBe("Loading…");
+    expect(screen.getByRole("alert").textContent).toContain("Could not load document");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(onRetryDocument).toHaveBeenCalledWith("b");
+    expect(screen.queryByRole("button", { name: "Go to heading Alpha" })).toBeNull();
+  });
+
+  it("preserves the legacy read-only Trial attachment route", () => {
+    renderWithI18n(<WorkspaceModeProvider mode="anonymous-trial-readonly"><MetadataPanel document={outlineDocument} attachments={attachments} versions={versions} canWrite={false} restoreVersionAction={async () => {}} /></WorkspaceModeProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Attachments" }));
+    expect(screen.getByRole("link", { name: "notes.txt" }).getAttribute("href")).toBe("/api/trial/attachments/attachment-1?download=1");
+    fireEvent.click(screen.getByRole("button", { name: "Versions" }));
+    expect((screen.getByRole("button", { name: "Restore" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("shows each visible document and independently collapses its selected category", () => {
+    const onNavigateToDocumentHeading = vi.fn();
+    renderPanel({ documents, onNavigateToDocumentHeading });
+    expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Document A" }));
+    expect(screen.queryByRole("button", { name: "Go to heading Alpha" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Go to heading Beta" })).toBeTruthy();
+    expect(onNavigateToDocumentHeading).not.toHaveBeenCalled();
+    for (const category of ["Attachments", "Versions", "Audit log"]) {
+      fireEvent.click(screen.getByRole("button", { name: category }));
+      expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("true");
+      expect(screen.getByRole("button", { name: "Document B" }).getAttribute("aria-expanded")).toBe("true");
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Outline" }));
+    expect(screen.getByRole("button", { name: "Document A" }).getAttribute("aria-expanded")).toBe("false");
   });
 });

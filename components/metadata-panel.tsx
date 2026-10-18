@@ -3,9 +3,9 @@
 import { useWorkspaceMode } from "@/components/workspace-mode";
 
 import type { Attachment, AuditLog, DocumentVersion } from "@prisma/client";
-import { FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, FileClock, History, ListTree, PanelRightClose, Paperclip } from "lucide-react";
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useHeadingNavigation,
   useRightPanel,
@@ -23,52 +23,86 @@ import {
   buildMarkdownOutline,
   type MarkdownOutlineItem,
 } from "@/lib/markdown/folding";
+import { metadataStatusMessages } from "@/lib/i18n/metadata-status-messages";
 import { scrollToOutlineHeading } from "@/lib/outline-targets";
 
 type DisplayAttachment = Pick<Attachment, "id" | "fileName" | "mimeType" | "size">;
 type DisplayVersion = Pick<DocumentVersion, "id" | "versionNumber" | "title" | "changeSummary">;
 type DisplayAuditLog = Pick<AuditLog, "id" | "action">;
 
-type MetadataTab = "outline" | "attachments" | "versions" | "audit";
+export type MetadataTab = "outline" | "attachments" | "versions" | "audit";
 
 type MetadataDocument = {
   id: string;
   contentMarkdown: string;
 };
 
-export function MetadataPanel({
-  document,
-  versions,
-  auditLogs,
-  attachments,
-  canWrite,
-  restoreVersionAction,
-  onTogglePanel,
-  onNavigateToHeading,
-}: {
-  document: MetadataDocument | null;
+export type MetadataDocumentBundle = {
+  loading?: boolean;
+  error?: string;
+  document: MetadataDocument & { title: string; path?: string };
   versions: DisplayVersion[];
   auditLogs: DisplayAuditLog[];
   attachments: DisplayAttachment[];
   canWrite: boolean;
+};
+export type MetadataExpandedState = Record<string, Partial<Record<MetadataTab, boolean>>>;
+
+export function MetadataPanel({
+  document = null,
+  versions = [],
+  auditLogs = [],
+  attachments = [],
+  canWrite = false,
+  documents,
+  expanded,
+  onExpandedChange,
+  activeDocumentId,
+  onNavigateToDocumentHeading,
+  onRetryDocument,
+  restoreVersionAction,
+  onTogglePanel,
+  onNavigateToHeading,
+}: {
+  documents?: MetadataDocumentBundle[];
+  onRetryDocument?: (documentId: string) => void;
+  expanded?: MetadataExpandedState;
+  onExpandedChange?: (documentId: string, category: MetadataTab, expanded: boolean) => void;
+  activeDocumentId?: string | null;
+  onNavigateToDocumentHeading?: (documentId: string, target: HeadingNavigationTarget) => void;
+  document?: MetadataDocument | null;
+  versions?: DisplayVersion[];
+  auditLogs?: DisplayAuditLog[];
+  attachments?: DisplayAttachment[];
+  canWrite?: boolean;
   restoreVersionAction: (formData: FormData) => Promise<void>;
   onTogglePanel?: () => void;
   onNavigateToHeading?: (target: HeadingNavigationTarget) => void;
 }) {
   const { t } = useI18n();
   const [activeTab, setActiveTab] = useState<MetadataTab>("outline");
+  const [localExpanded, setLocalExpanded] = useState<MetadataExpandedState>({});
+  const changeExpanded = useCallback((id: string, category: MetadataTab, value: boolean) => {
+    setLocalExpanded((previous) => ({ ...previous, [id]: { ...previous[id], [category]: value } }));
+    onExpandedChange?.(id, category, value);
+  }, [onExpandedChange]);
   const rightPanel = useRightPanel();
   const attachmentFocus = rightPanel?.attachmentFocus;
   const clearAttachmentFocus = rightPanel?.clearAttachmentFocus;
   const focusedAttachmentId = attachmentFocus && attachmentFocus.documentId === document?.id ? attachmentFocus.attachmentId : null;
+  const groupedFocusVisible = documents?.some((bundle) => bundle.document.id === attachmentFocus?.documentId) ?? false;
+  const handledFocus = useRef<typeof attachmentFocus>(null);
   useEffect(() => {
-    if (!attachmentFocus) return;
-    if (attachmentFocus.documentId !== document?.id) {
+    if (!attachmentFocus) { handledFocus.current = null; return; }
+    if (documents ? !groupedFocusVisible : attachmentFocus.documentId !== document?.id) {
       clearAttachmentFocus?.();
       return;
     }
+    if (handledFocus.current === attachmentFocus) return;
+    handledFocus.current = attachmentFocus;
     setActiveTab("attachments");
-  }, [attachmentFocus, document?.id, clearAttachmentFocus]);
+    if (documents) changeExpanded(attachmentFocus.documentId, "attachments", true);
+  }, [attachmentFocus, document?.id, documents, groupedFocusVisible, clearAttachmentFocus, changeExpanded]);
   const headingNavigation = useHeadingNavigation();
   const liveOutlineDocument = headingNavigation?.outlineDocument;
   const navigateToHeading = headingNavigation?.navigateToHeading;
@@ -141,6 +175,18 @@ export function MetadataPanel({
           </ToolbarTooltip>
         </div>
       </TooltipProvider>
+      {documents ? documents.map((bundle) => (
+        <DocumentMetadataGroup key={bundle.document.id} bundle={bundle} category={activeTab}
+          expanded={(expanded ?? localExpanded)[bundle.document.id]?.[activeTab] ?? true}
+          onToggle={() => changeExpanded(bundle.document.id, activeTab, !((expanded ?? localExpanded)[bundle.document.id]?.[activeTab] ?? true))}
+          focusedAttachmentId={attachmentFocus?.documentId === bundle.document.id ? attachmentFocus.attachmentId : null}
+          onClearFocus={clearAttachmentFocus}
+          active={bundle.document.id === activeDocumentId}
+          onRetry={onRetryDocument ? () => onRetryDocument(bundle.document.id) : undefined}
+          restoreVersionAction={restoreVersionAction}
+          onNavigateToHeading={(target) => onNavigateToDocumentHeading?.(bundle.document.id, target)}
+        />
+      )) : <>
       {activeTab === "outline" ? (
         <OutlineList items={outlineItems} onNavigateToHeading={handleNavigateToHeading} />
       ) : null}
@@ -153,8 +199,46 @@ export function MetadataPanel({
         />
       ) : null}
       {activeTab === "audit" ? <AuditLogList auditLogs={auditLogs} /> : null}
+      </>}
     </div>
   );
+}
+
+function DocumentMetadataGroup({ bundle, category, expanded, onToggle, active, restoreVersionAction, onNavigateToHeading, onRetry, focusedAttachmentId, onClearFocus }: {
+  focusedAttachmentId?: string | null;
+  onClearFocus?: () => void;
+  onRetry?: () => void;
+  bundle: MetadataDocumentBundle;
+  category: MetadataTab;
+  expanded: boolean;
+  onToggle: () => void;
+  active: boolean;
+  restoreVersionAction: (data: FormData) => Promise<void>;
+  onNavigateToHeading: (target: HeadingNavigationTarget) => void;
+}) {
+  const { language } = useI18n();
+  const statusMessages = metadataStatusMessages[language];
+  const contentId = useId();
+  const outline = useMemo(() => buildMarkdownOutline(bundle.document.contentMarkdown), [bundle.document.contentMarkdown]);
+  return <section className="border-b border-border pb-3">
+    <h2><button type="button" aria-expanded={expanded} aria-controls={contentId}
+      title={bundle.document.path ?? bundle.document.title}
+      onClick={onToggle}
+      className={`flex w-full min-w-0 items-center gap-2 rounded px-2 py-2 text-left text-sm font-semibold hover:bg-slate-200 ${active ? "bg-slate-200 text-ink" : "text-slate-600"}`}>
+      {expanded ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
+      <span className="truncate">{bundle.document.title}</span>
+    </button></h2>
+    <div id={contentId} hidden={!expanded} className="px-2 pt-2">
+      {bundle.loading ? <p role="status" className="text-sm text-slate-600">{statusMessages.loading}</p> : bundle.error ? <div role="alert" className="text-sm text-slate-600">
+        <p>{bundle.error}</p>{onRetry ? <Button type="button" onClick={onRetry}>{statusMessages.retry}</Button> : null}
+      </div> : <>
+      {category === "outline" ? <OutlineList items={outline} onNavigateToHeading={onNavigateToHeading} /> : null}
+      {category === "attachments" ? <AttachmentsList attachments={bundle.attachments} focusedAttachmentId={expanded ? focusedAttachmentId : null} onClearFocus={onClearFocus} /> : null}
+      {category === "versions" ? <VersionsList versions={bundle.versions} canWrite={bundle.canWrite} restoreVersionAction={restoreVersionAction} /> : null}
+      {category === "audit" ? <AuditLogList auditLogs={bundle.auditLogs} /> : null}
+      </>}
+    </div>
+  </section>;
 }
 
 function OutlineList({

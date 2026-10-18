@@ -4123,3 +4123,7 @@ links:
 - Existing ASCII storage-key validation remains unchanged; original names lost by earlier sanitization cannot be recovered.
 
 - CI follow-up: kept the protected Markdown renderer byte-identical; attachment document links download through the response disposition. The Leaf 11 renderer integrity check remains enforced.
+
+## 2026-10-18 - Grouped metadata sidebar (Issue #240)
+
+- Updated [[Document Editing Workflow]] with document/category disclosures, document-targeted actions and Trial compatibility. Source: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
