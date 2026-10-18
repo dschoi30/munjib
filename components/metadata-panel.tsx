@@ -241,7 +241,7 @@ function DocumentMetadataGroup({ bundle, category, showPath, expanded, onToggle,
       {expanded ? <ChevronDown className="h-4 w-4 shrink-0" aria-hidden="true" /> : <ChevronRight className="h-4 w-4 shrink-0" aria-hidden="true" />}
       <span className="truncate">{bundle.document.title}</span>
     </button>
-    <div id={contentId} hidden={!expanded} className="px-2 pt-2">
+    <div id={contentId} hidden={!expanded} className={`px-2 ${category === "outline" ? "pt-1" : "pt-2"}`}>
       {bundle.loading ? <p role="status" className="text-sm text-slate-600">{statusMessages.loading}</p> : bundle.error ? <div role="alert" className="text-sm text-slate-600">
         <p>{bundle.error}</p>{onRetry ? <Button type="button" onClick={onRetry}>{statusMessages.retry}</Button> : null}
       </div> : <>

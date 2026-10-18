@@ -4157,3 +4157,5 @@ links:
 
 - The owner clarified that document names remain once beside the disclosure arrow. Restored full-width named document rows; kept a single top category heading. Only a grouped outline's first root H1 matching the document title is omitted, with children promoted; other headings and legacy/Trial outlines retain their navigation. This supersedes the earlier arrow-only presentation description.
 - Evidence: corrected issue #242 scope, `components/metadata-panel.tsx`, existing metadata navigation/disclosure/Trial regressions.
+
+- Issue #242 spacing follow-up: reduced document-row-to-outline body top padding from 8px to 4px; other metadata categories retain 8px. Presentation-only adjustment in `components/metadata-panel.tsx`; disclosure and heading/navigation contracts are unchanged.
