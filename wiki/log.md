@@ -4147,3 +4147,15 @@ links:
 - Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.
 
 - Issue #240 review corrections: merge keeps active-pane tabs first and appends other panes in tree order; editor disposal releases dirty registration before later sign-out; split drop preview uses emitted semantic `bg-primary-muted`. Source: layout transition, editor lifecycle and split component regressions (100 affected tests).
+
+## 2026-10-18 - Issue #242 metadata heading cleanup
+
+- Updated [[Workspace Split Layout]] and [[Document Editing Workflow]]: one selected category heading below the toolbar across grouped and legacy/Trial metadata, compact arrow-only document disclosures, and document/path identity retained in accessible labels/tooltips. Actual Markdown outline headings and document-scoped actions remain unchanged.
+- Evidence: `components/metadata-panel.tsx`, existing metadata/group/Trial component regressions; Issue #242.
+
+### Issue #242 clarification
+
+- The owner clarified that document names remain once beside the disclosure arrow. Restored full-width named document rows; kept a single top category heading. Only a grouped outline's first root H1 matching the document title is omitted, with children promoted; other headings and legacy/Trial outlines retain their navigation. This supersedes the earlier arrow-only presentation description.
+- Evidence: corrected issue #242 scope, `components/metadata-panel.tsx`, existing metadata navigation/disclosure/Trial regressions.
+
+- Issue #242 spacing follow-up: reduced document-row-to-outline body top padding from 8px to 4px; other metadata categories retain 8px. Presentation-only adjustment in `components/metadata-panel.tsx`; disclosure and heading/navigation contracts are unchanged.

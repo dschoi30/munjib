@@ -341,9 +341,9 @@ Preview는 folding을 위해 heading이 있는 문서를 여러 `ReactMarkdown` 
 
 ## Issue #240 grouped metadata sidebar
 
-- `MetadataPanel` accepts visible-document bundles in pane order and keeps the shared Outline, Attachments, Versions and Audit log category toolbar. Each document title is a native disclosure button with an independent document-ID/category expansion value, defaulting open; the parent persists the supplied expansion map. Disclosure toggling does not select a document or navigate.
-- Group content, load/error state, retry, attachment highlights and version permissions belong to the matching document. Heading actions carry the document ID, and version forms submit their own version ID. The active document is highlighted and document paths appear on title hover for disambiguation.
-- The original single-document props remain supported for the anonymous read-only Trial, including protected Trial download URLs. Evidence: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
+- `MetadataPanel` accepts visible-document bundles in pane order and keeps the shared Outline, Attachments, Versions and Audit log category toolbar. Issue #242 shows the active category heading once below the toolbar and shows each document name once beside its arrow in a full-width native disclosure row, with an independent document-ID/category expansion value, defaulting open; the parent persists the supplied expansion map. Disclosure toggling does not select a document or navigate.
+- Group content, load/error state, retry, attachment highlights and version permissions belong to the matching document. Heading actions carry the document ID, and version forms submit their own version ID. The active document row is highlighted; paths remain in accessible labels/tooltips and category headings are not repeated inside groups. Only a matching first root H1 duplicates the visible document name: its label is omitted and its children are promoted. Other outline entries and their IDs/line targets remain unchanged; legacy/Trial outlines remain intact.
+- The original single-document props remain supported for the anonymous read-only Trial, including protected Trial download URLs and the same single top category heading. Evidence: `components/metadata-panel.tsx`, `tests/components/metadata-panel.test.tsx`.
 
 ## Issue #240 nested document workspace
 
