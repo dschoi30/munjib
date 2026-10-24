@@ -354,9 +354,12 @@ async function preparePreflightedWorkspaceChatMessageStreamInternal(
     query: message,
     selectedDocumentId,
   });
-  const retrievalQuestion = currentCandidates.length > 0
-    ? truncateText(message, CONVERSATION_QUERY_MAX_CHARS)
-    : conversationQuestion;
+  const selectedDocument = workspace.readableDocuments.find((document) => document.id === selectedDocumentId);
+  const retrievalQuestion = selectedDocument && isDocumentReferentialQuery(message)
+    ? truncateText(`${message}\nCurrent document: ${selectedDocument.title}`, CONVERSATION_QUERY_MAX_CHARS)
+    : currentCandidates.length > 0 && !isConversationReferentialQuery(message)
+      ? truncateText(message, CONVERSATION_QUERY_MAX_CHARS)
+      : conversationQuestion;
   await observeAiStage("indexing", () => ensureWorkspaceChatRetrievalIndex({
     workspaceId: workspace.workspaceId,
     readableDocuments: workspace.readableDocuments,
@@ -971,6 +974,13 @@ function isDocumentReferentialQuery(query: string) {
     normalized.includes("문서 요약") ||
     normalized.includes("페이지 요약")
   );
+}
+
+function isConversationReferentialQuery(query: string) {
+  const normalized = query.normalize("NFKC").toLowerCase();
+  return /\b(it|its|they|them|their|theirs|this|that|these|those|former|latter|same)\b/u.test(normalized) ||
+    /\b(what|how) about\b/u.test(normalized) ||
+    /(?:그것|그거|그건|그게|그걸|그의|그때|그런|그렇게|그에|이것|이거|이건|이게|이걸|이에|해당|앞서|방금|위에서|이전|그\s)/u.test(normalized);
 }
 
 function withDisplayOrderedMessages<

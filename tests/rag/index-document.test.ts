@@ -84,6 +84,31 @@ describe("document RAG indexing", () => {
     );
   });
 
+  it("bisects rejected embedding inputs without dropping text and atomically stores every resulting chunk", async () => {
+    const replaceDocumentChunks = vi.fn().mockResolvedValue(true);
+    const contentMarkdown = "# 한글\n\n" + "한글🚀".repeat(100);
+    const embedText = vi.fn(async (text: string) => {
+      if (Array.from(text).length > 100) throw new Error("RAG_EMBEDDING_INPUT_TOO_LONG");
+      return [0.1, 0.2, 0.3];
+    });
+
+    await indexSavedDocument({
+      document: { ...savedDocument, contentMarkdown },
+      embeddingModel: "bge-m3", embedText, replaceDocumentChunks,
+    });
+
+    const rows = replaceDocumentChunks.mock.calls[0][0].chunks;
+    expect(rows.length).toBeGreaterThan(1);
+    expect(rows.map((row: { content: string }) => row.content).join("")).toBe(contentMarkdown);
+    expect(rows.map((row: { chunkIndex: number }) => row.chunkIndex)).toEqual(rows.map((_: unknown, index: number) => index));
+    for (const row of rows) {
+      expect(Array.from(row.content).length).toBeLessThanOrEqual(100);
+      expect(row.headingPath).toBe("한글");
+      expect(row.content).not.toMatch(/[\uD800-\uDBFF]$/u);
+    }
+    expect(replaceDocumentChunks).toHaveBeenCalledTimes(1);
+  });
+
   it("embeds chunks sequentially to avoid overloading local Ollama", async () => {
     const replaceDocumentChunks = vi.fn().mockResolvedValue(undefined);
     let activeEmbeddingRequests = 0;

@@ -73,7 +73,7 @@
         "[[Wiki Maintenance Automation]]",
         "[[Public Repository Release Workflow]]"
       ],
-      "source_count": 76,
+      "source_count": 81,
       "searchPriority": 50
     },
     {
@@ -287,7 +287,7 @@
         "[[Wiki Maintenance Automation]]",
         "[[Public Repository Release Workflow]]"
       ],
-      "source_count": 74,
+      "source_count": 75,
       "searchPriority": 50
     },
     {
@@ -504,7 +504,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 140,
+      "source_count": 142,
       "searchPriority": 50
     },
     {

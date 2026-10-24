@@ -167,3 +167,5 @@ links:
 - Issue #231: document attachment upload selection, sidebar card focus, Unicode filenames and browser downloads are described in [[Document Editing Workflow]].
 
 - Issue #244: Workspace AI now fails before generation when required backfill fails, uses current-topic retrieval before conversation fallback, and preserves a relevant selected document within eight candidates. Production embedding failures and pending server-log verification are recorded in [[RAG Process Workflow]].
+
+- Issue #244 server diagnosis: Ollama physical batch overflow and SDK retry status mismatch are confirmed by server logs. Rejected input chunks are split without text loss, and pronoun follow-ups retain conversation context. PR #245 also patches dependency floors required by the existing CI audit; see [[RAG Process Workflow]] and [[CI CD And Monitoring Workflow]].

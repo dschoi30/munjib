@@ -663,6 +663,39 @@ describe("workspace chat service", () => {
     expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({ documentId: selected.id }));
   });
 
+  it.each(["What are its risks?", "그 위험"])("keeps the earlier subject for the pronoun follow-up %s even when another document matches its generic keyword", async (message) => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const apollo = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Project Apollo",
+      contentMarkdown: "# Project Apollo\n\nBoard approval required before launch.",
+    });
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Unrelated risks 위험",
+      contentMarkdown: "# Risks\n\nUnrelated project operational risks 위험.",
+    });
+    await prisma.aiChatThread.create({ data: {
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      messages: { create: [
+        { role: "USER", content: "Explain Project Apollo" },
+        { role: "ASSISTANT", content: "Project Apollo needs board approval." },
+      ] },
+    } });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({ documentId: apollo.id }));
+    expect(embedText).toHaveBeenCalledWith(expect.stringContaining("Project Apollo"), expect.any(Object));
+  });
+
   it("backfills the readable selected document for document-referential prompts", async () => {
     const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
     const selected = await createSavedDocument({

@@ -1,5 +1,5 @@
 import { observeAiStage } from "@/lib/rag/ai-observation";
-import { RAG_ERROR_CODES } from "@/lib/rag/errors";
+import { isEmbeddingInputLimitError, RAG_ERROR_CODES } from "@/lib/rag/errors";
 
 export { RAG_ERROR_CODES };
 
@@ -89,6 +89,9 @@ export async function embedText(text: string, options: EmbedTextOptions = {}): P
     try {
       embedding = await embeddingModel.embedQuery(text);
     } catch (error) {
+      if (isEmbeddingInputLimitError(error)) {
+        throw new Error(RAG_ERROR_CODES.EMBEDDING_INPUT_TOO_LONG);
+      }
       if (options.privacySafeLogging) {
         console.error("Embedding request failed", {
           code: RAG_ERROR_CODES.EMBEDDING_REQUEST_FAILED,

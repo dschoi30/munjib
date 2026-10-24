@@ -25,6 +25,7 @@ const constructors = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -62,6 +63,7 @@ describe("RAG LangChain model factory", () => {
     expect(model.options).toEqual({
       model: "bge-m3",
       baseUrl: "http://ollama.internal:11434",
+      onFailedAttempt: expect.any(Function),
     });
   });
 
@@ -87,6 +89,22 @@ describe("RAG LangChain model factory", () => {
       "http://ollama.internal:11434/api/embed",
       expect.objectContaining({ signal: controller.signal }),
     );
+  });
+
+  it("does not back off and retry an actual Ollama status_code 400 error", async () => {
+    vi.useFakeTimers();
+    const transport = vi.fn().mockImplementation(async () => new Response(JSON.stringify({
+      error: "the input length exceeds the context length",
+    }), { status: 400, headers: { "content-type": "application/json" } }));
+    vi.stubGlobal("fetch", transport);
+    const model = createEmbeddingModel({
+      provider: "ollama", model: "bge-m3", baseUrl: "http://ollama.internal:11434", dimensions: 1024,
+    }, { signal: new AbortController().signal });
+
+    const rejection = expect((model as { embedQuery(text: string): Promise<unknown> }).embedQuery("oversized synthetic input")).rejects.toThrow("context length");
+    await vi.runAllTimersAsync();
+    await rejection;
+    expect(transport).toHaveBeenCalledTimes(1);
   });
 
   it("aborts an actual LangChain Ollama embedding request at the HTTP transport", async () => {
