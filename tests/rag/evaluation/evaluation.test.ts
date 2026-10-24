@@ -28,6 +28,12 @@ describe("evaluation dataset and evidence",()=>{
     expect(evidenceRecall(groups,[{documentId:"doc",content:"abc"},{documentId:"doc",content:"ef"}],docs)).toEqual({status:"scored",value:0});
     expect(evidenceRecall(groups,[{documentId:"wrong",content:"abcdef"}],docs)).toEqual({status:"scored",value:0});
   });
+  it("covers whitespace at split boundaries without accepting missing words",()=>{
+    const groups=[{id:"e",alternatives:[{documentKey:"doc",quotes:["alpha beta"]}]}];
+    const docs=[{key:"doc",title:"D",content:"alpha beta"}];
+    expect(evidenceRecall(groups,[{documentId:"doc",content:"alpha "},{documentId:"doc",content:" beta"}],docs)).toEqual({status:"scored",value:1});
+    expect(evidenceRecall(groups,[{documentId:"doc",content:"alpha"},{documentId:"doc",content:"eta"}],docs)).toEqual({status:"scored",value:0});
+  });
   it("keeps the gold denominator when retrieval returns few results",()=>{
     const item=dataset.cases.find(c=>c.id==="ko-21")!;
     const scores=retrievalScores(item,dataset,{global:[{documentId:"leave",content:dataset.documents[0].content}],merged:[],prompt:[]});

@@ -55,7 +55,9 @@ Issue [#248](https://github.com/dschoi30/munjib/issues/248). 실행 절차와 �
 
 ## 2026-10-24 구현 검증
 
-- 전체 테스트: 1,808 passed / 5 skipped. TypeScript 검사, production build, 변경 파일의 명시적 Next ESLint 검사, 전체 Wiki manifest/lint/sync-check를 검증한다. 기본 `pnpm lint`는 기존 ESLint 설정 부재로 대화형 설정을 열기 때문에 임시 Next 설정으로 변경 범위를 검사했다.
+- 전체 테스트: 1,809 passed / 5 skipped. TypeScript 검사, production build, 변경 파일의 명시적 Next ESLint 검사, 전체 Wiki manifest/lint/sync-check를 검증한다. 기본 `pnpm lint`는 기존 ESLint 설정 부재로 대화형 설정을 열기 때문에 임시 Next 설정으로 변경 범위를 검사했다.
 - 실측 run `1792832630805-1bf66475`: 실제 Ollama `bge-m3` + OpenAI-compatible `openai/gpt-4.1-mini` 생성/judge, 40/40 완료, 권한 밖 근거 0건. 같은 모델을 생성/judge에 사용한 한계가 있으며 사람 보정은 미완료다.
 - 제안 label 기준: Workspace recall@5/12/60 및 prompt recall 1.00 (유효 N=27), Ask context recall 1.00 (N=9), judge faithfulness/relevance 1.00 (N=40), insufficient-evidence handling 0.90 (N=40). 이 점수는 작은 합성 corpus에 대한 계측 결과이며 운영 정확성이나 judge 타당성을 입증하지 않는다.
 - `munjib-development` project의 `evaluation` environment에 score-only experiment를 전송했고, 최신 observation/score 조회 API로 40개 case의 trace와 점수 연결을 확인했다. 실제 본문은 해당 project에 업로드하지 않았다. 별도 평가 project 발급과 CI provider secrets 설정은 운영자가 선택할 후속 설정이다.
+
+- Follow-up checks: actual cold/stale retrieval completed; deliberate unreachable embedding endpoint timed out with a nonzero exit and no fabricated quality score. Split-boundary whitespace matching now has a regression test. Re-uploading all 40 cases reused the same score IDs and was read-verified again.

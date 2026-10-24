@@ -26,7 +26,7 @@ export function evidenceRecall(groups: EvidenceGroup[], chunks: EvaluationChunk[
       }
       let cursor = start;
       for (const [left, right] of intervals.sort((a,b) => a[0]-b[0])) {
-        if (left > cursor) break;
+        if (left > cursor && body.slice(cursor,left).trim()) break;
         if (right > cursor) cursor = right;
       }
       return cursor >= start + target.length;

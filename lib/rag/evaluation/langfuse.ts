@@ -21,6 +21,10 @@ export async function publishReport(report: EvalReport, env: NodeJS.ProcessEnv) 
   });
   const datasetName = `munjib-rag-eval-${report.datasetVersion}-${report.corpusHash.slice(0,12)}`;
   const metadata = { datasetVersion: report.datasetVersion, corpusHash: report.corpusHash, rubricVersion: report.rubricVersion, configHash: report.configHash, gitSha: report.gitSha, dirtyDiffHash: report.dirtyDiffHash, mode: report.mode, index: report.index, captureMode: "scores-only" };
+  for (const key of ["chatProvider", "chatModel", "judgeProvider", "judgeModel", "embedding"] as const) {
+    const value = report.config[key];
+    if (typeof value === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._:/@+-]{0,159}$/.test(value)) Object.assign(metadata, { [key]: value });
+  }
   const publishedAfter = new Date(Date.now()-1000).toISOString();
   try {
     await client.api.datasets.create({ name: datasetName, metadata: { synthetic: true, captureMode: "scores-only" } });
@@ -30,7 +34,7 @@ export async function publishReport(report: EvalReport, env: NodeJS.ProcessEnv) 
       await client.api.datasetItems.create({ id: itemId, datasetName, input: { caseId: result.id }, metadata: { surface: result.surface, category: result.category, split: result.split } });
       activeTraceId = stableId(`${report.runId}:${result.id}`);
       const span = provider.getTracer("munjib-rag-evaluation").startSpan("rag_evaluation");
-      span.setAttributes({ "langfuse.trace.name": "rag_evaluation", "langfuse.observation.type": "span", "langfuse.trace.metadata": JSON.stringify({ ...metadata, caseId: result.id, status: result.status }), "langfuse.observation.metadata.caseStatus": result.status });
+      span.setAttributes({ "langfuse.trace.name": "rag_evaluation", "langfuse.observation.type": "span", "langfuse.trace.metadata": JSON.stringify({ ...metadata, caseId: result.id, status: result.status }), "langfuse.observation.metadata.caseStatus": result.status, "langfuse.observation.metadata.durationMs": String(result.durationMs) });
       span.end();
       const scoreIds: string[] = [];
       for (const [name, score] of Object.entries(result.scores)) if (score.status === "scored") {

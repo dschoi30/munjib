@@ -4,7 +4,7 @@ import type { JudgeResult } from "./judge";
 export type CaseResult = {
   id: string; surface: "workspace" | "ask"; category: string[]; split: string;
   status: "completed" | "pipeline_error" | "judge_error" | "timed_out" | "aborted";
-  indexingStatus: "complete" | "failed" | "not_applicable";
+  indexingStatus: "complete" | "failed" | "not_completed" | "not_applicable";
   scores: Scores; durationMs: number; capture?: EvaluationEvent[]; judge?: JudgeResult; judgeUsage?: { input: number; output: number } | null;
   contextSufficiency?: string; errorCode?: string; forbiddenEvidence: boolean;
 };

@@ -25,7 +25,13 @@ async function main() {
     // Only reports from this shipped synthetic dataset may be republished.
     if (report.datasetVersion !== dataset.version || report.corpusHash !== hash(JSON.stringify(dataset)) || report.results.some(r => !dataset.cases.some(c => c.id === r.id))) throw new Error("UNTRUSTED_PUBLISH_REPORT");
     const { publishReport } = await import("../../lib/rag/evaluation/langfuse");
-    console.log(await publishReport(report, process.env)); return;
+    try { console.log(await publishReport(report, process.env)); report.publish = "published"; }
+    catch (error) { report.publish = "publish_failed"; throw error; }
+    finally {
+      await writeFile(values["publish-report"],JSON.stringify(report,null,2)+"\n");
+      await writeFile(path.join(path.dirname(values["publish-report"]),"report.md"),reportMarkdown(report));
+    }
+    return;
   }
   process.env.DATABASE_URL = evaluationDatabase(process.env);
   if (!process.env.RAG_EVAL_CHAT_PROVIDER || !process.env.RAG_EVAL_CHAT_MODEL || !process.env.RAG_EVAL_EMBED_BASE_URL) throw new Error("EVAL_PROVIDER_CONFIG_REQUIRED");
@@ -63,7 +69,7 @@ async function main() {
   try {
     for (const item of cases) {
       const start = Date.now();
-      const result: CaseResult = { id: item.id, surface: item.surface, category: item.category, split: item.split, status: "pipeline_error", indexingStatus: item.surface === "ask" ? "not_applicable" : "complete", scores: {}, durationMs: 0, forbiddenEvidence: false };
+      const result: CaseResult = { id: item.id, surface: item.surface, category: item.category, split: item.split, status: "pipeline_error", indexingStatus: item.surface === "ask" ? "not_applicable" : "not_completed", scores: {}, durationMs: 0, forbiddenEvidence: false };
       const capture: EvaluationCapture = { events: [], failed: false, generationLimit };
       const caseController = new AbortController();
       const timer = setTimeout(()=>caseController.abort(), timeoutMs);
@@ -105,6 +111,7 @@ async function main() {
         if (capture.failed) throw new Error("CAPTURE_FAILED");
         const context = capture.events.find((e): e is Extract<EvaluationEvent,{stage:"context"}> => e.stage === "context");
         if (!context) throw new Error("MISSING_CONTEXT_CAPTURE");
+        result.indexingStatus = item.surface === "ask" ? "not_applicable" : "complete";
         const keyById = new Map([...f.documentIds].map(([key,id])=>[id,key]));
         const convert = (chunks: typeof context.prompt) => chunks.map(c=>({documentId:keyById.get(c.documentId) ?? "unknown",content:c.content}));
         result.forbiddenEvidence = [...context.global,...context.selected,...context.merged,...context.prompt].some(c=>!item.readableDocumentKeys.includes(keyById.get(c.documentId) ?? ""));
@@ -131,7 +138,10 @@ async function main() {
         preparedObservation?.end(); clearTimeout(timer);
         result.capture = capture.events;
         if (capture.events.some(e=>e.stage==="index" && e.status==="failed")) result.indexingStatus="failed";
-        if (fixture) await fixture.cleanup();
+        if (fixture) {
+          try { await fixture.cleanup(); }
+          catch { result.status = "pipeline_error"; result.errorCode = "FIXTURE_CLEANUP_FAILED"; controller.abort(); }
+        }
         result.durationMs=Date.now()-start; report.results.push(result); await save();
       }
       console.log(`${item.id}: ${result.status} (${result.durationMs}ms)${result.errorCode ? ` ${result.errorCode}` : ""}`);
