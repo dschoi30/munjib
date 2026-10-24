@@ -2626,6 +2626,36 @@ describe("DocumentList", () => {
     );
   });
 
+  it("shows graph loading immediately until a suspended navigation completes", async () => {
+    let finish!: () => void;
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    let ready = false;
+    function Destination() {
+      if (!ready) throw pending;
+      return <div>Graph destination ready</div>;
+    }
+    function Harness() {
+      const [graph, setGraph] = React.useState(false);
+      router.push.mockImplementation(() => setGraph(true));
+      return <React.Suspense fallback={<div>Route fallback</div>}>
+        <DocumentList {...baseProps} isGraphView={graph} />
+        {graph ? <Destination /> : null}
+      </React.Suspense>;
+    }
+    renderWithI18n(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: "Graph" }));
+    const button = screen.getByRole("button", { name: "Graph" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute("aria-busy")).toBe("true");
+    expect(screen.getByRole("status").textContent).toContain("Loading graph");
+    fireEvent.click(button);
+    expect(router.push).toHaveBeenCalledTimes(1);
+    await act(async () => { ready = true; finish(); await pending; });
+    expect(screen.queryByText("Loading graph…")).toBeNull();
+    expect(screen.getByRole("button", { name: "Graph" }).getAttribute("aria-busy")).toBe("false");
+    router.push.mockReset();
+  });
+
   it("marks the graph toolbar button active in graph view", () => {
     renderList({ isGraphView: true });
 

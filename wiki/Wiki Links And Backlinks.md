@@ -5,8 +5,8 @@ type: concept
 status: active
 summary: Munjib의 Obsidian-style wiki link 파싱, backlink, broken link 저장 방식.
 created: 2026-04-29
-updated: 2026-06-20
-source_count: 29
+updated: 2026-10-24
+source_count: 32
 tags:
   - munjib
   - wiki-links
@@ -99,6 +99,12 @@ Backlink는 별도 텍스트 검색이 아니라 `DocumentLink.targetDocumentId`
 
 Issue #34 workspace graph view는 document/tag/wiki graph DTO를 사용한다. Issue #65 이후 graph view는 persisted `DocumentLink` rows뿐 아니라 readable active document의 full markdown에서도 `[[...]]` links를 scan한다. Properties Links row와 backlinks는 계속 frontmatter `links:` 기반이지만, graph view는 full markdown links를 같은 folder-aware, underscore-aware target matching 규칙으로 resolve하고, repeated source-target edge를 deduplicate한다. Resolved graph wiki links render from source document node to readable target document node. Broken or ambiguous links are still represented as unresolved placeholder state in the raw graph DTO for model completeness, but the default visible graph filters those placeholder nodes and edges out so non-document values do not appear as graph nodes.
 
+## Graph loading and target lookup
+
+Issue #246 builds a request-local title/path index once from the readable document set for graph body-link resolution. Exact stored paths take precedence over parent-path plus Unicode title matches and title-only fallback; duplicate titles remain ambiguous and hidden documents never enter the index. This avoids scanning and normalizing every candidate for every body link while preserving existing graph edges.
+
+The graph button wraps route navigation in a React transition. While the destination is pending it shows a spinner, disables repeated graph clicks, and announces a localized loading status. The dynamically loaded canvas module uses the same status while its bundle loads. This applies to authenticated and anonymous Trial workspaces. Metadata panels retain their existing selected-document data.
+
 ## Broken link에서 문서 생성
 
 `createDocumentFromBrokenLink()`는 broken link row를 기준으로 새 문서를 만든다. 새 문서 title은 `targetTitleRaw`이고 초기 markdown은 빈 문자열이다. 생성 후 `repairBrokenLinksForTarget()`이 같은 workspace 안에서 같은 `targetTitleRaw`를 가진 broken links를 새 문서로 연결한다.
@@ -140,3 +146,7 @@ UI에서는 broken link를 별도 panel이 아니라 Properties의 links row에 
 - Issue #25 final review blocker fix
 - `docs/superpowers/specs/2026-05-24-underscore-wiki-link-targets-design.md`
 - `docs/superpowers/plans/2026-05-24-underscore-wiki-link-targets.md`
+
+- `tests/wiki-links/resolve.test.ts`
+- `components/graph-loading-status.tsx`
+- GitHub issue #246
