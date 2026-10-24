@@ -24,6 +24,7 @@ links:
 - Added [[RAG Quality Evaluation]] and linked it from [[RAG Process Workflow]], [[Production Observability Workflow]], and [[index|Wiki Index]].
 - Implemented CLI-only capture, source-span recall, validated judge scores, isolated fixtures, comparison/calibration, and score-only Langfuse experiments. Production routes do not enable evaluation.
 - Follow-up: preserve whitespace-only gaps when matching source intervals, keep incomplete indexing distinct from success, persist republish status, and retain reports on fixture cleanup failure.
+- Review correction: pre-index restricted authorization probes, add a real pgvector predicate-removal sensitivity test, and version the judge rubric to distinguish abstention notices from factual answers. Initial rubric-v1 scores are preliminary.
 - Verification evidence and limitations are recorded in the evaluation page/runbook and PR. Labels remain proposed until human review; no production quality gain or deployment is claimed.
 
 ## 2026-10-24 - Graph loading responsiveness (Issue #246)

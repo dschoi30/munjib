@@ -1,7 +1,7 @@
 export type Behavior = "answered" | "partial" | "abstained" | "clarified" | "fabricated";
 export type Evidence = { documentKey: string; quotes: string[] };
 export type EvidenceGroup = { id: string; alternatives: Evidence[] };
-export type EvalDocument = { key: string; title: string; content: string };
+export type EvalDocument = { key: string; title: string; content: string; authorizationProbe?: boolean };
 export type EvalCase = {
   id: string; surface: "workspace" | "ask"; category: string[]; split: "calibration" | "regression";
   question: string; selectedDocumentKey?: string; readableDocumentKeys: string[];
@@ -18,6 +18,7 @@ export function parseDataset(value: unknown): EvalDataset {
   const docs = new Map<string, string>();
   for (const doc of value.documents) {
     if (!record(doc) || typeof doc.key !== "string" || !/^[a-z0-9-]+$/.test(doc.key) || typeof doc.title !== "string" || typeof doc.content !== "string" || docs.has(doc.key)) throw new Error("INVALID_DOCUMENT");
+    if (doc.authorizationProbe !== undefined && typeof doc.authorizationProbe !== "boolean") throw new Error("INVALID_AUTHORIZATION_PROBE");
     docs.set(doc.key, doc.content);
   }
   const ids = new Set<string>();

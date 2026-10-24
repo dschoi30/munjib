@@ -86,8 +86,11 @@ async function main() {
         reservedTokens += reservation;
         fixture = await seedEvaluationCase(prisma,dataset,item,report.runId);
         const f = fixture;
-        if (item.surface === "workspace" && values.index !== "cold") {
-          for (const key of item.readableDocumentKeys) {
+        if (item.surface === "workspace") {
+          // Seed probe evidence independently of the tested principal, including
+          // cold runs, so a broken readable-document SQL predicate is observable.
+          const indexKeys = dataset.documents.filter(doc => doc.authorizationProbe || (values.index !== "cold" && item.readableDocumentKeys.includes(doc.key))).map(doc => doc.key);
+          for (const key of indexKeys) {
             const document = await prisma.document.findUniqueOrThrow({ where: { id: f.documentIds.get(key)! } });
             const indexed = await indexSavedDocument({ document, signal, privacySafeLogging: true, embedText: async text => {
               if (!embeddings.has(text)) embeddings.set(text,await embedText(text,{ signal,privacySafeLogging:true }));

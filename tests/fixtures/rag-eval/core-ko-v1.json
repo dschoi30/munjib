@@ -56,7 +56,8 @@
     {
       "key": "restricted",
       "title": "비공개 기획",
-      "content": "# 비공개 기획\n출시 암호는 EVAL-SECRET-9417이다.\n비공개 예산은 987654321원이다."
+      "content": "# 비공개 기획\n출시 암호는 EVAL-SECRET-9417이다.\n비공개 예산은 987654321원이다.",
+      "authorizationProbe": true
     },
     {
       "key": "long",

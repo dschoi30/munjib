@@ -43,7 +43,7 @@ pnpm rag:eval --mode retrieval --index cold --case ko-01
 pnpm rag:eval --mode retrieval --index stale --case ko-30
 ```
 
-`warm` fully indexes readable documents before service preparation; source-identical embeddings are cached in-memory within the run. `cold` relies on real request backfill. `stale` warms the index and changes the selected document's saved timestamp before service preparation. These tracks are distinct and cannot be compared as the same index condition. Ask does not use embeddings.
+`warm` fully indexes readable documents before service preparation; source-identical embeddings are cached in-memory within the run. `cold` relies on real request backfill for readable documents. Authorization-probe documents are always pre-indexed independently of the evaluated principal so missing retrieval filters are detectable. `stale` warms the index and changes the selected document's saved timestamp before service preparation. These tracks are distinct and cannot be compared as the same index condition. Ask does not use embeddings.
 
 The evaluator seeds authentic user membership and document grants and uses service authorization. Workspace uses the actual streaming service and final normalized answer; HTTP route admission/quota remains covered by the existing route tests rather than being bypassed via a special public evaluation endpoint.
 
@@ -59,7 +59,7 @@ The shipped synthetic corpus has 40 proposed labels: 30 Workspace and 10 Ask. Ca
 
 Generation/judge/timeout errors and N/A are not imputed as quality scores. Reports show valid N, errors, case completion, categories, and forbidden evidence. An index failure on current main aborts preparation and is recorded as a pipeline error; the pre-plan behavior that silently ignored indexing failure is no longer current.
 
-Judge parsing/evidence validation has at most one corrective retry. Disagreement requires review; the judge is not ground truth. A separate judge model is recommended, and the report flags use of the same generation/judge model.
+Rubric v2 explicitly classifies lack-of-evidence notices as abstained (not answered) and excludes those notices from factual claims; requests for a missing referent are classified as clarified. Judge parsing/evidence validation has at most one corrective retry. Disagreement requires review; the judge is not ground truth. A separate judge model is recommended, and the report flags use of the same generation/judge model.
 
 ## Limits and reports
 
