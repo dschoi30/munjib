@@ -1,7 +1,7 @@
 import { stripDocumentFrontmatter } from "@/lib/document-metadata/parser";
 import { slugifyTitle } from "@/lib/text/slug";
 import { parseWikiLinks } from "@/lib/wiki-links/parser";
-import { resolveWikiLinkTarget } from "@/lib/wiki-links/resolve";
+import { createWikiLinkTargetResolver } from "@/lib/wiki-links/resolve";
 
 export type KnowledgeGraphNodeKind = "document" | "tag" | "wiki";
 export type KnowledgeGraphLinkKind = "wiki" | "tag";
@@ -94,11 +94,11 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
   const nodesById = new Map<string, KnowledgeGraphNode>();
   const links: KnowledgeGraphLink[] = [];
   const readableDocumentIds = new Set(input.documents.map((document) => document.id));
-  const targetCandidates = input.documents.map((document) => ({
+  const resolveTarget = createWikiLinkTargetResolver(input.documents.map((document) => ({
     id: document.id,
     path: document.path,
     title: document.title,
-  }));
+  })));
   const wikiLinksByKey = new Map<string, KnowledgeGraphLink>();
   const unresolvedWikiNodesById = new Map<string, KnowledgeGraphWikiNode>();
 
@@ -164,7 +164,7 @@ export function buildKnowledgeGraph(input: KnowledgeGraphInput): KnowledgeGraphD
     }
 
     for (const link of parseWikiLinks(scannableMarkdown)) {
-      const resolved = resolveWikiLinkTarget(targetCandidates, link.targetTitleRaw);
+      const resolved = resolveTarget(link.targetTitleRaw);
       const syntheticTargetId = resolved.targetDocumentId
         ? documentNodeId(resolved.targetDocumentId)
         : wikiNodeId(resolved.isAmbiguous ? "ambiguous" : "broken", link.targetTitleRaw);

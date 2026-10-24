@@ -4,6 +4,7 @@ import { useWorkspaceMode } from "@/components/workspace-mode";
 import { workspaceStorageScope } from "@/lib/workspace-routes";
 
 import dynamic from "next/dynamic";
+import { GraphLoadingStatus } from "@/components/graph-loading-status";
 import { ChevronDown, ChevronRight, Settings2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import type { ComponentType } from "react";
@@ -68,6 +69,7 @@ type GraphForceSettings = WorkspaceUiGraphForces;
 
 const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
+  loading: () => <GraphLoadingStatus />,
 }) as ComponentType<ForceGraph2DProps>;
 
 const DEFAULT_FILTERS: WorkspaceUiGraphFilters = {

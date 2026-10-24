@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { LogOut, PanelLeftClose, Plus, Settings, UserCircle } from "lucide-react";
 import { useLeftPanel, useTagSearch } from "@/components/app-shell";
 import { DocumentNavigation } from "@/components/document-navigation";
+import { GraphLoadingStatus } from "@/components/graph-loading-status";
 import { DocumentCreateControls } from "@/components/document-create-controls";
 import { useI18n } from "@/components/i18n-provider";
 import {
@@ -148,6 +149,7 @@ export function DocumentList({
     : currentUser.email;
   const router = useRouter();
   const [isTopLevelCreateTransitionPending, startTopLevelCreateTransition] = useTransition();
+  const [isGraphPending, startGraphTransition] = useTransition();
   const leftPanel = useLeftPanel();
   const tagSearch = useTagSearch();
   const [activePanel, setActivePanel] = useState<WorkspaceSidebarPanel>("documents");
@@ -250,8 +252,11 @@ export function DocumentList({
   const openGraph = useCallback(() => {
     setAccountDrawerOpen(false);
     setSettingsOpen(false);
-    router.push(workspaceGraphHref({ workspaceSlug, mode: workspaceMode, documentId: selectedDocumentId }));
-  }, [router, selectedDocumentId, workspaceSlug, workspaceMode]);
+    if (isGraphView || isGraphPending) return;
+    startGraphTransition(() => {
+      router.push(workspaceGraphHref({ workspaceSlug, mode: workspaceMode, documentId: selectedDocumentId }));
+    });
+  }, [router, selectedDocumentId, workspaceSlug, workspaceMode, isGraphView, isGraphPending]);
 
   const showCreateFailedToast = useCallback(() => {
     toast(t("nav.folderCreateFailed"), {
@@ -464,8 +469,10 @@ export function DocumentList({
           onOpenSearch={openSearch}
           onOpenFavorites={openFavorites}
           onOpenGraph={openGraph}
+          isGraphPending={isGraphPending}
         />
       </div>
+      {isGraphPending ? <GraphLoadingStatus /> : null}
       <div data-testid="document-list-navigation-body" className="pt-3">
         {activePanelHydrated ? (
           <DocumentNavigation

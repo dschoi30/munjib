@@ -1,4 +1,4 @@
-import { FilePlus2, Folder, FolderPlus, Network, Search, Star } from "lucide-react";
+import { FilePlus2, Folder, FolderPlus, LoaderCircle, Network, Search, Star } from "lucide-react";
 import type { ReactNode } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,7 @@ export function DocumentCreateControls({
   onOpenSearch,
   onOpenFavorites,
   onOpenGraph,
+  isGraphPending = false,
 }: {
   canWrite: boolean;
   onCreateDocument: () => void;
@@ -31,6 +32,7 @@ export function DocumentCreateControls({
   onOpenSearch: () => void;
   onOpenFavorites: () => void;
   onOpenGraph: () => void;
+  isGraphPending?: boolean;
 }) {
   const { t } = useI18n();
   const iconButtonClassName =
@@ -60,9 +62,13 @@ export function DocumentCreateControls({
             aria-label={t("nav.graph")}
             aria-pressed={activeView === "graph"}
             onClick={onOpenGraph}
+            disabled={isGraphPending}
+            aria-busy={isGraphPending}
             className={activeView === "graph" ? activeIconButtonClassName : iconButtonClassName}
           >
-            <Network className="h-4 w-4" aria-hidden="true" />
+            {isGraphPending
+              ? <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+              : <Network className="h-4 w-4" aria-hidden="true" />}
           </Button>
         </ToolbarTooltip>
         <ToolbarTooltip label={t("nav.newDocument")}>

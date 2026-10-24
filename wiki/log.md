@@ -19,6 +19,11 @@ links:
 
 # Wiki Log
 
+## 2026-10-24 - Graph loading responsiveness (Issue #246)
+
+- Updated [[Wiki Links And Backlinks]] and [[index|Wiki Index]] with indexed graph target resolution and immediate transition/module loading feedback in both workspace modes.
+- Evidence: `lib/wiki-links/resolve.ts`, `lib/knowledge-graph/model.ts`, graph controls/status components, `tests/wiki-links/resolve.test.ts`, and suspended-navigation component coverage. A local 2,000-document/4,000-link resolver comparison produced identical results in 2,900ms versus 5ms; this measures lookup only, not end-to-end navigation.
+
 ## 2026-10-09 - Verified private delivery and branch cleanup (Issue #234)
 
 - Private delivery run `37945673261` succeeded. Independent host verification matched state, checkout and image to `f94359945f118f86f68607f69f085fc5c5687c56`, with local/public HTTP 200. Disabled the old source runner service and removed its GitHub registration; source has zero runners and private operations has one online runner. Ops issue #1 is completed.

@@ -39,6 +39,8 @@ links:
 
 # Wiki Index
 
+- Issue #246 improves graph body-link lookup with a readable-document index and immediate localized loading feedback. See [[Wiki Links And Backlinks]].
+
 - Issue #229: AI settings verify the selected model on tab entry and model changes, with a localized connection indicator. See [[RAG Process Workflow]].
 
 이 페이지는 broad source search 전에 읽는 munjib repository wiki의 시작점이다. 먼저 관련 wiki page를 읽고, wiki가 비어 있거나 stale하거나 code-level verification이 필요할 때 source file search로 내려간다.
