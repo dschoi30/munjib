@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated": "2026-10-18",
+  "updated": "2026-10-24",
   "pages": [
     {
       "id": "workflow-attachment-lifecycle-readiness",
@@ -263,7 +263,7 @@
         "[[designs/index|UI Design Excalidraw Index]]",
         "[[log|Wiki Log]]"
       ],
-      "source_count": 183,
+      "source_count": 184,
       "searchPriority": 5
     },
     {
@@ -307,7 +307,7 @@
         "[[Project PRD]]",
         "[[Wiki Maintenance Automation]]"
       ],
-      "source_count": 374,
+      "source_count": 375,
       "searchPriority": 1
     },
     {
@@ -504,7 +504,7 @@
         "[[Local Development Workflow]]",
         "[[Production Observability Workflow]]"
       ],
-      "source_count": 139,
+      "source_count": 140,
       "searchPriority": 50
     },
     {

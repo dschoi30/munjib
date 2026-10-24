@@ -12,6 +12,7 @@ import { invokeAnswerChain, streamAnswerChain, type ChatModelLike } from "@/lib/
 import { getRagModelConfig, type RagModelConfig, type RagProvider } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   createLangfuseCallbackConfig,
   type LangfuseCallbackConfig,
@@ -345,17 +346,28 @@ async function preparePreflightedWorkspaceChatMessageStreamInternal(
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? (input.selectedDocumentId ?? undefined)
     : undefined;
+  // Resolve a new topic from the current turn before allowing old assistant
+  // answers to contribute keywords or dominate the query embedding. Elliptical
+  // follow-ups without a current-document match retain conversation retrieval.
+  const currentCandidates = selectIndexBackfillDocuments({
+    documents: workspace.readableDocuments,
+    query: message,
+    selectedDocumentId,
+  });
+  const retrievalQuestion = currentCandidates.length > 0
+    ? truncateText(message, CONVERSATION_QUERY_MAX_CHARS)
+    : conversationQuestion;
   await observeAiStage("indexing", () => ensureWorkspaceChatRetrievalIndex({
     workspaceId: workspace.workspaceId,
     readableDocuments: workspace.readableDocuments,
-    query: conversationQuestion,
+    query: retrievalQuestion,
     embeddingModel: effectiveModelConfig.embedding.indexId,
     selectedDocumentId,
     privacySafeLogging: workspace.kind === "stateless-trial",
     signal: input.signal,
   }));
   throwIfWorkspaceChatStreamAborted(input.signal);
-  const embedding = await embedText(conversationQuestion, {
+  const embedding = await embedText(retrievalQuestion, {
     config: effectiveModelConfig,
     privacySafeLogging: workspace.kind === "stateless-trial",
     signal: input.signal,
@@ -779,13 +791,14 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   for (const document of candidates) {
     if (freshDocumentIds.has(document.id)) continue;
 
-    await safeIndexSavedDocument({
+    const indexed = await safeIndexSavedDocument({
       documentId: document.id,
       embeddingModel: input.embeddingModel,
       privacySafeLogging: input.privacySafeLogging,
       signal: input.signal,
     });
     throwIfWorkspaceChatStreamAborted(input.signal);
+    if (!indexed) throw new Error(RAG_ERROR_CODES.INDEXING_FAILED);
   }
 }
 
@@ -802,8 +815,12 @@ function selectIndexBackfillDocuments(input: {
   selectedDocumentId?: string;
 }) {
   const queryTerms = normalizedKeywordTerms(input.query);
+  const selectedDocument = input.documents.find((document) => document.id === input.selectedDocumentId);
   const shouldIncludeSelectedDocument = Boolean(
-    input.selectedDocumentId && isDocumentReferentialQuery(input.query),
+    selectedDocument && (
+      isDocumentReferentialQuery(input.query) ||
+      scoreDocumentForBackfill(selectedDocument, queryTerms) > 0
+    ),
   );
   if (queryTerms.size === 0 && !shouldIncludeSelectedDocument) return [];
 

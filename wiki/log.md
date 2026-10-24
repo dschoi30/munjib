@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-10
-source_count: 374
+updated: 2026-10-24
+source_count: 375
 tags:
   - log
   - munjib
@@ -4147,3 +4147,9 @@ links:
 - Integration validation: 253 affected regression tests, TypeScript, and Chromium nested split/edit/undo/save/version restore/Graph/history/relogin/minimum-size E2E pass. Native form line endings compare canonically; explicit pane selection supersedes pending route navigation, and canceled dirty sign-out stops before auth mutation.
 
 - Issue #240 review corrections: merge keeps active-pane tabs first and appends other panes in tree order; editor disposal releases dirty registration before later sign-out; split drop preview uses emitted semantic `bg-primary-muted`. Source: layout transition, editor lifecycle and split component regressions (100 affected tests).
+
+## 2026-10-24 - Workspace AI index failure and topic retrieval recovery (Issue #244)
+
+- Changed [[RAG Process Workflow]] and [[index|Wiki Index]] to describe current-question-first backfill/query embedding, bounded conversation fallback, relevant selected-document preservation, and fail-closed `RAG_INDEXING_FAILED` handling.
+- Evidence: service/error changes, three regression tests demonstrated failing before the fix, authenticated and anonymous Trial tests, and route mapping for the new stable error code. Production Langfuse observations establish repeated embedding failures; their internal Ollama cause awaits server logs through OCI two-factor authentication.
+- No provider/index identity, document freshness, authorization, or Trial quota boundary was relaxed. This entry records source changes and diagnosis, not a production rollout.

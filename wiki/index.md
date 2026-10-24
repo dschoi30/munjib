@@ -5,8 +5,8 @@ type: index
 status: active
 summary: Munjib repository wiki의 탐색 인덱스와 Docker, CI/CD, OCI deployment, low-cost monitoring workflow navigation.
 created: 2026-04-29
-updated: 2026-10-18
-source_count: 183
+updated: 2026-10-24
+source_count: 184
 tags:
   - index
   - munjib
@@ -165,3 +165,5 @@ links:
 - Issue #217: native Caddy Trial proof adapter, daily retention timer, service verification and rollback are documented in [[Auth And Permissions Workflow]] and [[CI CD And Monitoring Workflow]].
 
 - Issue #231: document attachment upload selection, sidebar card focus, Unicode filenames and browser downloads are described in [[Document Editing Workflow]].
+
+- Issue #244: Workspace AI now fails before generation when required backfill fails, uses current-topic retrieval before conversation fallback, and preserves a relevant selected document within eight candidates. Production embedding failures and pending server-log verification are recorded in [[RAG Process Workflow]].

@@ -18,6 +18,7 @@ import {
 } from "@/lib/rag/workspace-chat";
 import { searchSimilarChunks } from "@/lib/rag/vector-store";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import { resetTestData, seedWorkspaceFixture } from "../setup/prisma";
 
 const chatModel = { invoke: vi.fn() };
@@ -222,7 +223,7 @@ describe("workspace chat service", () => {
       }),
     );
     expect(embedText).toHaveBeenCalledWith(
-      expect.stringContaining("Current user message: What is the workspace policy?"),
+      "What is the workspace policy?",
       expect.objectContaining({
         config: expect.objectContaining({
           embedding: expect.objectContaining({
@@ -233,7 +234,7 @@ describe("workspace chat service", () => {
         }),
       }),
     );
-    expect(embedText).toHaveBeenCalledWith(
+    expect(embedText).not.toHaveBeenCalledWith(
       expect.stringContaining("Earlier question?"),
       expect.any(Object),
     );
@@ -571,6 +572,95 @@ describe("workspace chat service", () => {
     expect(
       vi.mocked(safeIndexSavedDocument).mock.invocationCallOrder[0],
     ).toBeLessThan(vi.mocked(searchSimilarChunks).mock.invocationCallOrder[0] ?? 0);
+  });
+
+  it("stops before retrieval, generation, and message persistence when a required index refresh fails", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Policy",
+      contentMarkdown: "# Policy\n\nManager approval is required.",
+    });
+    vi.mocked(safeIndexSavedDocument).mockResolvedValue(false);
+
+    await expect(sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Explain the policy",
+    })).rejects.toThrow(RAG_ERROR_CODES.INDEXING_FAILED);
+
+    expect(embedText).not.toHaveBeenCalled();
+    expect(searchSimilarChunks).not.toHaveBeenCalled();
+    expect(invokeAnswerChain).not.toHaveBeenCalled();
+    expect(await prisma.aiChatMessage.count({
+      where: { thread: { workspaceId: fixture.workspace.id } },
+    })).toBe(0);
+  });
+
+  it("keeps the current topic in backfill and vector retrieval after a long answer about another topic", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const historyTerms = "Munjib workspace documents permissions attachments Markdown graph wiki";
+    await Promise.all(Array.from({ length: 9 }, (_, index) => createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: `Munjib ${index}`,
+      contentMarkdown: historyTerms,
+    })));
+    const civilWar = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "미국_남북전쟁".normalize("NFD"),
+      contentMarkdown: "# 미국 남북전쟁\n\n연방 유지와 노예제 폐지.",
+    });
+    await prisma.aiChatThread.create({ data: {
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      messages: { create: [
+        { role: "USER", content: "Munjib의 기능은?" },
+        { role: "ASSISTANT", content: historyTerms },
+      ] },
+    } });
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "미국 남북전쟁 의의",
+      selectedDocumentId: civilWar.id,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledTimes(1);
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({ documentId: civilWar.id }));
+    expect(embedText).toHaveBeenCalledWith("미국 남북전쟁 의의", expect.any(Object));
+    expect(invokeAnswerChain).toHaveBeenCalledWith(expect.objectContaining({
+      userPrompt: expect.stringContaining(historyTerms),
+    }));
+  });
+
+  it("retains a relevant open document even when eight documents have higher current-question scores", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const selected = await createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: "Policy",
+      contentMarkdown: "# Policy\n\nManager approval.",
+    });
+    await Promise.all(Array.from({ length: 9 }, (_, index) => createSavedDocument({
+      workspaceId: fixture.workspace.id,
+      userId: fixture.user.id,
+      title: `Policy approval manager ${index}`,
+      contentMarkdown: "Policy approval manager evidence.",
+    })));
+
+    await sendWorkspaceChatMessage({
+      workspaceSlug: fixture.workspace.slug,
+      actorId: fixture.user.id,
+      message: "Policy approval manager",
+      selectedDocumentId: selected.id,
+    });
+
+    expect(safeIndexSavedDocument).toHaveBeenCalledTimes(8);
+    expect(safeIndexSavedDocument).toHaveBeenCalledWith(expect.objectContaining({ documentId: selected.id }));
   });
 
   it("backfills the readable selected document for document-referential prompts", async () => {
