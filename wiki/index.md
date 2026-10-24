@@ -24,6 +24,7 @@ links:
   - "[[Auth And Permissions Workflow]]"
   - "[[Local Development Workflow]]"
   - "[[RAG Process Workflow]]"
+  - "[[RAG Quality Evaluation]]"
   - "[[CI CD And Monitoring Workflow]]"
   - "[[Release Signer And Vault Workflow]]"
   - "[[Production Observability Workflow]]"
@@ -38,6 +39,8 @@ links:
 ---
 
 # Wiki Index
+
+- Issue #248: [[RAG Quality Evaluation]] adds offline synthetic-corpus quality evaluation and score-only Langfuse experiments.
 
 - Issue #246 improves graph body-link lookup with a readable-document index and immediate localized loading feedback. See [[Wiki Links And Backlinks]].
 

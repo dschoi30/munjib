@@ -1,3 +1,4 @@
+import { evaluationModelOptions } from "@/lib/rag/evaluation-snapshot";
 import { ChatOllama, OllamaEmbeddings } from "@langchain/ollama";
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { providerErrorStatus } from "@/lib/rag/errors";
@@ -48,6 +49,7 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
   if (config.provider === "ollama") {
     return new resolved.ChatOllama({
       model: config.model,
+      ...evaluationModelOptions(config.provider),
       baseUrl: config.baseUrl,
     }) as ConstructorInstance<C["ChatOllama"]>;
   }
@@ -55,6 +57,7 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
   if (config.provider === "openai") {
     return new resolved.ChatOpenAI({
       model: config.model,
+      ...evaluationModelOptions(config.provider),
       ...apiKeyOption(config.apiKey),
       ...baseUrlConfiguration(config.baseUrl),
     }) as ConstructorInstance<C["ChatOpenAI"]>;
@@ -62,6 +65,7 @@ export function createChatModel<C extends ChatConstructors = ChatConstructors>(
 
   return new resolved.ChatOpenAI({
     model: config.model,
+    ...evaluationModelOptions(config.provider),
     ...openAiCompatibleApiKeyOption(config.apiKey),
     configuration: {
       baseURL: requireBaseUrl(config.baseUrl),

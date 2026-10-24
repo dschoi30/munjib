@@ -22,6 +22,8 @@ links:
 
 # Production Observability Workflow
 
+Issue #248 adds [[RAG Quality Evaluation]] through an independent offline evaluation collector and private evaluation OTel provider. Production capture remains metadata-only; synthetic experiment uploads contain scores, case IDs and versions, with no question/context/answer or judge reasons.
+
 이 page는 Munjib production-style Docker 서버에서 무엇을 Docker 로그로 보고, 무엇을 Sentry SaaS로 보낼지 나눈다. Issue #89의 첫 slice는 `@sentry/nextjs` 기반 error monitoring과 낮은 sample rate tracing을 production `web` container에 추가한다. Issue #116은 route가 처리해서 public response로는 `AI_UNAVAILABLE` 503 또는 Workspace AI NDJSON error event를 내보내는 provider/runtime failure도 sanitized Sentry event로 남긴다. Issue #135는 저비용/저운영 관측성 v1로 Sentry 런타임 메트릭, error-only Replay, low-cardinality application metrics를 추가하되 Grafana/Prometheus/PostHog 같은 별도 운영 플랫폼은 후속으로 미룬다. CI/CD deploy와 monitoring을 함께 보는 현재 운영 요약은 [[CI CD And Monitoring Workflow]]에 둔다.
 
 ## Entry points

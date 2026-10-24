@@ -1,3 +1,4 @@
+import { captureEvaluation } from "@/lib/rag/evaluation-snapshot";
 import { observeAiStage, recordAiUsage } from "@/lib/rag/ai-observation";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { StringOutputParser } from "@langchain/core/output_parsers";
@@ -53,6 +54,7 @@ async function invokeAnswerChainInternal(input: InvokeAnswerChainInput): Promise
     const promptValue = buildPromptValue(input);
     const result = await input.chatModel.invoke(promptValue, buildInvocationConfig(input));
     recordAiUsage(result);
+    captureUsage(result);
     const answer = (
       await new StringOutputParser().invoke(
         result as Parameters<StringOutputParser["invoke"]>[0],
@@ -91,6 +93,7 @@ async function streamAnswerChainInternal(input: StreamAnswerChainInput): Promise
 
     for await (const chunk of stream) {
       recordAiUsage(chunk);
+      captureUsage(chunk);
       const token = extractStreamToken(chunk);
       if (!token) continue;
       chunks.push(token);
@@ -152,4 +155,10 @@ function buildInvocationConfig(input: InvokeAnswerChainInput): AnswerChainInvoca
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function captureUsage(value: unknown) {
+  const usage = (value as { usage_metadata?: { input_tokens?: number; output_tokens?: number } })?.usage_metadata;
+  if (typeof usage?.input_tokens !== "number" || typeof usage.output_tokens !== "number") return;
+  captureEvaluation(() => ({ stage: "usage", input: usage.input_tokens!, output: usage.output_tokens! }));
 }

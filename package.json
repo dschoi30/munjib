@@ -34,7 +34,10 @@
     "security:bootstrap-owner": "tsx scripts/security/bootstrap-owner.ts",
     "documents:purge-archived": "tsx scripts/documents/purge-archived.ts",
     "trial-ai:purge-retention": "tsx scripts/rag/purge-trial-ai-retention.ts",
-    "security:auth-preflight": "tsx scripts/security/auth-preflight.ts"
+    "security:auth-preflight": "tsx scripts/security/auth-preflight.ts",
+    "rag:eval": "tsx scripts/rag/eval.ts",
+    "rag:eval:compare": "tsx scripts/rag/eval-compare.ts",
+    "rag:eval:calibrate": "tsx scripts/rag/eval-calibrate.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
@@ -65,10 +68,11 @@
     "remark-gfm": "^4.0.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.5.5",
-    "yaml": "^2.8.4",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "yaml": "^2.8.4"
   },
   "devDependencies": {
+    "@langfuse/client": "5.4.1",
     "@playwright/test": "^1.59.1",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.10.2",

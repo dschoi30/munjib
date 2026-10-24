@@ -1,3 +1,4 @@
+import { captureEvaluation } from "@/lib/rag/evaluation-snapshot";
 import { startAiObservation, observeAiStage, type AiObservation } from "@/lib/rag/ai-observation";
 import { prisma } from "@/lib/db/client";
 import {
@@ -211,6 +212,10 @@ async function prepareAskDocumentQuestionInternal(
     currentDocumentContext,
     uiLanguage: input.uiLanguage,
   });
+  captureEvaluation(() => ({ stage: "context", surface: "ask", question,
+    retrievalQuestion: question, global: [], selected: [], merged: [],
+    prompt: [{ documentId: selectedDocument.id, content: currentDocumentContext.context }],
+    systemPrompt: prompt.system, userPrompt: prompt.user, partial: currentDocumentContext.partial }));
   const citations = prompt.citations.map((citation) => ({
     ...citation,
     documentId: selectedDocument.id,
@@ -263,7 +268,9 @@ export async function answerPreparedAskDocumentQuestion(
         ...(options.signal ? { config: { signal: options.signal } } : {}),
       });
 
-      return normalizeAnswerCitations(answer, prepared.citations);
+      const result = normalizeAnswerCitations(answer, prepared.citations);
+      captureEvaluation(() => ({ stage: "answer", raw: answer, answer: result.answer }));
+      return result;
     });
   } catch (error) { observation.end(error); throw error; }
   finally { if (!options.deferObservationEnd) observation.end(); }

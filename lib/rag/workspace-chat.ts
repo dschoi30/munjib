@@ -1,3 +1,4 @@
+import { captureEvaluation } from "@/lib/rag/evaluation-snapshot";
 import { startAiObservation, observeAiStage, type AiObservation } from "@/lib/rag/ai-observation";
 import { Prisma } from "@prisma/client";
 import type { AiAuthorizationPrincipal } from "@/lib/auth/trial-entitlement";
@@ -401,6 +402,9 @@ async function preparePreflightedWorkspaceChatMessageStreamInternal(
     chunks: promptChunks,
     uiLanguage: input.uiLanguage,
   });
+  captureEvaluation(() => ({ stage: "context", surface: "workspace", question: message,
+    retrievalQuestion, global: globalChunks, selected: selectedDocumentChunks, merged: chunks,
+    prompt: promptChunks, systemPrompt: prompt.system, userPrompt: prompt.user }));
   const citationChunkIds = promptChunks.map((chunk) => chunk.id);
   const trace = createLangfuseCallbackConfig({
     enabled: effectiveModelConfig.langfuse.enabled,
@@ -532,6 +536,7 @@ async function persistWorkspaceChatAnswer(
   answer: string,
 ) {
   const normalizedAnswer = normalizeAnswerCitations(answer, prepared.prompt.citations);
+  captureEvaluation(() => ({ stage: "answer", raw: answer, answer: normalizedAnswer.answer }));
   const answerCitations = normalizedAnswer.citations;
   const contextMeta = {
     retrievedChunkCount: prepared.promptChunkCount,
@@ -594,6 +599,7 @@ function transientWorkspaceChatAnswer(
   answer: string,
 ) {
   const normalizedAnswer = normalizeAnswerCitations(answer, prepared.prompt.citations);
+  captureEvaluation(() => ({ stage: "answer", raw: answer, answer: normalizedAnswer.answer }));
   return {
     assistantMessage: {
       role: "ASSISTANT" as const,
@@ -768,6 +774,7 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
     query: input.query,
     selectedDocumentId: input.selectedDocumentId,
   });
+  for (const document of candidates) captureEvaluation(() => ({ stage: "index", documentId: document.id, status: "candidate" }));
   if (candidates.length === 0) return;
 
   const documentIds = candidates.map((document) => document.id);
@@ -792,7 +799,10 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   );
 
   for (const document of candidates) {
-    if (freshDocumentIds.has(document.id)) continue;
+    if (freshDocumentIds.has(document.id)) {
+      captureEvaluation(() => ({ stage: "index", documentId: document.id, status: "fresh" }));
+      continue;
+    }
 
     const indexed = await safeIndexSavedDocument({
       documentId: document.id,
@@ -801,6 +811,7 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
       signal: input.signal,
     });
     throwIfWorkspaceChatStreamAborted(input.signal);
+    captureEvaluation(() => ({ stage: "index", documentId: document.id, status: indexed ? "indexed" : "failed" }));
     if (!indexed) throw new Error(RAG_ERROR_CODES.INDEXING_FAILED);
   }
 }

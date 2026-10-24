@@ -1,3 +1,4 @@
+import { withEvaluationCapture, type EvaluationCapture } from "@/lib/rag/evaluation-snapshot";
 import { randomUUID } from "node:crypto";
 import { WorkspaceRole } from "@prisma/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -60,6 +61,18 @@ vi.mock("@/lib/rag/vector-store", () => ({
 }));
 
 describe("workspace chat service", () => {
+  it("captures actual preparation and final normalized stream output only in an evaluation scope", async () => {
+    const fixture = await seedWorkspaceFixture(WorkspaceRole.EDITOR);
+    const capture: EvaluationCapture = { events: [], failed: false };
+    await withEvaluationCapture(capture, async () => {
+      const prepared = await prepareWorkspaceChatMessageStream({ workspaceSlug: fixture.workspace.slug, actorId: fixture.user.id, message: "What is saved?" });
+      await sendPreparedWorkspaceChatMessageStream(prepared, { onToken: () => {} });
+    });
+    expect(capture.failed).toBe(false);
+    expect(capture.events.some(e => e.stage === "context" && e.question === "What is saved?")).toBe(true);
+    expect(capture.events.some(e => e.stage === "answer" && e.answer === "Workspace answer [1].")).toBe(true);
+  });
+
   beforeEach(async () => {
     vi.clearAllMocks();
     vi.mocked(invokeAnswerChain).mockReset();
