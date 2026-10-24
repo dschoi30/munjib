@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib 로컬 개발, Docker web+DB, DB, seed, test, e2e, feature start, wiki maintenance 명령.
 created: 2026-04-29
-updated: 2026-10-10
-source_count: 74
+updated: 2026-10-24
+source_count: 75
 tags:
   - munjib
   - workflow
@@ -43,8 +43,13 @@ scoped override한다. 이 설정은 `minimatch@3`의 기존 callable API를
 NextAuth JWT, minimatch, Sentry/OpenTelemetry compatibility contracts를
 보호한다. 검증 명령은 advisory allowlist나 severity filter 없이
 `pnpm audit --prod`를 그대로 사용하며, CI는 frozen install 직후 이 명령을
-실행한다. Next.js와 matching ESLint config는 15.5.27 exact pin이며 별도 advisory gate는
+실행한다. Next.js와 matching ESLint config는 15.5.28 exact pin이며 별도 advisory gate는
 유지한다.
+
+Issue #244 / PR #245의 2026-10-24 audit follow-up은 Sentry Next.js를 10.75.2,
+fast-uri override를 3.1.9, zod major-4 override를 4.6.6으로 갱신했다.
+zod major-3 소비자는 그대로 유지한다. Advisory 근거와 CI 경계는
+[[CI CD And Monitoring Workflow]]에 기록한다.
 
 2026-08-25 CI follow-up은 Prisma config 경로의 재귀 객체 병합 advisory를 막기 위해
 `deepmerge-ts` 8.0.0을 exact override한다. 회귀 테스트는 취약한 7.1.5가 lock graph에

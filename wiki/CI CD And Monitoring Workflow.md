@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-10
-source_count: 76
+updated: 2026-10-24
+source_count: 81
 tags:
   - munjib
   - workflow
@@ -698,3 +698,9 @@ PR #215/#216 additionally pin `browserslist` 4.28.7, `baseline-browser-mapping` 
 CI runs `go test -race ./cmd/munjib-trial-edge`. The independent service is installed using the demo runbook, not included in the existing three-binary release bundle. Caddy routes use a loopback signer with bounded HTTP timeouts; no request body or stream passes through the signer. A signer failure closes matched AI paths; rollback restores the direct proxy while Trial is disabled.
 
 The native Trial retention timer runs at 00:40 KST and holds a shared deployment lock while invoking the tools image with a separate least-privilege database env file. The deploy wrapper keeps its existing exclusive lock. See `docs/runbooks/anonymous-trial-ai-retention.md`.
+
+## 2026-10-24 PR #245 dependency audit follow-up
+
+- CI run `40056876284` stopped at the existing production audit with eight findings. Kept the audit gate intact and updated minimal patch floors: Next.js and eslint-config-next 15.5.28, Sentry Next.js 10.75.2, fast-uri override 3.1.9, and zod major-4 override 4.6.6. The zod selector preserves major-3 consumers.
+- Local production audit after lockfile update reports zero findings. Runtime version tests now require at least the verified 15.5.28 patch; this is source/CI evidence, not deployment evidence.
+- Sources: [Next.js image advisory](https://github.com/advisories/GHSA-2464-fhr4-w9xw), [Next.js Server Actions advisory](https://github.com/advisories/GHSA-p3m5-59mp-jv5r), [Sentry tunnel advisory](https://github.com/advisories/GHSA-mchm-gjx6-7h55), [Zod advisory](https://github.com/advisories/GHSA-mrhx-c7xc-m3w5), [fast-uri advisory](https://github.com/advisories/GHSA-w74x-v6f9-j3xg).

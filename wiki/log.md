@@ -5,8 +5,8 @@ type: log
 status: active
 summary: Munjib wiki 유지보수 timeline.
 created: 2026-04-29
-updated: 2026-10-10
-source_count: 374
+updated: 2026-10-24
+source_count: 375
 tags:
   - log
   - munjib
@@ -4159,3 +4159,12 @@ links:
 - Evidence: corrected issue #242 scope, `components/metadata-panel.tsx`, existing metadata navigation/disclosure/Trial regressions.
 
 - Issue #242 spacing follow-up: reduced document-row-to-outline body top padding from 8px to 4px; other metadata categories retain 8px. Presentation-only adjustment in `components/metadata-panel.tsx`; disclosure and heading/navigation contracts are unchanged.
+
+## 2026-10-24 - Workspace AI index failure and topic retrieval recovery (Issue #244)
+
+- Changed [[RAG Process Workflow]] and [[index|Wiki Index]] to describe current-question-first backfill/query embedding, bounded conversation fallback, relevant selected-document preservation, and fail-closed `RAG_INDEXING_FAILED` handling.
+- Evidence: service/error changes, three regression tests demonstrated failing before the fix, authenticated and anonymous Trial tests, and route mapping for the new stable error code. Production Langfuse observations establish repeated embedding failures; server logs subsequently confirmed physical batch overflow (2352/2506 input tokens versus 2048) and repeated HTTP 400 responses.
+- No provider/index identity, document freshness, authorization, or Trial quota boundary was relaxed. This entry records source changes and diagnosis, not a production rollout.
+
+- Issue #244 server follow-up: Ollama SDK `status_code` bypassed LangChain's default no-retry check. Added deterministic 4xx handling and Unicode-safe adaptive chunk splitting without source truncation; verified actual changed code against OCI bge-m3 with synthetic data (two 1024-dimensional outputs, exact source preservation). Pronoun follow-ups retain subject context even if an unrelated document matches a generic word.
+- PR #245 CI follow-up: updated the minimal Next.js/Sentry/fast-uri/zod4 patch floors required by the production audit, retaining the gate and major-3 zod consumers. Updated [[CI CD And Monitoring Workflow]] with advisory sources and validation boundaries.

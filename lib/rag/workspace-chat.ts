@@ -12,6 +12,7 @@ import { invokeAnswerChain, streamAnswerChain, type ChatModelLike } from "@/lib/
 import { getRagModelConfig, type RagModelConfig, type RagProvider } from "@/lib/rag/config";
 import { assertCurrentEmbeddingIndex, embedText } from "@/lib/rag/embedding-client";
 import { safeIndexSavedDocument } from "@/lib/rag/index-document";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import {
   createLangfuseCallbackConfig,
   type LangfuseCallbackConfig,
@@ -345,17 +346,31 @@ async function preparePreflightedWorkspaceChatMessageStreamInternal(
   const selectedDocumentId = readableDocumentIds.includes(input.selectedDocumentId ?? "")
     ? (input.selectedDocumentId ?? undefined)
     : undefined;
+  // Resolve a new topic from the current turn before allowing old assistant
+  // answers to contribute keywords or dominate the query embedding. Elliptical
+  // follow-ups without a current-document match retain conversation retrieval.
+  const currentCandidates = selectIndexBackfillDocuments({
+    documents: workspace.readableDocuments,
+    query: message,
+    selectedDocumentId,
+  });
+  const selectedDocument = workspace.readableDocuments.find((document) => document.id === selectedDocumentId);
+  const retrievalQuestion = selectedDocument && isDocumentReferentialQuery(message)
+    ? truncateText(`${message}\nCurrent document: ${selectedDocument.title}`, CONVERSATION_QUERY_MAX_CHARS)
+    : currentCandidates.length > 0 && !isConversationReferentialQuery(message)
+      ? truncateText(message, CONVERSATION_QUERY_MAX_CHARS)
+      : conversationQuestion;
   await observeAiStage("indexing", () => ensureWorkspaceChatRetrievalIndex({
     workspaceId: workspace.workspaceId,
     readableDocuments: workspace.readableDocuments,
-    query: conversationQuestion,
+    query: retrievalQuestion,
     embeddingModel: effectiveModelConfig.embedding.indexId,
     selectedDocumentId,
     privacySafeLogging: workspace.kind === "stateless-trial",
     signal: input.signal,
   }));
   throwIfWorkspaceChatStreamAborted(input.signal);
-  const embedding = await embedText(conversationQuestion, {
+  const embedding = await embedText(retrievalQuestion, {
     config: effectiveModelConfig,
     privacySafeLogging: workspace.kind === "stateless-trial",
     signal: input.signal,
@@ -779,13 +794,14 @@ async function ensureWorkspaceChatRetrievalIndex(input: {
   for (const document of candidates) {
     if (freshDocumentIds.has(document.id)) continue;
 
-    await safeIndexSavedDocument({
+    const indexed = await safeIndexSavedDocument({
       documentId: document.id,
       embeddingModel: input.embeddingModel,
       privacySafeLogging: input.privacySafeLogging,
       signal: input.signal,
     });
     throwIfWorkspaceChatStreamAborted(input.signal);
+    if (!indexed) throw new Error(RAG_ERROR_CODES.INDEXING_FAILED);
   }
 }
 
@@ -802,8 +818,12 @@ function selectIndexBackfillDocuments(input: {
   selectedDocumentId?: string;
 }) {
   const queryTerms = normalizedKeywordTerms(input.query);
+  const selectedDocument = input.documents.find((document) => document.id === input.selectedDocumentId);
   const shouldIncludeSelectedDocument = Boolean(
-    input.selectedDocumentId && isDocumentReferentialQuery(input.query),
+    selectedDocument && (
+      isDocumentReferentialQuery(input.query) ||
+      scoreDocumentForBackfill(selectedDocument, queryTerms) > 0
+    ),
   );
   if (queryTerms.size === 0 && !shouldIncludeSelectedDocument) return [];
 
@@ -954,6 +974,13 @@ function isDocumentReferentialQuery(query: string) {
     normalized.includes("문서 요약") ||
     normalized.includes("페이지 요약")
   );
+}
+
+function isConversationReferentialQuery(query: string) {
+  const normalized = query.normalize("NFKC").toLowerCase();
+  return /\b(it|its|they|them|their|theirs|this|that|these|those|former|latter|same)\b/u.test(normalized) ||
+    /\b(what|how) about\b/u.test(normalized) ||
+    /(?:그것|그거|그건|그게|그걸|그의|그때|그런|그렇게|그에|이것|이거|이건|이게|이걸|이에|해당|앞서|방금|위에서|이전|그\s)/u.test(normalized);
 }
 
 function withDisplayOrderedMessages<

@@ -1,10 +1,11 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { after as scheduleAfterRequest } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { SERVICE_ERROR_CODES } from "@/lib/service-errors";
 import { getRagModelConfig } from "@/lib/rag/config";
 import { embedText as defaultEmbedText } from "@/lib/rag/embedding-client";
-import { chunkMarkdownDocument } from "@/lib/rag/chunk-markdown";
+import { chunkMarkdownDocument, type RagChunk } from "@/lib/rag/chunk-markdown";
+import { RAG_ERROR_CODES } from "@/lib/rag/errors";
 import { replaceDocumentChunks as defaultReplaceDocumentChunks } from "@/lib/rag/vector-store";
 
 export type SavedDocumentForIndex = {
@@ -54,20 +55,34 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
     contentMarkdown: document.contentMarkdown,
   });
   const embeddedChunks = [];
-  for (const chunk of chunks) {
+  for (let index = 0; index < chunks.length; index += 1) {
+    const chunk = chunks[index];
     throwIfAborted(input.signal);
-    const embedding = input.privacySafeLogging || input.signal
-      ? await embedText(chunk.content, {
-          ...(input.privacySafeLogging ? { privacySafeLogging: true } : {}),
-          ...(input.signal ? { signal: input.signal } : {}),
-        })
-      : await embedText(chunk.content);
+    let embedding: number[];
+    try {
+      embedding = input.privacySafeLogging || input.signal
+        ? await embedText(chunk.content, {
+            ...(input.privacySafeLogging ? { privacySafeLogging: true } : {}),
+            ...(input.signal ? { signal: input.signal } : {}),
+          })
+        : await embedText(chunk.content);
+    } catch (error) {
+      throwIfAborted(input.signal);
+      // The whitespace chunk budget is not a provider tokenizer. Preserve all
+      // source text and retry smaller pieces only for a definite input limit.
+      if (!(error instanceof Error) || error.message !== RAG_ERROR_CODES.EMBEDDING_INPUT_TOO_LONG) throw error;
+      const pieces = splitRejectedEmbeddingChunk(chunk);
+      if (pieces.length === 0) throw error;
+      chunks.splice(index, 1, ...pieces);
+      index -= 1;
+      continue;
+    }
     throwIfAborted(input.signal);
     embeddedChunks.push({
       id: randomUUID(),
       workspaceId: document.workspaceId,
       documentId: document.id,
-      chunkIndex: chunk.chunkIndex,
+      chunkIndex: embeddedChunks.length,
       headingPath: chunk.headingPath,
       content: chunk.content,
       contentHash: chunk.contentHash,
@@ -89,6 +104,18 @@ export async function indexSavedDocument(input: IndexSavedDocumentInput) {
     chunks: embeddedChunks,
   });
   return replaced !== false;
+}
+
+function splitRejectedEmbeddingChunk(chunk: RagChunk): RagChunk[] {
+  const points = Array.from(chunk.content);
+  if (points.length < 2) return [];
+  const midpoint = Math.floor(points.length / 2);
+  return [points.slice(0, midpoint).join(""), points.slice(midpoint).join("")].map((content) => ({
+    ...chunk,
+    content,
+    contentHash: createHash("sha256").update(content).digest("hex"),
+    tokenCount: content.split(/\s+/u).filter(Boolean).length,
+  }));
 }
 
 export async function safeIndexSavedDocument(input: SafeIndexSavedDocumentInput) {

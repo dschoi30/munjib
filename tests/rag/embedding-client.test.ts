@@ -21,6 +21,16 @@ afterEach(() => {
 });
 
 describe("provider-neutral embedding client", () => {
+  it("identifies a deterministic Ollama input limit without exposing its raw provider error", async () => {
+    const providerError = Object.assign(new Error("the input length exceeds the context length"), { status_code: 400 });
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await expect(embedText("synthetic long input", {
+      config: currentConfig,
+      embeddingModel: { embedQuery: vi.fn().mockRejectedValue(providerError) },
+      privacySafeLogging: true,
+    })).rejects.toThrow("RAG_EMBEDDING_INPUT_TOO_LONG");
+    expect(log).not.toHaveBeenCalled();
+  });
   it("validates a finite embedding with the expected dimensions", () => {
     expect(validateEmbedding([0.1, 0.2, 0.3], 3)).toEqual([0.1, 0.2, 0.3]);
   });

@@ -970,8 +970,8 @@ describe("workspace chat routes", () => {
     expect(captureHandledAiUnavailable).not.toHaveBeenCalled();
   });
 
-  it("captures and returns a generic unavailable response when preparation fails before streaming", async () => {
-    const error = new Error(RAG_ERROR_CODES.CHAT_REQUEST_FAILED);
+  it.each([RAG_ERROR_CODES.CHAT_REQUEST_FAILED, RAG_ERROR_CODES.INDEXING_FAILED])("captures and returns a generic unavailable response for %s before streaming", async (ragErrorCode) => {
+    const error = new Error(ragErrorCode);
     vi.mocked(preparePreflightedWorkspaceChatMessageStream).mockRejectedValueOnce(error);
 
     const response = await POST_MESSAGE(
@@ -991,7 +991,7 @@ describe("workspace chat routes", () => {
       surface: "workspace_chat_prepare",
       workspaceSlug: "company-handbook",
       status: 503,
-      ragErrorCode: RAG_ERROR_CODES.CHAT_REQUEST_FAILED,
+      ragErrorCode,
       chatProvider: "openai-compatible",
       chatModel: "google/gemma-4-31b-it:free",
     });
