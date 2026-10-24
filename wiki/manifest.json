@@ -251,6 +251,7 @@
         "[[Auth And Permissions Workflow]]",
         "[[Local Development Workflow]]",
         "[[RAG Process Workflow]]",
+        "[[RAG Quality Evaluation]]",
         "[[CI CD And Monitoring Workflow]]",
         "[[Release Signer And Vault Workflow]]",
         "[[Production Observability Workflow]]",
@@ -505,6 +506,27 @@
         "[[Production Observability Workflow]]"
       ],
       "source_count": 142,
+      "searchPriority": 50
+    },
+    {
+      "id": "workflow-rag-quality-evaluation",
+      "path": "wiki/RAG Quality Evaluation.md",
+      "title": "RAG Quality Evaluation",
+      "type": "workflow",
+      "status": "active",
+      "summary": "Issue 248의 합성 데이터 기반 오프라인 RAG 평가, 실제 서비스 수집, 네 품질 지표와 score-only Langfuse 실험.",
+      "tags": [
+        "munjib",
+        "rag",
+        "evaluation",
+        "langfuse"
+      ],
+      "links": [
+        "[[index|Wiki Index]]",
+        "[[RAG Process Workflow]]",
+        "[[Production Observability Workflow]]"
+      ],
+      "source_count": 9,
       "searchPriority": 50
     },
     {

@@ -1,0 +1,84 @@
+name: RAG evaluation
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Evaluation mode
+        type: choice
+        options: [retrieval, e2e]
+        default: retrieval
+      limit:
+        description: Maximum synthetic cases (1-40)
+        default: '40'
+      publish:
+        description: Publish scores to evaluation Langfuse project
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: rag-evaluation-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.2-pg16
+        env:
+          POSTGRES_USER: evaluation
+          POSTGRES_PASSWORD: evaluation
+          POSTGRES_DB: munjib_rag_eval
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U evaluation -d munjib_rag_eval"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://evaluation:evaluation@localhost:5432/munjib_rag_eval
+      RAG_EVAL_DATABASE_URL: postgresql://evaluation:evaluation@localhost:5432/munjib_rag_eval
+      RAG_EVAL_ENVIRONMENT: evaluation
+      RAG_EVAL_CHAT_PROVIDER: openai-compatible
+      RAG_EVAL_CHAT_MODEL: ${{ vars.RAG_EVAL_CHAT_MODEL }}
+      RAG_EVAL_EMBED_BASE_URL: ${{ secrets.RAG_EVAL_EMBED_BASE_URL }}
+      MUNJIB_OPENAI_COMPATIBLE_BASE_URL: ${{ secrets.RAG_EVAL_CHAT_BASE_URL }}
+      MUNJIB_OPENAI_COMPATIBLE_API_KEY: ${{ secrets.RAG_EVAL_CHAT_API_KEY }}
+      RAG_EVAL_JUDGE_PROVIDER: openai-compatible
+      RAG_EVAL_JUDGE_MODEL: ${{ vars.RAG_EVAL_JUDGE_MODEL }}
+      RAG_EVAL_JUDGE_BASE_URL: ${{ secrets.RAG_EVAL_JUDGE_BASE_URL }}
+      RAG_EVAL_JUDGE_API_KEY: ${{ secrets.RAG_EVAL_JUDGE_API_KEY }}
+      RAG_EVAL_LANGFUSE_BASE_URL: ${{ secrets.RAG_EVAL_LANGFUSE_BASE_URL }}
+      RAG_EVAL_LANGFUSE_PUBLIC_KEY: ${{ secrets.RAG_EVAL_LANGFUSE_PUBLIC_KEY }}
+      RAG_EVAL_LANGFUSE_SECRET_KEY: ${{ secrets.RAG_EVAL_LANGFUSE_SECRET_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - run: pnpm exec prisma migrate deploy
+      - run: pnpm db:rag:index
+      - run: pnpm rag:eval --validate
+      - name: Evaluate synthetic corpus
+        env:
+          EVAL_MODE: ${{ inputs.mode }}
+          EVAL_LIMIT: ${{ inputs.limit }}
+          EVAL_PUBLISH: ${{ inputs.publish }}
+        run: |
+          args=(--mode "$EVAL_MODE" --limit "$EVAL_LIMIT")
+          if [ "$EVAL_MODE" = e2e ]; then args+=(--judge configured); fi
+          if [ "$EVAL_PUBLISH" = true ]; then args+=(--publish-langfuse); fi
+          pnpm rag:eval "${args[@]}"
+      - name: Upload sanitized summaries
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rag-evaluation-summary
+          path: test-results/rag-eval/*/report.md
+          retention-days: 14

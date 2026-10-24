@@ -26,6 +26,10 @@ links:
 
 # RAG Process Workflow
 
+## Offline quality evaluation
+
+Issue #248 adds [[RAG Quality Evaluation]] for actual service-path retrieval recall, faithfulness, latest-question relevance, and insufficient-evidence behavior. Evaluation capture is CLI-scoped and never added to production metadata. Current main already separates new-topic retrieval queries and aborts on failed index backfill; historical pre-plan diagnosis does not define the current baseline.
+
 > MVP scope update (2026-10-09): the owner deferred the remaining long-term
 > hardening/runtime program. Its issues are closed as `not_planned`, not completed.
 > Readiness/dependency sections below preserve future activation criteria; they
