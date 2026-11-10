@@ -249,12 +249,12 @@ export function LoginForm({
         callbackUrl: postAuthCallbackUrl,
       });
     } catch {
-      if (signal?.aborted) return;
+      if (signal?.aborted || !isFormMountedRef.current) return;
       setErrorKey("login.error.generic");
       setActiveAction(null);
       return;
     }
-    if (signal?.aborted) return;
+    if (signal?.aborted || !isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
       return;

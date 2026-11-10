@@ -168,6 +168,25 @@ describe("LoginForm", () => {
     ));
   });
 
+  it("does not navigate when manual development login finishes after the dialog closes", async () => {
+    let resolveSignIn!: (result: { url: string }) => void;
+    authMock.signIn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSignIn = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Use viewer@example.com" }));
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledWith("development-login", expect.objectContaining({
+      email: "viewer@example.com",
+    })));
+
+    view.unmount();
+    await act(async () => {
+      resolveSignIn({ url: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook" });
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
   it("omits account-creation controls when signup is disabled", async () => {
     renderLoginForm(undefined, { isSignupEnabled: false });
 
