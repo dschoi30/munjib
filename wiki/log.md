@@ -4178,3 +4178,4 @@ links:
 
 - Updated [[Auth And Permissions Workflow]] and [[index|Wiki Index]] for the unauthenticated product introduction, illustrative document graph/workspace preview, animated full-screen arrow action, and existing gated sign-in form in a modal.
 - Evidence: Issue #250; `app/page.tsx`, `components/landing-page.tsx`, `app/landing.css`; local TypeScript validation and isolated browser viewport checks. The example preview is illustrative rather than a live Trial or AI request.
+- PR #251 follow-up: preview and sign-in dialogs now trap keyboard focus and restore focus to the opening control on close. Source: `components/landing-page.tsx`; verified with a built local `/` page.
