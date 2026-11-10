@@ -77,9 +77,16 @@ export function LandingPage({ loginConfig }: { loginConfig: LoginConfig }) {
   const [isPreviewOpen, setPreviewOpen] = useState(false);
   const [isLoginOpen, setLoginOpen] = useState(false);
   const [startTrial, setStartTrial] = useState(false);
+  const [isGooglePending, setGooglePendingState] = useState(false);
   const previewCloseRef = useRef<HTMLButtonElement>(null);
   const loginCloseRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const googlePendingRef = useRef(false);
+
+  const setGooglePending = useCallback((pending: boolean) => {
+    googlePendingRef.current = pending;
+    setGooglePendingState(pending);
+  }, []);
 
   function openPreview() {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -89,16 +96,19 @@ export function LandingPage({ loginConfig }: { loginConfig: LoginConfig }) {
   function openLogin() {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setStartTrial(false);
+    googlePendingRef.current = false;
     setLoginOpen(true);
   }
 
   function openDemo() {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setStartTrial(true);
+    googlePendingRef.current = false;
     setLoginOpen(true);
   }
 
   const closeDialog = useCallback(() => {
+    if (googlePendingRef.current) return;
     setPreviewOpen(false);
     setLoginOpen(false);
     setStartTrial(false);
@@ -166,7 +176,7 @@ export function LandingPage({ loginConfig }: { loginConfig: LoginConfig }) {
       </div>
 
       {isPreviewOpen && <div className="landing-overlay landing-overlay--preview" role="dialog" aria-modal="true" aria-label="서비스 전체 화면 미리보기"><div className="landing-preview-overlay-inner"><ServicePreview full onClose={closeDialog} closeButtonRef={previewCloseRef} /></div></div>}
-      {isLoginOpen && <div className="landing-overlay landing-overlay--login" role="dialog" aria-modal="true" aria-label="로그인" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}><div className="landing-login-dialog"><button ref={loginCloseRef} className="landing-login-close" type="button" onClick={closeDialog} aria-label="로그인 창 닫기"><X size={19} /></button>{startTrial && !loginConfig.isTrialLoginEnabled && !loginConfig.isDevLoginEnabled && <p className="landing-demo-unavailable" role="status">현재 데모 입장이 비활성화되어 있습니다. 일반 로그인은 아래에서 이용할 수 있습니다.</p>}<LoginForm {...loginConfig} startDemoOnMount={startTrial && (loginConfig.isTrialLoginEnabled || loginConfig.isDevLoginEnabled)} /></div></div>}
+      {isLoginOpen && <div className="landing-overlay landing-overlay--login" role="dialog" aria-modal="true" aria-label="로그인" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}><div className="landing-login-dialog"><button ref={loginCloseRef} className="landing-login-close" type="button" onClick={closeDialog} disabled={isGooglePending} aria-label="로그인 창 닫기"><X size={19} /></button>{startTrial && !loginConfig.isTrialLoginEnabled && !loginConfig.isDevLoginEnabled && <p className="landing-demo-unavailable" role="status">현재 데모 입장이 비활성화되어 있습니다. 일반 로그인은 아래에서 이용할 수 있습니다.</p>}<LoginForm {...loginConfig} startDemoOnMount={startTrial && (loginConfig.isTrialLoginEnabled || loginConfig.isDevLoginEnabled)} onGooglePendingChange={setGooglePending} /></div></div>}
     </main>
   );
 }

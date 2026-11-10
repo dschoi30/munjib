@@ -26,6 +26,7 @@ type LoginFormProps = {
   trialTurnstileSiteKey?: string;
   requestTrialChallengeToken?: (siteKey: string, parent?: HTMLElement) => Promise<string>;
   startDemoOnMount?: boolean;
+  onGooglePendingChange?: (pending: boolean) => void;
 };
 
 type AuthMode = "signin" | "signup";
@@ -57,6 +58,7 @@ export function LoginForm({
   trialTurnstileSiteKey,
   requestTrialChallengeToken = requestTurnstileToken,
   startDemoOnMount = false,
+  onGooglePendingChange,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -168,15 +170,25 @@ export function LoginForm({
       return;
     }
     setActiveAction("google");
+    onGooglePendingChange?.(true);
     let result;
     try {
       result = await signIn("google", { callbackUrl: postAuthCallbackUrl });
     } catch {
+      onGooglePendingChange?.(false);
+      if (!isFormMountedRef.current) return;
       setErrorKey("login.error.generic");
       setActiveAction(null);
       return;
     }
-    if (!result?.url) setActiveAction(null);
+    // NextAuth navigates internally for OAuth and then resolves without a URL.
+    // Keep the dialog open until that navigation or an error ends the attempt.
+    if (result?.error) {
+      onGooglePendingChange?.(false);
+      if (!isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+    }
   }
 
   async function onTrialSignIn(signal: AbortSignal) {
