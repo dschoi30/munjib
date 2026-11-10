@@ -4173,3 +4173,8 @@ links:
 
 - Issue #244 server follow-up: Ollama SDK `status_code` bypassed LangChain's default no-retry check. Added deterministic 4xx handling and Unicode-safe adaptive chunk splitting without source truncation; verified actual changed code against OCI bge-m3 with synthetic data (two 1024-dimensional outputs, exact source preservation). Pronoun follow-ups retain subject context even if an unrelated document matches a generic word.
 - PR #245 CI follow-up: updated the minimal Next.js/Sentry/fast-uri/zod4 patch floors required by the production audit, retaining the gate and major-3 zod consumers. Updated [[CI CD And Monitoring Workflow]] with advisory sources and validation boundaries.
+
+## 2026-11-10 - Public landing and full-screen preview (Issue #250)
+
+- Updated [[Auth And Permissions Workflow]] and [[index|Wiki Index]] for the unauthenticated product introduction, illustrative document graph/workspace preview, animated full-screen arrow action, and existing gated sign-in form in a modal.
+- Evidence: Issue #250; `app/page.tsx`, `components/landing-page.tsx`, `app/landing.css`; local TypeScript validation and isolated browser viewport checks. The example preview is illustrative rather than a live Trial or AI request.
