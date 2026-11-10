@@ -335,7 +335,7 @@ describe("LoginForm", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
 
     await waitFor(() => expect(requestTrialChallengeToken).toHaveBeenCalledTimes(1));
-    expect(requestTrialChallengeToken).toHaveBeenCalledWith("0x4AAAAAAAtest-site-key");
+    expect(requestTrialChallengeToken).toHaveBeenCalledWith("0x4AAAAAAAtest-site-key", expect.any(HTMLElement));
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenNthCalledWith(2, "/api/trial/entitlement", {
       method: "POST",

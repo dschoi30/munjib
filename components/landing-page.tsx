@@ -154,7 +154,7 @@ export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
       }
       if (event.key === "Tab") {
         const dialog = document.querySelector<HTMLElement>(".landing-overlay[role='dialog']");
-        const focusable = dialog?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input:not([disabled])");
+        const focusable = dialog?.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], input:not([disabled]), iframe:not([tabindex='-1'])");
         if (!focusable?.length) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
@@ -177,7 +177,7 @@ export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
 
   return (
     <main className="landing">
-      <div className="landing-container">
+      <div className="landing-container" inert={isPreviewOpen || isLoginOpen}>
         <header className="landing-header">
           <a className="landing-logo" href="/" aria-label="문집 홈"><strong>문집</strong><small>MUNJIB</small></a>
           <nav className="landing-nav" aria-label="서비스 소개"><a href="#documents">문서</a><a href="#graph">지식 그래프</a><a href="#assistant">AI 어시스턴트</a></nav>

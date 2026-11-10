@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-export async function requestTurnstileToken(siteKey: string): Promise<string> {
+export async function requestTurnstileToken(siteKey: string, parent?: HTMLElement): Promise<string> {
   if (!/^[A-Za-z0-9_-]{10,128}$/.test(siteKey)) throw new Error("TURNSTILE_SITE_KEY_INVALID");
   await loadTurnstileScript();
   const api = window.turnstile;
@@ -28,7 +28,7 @@ export async function requestTurnstileToken(siteKey: string): Promise<string> {
 
   const container = document.createElement("div");
   container.setAttribute("aria-label", "Trial verification");
-  document.body.append(container);
+  (parent ?? document.body).append(container);
 
   return new Promise<string>((resolve, reject) => {
     let settled = false;

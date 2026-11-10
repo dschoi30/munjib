@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 현재 GitHub Actions CI/CD, OCI native Compose build deploy, Docker/Sentry low-cost monitoring 구성.
 created: 2026-06-05
-updated: 2026-10-24
-source_count: 81
+updated: 2026-11-10
+source_count: 83
 tags:
   - munjib
   - workflow
@@ -213,6 +213,12 @@ development Vite/esbuild graph: the lockfile scopes an exact
 path remains on its compatible 0.21.5 resolution. `pnpm audit --prod` must
 remain clean after this override, and the same pruned runner image continues
 to execute the network-isolated `auth-preflight` command.
+
+PR #251 scopes the Sentry bundler plugin's `glob` dependency to patched 14.0.2,
+which resolves a patched `minimatch@11` for that production path. This closes
+the two new moderate advisories reported by the CI production audit without
+changing the development `minimatch@3` graph. The local frozen build and
+`pnpm audit --prod` pass with the updated lockfile.
 
 Sentry Uptime checks and OCI native CPU/memory alarms are low-ops external controls and are configured outside the repository. Grafana/Prometheus and PostHog are intentionally deferred until Sentry cannot answer the needed infrastructure or product questions cheaply.
 

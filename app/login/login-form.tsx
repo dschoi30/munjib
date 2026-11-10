@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "next-auth/react";
 import { Compass, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ type LoginFormProps = {
   isTrialLoginEnabled?: boolean;
   isSignupEnabled?: boolean;
   trialTurnstileSiteKey?: string;
-  requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
+  requestTrialChallengeToken?: (siteKey: string, parent?: HTMLElement) => Promise<string>;
 };
 
 type AuthMode = "signin" | "signup";
@@ -64,6 +64,7 @@ export function LoginForm({
   const [activeAction, setActiveAction] = useState<AuthAction>(null);
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
   const [statusKey, setStatusKey] = useState<MessageKey | null>(null);
+  const trialChallengeHostRef = useRef<HTMLDivElement>(null);
 
   if (!isHydrated) return <LoginFormSkeleton />;
 
@@ -166,7 +167,7 @@ export function LoginForm({
       if (!entryPath && readChallengeRequired(result)) {
         if (!trialTurnstileSiteKey) throw new Error("TURNSTILE_SITE_KEY_UNAVAILABLE");
         setStatusKey("login.trialChallenge");
-        const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey);
+        const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey, trialChallengeHostRef.current ?? undefined);
         const challengeResponse = await fetch("/api/trial/entitlement", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -367,6 +368,8 @@ export function LoginForm({
             </span>
           </button>
         ) : null}
+
+        <div ref={trialChallengeHostRef} className="mt-3 flex justify-center empty:hidden" />
 
         {errorKey ? <p className="mt-4 text-sm text-danger">{t(errorKey)}</p> : null}
         {statusKey ? <p className="mt-4 text-sm text-ink-muted">{t(statusKey)}</p> : null}
