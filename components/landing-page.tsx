@@ -2,69 +2,12 @@
 
 import { ArrowRight, ChevronDown, FileText, Folder, GitBranch, Maximize2, Search, Send, Sparkles, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { LoginForm } from "@/app/login/login-form";
 import "@/app/landing.css";
 
-type Point = { x: number; y: number; size: number; cluster: number };
-
-const clusters = [
-  { x: 152, y: 170, rx: 113, ry: 83, count: 37 },
-  { x: 327, y: 105, rx: 113, ry: 70, count: 35 },
-  { x: 402, y: 252, rx: 114, ry: 87, count: 38 },
-  { x: 214, y: 298, rx: 103, ry: 80, count: 31 },
-  { x: 547, y: 165, rx: 81, ry: 88, count: 29 },
-];
-
-function unit(seed: number) {
-  const value = Math.sin(seed * 127.1 + 78.233) * 43758.5453;
-  return value - Math.floor(value);
-}
-
-const points: Point[] = clusters.flatMap((cluster, clusterIndex) =>
-  Array.from({ length: cluster.count }, (_, index) => {
-    const angle = unit(clusterIndex * 100 + index * 3 + 1) * Math.PI * 2;
-    const radius = Math.sqrt(unit(clusterIndex * 100 + index * 3 + 2));
-    return {
-      x: cluster.x + Math.cos(angle) * cluster.rx * radius,
-      y: cluster.y + Math.sin(angle) * cluster.ry * radius,
-      size: index % 17 === 0 ? 4.4 : index % 7 === 0 ? 2.7 : 1.65,
-      cluster: clusterIndex,
-    };
-  }),
-);
-
-const edges = points.flatMap((point, index) => {
-  const nearby = points
-    .map((other, otherIndex) => ({ otherIndex, distance: Math.hypot(point.x - other.x, point.y - other.y) }))
-    .filter(({ otherIndex, distance }) => otherIndex > index && distance < 49 && points[otherIndex].cluster === point.cluster)
-    .sort((a, b) => a.distance - b.distance)
-    .slice(0, 3);
-  return nearby.map(({ otherIndex }) => [index, otherIndex] as const);
-}).concat([[10, 42], [57, 82], [91, 128], [34, 126], [117, 155], [25, 70], [65, 110]] as (readonly [number, number])[]);
-
-function KnowledgeGraph({ labelled = false }: { labelled?: boolean }) {
-  const labels = [
-    [2, "프로젝트 개요"], [24, "제품 로드맵"], [42, "사용자 리서치"],
-    [61, "디자인 원칙"], [82, "지식 그래프"], [101, "API 가이드"],
-    [123, "회의 기록"], [145, "AI 활용 가이드"],
-  ] as const;
-  return (
-    <svg className="landing-graph" viewBox="0 0 650 390" role="img" aria-label="여러 문서가 연결된 지식 그래프 예시">
-      <g fill="none" stroke="#a9bfcb" strokeWidth="0.85" opacity="0.54">
-        {edges.map(([from, to], index) => (
-          <line key={index} x1={points[from].x} y1={points[from].y} x2={points[to].x} y2={points[to].y} />
-        ))}
-      </g>
-      <g>
-        {points.map((point, index) => (
-          <circle key={index} cx={point.x} cy={point.y} r={point.size} fill={point.size > 3 ? "#6b8da5" : "#9bb5c6"} opacity={point.size > 3 ? 0.95 : 0.76} />
-        ))}
-      </g>
-      {labelled && labels.map(([index, label]) => (
-        <text key={index} x={points[index].x + 7} y={points[index].y + 3} fill="#617a88" fontSize="8.8">{label}</text>
-      ))}
-    </svg>
-  );
+function KnowledgeGraph() {
+  return <Image className="landing-graph" src="/landing-knowledge-graph.svg" width={841} height={744} alt="여러 문서가 연결된 지식 그래프 예시" />;
 }
 
 const documentGroups = [
@@ -98,7 +41,7 @@ function ServicePreview({ full = false, onClose, closeButtonRef }: { full?: bool
           <div className="landing-preview-tab"><span>Welcome</span><X size={11} /><span className="landing-preview-plus">+</span></div>
           <div className="landing-preview-toolbar"><span>←</span><span>→</span><strong>그래프 보기</strong></div>
           <div className="landing-preview-graph-stage">
-            <KnowledgeGraph labelled />
+            <KnowledgeGraph />
             <div className="landing-preview-filter"><div>⌄ &nbsp; 범례 <X size={10} /></div><div>□ &nbsp; 태그</div><div>□ &nbsp; 폴더 구조</div><hr /><div>› &nbsp; 표시</div><hr /><div>› &nbsp; 필터</div><hr /><div>› &nbsp; 설정</div></div>
           </div>
         </section>

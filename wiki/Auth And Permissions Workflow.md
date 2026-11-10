@@ -6,7 +6,7 @@ status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
 updated: 2026-11-10
-source_count: 137
+source_count: 138
 tags:
   - munjib
   - auth
@@ -28,6 +28,8 @@ Unauthenticated `/` presents a product introduction with a document graph and a 
 The landing background is inert while either dialog is open. Keyboard focus stays in the dialog and returns to its trigger on close. A required Trial Turnstile widget mounts inside the login form's dialog host so visitors can interact with it. Sources: `components/landing-page.tsx`, `app/login/login-form.tsx`, and `lib/auth/turnstile-client.ts`.
 
 The landing's primary demo button opens the real read-only entry flow: the configured anonymous Trial entitlement takes precedence; when Trial is closed in local development and development login is enabled, the button signs in the seeded `viewer@example.com` account. If both gates are closed, the dialog explicitly reports that demo entry is unavailable. The regular login button uses the same password/Google handlers as `/login`; rejected auth requests reset the submitting state and show the existing generic error. The green preview arrow remains a separate illustrative full-screen action. Local browser verification used the existing Docker database and reached `/workspaces/company-handbook` as the seeded viewer; this does not prove production Trial activation or a password/Google login with a real user credential.
+
+The landing and illustrative preview reuse the exported Figma vector `public/landing-knowledge-graph.svg` from the `배경 일러스트 · 지식의 연결` layer in the Munjib design file (`P8nCGEbxoAVBtbGNAvy0nU`, node `101:2`). This replaces the locally generated node/edge layout while preserving the source vector's geometry and colors. The preview-specific Figma graph layer was not exported separately because its browser export did not produce a file.
 
 > MVP scope update (2026-10-09): the owner deferred the remaining long-term
 > hardening/runtime program. Its issues are closed as `not_planned`, not completed.

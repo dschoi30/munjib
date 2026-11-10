@@ -30,3 +30,4 @@
 }
 .landing-demo-unavailable{position:relative;z-index:2;margin:0 0 8px;padding:11px 14px;border:1px solid #dddfd8;border-radius:8px;background:#fff;color:#495248;font-size:12px;line-height:1.5}
 @media (max-height:500px){.landing-preview-shell--full .landing-preview-ai{min-height:0;max-height:calc(100% - 28px);overflow-y:auto}}
+.landing-preview-graph-stage .landing-graph{object-fit:contain}
