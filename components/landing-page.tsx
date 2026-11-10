@@ -1,7 +1,8 @@
 "use client";
 
-import { ArrowRight, ChevronDown, ChevronRight, FileText, Folder, GitBranch, Maximize2, Search, Send, Sparkles, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, ChevronDown, FileText, Folder, GitBranch, Maximize2, Search, Send, Sparkles, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { LoginForm } from "@/app/login/login-form";
 import "@/app/landing.css";
 
 type Point = { x: number; y: number; size: number; cluster: number };
@@ -121,9 +122,18 @@ function ServicePreview({ full = false, onClose, closeButtonRef }: { full?: bool
   );
 }
 
-export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
+type LoginConfig = {
+  isDevLoginEnabled: boolean;
+  isGoogleLoginEnabled: boolean;
+  isTrialLoginEnabled: boolean;
+  trialTurnstileSiteKey?: string;
+  isSignupEnabled: boolean;
+};
+
+export function LandingPage({ loginConfig }: { loginConfig: LoginConfig }) {
   const [isPreviewOpen, setPreviewOpen] = useState(false);
   const [isLoginOpen, setLoginOpen] = useState(false);
+  const [startTrial, setStartTrial] = useState(false);
   const previewCloseRef = useRef<HTMLButtonElement>(null);
   const loginCloseRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -135,12 +145,20 @@ export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
 
   function openLogin() {
     triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setStartTrial(false);
+    setLoginOpen(true);
+  }
+
+  function openDemo() {
+    triggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setStartTrial(true);
     setLoginOpen(true);
   }
 
   const closeDialog = useCallback(() => {
     setPreviewOpen(false);
     setLoginOpen(false);
+    setStartTrial(false);
     requestAnimationFrame(() => triggerRef.current?.focus());
   }, []);
 
@@ -189,7 +207,7 @@ export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
             <p className="landing-eyebrow">나만의 지식 탐색 공간</p>
             <h1 id="landing-title">기록을 잇고,<br />생각을 확장하세요.</h1>
             <p className="landing-description">문서와 아이디어를 한곳에 모으고,<br />연결된 지식 속에서 필요한 답을 찾아보세요.</p>
-            <div className="landing-hero-actions"><button className="landing-primary-button" type="button" onClick={openPreview}>데모 둘러보기 <ArrowRight size={15} /></button><button className="landing-secondary-button" type="button" onClick={openLogin}>로그인하기 <ArrowRight size={14} /></button></div>
+            <div className="landing-hero-actions"><button className="landing-primary-button" type="button" onClick={openDemo}>데모 둘러보기 <ArrowRight size={15} /></button><button className="landing-secondary-button" type="button" onClick={openLogin}>로그인하기 <ArrowRight size={14} /></button></div>
             <p className="landing-hero-note">가입 없이 읽기 전용으로 둘러볼 수 있어요.</p>
             <div className="landing-features"><div id="documents"><strong>문서와 위키</strong><span>기록을 한곳에 정리</span></div><div id="graph"><strong>지식 그래프</strong><span>문서 사이의 연결 발견</span></div><div id="assistant"><strong>문서 기반 AI</strong><span>내 지식에 질문하기</span></div></div>
           </div>
@@ -198,14 +216,14 @@ export function LandingPage({ loginForm }: { loginForm: ReactNode }) {
 
         <section className="landing-preview-section" aria-label="서비스 미리보기">
           <div className="landing-preview-intro"><p>기록이 연결되는 순간,<br />문서와 문서가 이어져 나만의 지식 지도가 됩니다.</p>
-            <button type="button" className="landing-expand-arrow" onClick={openPreview} aria-label="서비스 미리보기를 전체 화면으로 보기"><svg viewBox="0 0 80 65" fill="none" aria-hidden="true"><path d="M6 11 34 25c4 2 8 2 12 0L74 11M15 37l19 11c4 2 8 2 12 0l19-11" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" /></svg><span>미리보기 펼치기</span></button>
+            <button type="button" className="landing-expand-arrow" onClick={openPreview} aria-label="서비스 미리보기를 전체 화면으로 보기"><svg viewBox="0 0 80 65" fill="none" aria-hidden="true"><path d="M6 11 34 25c4 2 8 2 12 0L74 11M15 37l19 11c4 2 8 2 12 0l19-11" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" strokeLinejoin="round" /></svg><span>미리보기 펼치기</span></button>
           </div>
           <button type="button" className="landing-preview-trigger" onClick={openPreview} aria-label="서비스 미리보기를 전체 화면으로 보기"><ServicePreview /><span className="landing-preview-hover"><Maximize2 size={16} /> 화면 가득 보기</span></button>
         </section>
       </div>
 
       {isPreviewOpen && <div className="landing-overlay landing-overlay--preview" role="dialog" aria-modal="true" aria-label="서비스 전체 화면 미리보기"><div className="landing-preview-overlay-inner"><ServicePreview full onClose={closeDialog} closeButtonRef={previewCloseRef} /></div></div>}
-      {isLoginOpen && <div className="landing-overlay landing-overlay--login" role="dialog" aria-modal="true" aria-label="로그인" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}><div className="landing-login-dialog"><button ref={loginCloseRef} className="landing-login-close" type="button" onClick={closeDialog} aria-label="로그인 창 닫기"><X size={19} /></button>{loginForm}</div></div>}
+      {isLoginOpen && <div className="landing-overlay landing-overlay--login" role="dialog" aria-modal="true" aria-label="로그인" onMouseDown={(event) => { if (event.target === event.currentTarget) closeDialog(); }}><div className="landing-login-dialog"><button ref={loginCloseRef} className="landing-login-close" type="button" onClick={closeDialog} aria-label="로그인 창 닫기"><X size={19} /></button>{startTrial && !loginConfig.isTrialLoginEnabled && !loginConfig.isDevLoginEnabled && <p className="landing-demo-unavailable" role="status">현재 데모 입장이 비활성화되어 있습니다. 일반 로그인은 아래에서 이용할 수 있습니다.</p>}<LoginForm {...loginConfig} startDemoOnMount={startTrial && (loginConfig.isTrialLoginEnabled || loginConfig.isDevLoginEnabled)} /></div></div>}
     </main>
   );
 }

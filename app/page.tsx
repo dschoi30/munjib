@@ -1,5 +1,4 @@
 import { resolvePublicSignupEnabled } from "@/lib/auth/signup-policy";
-import { LoginForm } from "@/app/login/login-form";
 import { LandingPage } from "@/components/landing-page";
 import {
   resolveDevLoginEnabled,
@@ -23,14 +22,12 @@ export default async function HomePage() {
   }
 
   return (
-    <LandingPage
-      loginForm={<LoginForm
-        isDevLoginEnabled={resolveDevLoginEnabled()}
-        isGoogleLoginEnabled={resolveGoogleAuthCredentials() !== null}
-        isTrialLoginEnabled={resolveTrialLoginEnabled()}
-        trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}
-        isSignupEnabled={resolvePublicSignupEnabled()}
-      />}
-    />
+    <LandingPage loginConfig={{
+      isDevLoginEnabled: resolveDevLoginEnabled(),
+      isGoogleLoginEnabled: resolveGoogleAuthCredentials() !== null,
+      isTrialLoginEnabled: resolveTrialLoginEnabled(),
+      trialTurnstileSiteKey: resolveTrialTurnstileSiteKey(),
+      isSignupEnabled: resolvePublicSignupEnabled(),
+    }} />
   );
 }

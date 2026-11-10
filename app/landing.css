@@ -28,3 +28,4 @@
   .landing-preview-shell:not(.landing-preview-shell--full) .landing-preview-ai-answer p{margin-bottom:3px}
   .landing-preview-shell--full .landing-preview-graph-stage{align-items:flex-start;padding-top:180px}
 }
+.landing-demo-unavailable{position:relative;z-index:2;margin:0 0 8px;padding:11px 14px;border:1px solid #dddfd8;border-radius:8px;background:#fff;color:#495248;font-size:12px;line-height:1.5}

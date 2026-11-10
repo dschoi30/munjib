@@ -64,6 +64,7 @@ function renderLoginForm(
     trialTurnstileSiteKey?: string;
     requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
     isSignupEnabled?: boolean;
+    startDemoOnMount?: boolean;
   } = {},
 ) {
   return render(
@@ -76,12 +77,53 @@ function renderLoginForm(
         trialTurnstileSiteKey={options.trialTurnstileSiteKey}
         requestTrialChallengeToken={options.requestTrialChallengeToken}
         isSignupEnabled={options.isSignupEnabled ?? true}
+        startDemoOnMount={options.startDemoOnMount ?? false}
       />
     </I18nProvider>,
   );
 }
 
 describe("LoginForm", () => {
+  it("starts the real Trial entitlement flow when opened from the landing demo button", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+    } as Response);
+
+    renderLoginForm(undefined, { startDemoOnMount: true });
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    expect(fetch).toHaveBeenCalledWith("/api/trial/entitlement", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
+    );
+  });
+
+  it("opens the seeded read-only viewer when Trial is closed in local development", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "https://munjib.example/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    });
+
+    renderLoginForm(undefined, {
+      isTrialLoginEnabled: false,
+      isDevLoginEnabled: true,
+      startDemoOnMount: true,
+    });
+
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledTimes(1));
+    expect(authMock.signIn).toHaveBeenCalledWith("development-login", expect.objectContaining({
+      email: "viewer@example.com",
+      redirect: false,
+    }));
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith(
+      "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    ));
+  });
+
   it("omits account-creation controls when signup is disabled", async () => {
     renderLoginForm(undefined, { isSignupEnabled: false });
 
@@ -219,6 +261,18 @@ describe("LoginForm", () => {
         callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fteam-handbook",
       });
     });
+  });
+
+  it("recovers the sign-in button when the authentication request fails", async () => {
+    authMock.signIn.mockRejectedValue(new Error("network unavailable"));
+    renderLoginForm();
+
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "viewer@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "example-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByText("Sign in failed. Clear the local session and try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toHaveProperty("disabled", false);
   });
 
   it("creates an email account with the hydrated language before signing in", async () => {

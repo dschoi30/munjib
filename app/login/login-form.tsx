@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "next-auth/react";
 import { Compass, Eye, EyeOff } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,7 @@ type LoginFormProps = {
   isSignupEnabled?: boolean;
   trialTurnstileSiteKey?: string;
   requestTrialChallengeToken?: (siteKey: string, parent?: HTMLElement) => Promise<string>;
+  startDemoOnMount?: boolean;
 };
 
 type AuthMode = "signin" | "signup";
@@ -55,6 +56,7 @@ export function LoginForm({
   isSignupEnabled = false,
   trialTurnstileSiteKey,
   requestTrialChallengeToken = requestTurnstileToken,
+  startDemoOnMount = false,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -65,8 +67,7 @@ export function LoginForm({
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
   const [statusKey, setStatusKey] = useState<MessageKey | null>(null);
   const trialChallengeHostRef = useRef<HTMLDivElement>(null);
-
-  if (!isHydrated) return <LoginFormSkeleton />;
+  const startedDemoRef = useRef(false);
 
   const postAuthCallbackUrl = buildPostAuthCallbackUrl(callbackUrl);
   const isSubmitting = activeAction !== null;
@@ -83,12 +84,19 @@ export function LoginForm({
     }
 
     setActiveAction("password");
-    const result = await signIn("password", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: postAuthCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("password", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: postAuthCallbackUrl,
+      });
+    } catch {
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
 
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
@@ -124,12 +132,19 @@ export function LoginForm({
     }
 
     setActiveAction("password");
-    const result = await signIn("password", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: postSignupCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("password", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: postSignupCallbackUrl,
+      });
+    } catch {
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postSignupCallbackUrl));
       return;
@@ -146,7 +161,14 @@ export function LoginForm({
       return;
     }
     setActiveAction("google");
-    const result = await signIn("google", { callbackUrl: postAuthCallbackUrl });
+    let result;
+    try {
+      result = await signIn("google", { callbackUrl: postAuthCallbackUrl });
+    } catch {
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
     if (!result?.url) setActiveAction(null);
   }
 
@@ -193,11 +215,18 @@ export function LoginForm({
     setErrorKey(null);
     setStatusKey(null);
     setActiveAction("dev");
-    const result = await signIn("development-login", {
-      email: userEmail,
-      redirect: false,
-      callbackUrl: postAuthCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("development-login", {
+        email: userEmail,
+        redirect: false,
+        callbackUrl: postAuthCallbackUrl,
+      });
+    } catch {
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
       return;
@@ -211,6 +240,15 @@ export function LoginForm({
     setStatusKey(null);
     await signOut({ redirect: false });
   }
+
+  useEffect(() => {
+    if (!isHydrated || !startDemoOnMount || startedDemoRef.current) return;
+    startedDemoRef.current = true;
+    if (isTrialLoginEnabled) void onTrialSignIn();
+    else if (isDevLoginEnabled) void onDevSignIn("viewer@example.com");
+  }, [isHydrated, startDemoOnMount, isTrialLoginEnabled, isDevLoginEnabled]);
+
+  if (!isHydrated) return <LoginFormSkeleton />;
 
   return (
     <div className="w-full max-w-[420px] sm:-translate-y-3">
