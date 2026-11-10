@@ -68,6 +68,7 @@ export function LoginForm({
   const [statusKey, setStatusKey] = useState<MessageKey | null>(null);
   const trialChallengeHostRef = useRef<HTMLDivElement>(null);
   const manualTrialAbortRef = useRef<AbortController | null>(null);
+  const isFormMountedRef = useRef(true);
 
   const postAuthCallbackUrl = buildPostAuthCallbackUrl(callbackUrl);
   const isSubmitting = activeAction !== null;
@@ -93,11 +94,13 @@ export function LoginForm({
         callbackUrl: postAuthCallbackUrl,
       });
     } catch {
+      if (!isFormMountedRef.current) return;
       setErrorKey("login.error.generic");
       setActiveAction(null);
       return;
     }
 
+    if (!isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
       return;
@@ -120,12 +123,14 @@ export function LoginForm({
         body: JSON.stringify({ email, password, language }),
       });
       const result = (await response.json()) as { ok?: boolean; code?: string };
+      if (!isFormMountedRef.current) return;
       if (!response.ok || !result.ok) {
         setErrorKey(resolveSignupErrorKey(result.code));
         setActiveAction(null);
         return;
       }
     } catch {
+      if (!isFormMountedRef.current) return;
       setErrorKey("login.error.signupGeneric");
       setActiveAction(null);
       return;
@@ -141,10 +146,12 @@ export function LoginForm({
         callbackUrl: postSignupCallbackUrl,
       });
     } catch {
+      if (!isFormMountedRef.current) return;
       setErrorKey("login.error.generic");
       setActiveAction(null);
       return;
     }
+    if (!isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postSignupCallbackUrl));
       return;
@@ -250,7 +257,13 @@ export function LoginForm({
     await signOut({ redirect: false });
   }
 
-  useEffect(() => () => manualTrialAbortRef.current?.abort(), []);
+  useEffect(() => {
+    isFormMountedRef.current = true;
+    return () => {
+      isFormMountedRef.current = false;
+      manualTrialAbortRef.current?.abort();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isHydrated || !startDemoOnMount) return;

@@ -252,6 +252,25 @@ describe("LoginForm", () => {
     );
   });
 
+  it("does not navigate when password login finishes after the dialog closes", async () => {
+    let resolveSignIn!: (result: { url: string }) => void;
+    authMock.signIn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSignIn = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "member@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledWith("password", expect.anything()));
+
+    view.unmount();
+    await act(async () => {
+      resolveSignIn({ url: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook" });
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
   it("locks auth controls while password submission is in flight", async () => {
     authMock.signIn.mockReturnValue(new Promise(() => {}));
 

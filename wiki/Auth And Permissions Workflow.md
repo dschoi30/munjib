@@ -31,6 +31,8 @@ The landing's primary demo button opens the real read-only entry flow: the confi
 
 When the demo dialog unmounts, pending Trial entitlement requests are aborted for both automatic demo entry and a manually pressed Trial button. Results and development-login responses are checked against the cancellation signal before challenge mounting or navigation, so closing the dialog does not later redirect the visitor. Source: `app/login/login-form.tsx` and `tests/components/login-form.test.tsx`.
 
+Password sign-in and signup also check whether their login form is still mounted after asynchronous responses. A dismissed landing dialog cannot trigger a late password redirect. Source: `app/login/login-form.tsx` and `tests/components/login-form.test.tsx`.
+
 The landing and illustrative preview reuse the exported Figma vector `public/landing-knowledge-graph.svg` from the `배경 일러스트 · 지식의 연결` layer in the Munjib design file (`P8nCGEbxoAVBtbGNAvy0nU`, node `101:2`). This replaces the locally generated node/edge layout while preserving the source vector's geometry and colors. The preview-specific Figma graph layer was not exported separately because its browser export did not produce a file.
 
 > MVP scope update (2026-10-09): the owner deferred the remaining long-term
