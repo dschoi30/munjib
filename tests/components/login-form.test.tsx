@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/app/login/login-form";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -97,10 +97,32 @@ describe("LoginForm", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({}),
+      signal: expect.any(AbortSignal),
     });
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
     );
+  });
+
+  it("cancels demo entry when its dialog closes before the entitlement arrives", async () => {
+    let resolveEntitlement!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => {
+      resolveEntitlement = resolve;
+    }));
+
+    const view = renderLoginForm(undefined, { startDemoOnMount: true });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolveEntitlement({
+        ok: true,
+        json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+      } as Response);
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
   });
 
   it("opens the seeded read-only viewer when Trial is closed in local development", async () => {
