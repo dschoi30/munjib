@@ -67,6 +67,7 @@ export function LoginForm({
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
   const [statusKey, setStatusKey] = useState<MessageKey | null>(null);
   const trialChallengeHostRef = useRef<HTMLDivElement>(null);
+  const manualTrialAbortRef = useRef<AbortController | null>(null);
 
   const postAuthCallbackUrl = buildPostAuthCallbackUrl(callbackUrl);
   const isSubmitting = activeAction !== null;
@@ -171,7 +172,7 @@ export function LoginForm({
     if (!result?.url) setActiveAction(null);
   }
 
-  async function onTrialSignIn(signal?: AbortSignal) {
+  async function onTrialSignIn(signal: AbortSignal) {
     setErrorKey(null);
     setStatusKey(null);
     if (!isTrialLoginEnabled) return;
@@ -181,26 +182,26 @@ export function LoginForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
-        ...(signal ? { signal } : {}),
+        signal,
       });
       const result: unknown = await response.json();
-      if (signal?.aborted) return;
+      if (signal.aborted) return;
       let entryPath = readTrialEntryPath(result);
       let entitlementAccepted = response.ok;
       if (!entryPath && readChallengeRequired(result)) {
-        if (signal?.aborted) return;
+        if (signal.aborted) return;
         if (!trialTurnstileSiteKey) throw new Error("TURNSTILE_SITE_KEY_UNAVAILABLE");
         setStatusKey("login.trialChallenge");
         const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey, trialChallengeHostRef.current ?? undefined);
-        if (signal?.aborted) return;
+        if (signal.aborted) return;
         const challengeResponse = await fetch("/api/trial/entitlement", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ challengeToken }),
-          ...(signal ? { signal } : {}),
+          signal,
         });
         const challengeResult: unknown = await challengeResponse.json();
-        if (signal?.aborted) return;
+        if (signal.aborted) return;
         entitlementAccepted = challengeResponse.ok;
         entryPath = entitlementAccepted ? readTrialEntryPath(challengeResult) : null;
       }
@@ -211,7 +212,7 @@ export function LoginForm({
     } catch {
       // Trial capability and edge evidence are fail-closed by the entitlement route.
     }
-    if (signal?.aborted) return;
+    if (signal.aborted) return;
     setErrorKey("login.error.generic");
     setActiveAction(null);
   }
@@ -248,6 +249,8 @@ export function LoginForm({
     setStatusKey(null);
     await signOut({ redirect: false });
   }
+
+  useEffect(() => () => manualTrialAbortRef.current?.abort(), []);
 
   useEffect(() => {
     if (!isHydrated || !startDemoOnMount) return;
@@ -398,7 +401,11 @@ export function LoginForm({
         {isTrialLoginEnabled ? (
           <button
             type="button"
-            onClick={() => void onTrialSignIn()}
+            onClick={() => {
+              const controller = new AbortController();
+              manualTrialAbortRef.current = controller;
+              void onTrialSignIn(controller.signal);
+            }}
             disabled={isSubmitting}
             aria-busy={activeAction === "trial"}
             aria-label={`${t("login.trial")} ${t("login.noSignup")}`}

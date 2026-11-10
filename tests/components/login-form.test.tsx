@@ -125,6 +125,28 @@ describe("LoginForm", () => {
     expect(window.location.assign).not.toHaveBeenCalled();
   });
 
+  it("cancels manually started Trial entry when its dialog closes", async () => {
+    let resolveEntitlement!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => {
+      resolveEntitlement = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolveEntitlement({
+        ok: true,
+        json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+      } as Response);
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
   it("opens the seeded read-only viewer when Trial is closed in local development", async () => {
     authMock.signIn.mockResolvedValue({
       url: "https://munjib.example/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
@@ -363,6 +385,7 @@ describe("LoginForm", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
+        signal: expect.any(AbortSignal),
       });
     });
     expect(authMock.signIn).not.toHaveBeenCalledWith("trial", expect.anything());
@@ -417,6 +440,7 @@ describe("LoginForm", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ challengeToken: "single-use-token" }),
+      signal: expect.any(AbortSignal),
     });
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
