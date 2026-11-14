@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LoginForm } from "@/app/login/login-form";
 import { I18nProvider } from "@/components/i18n-provider";
@@ -64,6 +64,7 @@ function renderLoginForm(
     trialTurnstileSiteKey?: string;
     requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
     isSignupEnabled?: boolean;
+    startDemoOnMount?: boolean;
   } = {},
 ) {
   return render(
@@ -76,12 +77,116 @@ function renderLoginForm(
         trialTurnstileSiteKey={options.trialTurnstileSiteKey}
         requestTrialChallengeToken={options.requestTrialChallengeToken}
         isSignupEnabled={options.isSignupEnabled ?? true}
+        startDemoOnMount={options.startDemoOnMount ?? false}
       />
     </I18nProvider>,
   );
 }
 
 describe("LoginForm", () => {
+  it("starts the real Trial entitlement flow when opened from the landing demo button", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+    } as Response);
+
+    renderLoginForm(undefined, { startDemoOnMount: true });
+
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    expect(fetch).toHaveBeenCalledWith("/api/trial/entitlement", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({}),
+      signal: expect.any(AbortSignal),
+    });
+    await waitFor(() =>
+      expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),
+    );
+  });
+
+  it("cancels demo entry when its dialog closes before the entitlement arrives", async () => {
+    let resolveEntitlement!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => {
+      resolveEntitlement = resolve;
+    }));
+
+    const view = renderLoginForm(undefined, { startDemoOnMount: true });
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolveEntitlement({
+        ok: true,
+        json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+      } as Response);
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it("cancels manually started Trial entry when its dialog closes", async () => {
+    let resolveEntitlement!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementationOnce(() => new Promise<Response>((resolve) => {
+      resolveEntitlement = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    const signal = vi.mocked(fetch).mock.calls[0][1]?.signal;
+
+    view.unmount();
+    expect(signal?.aborted).toBe(true);
+    await act(async () => {
+      resolveEntitlement({
+        ok: true,
+        json: async () => ({ entry: { path: "/trial/workspaces/company-handbook" } }),
+      } as Response);
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
+  it("opens the seeded read-only viewer when Trial is closed in local development", async () => {
+    authMock.signIn.mockResolvedValue({
+      url: "https://munjib.example/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    });
+
+    renderLoginForm(undefined, {
+      isTrialLoginEnabled: false,
+      isDevLoginEnabled: true,
+      startDemoOnMount: true,
+    });
+
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledTimes(1));
+    expect(authMock.signIn).toHaveBeenCalledWith("development-login", expect.objectContaining({
+      email: "viewer@example.com",
+      redirect: false,
+    }));
+    await waitFor(() => expect(window.location.assign).toHaveBeenCalledWith(
+      "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook",
+    ));
+  });
+
+  it("does not navigate when manual development login finishes after the dialog closes", async () => {
+    let resolveSignIn!: (result: { url: string }) => void;
+    authMock.signIn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSignIn = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.click(await screen.findByRole("button", { name: "Use viewer@example.com" }));
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledWith("development-login", expect.objectContaining({
+      email: "viewer@example.com",
+    })));
+
+    view.unmount();
+    await act(async () => {
+      resolveSignIn({ url: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook" });
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
   it("omits account-creation controls when signup is disabled", async () => {
     renderLoginForm(undefined, { isSignupEnabled: false });
 
@@ -166,6 +271,25 @@ describe("LoginForm", () => {
     );
   });
 
+  it("does not navigate when password login finishes after the dialog closes", async () => {
+    let resolveSignIn!: (result: { url: string }) => void;
+    authMock.signIn.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveSignIn = resolve;
+    }));
+
+    const view = renderLoginForm();
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "member@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(authMock.signIn).toHaveBeenCalledWith("password", expect.anything()));
+
+    view.unmount();
+    await act(async () => {
+      resolveSignIn({ url: "/login/redirect?callbackUrl=%2Fworkspaces%2Fcompany-handbook" });
+    });
+    expect(window.location.assign).not.toHaveBeenCalled();
+  });
+
   it("locks auth controls while password submission is in flight", async () => {
     authMock.signIn.mockReturnValue(new Promise(() => {}));
 
@@ -219,6 +343,18 @@ describe("LoginForm", () => {
         callbackUrl: "/login/redirect?callbackUrl=%2Fworkspaces%2Fteam-handbook",
       });
     });
+  });
+
+  it("recovers the sign-in button when the authentication request fails", async () => {
+    authMock.signIn.mockRejectedValue(new Error("network unavailable"));
+    renderLoginForm();
+
+    fireEvent.change(await screen.findByLabelText("Email"), { target: { value: "viewer@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "example-password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    expect(await screen.findByText("Sign in failed. Clear the local session and try again.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toHaveProperty("disabled", false);
   });
 
   it("creates an email account with the hydrated language before signing in", async () => {
@@ -287,6 +423,7 @@ describe("LoginForm", () => {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
+        signal: expect.any(AbortSignal),
       });
     });
     expect(authMock.signIn).not.toHaveBeenCalledWith("trial", expect.anything());
@@ -335,12 +472,13 @@ describe("LoginForm", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Explore demo (read-only) No signup" }));
 
     await waitFor(() => expect(requestTrialChallengeToken).toHaveBeenCalledTimes(1));
-    expect(requestTrialChallengeToken).toHaveBeenCalledWith("0x4AAAAAAAtest-site-key");
+    expect(requestTrialChallengeToken).toHaveBeenCalledWith("0x4AAAAAAAtest-site-key", expect.any(HTMLElement));
     expect(fetch).toHaveBeenCalledTimes(2);
     expect(fetch).toHaveBeenNthCalledWith(2, "/api/trial/entitlement", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ challengeToken: "single-use-token" }),
+      signal: expect.any(AbortSignal),
     });
     await waitFor(() =>
       expect(window.location.assign).toHaveBeenCalledWith("/trial/workspaces/company-handbook"),

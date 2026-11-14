@@ -2,7 +2,7 @@
 
 import { signIn, signOut } from "next-auth/react";
 import { Compass, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,9 @@ type LoginFormProps = {
   isTrialLoginEnabled?: boolean;
   isSignupEnabled?: boolean;
   trialTurnstileSiteKey?: string;
-  requestTrialChallengeToken?: (siteKey: string) => Promise<string>;
+  requestTrialChallengeToken?: (siteKey: string, parent?: HTMLElement) => Promise<string>;
+  startDemoOnMount?: boolean;
+  onGooglePendingChange?: (pending: boolean) => void;
 };
 
 type AuthMode = "signin" | "signup";
@@ -55,6 +57,8 @@ export function LoginForm({
   isSignupEnabled = false,
   trialTurnstileSiteKey,
   requestTrialChallengeToken = requestTurnstileToken,
+  startDemoOnMount = false,
+  onGooglePendingChange,
 }: LoginFormProps) {
   const { language, isHydrated, t } = useI18n();
   const [mode, setMode] = useState<AuthMode>("signin");
@@ -64,8 +68,9 @@ export function LoginForm({
   const [activeAction, setActiveAction] = useState<AuthAction>(null);
   const [errorKey, setErrorKey] = useState<MessageKey | null>(null);
   const [statusKey, setStatusKey] = useState<MessageKey | null>(null);
-
-  if (!isHydrated) return <LoginFormSkeleton />;
+  const trialChallengeHostRef = useRef<HTMLDivElement>(null);
+  const manualTrialAbortRef = useRef<AbortController | null>(null);
+  const isFormMountedRef = useRef(true);
 
   const postAuthCallbackUrl = buildPostAuthCallbackUrl(callbackUrl);
   const isSubmitting = activeAction !== null;
@@ -82,13 +87,22 @@ export function LoginForm({
     }
 
     setActiveAction("password");
-    const result = await signIn("password", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: postAuthCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("password", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: postAuthCallbackUrl,
+      });
+    } catch {
+      if (!isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
 
+    if (!isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
       return;
@@ -111,24 +125,35 @@ export function LoginForm({
         body: JSON.stringify({ email, password, language }),
       });
       const result = (await response.json()) as { ok?: boolean; code?: string };
+      if (!isFormMountedRef.current) return;
       if (!response.ok || !result.ok) {
         setErrorKey(resolveSignupErrorKey(result.code));
         setActiveAction(null);
         return;
       }
     } catch {
+      if (!isFormMountedRef.current) return;
       setErrorKey("login.error.signupGeneric");
       setActiveAction(null);
       return;
     }
 
     setActiveAction("password");
-    const result = await signIn("password", {
-      email,
-      password,
-      redirect: false,
-      callbackUrl: postSignupCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("password", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: postSignupCallbackUrl,
+      });
+    } catch {
+      if (!isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
+    if (!isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postSignupCallbackUrl));
       return;
@@ -145,11 +170,28 @@ export function LoginForm({
       return;
     }
     setActiveAction("google");
-    const result = await signIn("google", { callbackUrl: postAuthCallbackUrl });
-    if (!result?.url) setActiveAction(null);
+    onGooglePendingChange?.(true);
+    let result;
+    try {
+      result = await signIn("google", { callbackUrl: postAuthCallbackUrl });
+    } catch {
+      onGooglePendingChange?.(false);
+      if (!isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
+    // NextAuth navigates internally for OAuth and then resolves without a URL.
+    // Keep the dialog open until that navigation or an error ends the attempt.
+    if (result?.error) {
+      onGooglePendingChange?.(false);
+      if (!isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+    }
   }
 
-  async function onTrialSignIn() {
+  async function onTrialSignIn(signal: AbortSignal) {
     setErrorKey(null);
     setStatusKey(null);
     if (!isTrialLoginEnabled) return;
@@ -159,20 +201,26 @@ export function LoginForm({
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({}),
+        signal,
       });
       const result: unknown = await response.json();
+      if (signal.aborted) return;
       let entryPath = readTrialEntryPath(result);
       let entitlementAccepted = response.ok;
       if (!entryPath && readChallengeRequired(result)) {
+        if (signal.aborted) return;
         if (!trialTurnstileSiteKey) throw new Error("TURNSTILE_SITE_KEY_UNAVAILABLE");
         setStatusKey("login.trialChallenge");
-        const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey);
+        const challengeToken = await requestTrialChallengeToken(trialTurnstileSiteKey, trialChallengeHostRef.current ?? undefined);
+        if (signal.aborted) return;
         const challengeResponse = await fetch("/api/trial/entitlement", {
           method: "POST",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ challengeToken }),
+          signal,
         });
         const challengeResult: unknown = await challengeResponse.json();
+        if (signal.aborted) return;
         entitlementAccepted = challengeResponse.ok;
         entryPath = entitlementAccepted ? readTrialEntryPath(challengeResult) : null;
       }
@@ -183,20 +231,30 @@ export function LoginForm({
     } catch {
       // Trial capability and edge evidence are fail-closed by the entitlement route.
     }
+    if (signal.aborted) return;
     setErrorKey("login.error.generic");
     setActiveAction(null);
   }
 
-  async function onDevSignIn(userEmail: string) {
+  async function onDevSignIn(userEmail: string, signal?: AbortSignal) {
     if (!isDevLoginEnabled) return;
     setErrorKey(null);
     setStatusKey(null);
     setActiveAction("dev");
-    const result = await signIn("development-login", {
-      email: userEmail,
-      redirect: false,
-      callbackUrl: postAuthCallbackUrl,
-    });
+    let result;
+    try {
+      result = await signIn("development-login", {
+        email: userEmail,
+        redirect: false,
+        callbackUrl: postAuthCallbackUrl,
+      });
+    } catch {
+      if (signal?.aborted || !isFormMountedRef.current) return;
+      setErrorKey("login.error.generic");
+      setActiveAction(null);
+      return;
+    }
+    if (signal?.aborted || !isFormMountedRef.current) return;
     if (result?.url) {
       window.location.assign(resolvePostSignInRedirectUrl(result.url, postAuthCallbackUrl));
       return;
@@ -210,6 +268,24 @@ export function LoginForm({
     setStatusKey(null);
     await signOut({ redirect: false });
   }
+
+  useEffect(() => {
+    isFormMountedRef.current = true;
+    return () => {
+      isFormMountedRef.current = false;
+      manualTrialAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isHydrated || !startDemoOnMount) return;
+    const controller = new AbortController();
+    if (isTrialLoginEnabled) void onTrialSignIn(controller.signal);
+    else if (isDevLoginEnabled) void onDevSignIn("viewer@example.com", controller.signal);
+    return () => controller.abort();
+  }, [isHydrated, startDemoOnMount, isTrialLoginEnabled, isDevLoginEnabled]);
+
+  if (!isHydrated) return <LoginFormSkeleton />;
 
   return (
     <div className="w-full max-w-[420px] sm:-translate-y-3">
@@ -350,7 +426,11 @@ export function LoginForm({
         {isTrialLoginEnabled ? (
           <button
             type="button"
-            onClick={onTrialSignIn}
+            onClick={() => {
+              const controller = new AbortController();
+              manualTrialAbortRef.current = controller;
+              void onTrialSignIn(controller.signal);
+            }}
             disabled={isSubmitting}
             aria-busy={activeAction === "trial"}
             aria-label={`${t("login.trial")} ${t("login.noSignup")}`}
@@ -367,6 +447,8 @@ export function LoginForm({
             </span>
           </button>
         ) : null}
+
+        <div ref={trialChallengeHostRef} className="mt-3 flex justify-center empty:hidden" />
 
         {errorKey ? <p className="mt-4 text-sm text-danger">{t(errorKey)}</p> : null}
         {statusKey ? <p className="mt-4 text-sm text-ink-muted">{t(statusKey)}</p> : null}

@@ -13,6 +13,23 @@ afterEach(() => {
 });
 
 describe("Turnstile client script loading", () => {
+  it("mounts an interactive challenge in the supplied dialog host", async () => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    window.turnstile = {
+      render: vi.fn((container, options) => {
+        expect(container.parentElement).toBe(host);
+        queueMicrotask(() => options.callback("dialog-token"));
+        return "widget-1";
+      }),
+      remove: vi.fn(),
+    };
+
+    await expect(requestTurnstileToken(siteKey, host)).resolves.toBe("dialog-token");
+    expect(host.childElementCount).toBe(0);
+    host.remove();
+  });
+
   it("removes a failed script so a retry inserts and loads a fresh element", async () => {
     const firstRequest = requestTurnstileToken(siteKey);
     const failedScript = document.querySelector(scriptSelector) as HTMLScriptElement;

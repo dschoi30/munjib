@@ -5,8 +5,8 @@ type: workflow
 status: active
 summary: Munjib의 launch 로그인 stack, 개발용 로그인 gate, NextAuth session, workspace role, document-level explicit permission 흐름.
 created: 2026-04-29
-updated: 2026-10-10
-source_count: 129
+updated: 2026-11-10
+source_count: 139
 tags:
   - munjib
   - auth
@@ -20,6 +20,24 @@ links:
 ---
 
 # Auth And Permissions Workflow
+
+## Public landing and sign-in entry (Issue #250)
+
+Unauthenticated `/` presents a product introduction with a document graph and a read-only example of the workspace's document tree, graph view, and AI response. A green arrow between the introduction and example opens the preview as a viewport-filling dialog with a scale/fade transition; the close button and Escape return to the landing page. The header login button opens the existing `LoginForm` in a dialog, preserving the server-owned Google, password, signup, development, and Trial gates. `/login` remains a direct form route for authentication redirects, and authenticated `/` still redirects to the user's workspace. The preview contains illustrative content and does not query workspace documents or invoke AI. Sources: `app/page.tsx`, `components/landing-page.tsx`, and `app/landing.css`.
+
+The landing background is inert while either dialog is open. Keyboard focus stays in the dialog and returns to its trigger on close. A required Trial Turnstile widget mounts inside the login form's dialog host so visitors can interact with it. Sources: `components/landing-page.tsx`, `app/login/login-form.tsx`, and `lib/auth/turnstile-client.ts`.
+
+The landing's primary demo button opens the real read-only entry flow: the configured anonymous Trial entitlement takes precedence; when Trial is closed in local development and development login is enabled, the button signs in the seeded `viewer@example.com` account. If both gates are closed, the dialog explicitly reports that demo entry is unavailable. The regular login button uses the same password/Google handlers as `/login`; rejected auth requests reset the submitting state and show the existing generic error. The green preview arrow remains a separate illustrative full-screen action. Local browser verification used the existing Docker database and reached `/workspaces/company-handbook` as the seeded viewer; this does not prove production Trial activation or a password/Google login with a real user credential.
+
+When the demo dialog unmounts, pending Trial entitlement requests are aborted for both automatic demo entry and a manually pressed Trial button. Results and development-login responses are checked against the cancellation signal before challenge mounting or navigation, so closing the dialog does not later redirect the visitor. Source: `app/login/login-form.tsx` and `tests/components/login-form.test.tsx`.
+
+Password sign-in and signup also check whether their login form is still mounted after asynchronous responses. A dismissed landing dialog cannot trigger a late password redirect. Source: `app/login/login-form.tsx` and `tests/components/login-form.test.tsx`.
+
+The manual development-account shortcuts use the same mounted check before redirecting, alongside the cancellation signal used by automatic demo entry. Closing the dialog cannot cause a late development-login redirect. Source: `app/login/login-form.tsx` and `tests/components/login-form.test.tsx`.
+
+While Google OAuth sign-in is pending, the landing login dialog stays open because NextAuth performs the navigation internally. Its close button, Escape handler, and backdrop dismissal are unavailable until OAuth navigation or an error; an error restores dismissal. Source: `app/login/login-form.tsx`, `components/landing-page.tsx`, and `tests/components/landing-page.test.tsx`.
+
+Issue #252 replaces the Figma graph vector with a reproducible circular example document network. `scripts/landing-knowledge-graph.mjs` creates 578 document nodes and 570 unique links, including local references and more connected hub documents. Each SVG circle's radius is calculated from its degree in that same link set, so more connected documents appear larger. The generated `public/landing-knowledge-graph.svg` is reused in the hero and illustrative workspace preview. It remains static example content; unauthenticated visitors' private document graphs are never read for this landing image. Source: `scripts/landing-knowledge-graph.mjs`, `public/landing-knowledge-graph.svg`, and `tests/components/landing-knowledge-graph.test.ts`.
 
 > MVP scope update (2026-10-09): the owner deferred the remaining long-term
 > hardening/runtime program. Its issues are closed as `not_planned`, not completed.

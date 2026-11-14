@@ -14,8 +14,13 @@ describe("development login gate callers", () => {
     const source = read(path);
 
     expect(source).toContain("resolveDevLoginEnabled");
-    expect(source).toContain("isDevLoginEnabled={resolveDevLoginEnabled()}");
-    expect(source).toContain("isSignupEnabled={resolvePublicSignupEnabled()}");
+    if (path === "app/page.tsx") {
+      expect(source).toContain("isDevLoginEnabled: resolveDevLoginEnabled()");
+      expect(source).toContain("isSignupEnabled: resolvePublicSignupEnabled()");
+    } else {
+      expect(source).toContain("isDevLoginEnabled={resolveDevLoginEnabled()}");
+      expect(source).toContain("isSignupEnabled={resolvePublicSignupEnabled()}");
+    }
   });
 
   it("passes the server signup gate from the login page", () => {
@@ -30,6 +35,8 @@ describe("development login gate callers", () => {
     const source = read(path);
 
     expect(source).toContain("resolveTrialTurnstileSiteKey");
-    expect(source).toContain("trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}");
+    expect(source).toContain(path === "app/page.tsx"
+      ? "trialTurnstileSiteKey: resolveTrialTurnstileSiteKey()"
+      : "trialTurnstileSiteKey={resolveTrialTurnstileSiteKey()}");
   });
 });
