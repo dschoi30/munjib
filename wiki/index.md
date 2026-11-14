@@ -40,6 +40,7 @@ links:
 # Wiki Index
 
 - Issue #250 introduces an unauthenticated product landing page with a full-screen example workspace preview and a sign-in dialog; see [[Auth And Permissions Workflow]].
+- Issue #252 makes the landing's circular example graph reproducible, with node size derived from each example document's link count; see [[Auth And Permissions Workflow]].
 
 - Issue #246 improves graph body-link lookup with a readable-document index and immediate localized loading feedback. See [[Wiki Links And Backlinks]].
 
